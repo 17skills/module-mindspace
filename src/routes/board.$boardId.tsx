@@ -1273,7 +1273,31 @@ function BoardPage() {
           aria-label="Board-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
+        <div className="ml-auto flex items-center gap-1">
+          {isOwner ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-9 rounded-lg"
+                  aria-label="Board teilen"
+                  onClick={() => setShareOpen(true)}
+                >
+                  <Share2 className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Board teilen</TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              Geteiltes Board
+            </span>
+          )}
+        </div>
       </header>
+
+      <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
 
       <TemplateDialog
         open={templateOpen}
