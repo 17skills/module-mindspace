@@ -150,27 +150,29 @@ function LibraryPage() {
                   Zuletzt geändert {new Date(board.updated_at).toLocaleDateString("de-DE")}
                 </p>
               </Link>
-              <AlertDialog>
-                <AlertDialogTrigger asChild disabled={board.user_id !== user.id}>
-                  <button className="mt-3 text-xs text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive">
-                    Löschen
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Board löschen?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Alle Module, Verbindungen und Chats dieses Boards werden entfernt.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => deleteBoard.mutate(board.id)}>
+              {board.user_id === user.id && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="mt-3 text-xs text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive">
                       Löschen
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Board löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Alle Module, Verbindungen und Chats dieses Boards werden entfernt.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteBoard.mutate(board.id)}>
+                        Löschen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           ))}
 
