@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Crosshair, X } from "lucide-react";
 import { useBoard, NODE_LABEL, type NodeRecord } from "@/components/canvas/board-context";
 import { ZONE_ROLES, readAssignment } from "@/lib/zones";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function OverviewTab({ onOpen }: { onOpen: (id: string) => void }) {
   const { allNodes, updateNode, focusNode } = useBoard();
@@ -56,13 +57,18 @@ export function OverviewTab({ onOpen }: { onOpen: (id: string) => void }) {
                 </option>
               ))}
             </select>
-            <button
-              onClick={() => patch(card, { zoneId: null, zoneAuto: false })}
-              title="Zuordnung entfernen"
-              className="rounded p-1 text-muted-foreground hover:bg-secondary"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => patch(card, { zoneId: null, zoneAuto: false })}
+                  aria-label="Zuordnung entfernen"
+                  className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Zuordnung entfernen</TooltipContent>
+            </Tooltip>
           </>
         ) : (
           <select
@@ -108,13 +114,18 @@ export function OverviewTab({ onOpen }: { onOpen: (id: string) => void }) {
               />
               <p className="flex-1 truncate text-xs font-medium">{zone.title ?? "Feld"}</p>
               <span className="text-[11px] text-muted-foreground">{members.length}</span>
-              <button
-                onClick={() => focusNode(zone.id)}
-                title="Feld zeigen"
-                className="rounded p-1 text-muted-foreground hover:bg-secondary"
-              >
-                <Crosshair className="h-3.5 w-3.5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => focusNode(zone.id)}
+                    aria-label="Feld zeigen"
+                    className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
+                  >
+                    <Crosshair className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Feld auf der Fläche zeigen</TooltipContent>
+              </Tooltip>
             </div>
             {members.length === 0 ? (
               <p className="pl-4 text-[11px] text-muted-foreground">Noch nichts zugeordnet</p>

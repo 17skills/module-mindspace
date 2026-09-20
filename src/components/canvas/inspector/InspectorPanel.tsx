@@ -97,12 +97,12 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
         aria-hidden
       />
 
-      <header className="flex shrink-0 items-start gap-2 border-b px-3 py-2.5">
+      <header className="flex shrink-0 items-start gap-2 border-b px-4 py-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] uppercase text-muted-foreground">
             {NODE_LABEL[record.type] ?? record.type}
           </p>
-          <p className="truncate text-sm font-medium">{record.title ?? "Ohne Titel"}</p>
+          <p className="truncate font-display text-sm font-semibold">{record.title ?? "Ohne Titel"}</p>
         </div>
         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -114,7 +114,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
           <button
             key={item.id}
             onClick={() => onTab(item.id)}
-            className={`rounded-full px-3 py-1 text-xs ${
+            className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
               activeTab === item.id
                 ? "bg-accent/60 font-medium"
                 : "text-muted-foreground hover:bg-secondary"

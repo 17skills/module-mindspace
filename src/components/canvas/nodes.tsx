@@ -20,6 +20,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Tooltip as UiTooltip,
+  TooltipContent as UiTooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -112,26 +117,35 @@ function Header({ record }: { record: NodeRecord }) {
         <span className="line-clamp-2 flex-1 text-sm font-medium leading-tight">
           {record.title || "Ohne Titel"}
         </span>
-        <button
-          className="nodrag text-xs text-muted-foreground hover:text-destructive"
-          onClick={() => deleteNode(record.id)}
-          title="Modul löschen"
-        >
-          ✕
-        </button>
+        <UiTooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="nodrag flex size-6 items-center justify-center rounded-full text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => deleteNode(record.id)}
+              aria-label="Modul löschen"
+            >
+              ✕
+            </button>
+          </TooltipTrigger>
+          <UiTooltipContent>Modul löschen</UiTooltipContent>
+        </UiTooltip>
       </div>
       {zone && (
-        <button
-          className="nodrag mt-1.5 flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground"
-          onClick={() => openInspector(record.id, "assign")}
-          title="Zuordnung bearbeiten"
-        >
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ background: zone.color ?? "var(--primary)" }}
-          />
-          {zone.title} · {zone.role}
-        </button>
+        <UiTooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="nodrag mt-1.5 flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+              onClick={() => openInspector(record.id, "assign")}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: zone.color ?? "var(--primary)" }}
+              />
+              {zone.title} · {zone.role}
+            </button>
+          </TooltipTrigger>
+          <UiTooltipContent>Zuordnung bearbeiten</UiTooltipContent>
+        </UiTooltip>
       )}
     </div>
   );
