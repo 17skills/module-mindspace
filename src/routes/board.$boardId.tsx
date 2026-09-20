@@ -1088,6 +1088,7 @@ function BoardPage() {
             onConnect={onConnect}
             onNodeDragStop={(_, node) => {
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
+              syncZone(node.id, node.position.x, node.position.y);
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
