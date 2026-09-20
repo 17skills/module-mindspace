@@ -19,12 +19,14 @@ import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { BoardContext, type NodeRecord } from "@/components/canvas/board-context";
-import { ChatNode, ContentNode, FrameNode, NoteNode } from "@/components/canvas/nodes";
+import { ChatNode, ContentNode, DataNode, FrameNode, NoteNode } from "@/components/canvas/nodes";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
+import { filePreview } from "@/lib/preview";
 import {
+  extractStructured,
   fetchPageText,
   fetchYoutube,
   resolvePodcast,
@@ -61,13 +63,19 @@ const nodeTypes = {
   note: NoteNode,
   chat: ChatNode,
   frame: FrameNode,
+  data: DataNode,
 };
+
+const DATA_TYPES = new Set(["table", "list", "chart"]);
 
 const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   note: { width: 260, height: 200 },
   chat: { width: 400, height: 460 },
   frame: { width: 640, height: 460 },
-  default: { width: 320, height: 300 },
+  table: { width: 400, height: 300 },
+  list: { width: 300, height: 280 },
+  chart: { width: 400, height: 320 },
+  default: { width: 320, height: 340 },
 };
 
 function toFlowNode(record: NodeRecord): Node {
@@ -75,7 +83,9 @@ function toFlowNode(record: NodeRecord): Node {
   const kind =
     record.type === "note" || record.type === "chat" || record.type === "frame"
       ? record.type
-      : "content";
+      : DATA_TYPES.has(record.type)
+        ? "data"
+        : "content";
   return {
     id: record.id,
     type: kind,
@@ -88,6 +98,13 @@ function toFlowNode(record: NodeRecord): Node {
   };
 }
 
+/** Frames must come before their children in the node array. */
+function sortNodes(list: NodeRecord[]) {
+  return [...list].sort((a, b) => (a.type === "frame" ? -1 : 0) - (b.type === "frame" ? -1 : 0));
+}
+
+type Menu = { x: number; y: number; flowX: number; flowY: number; nodeId?: string };
+
 function BoardPage() {
   const { boardId } = Route.useParams();
   const { user, loading } = useAuth();
@@ -98,9 +115,12 @@ function BoardPage() {
   const [records, setRecords] = useState<Record<string, NodeRecord>>({});
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [urlInput, setUrlInput] = useState("");
   const [ready, setReady] = useState(false);
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
+  const [linkValue, setLinkValue] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const filePosition = useRef<{ x: number; y: number } | null>(null);
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const edgesRef = useRef(edges);
@@ -128,7 +148,7 @@ function BoardPage() {
       setTitle(boardRes.data.title);
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
-      setNodes(list.map(toFlowNode));
+      setNodes(sortNodes(list).map(toFlowNode));
       setEdges(
         (edgeRes.data ?? []).map((e) => ({
           id: e.id as string,
@@ -218,50 +238,70 @@ function BoardPage() {
       if (error) throw error;
       const record = data as unknown as NodeRecord;
       setRecords((current) => ({ ...current, [record.id]: record }));
-      setNodes((current) => [...current, toFlowNode(record)]);
+      setNodes((current) =>
+        record.type === "frame" ? [toFlowNode(record), ...current] : [...current, toFlowNode(record)],
+      );
       return record;
     },
     [boardId, user, setNodes],
   );
 
-  const nextPosition = useCallback(() => {
-    const center = screenToFlowPosition({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    });
-    const jitter = Object.keys(recordsRef.current).length % 6;
-    return { x: center.x - 160 + jitter * 28, y: center.y - 150 + jitter * 24 };
-  }, [screenToFlowPosition]);
+  const createEdge = useCallback(
+    (sourceId: string, targetId: string) => {
+      if (!user || sourceId === targetId) return;
+      const exists = edgesRef.current.some(
+        (e) =>
+          (e.source === sourceId && e.target === targetId) ||
+          (e.source === targetId && e.target === sourceId),
+      );
+      if (exists) return;
+      const id = crypto.randomUUID();
+      setEdges((current) => [
+        ...current,
+        { id, source: sourceId, target: targetId, animated: true },
+      ]);
+      void supabase
+        .from("edges")
+        .insert({
+          id,
+          board_id: boardId,
+          user_id: user.id,
+          source_id: sourceId,
+          target_id: targetId,
+        } as never)
+        .then(({ error }) => {
+          if (error) toast.error(error.message);
+        });
+    },
+    [boardId, setEdges, user],
+  );
 
-  const collectContext = useCallback(
-    (id: string) => {
-      const connected = new Set<string>();
-      for (const edge of edgesRef.current) {
-        if (edge.source === id) connected.add(edge.target);
-        if (edge.target === id) connected.add(edge.source);
-      }
-      // frames contribute their children
-      for (const nodeId of [...connected]) {
-        const record = recordsRef.current[nodeId];
-        if (record?.type === "frame") {
-          for (const candidate of Object.values(recordsRef.current)) {
-            if (candidate.parent_id === nodeId) connected.add(candidate.id);
-          }
+  const collectContext = useCallback((id: string) => {
+    const connected = new Set<string>();
+    for (const edge of edgesRef.current) {
+      if (edge.source === id) connected.add(edge.target);
+      if (edge.target === id) connected.add(edge.source);
+    }
+    // frames contribute their children
+    for (const nodeId of [...connected]) {
+      const record = recordsRef.current[nodeId];
+      if (record?.type === "frame") {
+        for (const candidate of Object.values(recordsRef.current)) {
+          if (candidate.parent_id === nodeId) connected.add(candidate.id);
         }
       }
-      const parts: string[] = [];
-      for (const nodeId of connected) {
-        const record = recordsRef.current[nodeId];
-        if (!record || record.type === "chat" || record.type === "frame") continue;
-        if (!record.content) continue;
-        parts.push(
-          `### ${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
-        );
-      }
-      return parts.join("\n\n---\n\n");
-    },
-    [],
-  );
+    }
+    const parts: string[] = [];
+    for (const nodeId of connected) {
+      const record = recordsRef.current[nodeId];
+      if (!record || record.type === "chat" || record.type === "frame") continue;
+      if (!record.content) continue;
+      parts.push(
+        `### ${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
+      );
+    }
+    return parts.join("\n\n---\n\n");
+  }, []);
 
   const addNoteFrom = useCallback(
     (sourceId: string, text: string) => {
@@ -277,8 +317,57 @@ function BoardPage() {
     [createRecord],
   );
 
+  const extractStructure = useCallback(
+    (sourceId: string) => {
+      const source = recordsRef.current[sourceId];
+      if (!source?.content) {
+        toast.info("Dieses Modul enthält noch keinen Text");
+        return;
+      }
+      const job = toast.loading("Strukturierte Daten werden gesucht …");
+      void extractStructured({ data: { text: source.content, title: source.title ?? "" } })
+        .then(async ({ items }) => {
+          if (items.length === 0) {
+            toast.info("Keine strukturierten Daten gefunden", { id: job });
+            return;
+          }
+          let offset = 0;
+          for (const item of items) {
+            const type = item.kind;
+            const content =
+              type === "list"
+                ? item.rows.map((row) => `- ${row[0] ?? ""}`).join("\n")
+                : [item.columns.join(" | "), ...item.rows.map((row) => row.join(" | "))].join("\n");
+            const created = await createRecord({
+              type,
+              title: item.title,
+              content,
+              position_x: (source.position_x ?? 0) + 420,
+              position_y: (source.position_y ?? 0) + offset,
+              metadata: {
+                columns: item.columns,
+                rows: item.rows,
+                ...(type === "chart"
+                  ? { chartType: item.chartType === "none" ? "bar" : item.chartType }
+                  : {}),
+              },
+            });
+            createEdge(source.parent_id ?? source.id, created.id);
+            offset += 360;
+          }
+          toast.success(`${items.length} Modul(e) erstellt`, { id: job });
+        })
+        .catch((error: unknown) =>
+          toast.error(error instanceof Error ? error.message : "Analyse fehlgeschlagen", {
+            id: job,
+          }),
+        );
+    },
+    [createRecord, createEdge],
+  );
+
   const addUrl = useCallback(
-    async (rawUrl: string) => {
+    async (rawUrl: string, at?: { x: number; y: number }) => {
       const url = rawUrl.trim();
       if (!url) return;
       let parsed: URL;
@@ -289,10 +378,11 @@ function BoardPage() {
         return;
       }
 
-      const position = nextPosition();
+      const position = at ?? centerPosition();
       const isYoutube = Boolean(youtubeId(url));
       const isAudioUrl = /\.(mp3|m4a|wav|aac|ogg)(\?|$)/i.test(parsed.pathname);
-      const isFeed = /\/(rss|feed)/i.test(parsed.pathname) || /podcast|spotify|apple/i.test(parsed.hostname);
+      const isFeed =
+        /\/(rss|feed)/i.test(parsed.pathname) || /podcast|spotify|apple/i.test(parsed.hostname);
 
       const record = await createRecord({
         type: isYoutube ? "youtube" : isAudioUrl || isFeed ? "podcast" : "link",
@@ -318,9 +408,12 @@ function BoardPage() {
 
         if (isAudioUrl || isFeed) {
           const episode = isAudioUrl
-            ? { title: url.split("/").pop() ?? "Audio", audioUrl: url }
+            ? { title: url.split("/").pop() ?? "Audio", audioUrl: url, image: null }
             : await resolvePodcast({ data: { url } });
-          updateNode(record.id, { title: episode.title });
+          updateNode(record.id, {
+            title: episode.title,
+            ...(episode.image ? { metadata: { thumbnail: episode.image } } : {}),
+          });
           const { text } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
           updateNode(record.id, {
             content: text,
@@ -331,7 +424,12 @@ function BoardPage() {
         }
 
         const page = await fetchPageText({ data: { url } });
-        updateNode(record.id, { title: page.title, content: page.text, status: "ready" });
+        updateNode(record.id, {
+          title: page.title,
+          content: page.text,
+          status: "ready",
+          ...(page.image ? { metadata: { thumbnail: page.image } } : {}),
+        });
       } catch (error) {
         updateNode(record.id, {
           status: "error",
@@ -339,13 +437,17 @@ function BoardPage() {
         });
       }
     },
-    [createRecord, nextPosition, updateNode],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [createRecord, updateNode],
   );
 
   const addFiles = useCallback(
-    async (files: FileList | File[]) => {
+    async (files: FileList | File[], at?: { x: number; y: number }) => {
+      let index = 0;
       for (const file of Array.from(files)) {
-        const position = nextPosition();
+        const base = at ?? centerPosition();
+        const position = { x: base.x + index * 32, y: base.y + index * 28 };
+        index += 1;
         const audio = isAudioFile(file);
         const record = await createRecord({
           type: audio ? "audio" : "document",
@@ -361,6 +463,9 @@ function BoardPage() {
           const upload = await supabase.storage.from("uploads").upload(path, file);
           if (upload.error) throw upload.error;
           updateNode(record.id, { storage_path: path });
+
+          const thumbnail = await filePreview(file);
+          if (thumbnail) updateNode(record.id, { metadata: { thumbnail } });
 
           if (audio) {
             if (file.size > 20 * 1024 * 1024) {
@@ -391,28 +496,28 @@ function BoardPage() {
         }
       }
     },
-    [createRecord, nextPosition, updateNode, user],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [createRecord, updateNode, user],
   );
+
+  function centerPosition() {
+    return screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  }
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (!user || !connection.source || !connection.target) return;
-      const id = crypto.randomUUID();
-      setEdges((current) => addEdge({ ...connection, id, animated: true }, current));
-      void supabase
-        .from("edges")
-        .insert({
-          id,
-          board_id: boardId,
-          user_id: user.id,
-          source_id: connection.source,
-          target_id: connection.target,
-        } as never)
-        .then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+      if (!connection.source || !connection.target) return;
+      const source = recordsRef.current[connection.source];
+      const target = recordsRef.current[connection.target];
+      // connections always run through the group, never its members
+      const sourceId = source?.parent_id ?? connection.source;
+      const targetId = target?.parent_id ?? connection.target;
+      if (sourceId === targetId) return;
+      setEdges((current) => addEdge({ ...connection, animated: true }, current));
+      setEdges((current) => current.filter((e) => e.source !== connection.source || e.target !== connection.target));
+      createEdge(sourceId, targetId);
     },
-    [boardId, setEdges, user],
+    [createEdge, setEdges],
   );
 
   const groupSelection = useCallback(async () => {
@@ -436,6 +541,8 @@ function BoardPage() {
       height: maxY - minY,
     });
 
+    const memberIds = new Set(selected.map((n) => n.id));
+
     for (const node of selected) {
       const relative = { x: node.position.x - minX, y: node.position.y - minY };
       updateNode(node.id, {
@@ -446,16 +553,38 @@ function BoardPage() {
       setNodes((current) =>
         current.map((n) =>
           n.id === node.id
-            ? { ...n, parentId: frame.id, extent: "parent" as const, position: relative, selected: false }
+            ? {
+                ...n,
+                parentId: frame.id,
+                extent: "parent" as const,
+                position: relative,
+                selected: false,
+              }
             : n,
         ),
       );
     }
-  }, [nodes, createRecord, updateNode, setNodes]);
+
+    // rewire existing member connections onto the group
+    const outside = new Set<string>();
+    for (const edge of edgesRef.current) {
+      if (memberIds.has(edge.source) && !memberIds.has(edge.target)) outside.add(edge.target);
+      if (memberIds.has(edge.target) && !memberIds.has(edge.source)) outside.add(edge.source);
+    }
+    const stale = edgesRef.current.filter(
+      (e) => memberIds.has(e.source) || memberIds.has(e.target),
+    );
+    if (stale.length) {
+      const ids = stale.map((e) => e.id);
+      setEdges((current) => current.filter((e) => !ids.includes(e.id)));
+      void supabase.from("edges").delete().in("id", ids);
+    }
+    for (const otherId of outside) createEdge(frame.id, otherId);
+  }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
 
   const api = useMemo(
-    () => ({ updateNode, deleteNode, collectContext, addNoteFrom }),
-    [updateNode, deleteNode, collectContext, addNoteFrom],
+    () => ({ updateNode, deleteNode, collectContext, addNoteFrom, extractStructure }),
+    [updateNode, deleteNode, collectContext, addNoteFrom, extractStructure],
   );
 
   useEffect(() => {
@@ -470,8 +599,66 @@ function BoardPage() {
   }, [addUrl]);
 
   if (loading || !user) {
-    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>
+    );
   }
+
+  const menuItems = menu?.nodeId
+    ? [
+        {
+          label: "Strukturierte Daten herauslösen",
+          run: () => extractStructure(menu.nodeId!),
+        },
+        {
+          label: "Notiz daneben anlegen",
+          run: () =>
+            void createRecord({
+              type: "note",
+              title: "Notiz",
+              content: "",
+              position_x: menu.flowX + 40,
+              position_y: menu.flowY + 40,
+            }),
+        },
+        { label: "Modul löschen", run: () => deleteNode(menu.nodeId!) },
+      ]
+    : [
+        {
+          label: "Link einfügen …",
+          run: () => setLinkPrompt({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
+        },
+        {
+          label: "Datei hochladen …",
+          run: () => {
+            filePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
+            fileRef.current?.click();
+          },
+        },
+        {
+          label: "Notiz",
+          run: () =>
+            void createRecord({
+              type: "note",
+              title: "Notiz",
+              content: "",
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
+            }),
+        },
+        {
+          label: "Chat-Modul",
+          run: () =>
+            void createRecord({
+              type: "chat",
+              title: "Chat",
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
+              metadata: { model: "openai/gpt-6-astra" },
+            }),
+        },
+        { label: "Auswahl gruppieren", run: () => void groupSelection() },
+      ];
 
   return (
     <div className="flex h-screen flex-col bg-canvas">
@@ -485,89 +672,36 @@ function BoardPage() {
           onBlur={() => void supabase.from("boards").update({ title }).eq("id", boardId)}
           className="h-8 w-56 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Input
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                void addUrl(urlInput);
-                setUrlInput("");
-              }
-            }}
-            placeholder="YouTube- oder Podcast-Link einfügen"
-            className="h-8 w-64 text-sm"
-          />
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              void addUrl(urlInput);
-              setUrlInput("");
-            }}
-          >
-            Link
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            accept=".pdf,.pptx,.docx,.txt,.md,audio/*"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.length) void addFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
-          <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
-            Datei
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              const p = nextPosition();
-              void createRecord({
-                type: "note",
-                title: "Notiz",
-                content: "",
-                position_x: p.x,
-                position_y: p.y,
-              });
-            }}
-          >
-            Notiz
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              const p = nextPosition();
-              void createRecord({
-                type: "chat",
-                title: "Chat",
-                position_x: p.x,
-                position_y: p.y,
-                metadata: { model: "openai/gpt-6-astra" },
-              });
-            }}
-          >
-            Chat
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => void groupSelection()}>
-            Gruppieren
-          </Button>
-        </div>
+        <span className="ml-auto text-xs text-muted-foreground">
+          Rechtsklick auf die Fläche für neue Module
+        </span>
       </header>
+
+      <input
+        ref={fileRef}
+        type="file"
+        multiple
+        accept=".pdf,.pptx,.docx,.txt,.md,audio/*"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.length) {
+            void addFiles(e.target.files, filePosition.current ?? undefined);
+          }
+          filePosition.current = null;
+          e.target.value = "";
+        }}
+      />
 
       <div
         className="relative flex-1"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          if (e.dataTransfer.files.length) void addFiles(e.dataTransfer.files);
+          const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+          if (e.dataTransfer.files.length) void addFiles(e.dataTransfer.files, at);
           else {
             const text = e.dataTransfer.getData("text");
-            if (text) void addUrl(text);
+            if (text) void addUrl(text, at);
           }
         }}
       >
@@ -586,7 +720,25 @@ function BoardPage() {
             onEdgesDelete={(deleted) => {
               deleted.forEach((e) => void supabase.from("edges").delete().eq("id", e.id));
             }}
-            onNodeClick={() => undefined}
+            onPaneClick={() => setMenu(null)}
+            onMoveStart={() => setMenu(null)}
+            onPaneContextMenu={(event) => {
+              event.preventDefault();
+              const mouse = event as unknown as MouseEvent;
+              const flow = screenToFlowPosition({ x: mouse.clientX, y: mouse.clientY });
+              setMenu({ x: mouse.clientX, y: mouse.clientY, flowX: flow.x, flowY: flow.y });
+            }}
+            onNodeContextMenu={(event, node) => {
+              event.preventDefault();
+              const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+              setMenu({
+                x: event.clientX,
+                y: event.clientY,
+                flowX: flow.x,
+                flowY: flow.y,
+                nodeId: node.id,
+              });
+            }}
             fitView={ready}
             minZoom={0.15}
             maxZoom={2.5}
@@ -594,16 +746,80 @@ function BoardPage() {
             panOnScroll
             proOptions={{ hideAttribution: true }}
           >
-            <Background variant={BackgroundVariant.Dots} gap={22} size={1.6} color="var(--canvas-dot)" />
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={22}
+              size={1.6}
+              color="var(--canvas-dot)"
+            />
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable className="!bg-card" />
           </ReactFlow>
         </BoardContext.Provider>
 
+        {menu && (
+          <div
+            className="fixed z-50 w-60 overflow-hidden rounded-xl border bg-popover py-1 text-sm shadow-lg"
+            style={{ left: menu.x, top: menu.y }}
+            onMouseLeave={() => setMenu(null)}
+          >
+            {menuItems.map((item) => (
+              <button
+                key={item.label}
+                className="block w-full px-3 py-1.5 text-left hover:bg-secondary"
+                onClick={() => {
+                  setMenu(null);
+                  item.run();
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {linkPrompt && (
+          <div className="absolute inset-0 z-50 flex items-start justify-center bg-background/40 pt-32">
+            <div className="w-96 rounded-2xl border bg-card p-4 shadow-lg">
+              <p className="mb-2 text-sm font-medium">Link einfügen</p>
+              <Input
+                autoFocus
+                value={linkValue}
+                placeholder="https://…"
+                onChange={(e) => setLinkValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    void addUrl(linkValue, linkPrompt);
+                    setLinkValue("");
+                    setLinkPrompt(null);
+                  }
+                  if (e.key === "Escape") setLinkPrompt(null);
+                }}
+              />
+              <div className="mt-3 flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setLinkPrompt(null)}>
+                  Abbrechen
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    void addUrl(linkValue, linkPrompt);
+                    setLinkValue("");
+                    setLinkPrompt(null);
+                  }}
+                >
+                  Hinzufügen
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {ready && nodes.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <p className="max-w-sm rounded-2xl border border-dashed bg-card/80 px-6 py-5 text-center text-sm text-muted-foreground">
-              Füge einen Link ein (Strg+V), ziehe Dateien hierher oder lege oben ein Chat-Modul an.
+              Rechtsklick auf die Fläche öffnet das Menü – oder füge einen Link mit Strg+V ein und
+              ziehe Dateien direkt hierher.
             </p>
           </div>
         )}
