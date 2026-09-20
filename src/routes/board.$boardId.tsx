@@ -855,6 +855,17 @@ function BoardPage() {
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable className="!bg-card" />
           </ReactFlow>
+          </div>
+
+          {inspector && (
+            <InspectorPanel
+              key={inspector.nodeId}
+              nodeId={inspector.nodeId}
+              tab={inspector.tab}
+              onTab={(tab) => setInspector((current) => (current ? { ...current, tab } : current))}
+              onClose={() => setInspector(null)}
+            />
+          )}
         </BoardContext.Provider>
 
         {menu && (
