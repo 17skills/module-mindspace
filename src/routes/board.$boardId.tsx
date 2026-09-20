@@ -48,6 +48,8 @@ import {
   DataNode,
   FrameNode,
   NoteNode,
+  SHAPES,
+  ShapeNode,
   ZONE_COLORS,
   ZoneNode,
 } from "@/components/canvas/nodes";
@@ -59,6 +61,7 @@ import { segmentsFromFile } from "@/lib/segments";
 import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
+import { shapeKind } from "@/components/canvas/nodes";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 
 import {
@@ -101,6 +104,7 @@ const nodeTypes = {
   frame: FrameNode,
   data: DataNode,
   zone: ZoneNode,
+  shape: ShapeNode,
 };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
@@ -110,6 +114,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   chat: { width: 400, height: 460 },
   frame: { width: 640, height: 460 },
   zone: { width: 420, height: 360 },
+  shape: { width: 200, height: 140 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -162,7 +167,8 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "note" ||
     record.type === "chat" ||
     record.type === "frame" ||
-    record.type === "zone"
+    record.type === "zone" ||
+    record.type === "shape"
       ? record.type
       : DATA_TYPES.has(record.type)
         ? "data"
@@ -1129,7 +1135,25 @@ function BoardPage() {
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
 
-  const menuItems = menuRecord?.type === "zone"
+  const menuItems = menuRecord?.type === "shape"
+    ? [
+        ...SHAPES.map((shape) => ({
+          label: shape.label,
+          active: shapeKind(menuRecord).id === shape.id,
+          run: () =>
+            updateNode(menuRecord.id, {
+              metadata: { ...(menuRecord.metadata ?? {}), shape: shape.id },
+            }),
+        })),
+        ...ZONE_COLORS.map((shapeColor) => ({
+          label: shapeColor.name,
+          swatch: shapeColor.value,
+          active: (menuRecord.color ?? "var(--chat)") === shapeColor.value,
+          run: () => updateNode(menuRecord.id, { color: shapeColor.value }),
+        })),
+        { label: "Form löschen", run: () => deleteNode(menuRecord.id) },
+      ]
+    : menuRecord?.type === "zone"
     ? [
         {
           label: "Chat zu diesem Feld",
