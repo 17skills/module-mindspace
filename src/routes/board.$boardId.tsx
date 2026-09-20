@@ -115,6 +115,8 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
 
 /** Space a template group leaves around its fields. */
 const GROUP_PAD = { x: 16, top: 52, bottom: 16 };
+/** Templates are placed larger so each field can hold several cards. */
+const TEMPLATE_SCALE = 2;
 
 /** Fields of a template group, with positions relative to the group. */
 function groupFields(container: NodeRecord, all: NodeRecord[]): NodeRecord[] {
