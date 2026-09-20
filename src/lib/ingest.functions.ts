@@ -270,6 +270,13 @@ export const fetchPageText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
   .handler(async ({ data }) => {
+    const host = new URL(data.url).hostname.replace(/^www\./, "");
+    if (/(^|\.)linkedin\.com$/i.test(host)) {
+      throw new Error(
+        "LinkedIn-Seiten verlangen eine Anmeldung und können nicht direkt ausgelesen werden. Exportiere den Inhalt als PDF oder füge den Text als Notiz ein.",
+      );
+    }
+
     const res = await fetch(data.url, { headers: { "user-agent": "Mozilla/5.0 CanvasSpark/1.0" } });
     if (!res.ok) throw new Error(`Seite konnte nicht geladen werden (${res.status})`);
     const html = await res.text();
@@ -278,10 +285,22 @@ export const fetchPageText = createServerFn({ method: "POST" })
       html
         .replace(/<script[\s\S]*?<\/script>/g, " ")
         .replace(/<style[\s\S]*?<\/style>/g, " ")
+        .replace(/<noscript[\s\S]*?<\/noscript>/g, " ")
+        .replace(/<svg[\s\S]*?<\/svg>/g, " ")
+        .replace(/<(nav|header|footer|form|aside)[\s\S]*?<\/\1>/gi, " ")
         .replace(/<[^>]+>/g, " ")
         .replace(/\s+/g, " ")
         .trim(),
     ).slice(0, 120_000);
+
+    const looksWalled =
+      /authwall|trk=|sign[\s-]?in to (view|continue)|jetzt anmelden|anmelden, um/i.test(html) &&
+      text.length < 2_000;
+    if (looksWalled || text.length < 120) {
+      throw new Error(
+        "Diese Seite liefert keinen verwertbaren Text (möglicherweise ist eine Anmeldung nötig).",
+      );
+    }
     let image = ogImage(html);
     if (image && !/^https?:\/\//i.test(image)) {
       try {
