@@ -31,6 +31,7 @@ import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
+import { segmentsFromFile } from "@/lib/segments";
 
 import {
   extractStructured,
