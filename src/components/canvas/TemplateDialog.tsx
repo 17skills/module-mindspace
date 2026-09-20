@@ -25,11 +25,11 @@ type Props = {
 function Preview({ fields }: { fields: TemplateField[] }) {
   const { width, height } = templateBounds(fields);
   return (
-    <div className="relative h-28 w-full overflow-hidden rounded-lg border bg-canvas">
+    <div className="relative h-28 w-full overflow-hidden rounded-xl border border-border/70 bg-canvas">
       {fields.map((field, index) => (
         <div
           key={index}
-          className="absolute rounded-[3px] border bg-card"
+          className="absolute rounded-[4px] border border-border/70 bg-card"
           style={{
             left: `${(field.x / width) * 100}%`,
             top: `${(field.y / height) * 100}%`,
@@ -54,23 +54,23 @@ function Card({
   onDelete?: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border bg-card p-3">
+    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-float)]">
       <Preview fields={template.fields} />
       <div className="min-h-10">
-        <p className="font-display text-sm font-semibold">{template.title}</p>
+        <p className="font-display text-sm font-semibold tracking-tight">{template.title}</p>
         <p className="text-xs text-muted-foreground">{template.description}</p>
       </div>
       <div className="flex gap-2">
-        <Button size="sm" className="flex-1" onClick={onInsert}>
+        <Button size="sm" className="flex-1 rounded-full" onClick={onInsert}>
           Einfügen
         </Button>
         {onEdit ? (
-          <Button size="sm" variant="outline" onClick={onEdit}>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onEdit}>
             Bearbeiten
           </Button>
         ) : null}
         {onDelete ? (
-          <Button size="sm" variant="ghost" onClick={onDelete}>
+          <Button size="sm" variant="ghost" className="rounded-full" onClick={onDelete}>
             Löschen
           </Button>
         ) : null}
@@ -102,13 +102,14 @@ function EditForm({
     );
 
   return (
-    <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+    <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/30 p-4">
       <div className="grid gap-2 sm:grid-cols-2">
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name" />
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name" className="h-9 rounded-xl" />
         <Input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Kurze Beschreibung"
+          className="h-9 rounded-xl"
         />
       </div>
 
@@ -120,20 +121,20 @@ function EditForm({
                 value={field.title}
                 onChange={(e) => patch(index, { title: e.target.value })}
                 placeholder="Feldname"
-                className="h-9"
+                className="h-9 rounded-xl"
               />
               <Input
                 type="number"
                 value={field.w}
                 onChange={(e) => patch(index, { w: Math.max(80, Number(e.target.value) || 80) })}
-                className="h-9 w-20"
+                className="h-9 w-20 rounded-xl"
                 aria-label="Breite"
               />
               <Input
                 type="number"
                 value={field.h}
                 onChange={(e) => patch(index, { h: Math.max(60, Number(e.target.value) || 60) })}
-                className="h-9 w-20"
+                className="h-9 w-20 rounded-xl"
                 aria-label="Höhe"
               />
               <Button
@@ -154,7 +155,7 @@ function EditForm({
           <Button
             size="sm"
             variant="outline"
-            className="w-full"
+            className="w-full rounded-full"
             onClick={() => {
               const next = currentFields();
               if (!next.length) {
@@ -171,11 +172,12 @@ function EditForm({
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button size="sm" variant="ghost" onClick={onCancel}>
+        <Button size="sm" variant="ghost" className="rounded-full" onClick={onCancel}>
           Abbrechen
         </Button>
         <Button
           size="sm"
+          className="rounded-full"
           disabled={busy || !fields.length}
           onClick={() => {
             setBusy(true);
@@ -286,9 +288,9 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[85vh] overflow-y-auto rounded-2xl sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Vorlagen</DialogTitle>
+          <DialogTitle className="font-display text-2xl">Vorlagen</DialogTitle>
           <DialogDescription>
             Fertige Feldraster einfügen oder eigene Raster speichern, bearbeiten und wiederverwenden.
           </DialogDescription>
@@ -309,14 +311,14 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
           </TabsContent>
 
           <TabsContent value="own" className="mt-4 space-y-4">
-            <div className="flex items-center gap-2 rounded-xl border bg-muted/40 p-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 p-3">
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Name der neuen Vorlage"
-                className="h-9"
+                className="h-9 rounded-xl"
               />
-              <Button size="sm" onClick={() => void save()} disabled={saving}>
+              <Button size="sm" className="rounded-full" onClick={() => void save()} disabled={saving}>
                 Auswahl als Vorlage speichern
               </Button>
             </div>
