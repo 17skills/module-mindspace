@@ -135,7 +135,14 @@ function LibraryPage() {
                 params={{ boardId: board.id }}
                 className="block"
               >
-                <h2 className="font-display text-lg font-semibold">{board.title}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display text-lg font-semibold">{board.title}</h2>
+                  {board.user_id !== user.id && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                      Geteilt
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                   {board.description || "Ohne Beschreibung"}
                 </p>
