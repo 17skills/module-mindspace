@@ -41,6 +41,8 @@ import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
 import { segmentsFromFile } from "@/lib/segments";
 import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
+import { TemplateDialog } from "@/components/canvas/TemplateDialog";
+import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 
 import {
   extractStructured,
@@ -97,18 +99,31 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   default: { width: 320, height: 340 },
 };
 
-/** Labelled background fields of a Business Model Canvas (x, y, w, h). */
-const BMC_TEMPLATE: Array<{ title: string; x: number; y: number; w: number; h: number }> = [
-  { title: "Schlüsselpartner", x: 0, y: 0, w: 320, h: 520 },
-  { title: "Schlüsselaktivitäten", x: 330, y: 0, w: 320, h: 255 },
-  { title: "Schlüsselressourcen", x: 330, y: 265, w: 320, h: 255 },
-  { title: "Wertangebot", x: 660, y: 0, w: 320, h: 520 },
-  { title: "Kundenbeziehungen", x: 990, y: 0, w: 320, h: 255 },
-  { title: "Kanäle", x: 990, y: 265, w: 320, h: 255 },
-  { title: "Kundensegmente", x: 1320, y: 0, w: 320, h: 520 },
-  { title: "Kostenstruktur", x: 0, y: 530, w: 815, h: 240 },
-  { title: "Einnahmequellen", x: 825, y: 530, w: 815, h: 240 },
-];
+/** Space a template group leaves around its fields. */
+const GROUP_PAD = { x: 16, top: 52, bottom: 16 };
+
+/** Fields of a template group, with positions relative to the group. */
+function groupFields(container: NodeRecord, all: NodeRecord[]): NodeRecord[] {
+  return all.filter((item) => item.type === "zone" && item.parent_id === container.id);
+}
+
+/** Background fields with absolute positions (children of a group included). */
+function absoluteZones(all: NodeRecord[]): NodeRecord[] {
+  const byId = new Map(all.map((item) => [item.id, item]));
+  return all
+    .filter((item) => item.type === "zone")
+    .map((zone) => {
+      const parent = zone.parent_id ? byId.get(zone.parent_id) : null;
+      return parent
+        ? {
+            ...zone,
+            position_x: zone.position_x + parent.position_x,
+            position_y: zone.position_y + parent.position_y,
+          }
+        : zone;
+    });
+}
+
 
 function toFlowNode(record: NodeRecord): Node {
   const size = DEFAULT_SIZE[record.type] ?? DEFAULT_SIZE["default"]!;
@@ -134,13 +149,14 @@ function toFlowNode(record: NodeRecord): Node {
   };
 }
 
-/** Background fields first, then frames, then their children. */
-function layer(type: string) {
-  return type === "zone" ? -2 : type === "frame" ? -1 : 0;
+/** Template groups first, then their fields, then frames, then everything else. */
+function layer(record: NodeRecord) {
+  if (record.type === "zone") return record.parent_id ? -2 : -3;
+  return record.type === "frame" ? -1 : 0;
 }
 
 function sortNodes(list: NodeRecord[]) {
-  return [...list].sort((a, b) => layer(a.type) - layer(b.type));
+  return [...list].sort((a, b) => layer(a) - layer(b));
 }
 
 type Menu = { x: number; y: number; flowX: number; flowY: number; nodeId?: string };
@@ -160,8 +176,10 @@ function BoardPage() {
   const [inspector, setInspector] = useState<{ nodeId: string; tab: InspectorTab } | null>(null);
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
+  const [templateOpen, setTemplateOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
+  const templatePosition = useRef<{ x: number; y: number } | null>(null);
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const edgesRef = useRef(edges);
@@ -279,12 +297,13 @@ function BoardPage() {
           ? null
           : zoneAt(
               { x: x + width / 2, y: y + height / 2 },
-              Object.values(recordsRef.current).filter((item) => item.type === "zone"),
+              absoluteZones(Object.values(recordsRef.current)),
             );
       const payload = {
         board_id: boardId,
         user_id: user.id,
         type: input.type,
+        parent_id: input.parent_id ?? null,
         title: input.title ?? null,
         position_x: x,
         position_y: y,
@@ -310,7 +329,7 @@ function BoardPage() {
       const record = data as unknown as NodeRecord;
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
-        record.type === "frame" || record.type === "zone"
+        (record.type === "frame" || record.type === "zone") && !record.parent_id
           ? [toFlowNode(record), ...current]
           : [...current, toFlowNode(record)],
       );
@@ -399,8 +418,7 @@ function BoardPage() {
       x: x + (record.width ?? 320) / 2,
       y: y + (record.height ?? 300) / 2,
     };
-    const zones = Object.values(recordsRef.current).filter((item) => item.type === "zone");
-    const zone = zoneAt(centre, zones);
+    const zone = zoneAt(centre, absoluteZones(Object.values(recordsRef.current)));
     const current = readAssignment(record);
     if ((zone?.id ?? null) === (current?.zoneId ?? null)) return;
     updateNode(id, {
@@ -883,6 +901,87 @@ function BoardPage() {
     [setCenter, setNodes],
   );
 
+  /** Persist a field size; a template group scales its fields along. */
+  const resizeZone = useCallback(
+    (id: string, width: number, height: number) => {
+      const record = recordsRef.current[id];
+      if (!record) return;
+      const oldW = record.width ?? 420;
+      const oldH = record.height ?? 360;
+      updateNode(id, { width, height });
+      const children = groupFields(record, Object.values(recordsRef.current));
+      if (!children.length || oldW <= 0 || oldH <= 0) return;
+      const sx = (width - GROUP_PAD.x * 2) / Math.max(oldW - GROUP_PAD.x * 2, 1);
+      const sy =
+        (height - GROUP_PAD.top - GROUP_PAD.bottom) /
+        Math.max(oldH - GROUP_PAD.top - GROUP_PAD.bottom, 1);
+      for (const child of children) {
+        const x = GROUP_PAD.x + (child.position_x - GROUP_PAD.x) * sx;
+        const y = GROUP_PAD.top + (child.position_y - GROUP_PAD.top) * sy;
+        const w = Math.max((child.width ?? 200) * sx, 80);
+        const h = Math.max((child.height ?? 160) * sy, 60);
+        updateNode(child.id, { position_x: x, position_y: y, width: w, height: h });
+        setNodes((current) =>
+          current.map((node) =>
+            node.id === child.id ? { ...node, position: { x, y }, width: w, height: h } : node,
+          ),
+        );
+      }
+    },
+    [updateNode, setNodes],
+  );
+
+  /** Place a template as a group of white fields at the given canvas position. */
+  const insertTemplate = useCallback(
+    async (template: Template, x: number, y: number) => {
+      const bounds = templateBounds(template.fields);
+      const container = await createRecord({
+        type: "zone",
+        title: template.title,
+        color: ZONE_WHITE,
+        position_x: x,
+        position_y: y,
+        width: bounds.width + GROUP_PAD.x * 2,
+        height: bounds.height + GROUP_PAD.top + GROUP_PAD.bottom,
+        metadata: { templateGroup: true, zoneAuto: false },
+      });
+      for (const field of template.fields) {
+        await createRecord({
+          type: "zone",
+          title: field.title,
+          color: ZONE_WHITE,
+          parent_id: container.id,
+          position_x: GROUP_PAD.x + field.x,
+          position_y: GROUP_PAD.top + field.y,
+          width: field.w,
+          height: field.h,
+        });
+      }
+      toast.success(`${template.title} eingefügt`);
+    },
+    [createRecord],
+  );
+
+  /** Fields of the selected template group, otherwise every field on the board. */
+  const currentFields = useCallback((): TemplateField[] => {
+    const all = Object.values(recordsRef.current);
+    const selectedId = nodes.find((n) => n.selected && n.type === "zone")?.id;
+    const selected = selectedId ? recordsRef.current[selectedId] : undefined;
+    const group = selected?.parent_id ? recordsRef.current[selected.parent_id] : selected;
+    const list = group ? groupFields(group, all) : [];
+    const source = list.length ? list : absoluteZones(all).filter((z) => !z.parent_id);
+    if (!source.length) return [];
+    const minX = Math.min(...source.map((z) => z.position_x));
+    const minY = Math.min(...source.map((z) => z.position_y));
+    return source.map((zone) => ({
+      title: zone.title ?? "Feld",
+      x: Math.round(zone.position_x - minX),
+      y: Math.round(zone.position_y - minY),
+      w: Math.round(zone.width ?? 320),
+      h: Math.round(zone.height ?? 260),
+    }));
+  }, [nodes]);
+
   const api = useMemo(
     () => ({
       updateNode,
@@ -898,6 +997,7 @@ function BoardPage() {
       zoneOf,
       allNodes,
       focusNode,
+      resizeZone,
     }),
     [
       updateNode,
@@ -913,6 +1013,7 @@ function BoardPage() {
       zoneOf,
       allNodes,
       focusNode,
+      resizeZone,
     ],
   );
 
@@ -1031,25 +1132,11 @@ function BoardPage() {
             ),
         },
         {
-          label: "Vorlage: Business Model Canvas",
-          run: () =>
-            void (async () => {
-              const originX = menu?.flowX ?? 0;
-              const originY = menu?.flowY ?? 0;
-              for (const field of BMC_TEMPLATE) {
-                await createRecord({
-                  type: "zone",
-                  title: field.title,
-                  color: ZONE_COLORS[0],
-                  position_x: originX + field.x,
-                  position_y: originY + field.y,
-                  width: field.w,
-                  height: field.h,
-                });
-              }
-            })().catch((error: unknown) =>
-              toast.error(error instanceof Error ? error.message : "Vorlage fehlgeschlagen"),
-            ),
+          label: "Vorlage einfügen …",
+          run: () => {
+            templatePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
+            setTemplateOpen(true);
+          },
         },
         { label: "Auswahl gruppieren", run: () => void groupSelection() },
       ];
@@ -1066,10 +1153,40 @@ function BoardPage() {
           onBlur={() => void supabase.from("boards").update({ title }).eq("id", boardId)}
           className="h-8 w-56 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
-        <span className="ml-auto text-xs text-muted-foreground">
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto"
+          onClick={() => {
+            templatePosition.current = null;
+            setTemplateOpen(true);
+          }}
+        >
+          Vorlagen
+        </Button>
+        <span className="text-xs text-muted-foreground">
           Rechtsklick auf die Fläche für neue Module
         </span>
       </header>
+
+      <TemplateDialog
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        userId={user?.id}
+        currentFields={currentFields}
+        onInsert={async (template) => {
+          const at =
+            templatePosition.current ??
+            screenToFlowPosition({ x: window.innerWidth / 2 - 400, y: 240 });
+          templatePosition.current = null;
+          try {
+            await insertTemplate(template, at.x, at.y);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Vorlage fehlgeschlagen");
+          }
+        }}
+      />
+
 
       <input
         ref={fileRef}
