@@ -312,11 +312,14 @@ function BoardPage() {
       if (drop.length) void supabase.from("edges").delete().in("id", drop);
       setEdges(keep);
       setReady(true);
+      done = true;
     })();
     return () => {
       active = false;
+      // allow a retry when the board never finished loading
+      if (!done) loadedKey.current = null;
     };
-  }, [boardId, user, navigate, setNodes, setEdges]);
+  }, [boardId, userId, navigate, setNodes, setEdges]);
 
   // keep node data in sync with records
   useEffect(() => {
