@@ -294,7 +294,9 @@ function BoardPage() {
       const record = data as unknown as NodeRecord;
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
-        record.type === "frame" ? [toFlowNode(record), ...current] : [...current, toFlowNode(record)],
+        record.type === "frame" || record.type === "zone"
+          ? [toFlowNode(record), ...current]
+          : [...current, toFlowNode(record)],
       );
       return record;
     },
