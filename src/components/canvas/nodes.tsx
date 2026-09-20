@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type React } from "react";
+import { RotateCw } from "lucide-react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
 import {
   Bar,
@@ -729,12 +730,38 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) 
   const { updateNode } = useBoard();
   const kind = shapeKind(record);
   const color = record.color ?? "var(--chat)";
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const [text, setText] = useState(record.content ?? "");
+  const [angle, setAngle] = useState(Number(meta["rotation"] ?? 0));
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setText(record.content ?? ""), [record.content]);
+  useEffect(() => setAngle(Number(meta["rotation"] ?? 0)), [meta]);
+
+  function startRotate(event: React.PointerEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    const box = wrapRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    let next = angle;
+    const move = (e: PointerEvent) => {
+      const deg = (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90;
+      next = e.shiftKey ? Math.round(deg / 15) * 15 : Math.round(deg);
+      setAngle(next);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      updateNode(record.id, { metadata: { ...(record.metadata ?? {}), rotation: next } });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
 
   return (
-    <>
+    <div ref={wrapRef} className="h-full w-full" style={{ transform: `rotate(${angle}deg)` }}>
       <NodeResizer
         minWidth={80}
         minHeight={60}
@@ -770,6 +797,15 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) 
       </div>
       <Handle type="source" position={Position.Right} />
       <Handle type="source" position={Position.Bottom} />
-    </>
+      {selected ? (
+        <button
+          aria-label="Form drehen"
+          onPointerDown={startRotate}
+          className="nodrag absolute -top-8 left-1/2 size-5 -translate-x-1/2 cursor-grab rounded-full border border-border bg-card shadow-[var(--shadow-card)]"
+        >
+          <RotateCw className="mx-auto size-3 text-muted-foreground" />
+        </button>
+      ) : null}
+    </div>
   );
 });
