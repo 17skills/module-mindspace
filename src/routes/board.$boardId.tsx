@@ -1059,7 +1059,7 @@ function BoardPage() {
         ...ZONE_COLORS.map((zoneColor) => ({
           label: zoneColor.name,
           swatch: zoneColor.value,
-          active: (menuRecord.color ?? ZONE_COLORS[0].value) === zoneColor.value,
+          active: (menuRecord.color ?? ZONE_WHITE) === zoneColor.value,
           run: () => updateNode(menuRecord.id, { color: zoneColor.value }),
         })),
         { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
@@ -1127,7 +1127,7 @@ function BoardPage() {
             void createRecord({
               type: "zone",
               title: "Feld",
-              color: ZONE_COLORS[0].value,
+              color: ZONE_WHITE,
               position_x: menu?.flowX ?? 0,
               position_y: menu?.flowY ?? 0,
             }).catch((error: unknown) =>
