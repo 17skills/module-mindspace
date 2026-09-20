@@ -20,10 +20,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { BoardContext, type NodeRecord } from "@/components/canvas/board-context";
+import {
+  BoardContext,
+  type InspectorTab,
+  type NodeRecord,
+  type StructureItem,
+} from "@/components/canvas/board-context";
 import { ChatNode, ContentNode, DataNode, FrameNode, NoteNode } from "@/components/canvas/nodes";
+import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
+import { itemToPatch } from "@/lib/structure";
+
+const DATA_TYPES = ["table", "list", "chart"];
 import {
   extractStructured,
   fetchPageText,
