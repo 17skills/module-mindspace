@@ -32,7 +32,8 @@ export type StructureItem = {
 };
 
 export type BoardApi = {
-  records: Record<string, NodeRecord>;
+  /** Content modules feeding this module (connected neighbours, or the module itself). */
+  sourcesFor: (id: string) => NodeRecord[];
   updateNode: (id: string, patch: Partial<NodeRecord>) => void;
   deleteNode: (id: string) => void;
   collectContext: (id: string) => string;
