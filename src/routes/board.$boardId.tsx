@@ -27,6 +27,9 @@ import {
 import {
   ArrowLeft,
   Check,
+  CloudCheck,
+  CloudOff,
+  CloudUpload,
   FileUp,
   LayoutTemplate,
   Link2,
@@ -47,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { trackSave, useSaveStatus, clearSaveError } from "@/lib/save-status";
 import {
   BoardContext,
   type InspectorTab,
