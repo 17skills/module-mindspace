@@ -54,7 +54,7 @@ function LibraryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boards")
-        .select("id,title,description,updated_at")
+        .select("id,title,description,updated_at,user_id")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -135,7 +135,14 @@ function LibraryPage() {
                 params={{ boardId: board.id }}
                 className="block"
               >
-                <h2 className="font-display text-lg font-semibold">{board.title}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display text-lg font-semibold">{board.title}</h2>
+                  {board.user_id !== user.id && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                      Geteilt
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                   {board.description || "Ohne Beschreibung"}
                 </p>
@@ -143,27 +150,29 @@ function LibraryPage() {
                   Zuletzt geändert {new Date(board.updated_at).toLocaleDateString("de-DE")}
                 </p>
               </Link>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button className="mt-3 text-xs text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive">
-                    Löschen
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Board löschen?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Alle Module, Verbindungen und Chats dieses Boards werden entfernt.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => deleteBoard.mutate(board.id)}>
+              {board.user_id === user.id && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="mt-3 text-xs text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive">
                       Löschen
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Board löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Alle Module, Verbindungen und Chats dieses Boards werden entfernt.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteBoard.mutate(board.id)}>
+                        Löschen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           ))}
 

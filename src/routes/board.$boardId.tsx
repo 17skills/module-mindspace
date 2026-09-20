@@ -25,6 +25,7 @@ import {
   MessageSquare,
   NotebookPen,
   PanelsTopLeft,
+  Share2,
   StickyNote,
   Upload,
   Workflow,
@@ -57,6 +58,7 @@ import { itemToPatch } from "@/lib/structure";
 import { segmentsFromFile } from "@/lib/segments";
 import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
+import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 
 import {
@@ -206,6 +208,8 @@ function BoardPage() {
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
@@ -223,7 +227,7 @@ function BoardPage() {
     let active = true;
     void (async () => {
       const [boardRes, nodeRes, edgeRes] = await Promise.all([
-        supabase.from("boards").select("title").eq("id", boardId).single(),
+        supabase.from("boards").select("title,user_id").eq("id", boardId).single(),
         supabase.from("nodes").select("*").eq("board_id", boardId),
         supabase.from("edges").select("*").eq("board_id", boardId),
       ]);
@@ -234,6 +238,7 @@ function BoardPage() {
         return;
       }
       setTitle(boardRes.data.title);
+      setIsOwner(boardRes.data.user_id === user.id);
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
@@ -1273,7 +1278,31 @@ function BoardPage() {
           aria-label="Board-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
+        <div className="ml-auto flex items-center gap-1">
+          {isOwner ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-9 rounded-lg"
+                  aria-label="Board teilen"
+                  onClick={() => setShareOpen(true)}
+                >
+                  <Share2 className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Board teilen</TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              Geteiltes Board
+            </span>
+          )}
+        </div>
       </header>
+
+      <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
 
       <TemplateDialog
         open={templateOpen}
