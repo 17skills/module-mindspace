@@ -252,7 +252,7 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
   );
 });
 
-type TableData = { columns: string[]; rows: string[][]; chartType?: string };
+type TableData = { columns: string[]; rows: string[][]; chartType: string | undefined };
 
 function tableData(record: NodeRecord): TableData {
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
