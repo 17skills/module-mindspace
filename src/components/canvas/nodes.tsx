@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { chartSeries, readStructure } from "@/lib/structure";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
