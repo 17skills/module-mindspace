@@ -351,7 +351,8 @@ function BoardPage() {
     const parts: string[] = [];
     for (const nodeId of connected) {
       const record = recordsRef.current[nodeId];
-      if (!record || record.type === "chat" || record.type === "frame") continue;
+      if (!record || record.type === "chat" || record.type === "frame" || record.type === "zone")
+        continue;
       if (!record.content) continue;
       parts.push(
         `### ${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
