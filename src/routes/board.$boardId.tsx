@@ -423,7 +423,11 @@ function BoardPage() {
             content: info.transcript,
             status: info.transcript ? "ready" : "error",
             error: info.transcript ? null : info.transcriptError,
-            metadata: { thumbnail: info.thumbnail, author: info.author },
+            metadata: {
+              thumbnail: info.thumbnail,
+              author: info.author,
+              ...(info.segments?.length ? { segments: info.segments } : {}),
+            },
           });
           return;
         }
@@ -434,13 +438,17 @@ function BoardPage() {
             : await resolvePodcast({ data: { url } });
           updateNode(record.id, {
             title: episode.title,
+            source_url: episode.audioUrl,
             ...(episode.image ? { metadata: { thumbnail: episode.image } } : {}),
           });
-          const { text } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
+          const { text, segments } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
           updateNode(record.id, {
             content: text,
             status: text ? "ready" : "error",
             error: text ? null : "Transkript ist leer",
+            ...(segments?.length
+              ? { metadata: { ...(recordsRef.current[record.id]?.metadata ?? {}), segments } }
+              : {}),
           });
           return;
         }
