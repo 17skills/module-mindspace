@@ -983,6 +983,38 @@ function BoardPage() {
     }));
   }, [nodes]);
 
+  /** Save a group of fields on the canvas as an own template. */
+  const saveGroupAsTemplate = useCallback(
+    async (record: NodeRecord) => {
+      if (!user) return;
+      const all = Object.values(recordsRef.current);
+      const group = record.parent_id ? recordsRef.current[record.parent_id] ?? record : record;
+      const list = groupFields(group, all);
+      const source = list.length ? list : [group];
+      const minX = Math.min(...source.map((z) => z.position_x));
+      const minY = Math.min(...source.map((z) => z.position_y));
+      const fields: TemplateField[] = source.map((zone) => ({
+        title: zone.title ?? "Feld",
+        x: Math.round(zone.position_x - minX),
+        y: Math.round(zone.position_y - minY),
+        w: Math.round(zone.width ?? 320),
+        h: Math.round(zone.height ?? 260),
+      }));
+      const { error } = await supabase.from("templates").insert({
+        user_id: user.id,
+        title: group.title ?? "Eigene Vorlage",
+        description: `${fields.length} Felder`,
+        fields: fields as never,
+      } as never);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Als eigene Vorlage gespeichert");
+    },
+    [user],
+  );
+
   const api = useMemo(
     () => ({
       updateNode,
@@ -1055,6 +1087,14 @@ function BoardPage() {
         {
           label: "Inhalte des Feldes zusammenfassen",
           run: () => void summarizeZone(menuRecord),
+        },
+        {
+          label: "Als eigene Vorlage speichern",
+          run: () => void saveGroupAsTemplate(menuRecord),
+        },
+        {
+          label: "Vorlagen verwalten …",
+          run: () => setTemplateOpen(true),
         },
         ...ZONE_COLORS.map((zoneColor) => ({
           label: zoneColor.name,

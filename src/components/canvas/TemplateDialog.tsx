@@ -45,10 +45,12 @@ function Preview({ fields }: { fields: TemplateField[] }) {
 function Card({
   template,
   onInsert,
+  onEdit,
   onDelete,
 }: {
   template: Template;
   onInsert: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 }) {
   return (
@@ -62,6 +64,11 @@ function Card({
         <Button size="sm" className="flex-1" onClick={onInsert}>
           Einfügen
         </Button>
+        {onEdit ? (
+          <Button size="sm" variant="outline" onClick={onEdit}>
+            Bearbeiten
+          </Button>
+        ) : null}
         {onDelete ? (
           <Button size="sm" variant="ghost" onClick={onDelete}>
             Löschen
@@ -72,10 +79,126 @@ function Card({
   );
 }
 
+/** Editing form for one saved template: name, description, field names and sizes. */
+function EditForm({
+  template,
+  currentFields,
+  onSave,
+  onCancel,
+}: {
+  template: Template;
+  currentFields: () => TemplateField[];
+  onSave: (next: Template) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState(template.title);
+  const [description, setDescription] = useState(template.description);
+  const [fields, setFields] = useState<TemplateField[]>(template.fields);
+  const [busy, setBusy] = useState(false);
+
+  const patch = (index: number, change: Partial<TemplateField>) =>
+    setFields((current) =>
+      current.map((field, i) => (i === index ? { ...field, ...change } : field)),
+    );
+
+  return (
+    <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name" />
+        <Input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Kurze Beschreibung"
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-[1fr_260px]">
+        <div className="space-y-2">
+          {fields.map((field, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                value={field.title}
+                onChange={(e) => patch(index, { title: e.target.value })}
+                placeholder="Feldname"
+                className="h-9"
+              />
+              <Input
+                type="number"
+                value={field.w}
+                onChange={(e) => patch(index, { w: Math.max(80, Number(e.target.value) || 80) })}
+                className="h-9 w-20"
+                aria-label="Breite"
+              />
+              <Input
+                type="number"
+                value={field.h}
+                onChange={(e) => patch(index, { h: Math.max(60, Number(e.target.value) || 60) })}
+                className="h-9 w-20"
+                aria-label="Höhe"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setFields((current) => current.filter((_, i) => i !== index))}
+              >
+                Entfernen
+              </Button>
+            </div>
+          ))}
+          {fields.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Keine Felder mehr in dieser Vorlage.</p>
+          ) : null}
+        </div>
+        <div className="space-y-2">
+          <Preview fields={fields.length ? fields : template.fields} />
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              const next = currentFields();
+              if (!next.length) {
+                toast.error("Keine Felder auf der Fläche gefunden");
+                return;
+              }
+              setFields(next);
+              toast.success("Felder von der Fläche übernommen");
+            }}
+          >
+            Felder der Auswahl übernehmen
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Abbrechen
+        </Button>
+        <Button
+          size="sm"
+          disabled={busy || !fields.length}
+          onClick={() => {
+            setBusy(true);
+            void onSave({
+              ...template,
+              title: title.trim() || "Eigene Vorlage",
+              description: description.trim() || `${fields.length} Felder`,
+              fields,
+            }).finally(() => setBusy(false));
+          }}
+        >
+          Speichern
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, userId }: Props) {
   const [own, setOwn] = useState<Template[]>([]);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -99,6 +222,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
 
   useEffect(() => {
     if (open) void load();
+    if (!open) setEditingId(null);
   }, [open, load]);
 
   const save = async () => {
@@ -125,6 +249,24 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
     void load();
   };
 
+  const update = async (next: Template) => {
+    const { error } = await supabase
+      .from("templates")
+      .update({
+        title: next.title,
+        description: next.description,
+        fields: next.fields as never,
+      } as never)
+      .eq("id", next.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setOwn((current) => current.map((item) => (item.id === next.id ? next : item)));
+    setEditingId(null);
+    toast.success("Vorlage aktualisiert");
+  };
+
   const remove = async (id: string) => {
     const { error } = await supabase.from("templates").delete().eq("id", id);
     if (error) {
@@ -132,6 +274,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
       return;
     }
     setOwn((current) => current.filter((item) => item.id !== id));
+    if (editingId === id) setEditingId(null);
   };
 
   const insert = (template: Template) => {
@@ -139,13 +282,15 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
     void onInsert(template);
   };
 
+  const editing = own.find((item) => item.id === editingId);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Vorlagen</DialogTitle>
           <DialogDescription>
-            Fertige Feldraster einfügen oder eigene Raster speichern und wiederverwenden.
+            Fertige Feldraster einfügen oder eigene Raster speichern, bearbeiten und wiederverwenden.
           </DialogDescription>
         </DialogHeader>
 
@@ -172,12 +317,24 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
                 className="h-9"
               />
               <Button size="sm" onClick={() => void save()} disabled={saving}>
-                Felder der Fläche speichern
+                Auswahl als Vorlage speichern
               </Button>
             </div>
+
+            {editing ? (
+              <EditForm
+                key={editing.id}
+                template={editing}
+                currentFields={currentFields}
+                onSave={update}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : null}
+
             {own.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Noch keine eigenen Vorlagen. Lege Felder auf der Fläche an und speichere sie hier.
+                Noch keine eigenen Vorlagen. Lege Felder auf der Fläche an, wähle die Gruppe aus und
+                speichere sie hier.
               </p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-3">
@@ -186,6 +343,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
                     key={template.id}
                     template={template}
                     onInsert={() => insert(template)}
+                    onEdit={() => setEditingId(template.id)}
                     onDelete={() => void remove(template.id)}
                   />
                 ))}
