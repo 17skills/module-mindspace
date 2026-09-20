@@ -790,6 +790,71 @@ function BoardPage() {
     [records],
   );
 
+  /** Summarise everything assigned to a background field as a note inside it. */
+  const summarizeZone = useCallback(
+    async (zone: NodeRecord) => {
+      const members = Object.values(recordsRef.current).filter(
+        (item) =>
+          readAssignment(item)?.zoneId === zone.id &&
+          item.type !== "chat" &&
+          item.type !== "zone" &&
+          item.content,
+      );
+      if (members.length === 0) {
+        toast.info("Diesem Feld ist noch kein Inhalt zugeordnet");
+        return;
+      }
+      const job = toast.loading("Feld wird zusammengefasst …");
+      const context = members
+        .map((item) => {
+          const assignment = readAssignment(item);
+          const note = assignment?.note ? ` — Begründung: ${assignment.note}` : "";
+          return `### [${zone.title ?? "Feld"} · ${assignment?.role ?? "Beispiel"}]${note} ${item.title ?? "Modul"}\n${(item.content ?? "").slice(0, 60_000)}`;
+        })
+        .join("\n\n---\n\n");
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            model: "openai/gpt-6-astra",
+            context,
+            messages: [
+              {
+                role: "user",
+                content: `Alle Inhalte gehören zum Feld „${zone.title ?? "Feld"}“ eines Canvas. Fasse zusammen, was sie über dieses Feld aussagen, und nenne die Beispiele mit kurzer Begründung.`,
+              },
+            ],
+          }),
+        });
+        if (!response.ok || !response.body) throw new Error(await response.text());
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let answer = "";
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          answer += decoder.decode(value, { stream: true });
+        }
+        if (!answer.trim()) throw new Error("Es kam keine Antwort zurück");
+        await createRecord({
+          type: "note",
+          title: `Zusammenfassung: ${zone.title ?? "Feld"}`,
+          content: answer,
+          position_x: zone.position_x + (zone.width ?? 420) + 40,
+          position_y: zone.position_y,
+          metadata: { zoneAuto: false },
+        });
+        toast.success("Zusammenfassung angelegt", { id: job });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Zusammenfassung fehlgeschlagen", {
+          id: job,
+        });
+      }
+    },
+    [createRecord],
+  );
+
   const zoneOf = useCallback(
     (id: string) => {
       const record = records[id];
