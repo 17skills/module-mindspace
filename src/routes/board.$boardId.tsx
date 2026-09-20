@@ -780,11 +780,10 @@ function BoardPage() {
   );
 
   const groupSelection = useCallback(async () => {
-    const selected = nodes.filter(
-      (n) => n.selected && n.type !== "frame" && n.type !== "zone" && !n.parentId,
-    );
+    // Formen, Texte und Hintergrundfelder lassen sich mitgruppieren
+    const selected = nodes.filter((n) => n.selected && n.type !== "frame" && !n.parentId);
     if (selected.length < 2) {
-      toast.info("Mindestens zwei Module auswählen (Shift + Ziehen)");
+      toast.info("Mindestens zwei Elemente auswählen (Ziehen oder Shift + Klick)");
       return;
     }
     const padding = 48;
