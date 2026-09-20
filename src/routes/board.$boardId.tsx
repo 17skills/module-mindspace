@@ -1158,6 +1158,17 @@ function BoardPage() {
           active: (menuRecord.color ?? "var(--chat)") === shapeColor.value,
           run: () => updateNode(menuRecord.id, { color: shapeColor.value }),
         })),
+        {
+          label: "90° drehen",
+          run: () =>
+            updateNode(menuRecord.id, {
+              metadata: {
+                ...(menuRecord.metadata ?? {}),
+                rotation:
+                  ((Number((menuRecord.metadata as Record<string, unknown> | null)?.["rotation"] ?? 0) + 90) % 360),
+              },
+            }),
+        },
         { label: "Form löschen", run: () => deleteNode(menuRecord.id) },
       ]
     : menuRecord?.type === "zone"
@@ -1263,20 +1274,6 @@ function BoardPage() {
               metadata: { model: "openai/gpt-6-astra" },
             }),
         },
-        ...SHAPES.map((shape) => ({
-          label: `Form: ${shape.label}`,
-          icon: Shapes,
-          run: () =>
-            void createRecord({
-              type: "shape",
-              title: shape.label,
-              content: "",
-              color: "var(--chat)",
-              position_x: menu?.flowX ?? 0,
-              position_y: menu?.flowY ?? 0,
-              metadata: { shape: shape.id },
-            }),
-        })),
         {
           label: "Hintergrundfeld",
           icon: PanelsTopLeft,
