@@ -285,7 +285,7 @@ function BoardPage() {
         return;
       }
       setTitle(boardRes.data.title);
-      setIsOwner(boardRes.data.user_id === user.id);
+      setIsOwner(boardRes.data.user_id === userId);
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
