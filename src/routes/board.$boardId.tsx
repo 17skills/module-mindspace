@@ -282,6 +282,7 @@ function BoardPage() {
         mime_type: input.mime_type ?? null,
         content: input.content ?? null,
         status: input.status ?? "ready",
+        color: input.color ?? null,
         metadata: input.metadata ?? {},
       };
       const { data, error } = await supabase
