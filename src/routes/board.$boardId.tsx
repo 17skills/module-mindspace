@@ -610,7 +610,7 @@ function BoardPage() {
   const sourcesFor = useCallback((id: string) => {
     const record = recordsRef.current[id];
     if (!record) return [];
-    if (!DATA_TYPES.includes(record.type)) return [record];
+    if (!DATA_TYPES.has(record.type)) return [record];
     const neighbours: NodeRecord[] = [record];
     for (const edge of edgesRef.current) {
       const otherId = edge.source === id ? edge.target : edge.target === id ? edge.source : null;

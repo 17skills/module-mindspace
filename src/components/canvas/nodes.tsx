@@ -322,7 +322,7 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
               {(chartType ?? "bar") === "pie" ? (
                 <PieChart>
                   <Pie data={chartRows} dataKey="value" nameKey="name" outerRadius="75%" label>
-                    {chartRows.map((_, index) => (
+                    {chartRows.map((_entry, index: number) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
