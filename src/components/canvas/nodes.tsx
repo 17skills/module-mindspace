@@ -152,7 +152,12 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
   const { updateNode, deleteNode } = useBoard();
   return (
     <>
-      <NodeResizer minWidth={320} minHeight={240} isVisible={selected} color="var(--primary)" />
+      <NodeResizer
+        minWidth={320}
+        minHeight={240}
+        isVisible={Boolean(selected)}
+        color="var(--primary)"
+      />
       <Handle type="target" position={Position.Left} />
       <div className="h-full w-full rounded-3xl border-2 border-dashed bg-[color-mix(in_oklab,var(--frame)_10%,transparent)]">
         <div className="flex items-center gap-2 px-4 py-2">
