@@ -1055,9 +1055,11 @@ function BoardPage() {
           label: "Inhalte des Feldes zusammenfassen",
           run: () => void summarizeZone(menuRecord),
         },
-        ...ZONE_COLORS.map((color, index) => ({
-          label: `Farbe ${index + 1}`,
-          run: () => updateNode(menuRecord.id, { color }),
+        ...ZONE_COLORS.map((zoneColor) => ({
+          label: zoneColor.name,
+          swatch: zoneColor.value,
+          active: (menuRecord.color ?? ZONE_COLORS[0].value) === zoneColor.value,
+          run: () => updateNode(menuRecord.id, { color: zoneColor.value }),
         })),
         { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
       ]
@@ -1124,7 +1126,7 @@ function BoardPage() {
             void createRecord({
               type: "zone",
               title: "Feld",
-              color: ZONE_COLORS[0],
+              color: ZONE_COLORS[0].value,
               position_x: menu?.flowX ?? 0,
               position_y: menu?.flowY ?? 0,
             }).catch((error: unknown) =>
