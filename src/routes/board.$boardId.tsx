@@ -1320,6 +1320,18 @@ function BoardPage() {
             }),
         },
         {
+          label: "Text",
+          icon: Type,
+          run: () =>
+            void createRecord({
+              type: "text",
+              title: "Text",
+              content: "",
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
+            }),
+        },
+        {
           label: "Hintergrundfeld",
           icon: PanelsTopLeft,
           run: () =>
@@ -1591,6 +1603,24 @@ function BoardPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Text einfügen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({ type: "text", title: "Text", content: "", position_x: at.x, position_y: at.y });
+                    }}
+                  >
+                    <Type className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Text einfügen</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
