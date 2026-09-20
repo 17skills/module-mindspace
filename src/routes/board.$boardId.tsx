@@ -618,6 +618,10 @@ function BoardPage() {
   const menuItems = menu?.nodeId
     ? [
         {
+          label: "Im Kontextfenster öffnen",
+          run: () => openInspector(menu.nodeId!),
+        },
+        {
           label: "Strukturierte Daten herauslösen",
           run: () => extractStructure(menu.nodeId!),
         },
