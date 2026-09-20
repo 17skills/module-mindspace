@@ -259,6 +259,44 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
   );
 });
 
+export const ZONE_COLORS = [
+  "var(--frame)",
+  "var(--video)",
+  "var(--audio)",
+  "var(--doc)",
+  "var(--note)",
+  "var(--chat)",
+] as const;
+
+export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const color = record.color ?? ZONE_COLORS[0];
+  return (
+    <>
+      <NodeResizer
+        minWidth={160}
+        minHeight={120}
+        isVisible={Boolean(selected)}
+        color="var(--primary)"
+      />
+      <div
+        className="h-full w-full rounded-2xl border"
+        style={{
+          background: `color-mix(in oklab, ${color} 8%, transparent)`,
+          borderColor: `color-mix(in oklab, ${color} 35%, transparent)`,
+        }}
+      >
+        <input
+          defaultValue={record.title ?? "Feld"}
+          onBlur={(e) => updateNode(record.id, { title: e.target.value })}
+          className="nodrag w-full bg-transparent px-4 py-2.5 font-display text-sm font-semibold tracking-wide text-muted-foreground uppercase outline-none"
+        />
+      </div>
+    </>
+  );
+});
+
 type TableData = { columns: string[]; rows: string[][]; chartType: string | undefined };
 
 function tableData(record: NodeRecord): TableData {

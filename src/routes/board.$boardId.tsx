@@ -26,7 +26,15 @@ import {
   type NodeRecord,
   type StructureItem,
 } from "@/components/canvas/board-context";
-import { ChatNode, ContentNode, DataNode, FrameNode, NoteNode } from "@/components/canvas/nodes";
+import {
+  ChatNode,
+  ContentNode,
+  DataNode,
+  FrameNode,
+  NoteNode,
+  ZONE_COLORS,
+  ZoneNode,
+} from "@/components/canvas/nodes";
 import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
@@ -72,6 +80,7 @@ const nodeTypes = {
   chat: ChatNode,
   frame: FrameNode,
   data: DataNode,
+  zone: ZoneNode,
 };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
@@ -80,16 +89,33 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   note: { width: 260, height: 200 },
   chat: { width: 400, height: 460 },
   frame: { width: 640, height: 460 },
+  zone: { width: 420, height: 360 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
   default: { width: 320, height: 340 },
 };
 
+/** Labelled background fields of a Business Model Canvas (x, y, w, h). */
+const BMC_TEMPLATE: Array<{ title: string; x: number; y: number; w: number; h: number }> = [
+  { title: "Schlüsselpartner", x: 0, y: 0, w: 320, h: 520 },
+  { title: "Schlüsselaktivitäten", x: 330, y: 0, w: 320, h: 255 },
+  { title: "Schlüsselressourcen", x: 330, y: 265, w: 320, h: 255 },
+  { title: "Wertangebot", x: 660, y: 0, w: 320, h: 520 },
+  { title: "Kundenbeziehungen", x: 990, y: 0, w: 320, h: 255 },
+  { title: "Kanäle", x: 990, y: 265, w: 320, h: 255 },
+  { title: "Kundensegmente", x: 1320, y: 0, w: 320, h: 520 },
+  { title: "Kostenstruktur", x: 0, y: 530, w: 815, h: 240 },
+  { title: "Einnahmequellen", x: 825, y: 530, w: 815, h: 240 },
+];
+
 function toFlowNode(record: NodeRecord): Node {
   const size = DEFAULT_SIZE[record.type] ?? DEFAULT_SIZE["default"]!;
   const kind =
-    record.type === "note" || record.type === "chat" || record.type === "frame"
+    record.type === "note" ||
+    record.type === "chat" ||
+    record.type === "frame" ||
+    record.type === "zone"
       ? record.type
       : DATA_TYPES.has(record.type)
         ? "data"
@@ -103,12 +129,17 @@ function toFlowNode(record: NodeRecord): Node {
     data: { record },
     ...(record.parent_id ? { parentId: record.parent_id, extent: "parent" as const } : {}),
     ...(kind === "frame" ? { zIndex: -1 } : {}),
+    ...(kind === "zone" ? { zIndex: -2, connectable: false, deletable: true } : {}),
   };
 }
 
-/** Frames must come before their children in the node array. */
+/** Background fields first, then frames, then their children. */
+function layer(type: string) {
+  return type === "zone" ? -2 : type === "frame" ? -1 : 0;
+}
+
 function sortNodes(list: NodeRecord[]) {
-  return [...list].sort((a, b) => (a.type === "frame" ? -1 : 0) - (b.type === "frame" ? -1 : 0));
+  return [...list].sort((a, b) => layer(a.type) - layer(b.type));
 }
 
 type Menu = { x: number; y: number; flowX: number; flowY: number; nodeId?: string };
@@ -251,6 +282,7 @@ function BoardPage() {
         mime_type: input.mime_type ?? null,
         content: input.content ?? null,
         status: input.status ?? "ready",
+        color: input.color ?? null,
         metadata: input.metadata ?? {},
       };
       const { data, error } = await supabase
@@ -262,7 +294,9 @@ function BoardPage() {
       const record = data as unknown as NodeRecord;
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
-        record.type === "frame" ? [toFlowNode(record), ...current] : [...current, toFlowNode(record)],
+        record.type === "frame" || record.type === "zone"
+          ? [toFlowNode(record), ...current]
+          : [...current, toFlowNode(record)],
       );
       return record;
     },
@@ -317,7 +351,8 @@ function BoardPage() {
     const parts: string[] = [];
     for (const nodeId of connected) {
       const record = recordsRef.current[nodeId];
-      if (!record || record.type === "chat" || record.type === "frame") continue;
+      if (!record || record.type === "chat" || record.type === "frame" || record.type === "zone")
+        continue;
       if (!record.content) continue;
       parts.push(
         `### ${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
@@ -562,7 +597,9 @@ function BoardPage() {
   );
 
   const groupSelection = useCallback(async () => {
-    const selected = nodes.filter((n) => n.selected && n.type !== "frame" && !n.parentId);
+    const selected = nodes.filter(
+      (n) => n.selected && n.type !== "frame" && n.type !== "zone" && !n.parentId,
+    );
     if (selected.length < 2) {
       toast.info("Mindestens zwei Module auswählen (Shift + Ziehen)");
       return;
@@ -719,7 +756,17 @@ function BoardPage() {
     );
   }
 
-  const menuItems = menu?.nodeId
+  const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
+
+  const menuItems = menuRecord?.type === "zone"
+    ? [
+        ...ZONE_COLORS.map((color, index) => ({
+          label: `Farbe ${index + 1}`,
+          run: () => updateNode(menuRecord.id, { color }),
+        })),
+        { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
+      ]
+    : menu?.nodeId
     ? [
         {
           label: "Im Kontextfenster öffnen",
@@ -775,6 +822,40 @@ function BoardPage() {
               position_y: menu?.flowY ?? 0,
               metadata: { model: "openai/gpt-6-astra" },
             }),
+        },
+        {
+          label: "Hintergrundfeld",
+          run: () =>
+            void createRecord({
+              type: "zone",
+              title: "Feld",
+              color: ZONE_COLORS[0],
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
+            }).catch((error: unknown) =>
+              toast.error(error instanceof Error ? error.message : "Feld konnte nicht angelegt werden"),
+            ),
+        },
+        {
+          label: "Vorlage: Business Model Canvas",
+          run: () =>
+            void (async () => {
+              const originX = menu?.flowX ?? 0;
+              const originY = menu?.flowY ?? 0;
+              for (const field of BMC_TEMPLATE) {
+                await createRecord({
+                  type: "zone",
+                  title: field.title,
+                  color: ZONE_COLORS[0],
+                  position_x: originX + field.x,
+                  position_y: originY + field.y,
+                  width: field.w,
+                  height: field.h,
+                });
+              }
+            })().catch((error: unknown) =>
+              toast.error(error instanceof Error ? error.message : "Vorlage fehlgeschlagen"),
+            ),
         },
         { label: "Auswahl gruppieren", run: () => void groupSelection() },
       ];
