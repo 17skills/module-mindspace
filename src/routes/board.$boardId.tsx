@@ -597,7 +597,9 @@ function BoardPage() {
   );
 
   const groupSelection = useCallback(async () => {
-    const selected = nodes.filter((n) => n.selected && n.type !== "frame" && !n.parentId);
+    const selected = nodes.filter(
+      (n) => n.selected && n.type !== "frame" && n.type !== "zone" && !n.parentId,
+    );
     if (selected.length < 2) {
       toast.info("Mindestens zwei Module auswählen (Shift + Ziehen)");
       return;
