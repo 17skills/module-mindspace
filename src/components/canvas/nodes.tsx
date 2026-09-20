@@ -688,3 +688,88 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
     </Shell>
   );
 });
+
+/* ---------------------------------------------------------------- shapes */
+
+export interface ShapeKind {
+  id: string;
+  label: string;
+  /** CSS clip-path for angular shapes; undefined means a plain box. */
+  clip?: string;
+  radius?: string;
+}
+
+export const SHAPES: readonly ShapeKind[] = [
+  { id: "rect", label: "Rechteck", radius: "0.25rem" },
+  { id: "rounded", label: "Abgerundet", radius: "1.25rem" },
+  { id: "ellipse", label: "Ellipse", radius: "50%" },
+  { id: "triangle", label: "Dreieck", clip: "polygon(50% 0%, 100% 100%, 0% 100%)" },
+  { id: "diamond", label: "Raute", clip: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)" },
+  {
+    id: "arrow",
+    label: "Pfeil",
+    clip: "polygon(0% 25%, 60% 25%, 60% 0%, 100% 50%, 60% 100%, 60% 75%, 0% 75%)",
+  },
+  {
+    id: "star",
+    label: "Stern",
+    clip: "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)",
+  },
+] as const;
+
+export const SHAPE_COLORS: readonly ZoneColor[] = ZONE_COLORS;
+
+export function shapeKind(record: NodeRecord): ShapeKind {
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  return SHAPES.find((item) => item.id === meta["shape"]) ?? SHAPES[0]!;
+}
+
+export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const kind = shapeKind(record);
+  const color = record.color ?? "var(--chat)";
+  const [text, setText] = useState(record.content ?? "");
+
+  useEffect(() => setText(record.content ?? ""), [record.content]);
+
+  return (
+    <>
+      <NodeResizer
+        minWidth={80}
+        minHeight={60}
+        isVisible={Boolean(selected)}
+        color="var(--primary)"
+      />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
+      <div
+        className="flex h-full w-full items-center justify-center p-3 transition-shadow"
+        style={{
+          background:
+            color === ZONE_WHITE ? "var(--card)" : `color-mix(in oklab, ${color} 18%, var(--card))`,
+          ...(kind.clip
+            ? { clipPath: kind.clip }
+            : {
+                borderRadius: kind.radius,
+                border: `1.5px solid ${
+                  color === ZONE_WHITE ? "var(--border)" : `color-mix(in oklab, ${color} 45%, transparent)`
+                }`,
+                boxShadow: selected ? "var(--shadow-float)" : "var(--shadow-card)",
+              }),
+        }}
+      >
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
+          placeholder="Text"
+          rows={1}
+          className="nodrag nowheel w-full resize-none bg-transparent text-center text-xs font-medium text-foreground outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
+    </>
+  );
+});
