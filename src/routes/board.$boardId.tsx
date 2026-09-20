@@ -1382,8 +1382,9 @@ function BoardPage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="size-10 shrink-0 rounded-xl"
+                    className={toolBtn(templateOpen)}
                     aria-label="Vorlagen"
+                    aria-pressed={templateOpen}
                     onClick={() => {
                       templatePosition.current = null;
                       setTemplateOpen(true);
@@ -1402,7 +1403,7 @@ function BoardPage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="size-10 shrink-0 rounded-xl"
+                    className={toolBtn()}
                     aria-label="Link einfügen"
                     onClick={() => {
                       const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -1420,7 +1421,7 @@ function BoardPage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="size-10 shrink-0 rounded-xl"
+                    className={toolBtn()}
                     aria-label="Datei hochladen"
                     onClick={() => {
                       filePosition.current = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -1438,7 +1439,7 @@ function BoardPage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="size-10 shrink-0 rounded-xl"
+                    className={toolBtn()}
                     aria-label="Notiz anlegen"
                     onClick={() => {
                       const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -1455,7 +1456,7 @@ function BoardPage() {
                 <TooltipTrigger asChild>
                   <Button
                     size="icon"
-                    className="size-10 shrink-0 rounded-xl"
+                    className={toolBtn()}
                     aria-label="Chat-Modul anlegen"
                     onClick={() => {
                       const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
