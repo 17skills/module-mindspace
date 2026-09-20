@@ -22,6 +22,8 @@ import {
   DataNode,
   FrameNode,
   NoteNode,
+  ShapeNode,
+  TextNode,
   ZoneNode,
 } from "@/components/canvas/nodes";
 import { getSharedBoard } from "@/lib/share.functions";
