@@ -148,14 +148,28 @@ function BoardPage() {
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
-      setEdges(
-        (edgeRes.data ?? []).map((e) => ({
-          id: e.id as string,
-          source: e.source_id as string,
-          target: e.target_id as string,
-          animated: true,
-        })),
-      );
+      // connections belong to the group, not to its members
+      const parentOf = new Map(list.map((r) => [r.id, r.parent_id]));
+      const seen = new Set<string>();
+      const keep: Edge[] = [];
+      const drop: string[] = [];
+      for (const row of edgeRes.data ?? []) {
+        const id = row.id as string;
+        const source = parentOf.get(row.source_id as string) ?? (row.source_id as string);
+        const target = parentOf.get(row.target_id as string) ?? (row.target_id as string);
+        const key = [source, target].sort().join("::");
+        if (source === target || seen.has(key)) {
+          drop.push(id);
+          continue;
+        }
+        seen.add(key);
+        keep.push({ id, source, target, animated: true });
+        if (source !== row.source_id || target !== row.target_id) {
+          void supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id);
+        }
+      }
+      if (drop.length) void supabase.from("edges").delete().in("id", drop);
+      setEdges(keep);
       setReady(true);
     })();
     return () => {
