@@ -155,7 +155,7 @@ function Preview({ record }: { record: NodeRecord }) {
 
 export const ContentNode = memo(function ContentNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { extractStructure } = useBoard();
+  const { extractStructure, openInspector } = useBoard();
 
   return (
     <Shell type={record.type} selected={selected} locked={Boolean(record.parent_id)}>
