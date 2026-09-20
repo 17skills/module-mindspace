@@ -40,6 +40,7 @@ import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
 import { segmentsFromFile } from "@/lib/segments";
+import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
 
 import {
   extractStructured,
@@ -348,18 +349,54 @@ function BoardPage() {
         }
       }
     }
+    // a chat sitting in a background field sees everything assigned to that field
+    const own = readAssignment(recordsRef.current[id]);
+    if (own) {
+      for (const candidate of Object.values(recordsRef.current)) {
+        if (candidate.id !== id && readAssignment(candidate)?.zoneId === own.zoneId) {
+          connected.add(candidate.id);
+        }
+      }
+    }
     const parts: string[] = [];
     for (const nodeId of connected) {
       const record = recordsRef.current[nodeId];
       if (!record || record.type === "chat" || record.type === "frame" || record.type === "zone")
         continue;
       if (!record.content) continue;
+      const field = zoneLabel(record, recordsRef.current);
+      const prefix = field
+        ? `[${field.title} · ${field.role}]${field.note ? ` — Begründung: ${field.note}` : ""} `
+        : "";
       parts.push(
-        `### ${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
+        `### ${prefix}${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
       );
     }
     return parts.join("\n\n---\n\n");
   }, []);
+
+  /** Assign a card to the background field it now sits on. */
+  const syncZone = useCallback((id: string, x: number, y: number) => {
+    const record = recordsRef.current[id];
+    if (!record || record.type === "zone" || record.type === "frame" || record.parent_id) return;
+    if (!isAuto(record)) return;
+    const centre = {
+      x: x + (record.width ?? 320) / 2,
+      y: y + (record.height ?? 300) / 2,
+    };
+    const zones = Object.values(recordsRef.current).filter((item) => item.type === "zone");
+    const zone = zoneAt(centre, zones);
+    const current = readAssignment(record);
+    if ((zone?.id ?? null) === (current?.zoneId ?? null)) return;
+    updateNode(id, {
+      metadata: {
+        ...(record.metadata ?? {}),
+        zoneId: zone?.id ?? null,
+        ...(zone && !current?.role ? { zoneRole: ZONE_ROLES[0] } : {}),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateNode]);
 
   const addNoteFrom = useCallback(
     (sourceId: string, text: string) => {
