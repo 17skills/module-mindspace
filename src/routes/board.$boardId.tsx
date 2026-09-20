@@ -16,11 +16,24 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Check, Link2, MessageSquare, NotebookPen, PanelsTopLeft, Upload, Workflow } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  FileUp,
+  LayoutTemplate,
+  Link2,
+  MessageSquare,
+  NotebookPen,
+  PanelsTopLeft,
+  StickyNote,
+  Upload,
+  Workflow,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   BoardContext,
   type InspectorTab,
@@ -1199,30 +1212,25 @@ function BoardPage() {
 
   return (
     <div className="flex h-screen flex-col bg-canvas">
-      <header className="z-10 flex items-center gap-3 border-b bg-card/80 px-4 py-2.5 backdrop-blur">
-        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Boards
-        </Link>
+      <header className="z-10 flex h-14 items-center gap-2 border-b border-border/70 bg-card/90 px-3 backdrop-blur">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button asChild size="icon" variant="ghost" className="size-9 rounded-lg">
+              <Link to="/" aria-label="Zur Board-Übersicht">
+                <ArrowLeft className="size-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Zur Board-Übersicht</TooltipContent>
+        </Tooltip>
+        <div className="h-5 w-px bg-border/70" />
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => void supabase.from("boards").update({ title }).eq("id", boardId)}
-          className="h-8 w-56 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
+          aria-label="Board-Titel"
+          className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
-        <Button
-          size="sm"
-          variant="outline"
-          className="ml-auto"
-          onClick={() => {
-            templatePosition.current = null;
-            setTemplateOpen(true);
-          }}
-        >
-          Vorlagen
-        </Button>
-        <span className="text-xs text-muted-foreground">
-          Rechtsklick auf die Fläche für neue Module
-        </span>
       </header>
 
       <TemplateDialog
@@ -1324,6 +1332,107 @@ function BoardPage() {
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable className="!bg-card" />
           </ReactFlow>
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
+            <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-10 shrink-0 rounded-xl"
+                    aria-label="Vorlagen"
+                    onClick={() => {
+                      templatePosition.current = null;
+                      setTemplateOpen(true);
+                    }}
+                  >
+                    <LayoutTemplate className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Vorlagen</TooltipContent>
+              </Tooltip>
+
+              <div className="mx-1 h-6 w-px shrink-0 bg-border/70" />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-10 shrink-0 rounded-xl"
+                    aria-label="Link einfügen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      setLinkPrompt(at);
+                    }}
+                  >
+                    <Link2 className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Link einfügen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-10 shrink-0 rounded-xl"
+                    aria-label="Datei hochladen"
+                    onClick={() => {
+                      filePosition.current = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      fileRef.current?.click();
+                    }}
+                  >
+                    <FileUp className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Datei hochladen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-10 shrink-0 rounded-xl"
+                    aria-label="Notiz anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({ type: "note", title: "Notiz", content: "", position_x: at.x, position_y: at.y });
+                    }}
+                  >
+                    <StickyNote className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Notiz anlegen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    className="size-10 shrink-0 rounded-xl"
+                    aria-label="Chat-Modul anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "chat",
+                        title: "Chat",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { model: "openai/gpt-6-astra" },
+                      });
+                    }}
+                  >
+                    <MessageSquare className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
           </div>
 
           {inspector && (
