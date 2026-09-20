@@ -116,6 +116,7 @@ function BoardPage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [ready, setReady] = useState(false);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [inspector, setInspector] = useState<{ nodeId: string; tab: InspectorTab } | null>(null);
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
