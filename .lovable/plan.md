@@ -39,9 +39,20 @@ Fällt alles aus, zeigt die Karte eine einheitliche Platzhalter-Kachel in der Ty
 - Beim Gruppieren werden bestehende Verbindungen der einzelnen Karten auf die Gruppe umgehängt; beim Auflösen bleiben sie an der Gruppe und werden entfernt.
 - Bestehende Warnung „Parent node not found“ verschwindet, indem Gruppen vor ihren Karten in die Fläche geschrieben werden.
 
+## 5. Strukturierte Daten als eigene Module herauslösen
+
+Aus jedem Inhalt lassen sich Tabellen, Listen und Diagramme als eigenständige Karten herausziehen:
+
+- Kontextmenü auf einer Inhaltskarte: „Strukturierte Daten herauslösen“. Die KI erkennt im Text enthaltene Tabellen, Aufzählungen und Zahlenreihen.
+- Ergebnis: pro gefundener Struktur eine neue Karte – Tabelle (sortier- und editierbar), Liste (Punkte einzeln bearbeitbar), Diagramm (Balken, Linie, Kreis; Typ umschaltbar).
+- Die neuen Karten werden automatisch mit der Quellkarte verbunden, damit die Herkunft sichtbar bleibt.
+- Diese Karten sind vollwertige Module: mit anderen Inhalten oder dem Chat verbindbar; ihre Daten gehen als strukturierter Text in den Chat-Kontext ein.
+- Umgekehrt kann der Chat neue Tabellen/Diagramme erzeugen („Vergleiche die Videos in einer Tabelle“) und direkt als Karte ablegen.
+
 ## Technische Hinweise
 
 - `src/routes/api/chat.ts`: `instructions`-Option statt System-`ModelMessage`; `onError` protokollieren und Fehlertext in den Stream schreiben.
 - Vorschau: `metadata.thumbnail` als einheitliches Feld; og:image-Auslese in `fetchPageText`/`resolvePodcast`; PDF-Seitenrendering über die vorhandene PDF-Bibliothek clientseitig, PPTX-Folienbild aus dem eingebetteten Vorschaubild der Datei; Upload in den vorhandenen `uploads`-Bucket.
 - Kontextmenü als eigene Komponente über `onPaneContextMenu`/`onNodeContextMenu` von React Flow, Position über `screenToFlowPosition`.
 - Verbindungslogik: Handles bei Karten mit `parent_id` deaktivieren, Kanten beim Gruppieren auf die Frame-ID umschreiben (Duplikate zusammenführen).
+- Strukturierte Daten: Extraktion per Server-Funktion mit einfacher, strikter Struktur (Titel, Typ, Spalten, Zeilen) über `openai/gpt-6-astra`; neue Kartentypen `table`, `list`, `chart` mit Daten in `metadata`; Diagramme mit Recharts.
