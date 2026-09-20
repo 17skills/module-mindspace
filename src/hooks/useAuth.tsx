@@ -21,13 +21,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // keep the same object while the user stays the same: a token refresh
+    // must not make consumers reload their data
+    const apply = (next: Session | null) =>
+      setSession((current) =>
+        current?.user.id && current.user.id === next?.user.id ? current : next,
+      );
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+      apply(nextSession);
       setLoading(false);
     });
 
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+      apply(data.session);
       setLoading(false);
     });
 
