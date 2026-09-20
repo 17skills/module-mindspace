@@ -41,6 +41,8 @@
   --color-note: var(--note);
   --color-chat: var(--chat);
   --color-frame: var(--frame);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-foreground: var(--brand-navy-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
