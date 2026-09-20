@@ -1157,7 +1157,19 @@ function BoardPage() {
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
 
-  const menuItems = menuRecord?.type === "shape"
+  const menuItems = menuRecord?.type === "text"
+    ? [
+        ...TEXT_SIZES.map((size) => ({
+          label: size.label,
+          active: textSize(menuRecord).id === size.id,
+          run: () =>
+            updateNode(menuRecord.id, {
+              metadata: { ...(menuRecord.metadata ?? {}), textSize: size.id },
+            }),
+        })),
+        { label: "Text löschen", run: () => deleteNode(menuRecord.id) },
+      ]
+    : menuRecord?.type === "shape"
     ? [
         ...SHAPES.map((shape) => ({
           label: shape.label,
@@ -1216,6 +1228,24 @@ function BoardPage() {
           label: "Vorlagen verwalten …",
           icon: PanelsTopLeft,
           run: () => setTemplateOpen(true),
+        },
+        {
+          label:
+            (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
+              ? "Feld entsperren"
+              : "Feld sperren",
+          icon:
+            (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
+              ? LockOpen
+              : Lock,
+          run: () =>
+            updateNode(menuRecord.id, {
+              metadata: {
+                ...(menuRecord.metadata ?? {}),
+                locked:
+                  (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] !== true,
+              },
+            }),
         },
         ...ZONE_COLORS.map((zoneColor) => ({
           label: zoneColor.name,
