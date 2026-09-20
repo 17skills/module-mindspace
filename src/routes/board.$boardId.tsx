@@ -965,15 +965,19 @@ function BoardPage() {
   /** Place a template as a group of white fields at the given canvas position. */
   const insertTemplate = useCallback(
     async (template: Template, x: number, y: number) => {
+      // fields should comfortably hold several cards, so place templates at double size
+      const scale = TEMPLATE_SCALE;
       const bounds = templateBounds(template.fields);
+      const width = bounds.width * scale + GROUP_PAD.x * 2;
+      const height = bounds.height * scale + GROUP_PAD.top + GROUP_PAD.bottom;
       const container = await createRecord({
         type: "zone",
         title: template.title,
         color: ZONE_WHITE,
         position_x: x,
         position_y: y,
-        width: bounds.width + GROUP_PAD.x * 2,
-        height: bounds.height + GROUP_PAD.top + GROUP_PAD.bottom,
+        width,
+        height,
         metadata: { templateGroup: true, zoneAuto: false },
       });
       for (const field of template.fields) {
@@ -982,15 +986,21 @@ function BoardPage() {
           title: field.title,
           color: ZONE_WHITE,
           parent_id: container.id,
-          position_x: GROUP_PAD.x + field.x,
-          position_y: GROUP_PAD.top + field.y,
-          width: field.w,
-          height: field.h,
+          position_x: GROUP_PAD.x + field.x * scale,
+          position_y: GROUP_PAD.top + field.y * scale,
+          width: field.w * scale,
+          height: field.h * scale,
         });
       }
+      // bring the fresh template fully into view
+      const zoom = Math.min(
+        1,
+        Math.max(0.2, Math.min(window.innerWidth / (width + 160), window.innerHeight / (height + 240))),
+      );
+      setCenter(x + width / 2, y + height / 2, { zoom, duration: 500 });
       toast.success(`${template.title} eingefügt`);
     },
-    [createRecord],
+    [createRecord, setCenter],
   );
 
   /** Fields of the selected template group, otherwise every field on the board. */
