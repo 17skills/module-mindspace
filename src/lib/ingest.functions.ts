@@ -311,17 +311,34 @@ export type StructuredItem = z.infer<typeof StructureSchema>["items"][number];
 export const extractStructured = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ text: z.string().min(1), title: z.string().optional() }).parse(input),
+    z
+      .object({
+        text: z.string().min(1),
+        title: z.string().optional(),
+        instruction: z.string().optional(),
+        kind: z.enum(["auto", "table", "list", "chart"]).optional(),
+        max: z.number().int().min(1).max(6).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
+    const limit = data.max ?? 6;
+    const kindRule =
+      data.kind && data.kind !== "auto"
+        ? `- Gib ausschließlich Einträge mit kind "${data.kind}" zurück.`
+        : "";
+    const instructionRule = data.instruction?.trim()
+      ? `\nAnweisung der Nutzerin/des Nutzers (hat Vorrang):\n${data.instruction.trim()}\n`
+      : "";
+
     const prompt = `Analysiere den folgenden Inhalt und gib die enthaltenen strukturierten Daten zurück.
-Erlaubt sind bis zu 6 Einträge. Regeln:
+Erlaubt sind bis zu ${limit} Einträge. Regeln:
 - kind "table" für tabellarische Daten (columns = Spaltenköpfe, rows = Zeilen).
 - kind "list" für Aufzählungen (columns = ["Punkt"], jede Zeile ein Eintrag).
 - kind "chart" für Zahlenreihen, die sich visualisieren lassen (columns = ["Kategorie","Wert"], Werte als Zahl-Text).
 - chartType nur bei kind "chart" setzen (bar, line oder pie), sonst "none".
 - Erfinde keine Daten. Wenn nichts Strukturierbares vorhanden ist, gib eine leere Liste zurück.
-
+${kindRule}${instructionRule}
 Titel: ${data.title ?? "Unbenannt"}
 
 Inhalt:
