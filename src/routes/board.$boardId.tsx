@@ -32,7 +32,6 @@ import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
 
-const DATA_TYPES = ["table", "list", "chart"];
 import {
   extractStructured,
   fetchPageText,
