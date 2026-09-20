@@ -34,6 +34,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   BoardContext,
   type InspectorTab,
@@ -117,6 +118,18 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
 const GROUP_PAD = { x: 16, top: 52, bottom: 16 };
 /** Templates are placed larger so each field can hold several cards. */
 const TEMPLATE_SCALE = 2;
+
+// Einheitliche Zustände für Werkzeugleisten-Symbole (Hover, Aktiv, Fokus, Deaktiviert)
+function toolBtn(active = false) {
+  return cn(
+    "size-10 shrink-0 rounded-xl text-muted-foreground transition-colors duration-150",
+    "hover:bg-accent hover:text-accent-foreground",
+    "active:bg-accent/70",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1",
+    "disabled:pointer-events-none disabled:opacity-40",
+    active && "bg-accent text-accent-foreground",
+  );
+}
 
 /** Fields of a template group, with positions relative to the group. */
 function groupFields(container: NodeRecord, all: NodeRecord[]): NodeRecord[] {
