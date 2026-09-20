@@ -512,6 +512,7 @@ function BoardPage() {
             status: info.transcript ? "ready" : "error",
             error: info.transcript ? null : info.transcriptError,
             metadata: {
+              ...(recordsRef.current[record.id]?.metadata ?? {}),
               thumbnail: info.thumbnail,
               author: info.author,
               ...(info.segments?.length ? { segments: info.segments } : {}),
@@ -527,7 +528,14 @@ function BoardPage() {
           updateNode(record.id, {
             title: episode.title,
             source_url: episode.audioUrl,
-            ...(episode.image ? { metadata: { thumbnail: episode.image } } : {}),
+            ...(episode.image
+              ? {
+                  metadata: {
+                    ...(recordsRef.current[record.id]?.metadata ?? {}),
+                    thumbnail: episode.image,
+                  },
+                }
+              : {}),
           });
           const { text, segments } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
           updateNode(record.id, {
