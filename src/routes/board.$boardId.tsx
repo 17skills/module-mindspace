@@ -286,17 +286,20 @@ function BoardPage() {
         user_id: user.id,
         type: input.type,
         title: input.title ?? null,
-        position_x: input.position_x ?? 0,
-        position_y: input.position_y ?? 0,
-        width: input.width ?? size.width,
-        height: input.height ?? size.height,
+        position_x: x,
+        position_y: y,
+        width,
+        height,
         source_url: input.source_url ?? null,
         storage_path: input.storage_path ?? null,
         mime_type: input.mime_type ?? null,
         content: input.content ?? null,
         status: input.status ?? "ready",
         color: input.color ?? null,
-        metadata: input.metadata ?? {},
+        metadata: {
+          ...(input.metadata ?? {}),
+          ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
+        },
       };
       const { data, error } = await supabase
         .from("nodes")
