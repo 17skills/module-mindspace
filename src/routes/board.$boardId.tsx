@@ -311,7 +311,7 @@ function BoardPage() {
         seen.add(key);
         keep.push({ id, source, target, animated: true });
         if (source !== row.source_id || target !== row.target_id) {
-          void supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id);
+          trackSave(supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id));
         }
       }
       if (drop.length) void supabase.from("edges").delete().in("id", drop);
@@ -472,18 +472,23 @@ function BoardPage() {
         ...current,
         { id, source: sourceId, target: targetId, animated: true },
       ]);
-      void supabase
-        .from("edges")
-        .insert({
-          id,
-          board_id: boardId,
-          user_id: user.id,
-          source_id: sourceId,
-          target_id: targetId,
-        } as never)
-        .then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+      trackSave(
+        supabase
+          .from("edges")
+          .insert({
+            id,
+            board_id: boardId,
+            user_id: user.id,
+            source_id: sourceId,
+            target_id: targetId,
+          } as never)
+          .then(({ error }) => {
+            if (error) {
+              toast.error(error.message);
+              throw error;
+            }
+          }),
+      );
     },
     [boardId, setEdges, user],
   );
