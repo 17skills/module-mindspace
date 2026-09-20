@@ -151,7 +151,7 @@ function LibraryPage() {
                 </p>
               </Link>
               <AlertDialog>
-                <AlertDialogTrigger asChild>
+                <AlertDialogTrigger asChild disabled={board.user_id !== user.id}>
                   <button className="mt-3 text-xs text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive">
                     Löschen
                   </button>
