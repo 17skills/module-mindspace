@@ -513,8 +513,6 @@ function BoardPage() {
       const sourceId = source?.parent_id ?? connection.source;
       const targetId = target?.parent_id ?? connection.target;
       if (sourceId === targetId) return;
-      setEdges((current) => addEdge({ ...connection, animated: true }, current));
-      setEdges((current) => current.filter((e) => e.source !== connection.source || e.target !== connection.target));
       createEdge(sourceId, targetId);
     },
     [createEdge, setEdges],
