@@ -118,6 +118,7 @@ const nodeTypes = {
   data: DataNode,
   zone: ZoneNode,
   shape: ShapeNode,
+  text: TextNode,
 };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
@@ -128,6 +129,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   frame: { width: 640, height: 460 },
   zone: { width: 420, height: 360 },
   shape: { width: 200, height: 140 },
+  text: { width: 260, height: 48 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -181,11 +183,15 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "chat" ||
     record.type === "frame" ||
     record.type === "zone" ||
-    record.type === "shape"
+    record.type === "shape" ||
+    record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
         ? "data"
         : "content";
+  const zoneLocked =
+    kind === "zone" &&
+    (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
   return {
     id: record.id,
     type: kind,
@@ -195,7 +201,10 @@ function toFlowNode(record: NodeRecord): Node {
     data: { record },
     ...(record.parent_id ? { parentId: record.parent_id, extent: "parent" as const } : {}),
     ...(kind === "frame" ? { zIndex: -1 } : {}),
-    ...(kind === "zone" ? { zIndex: -2, connectable: false, deletable: true } : {}),
+    ...(kind === "zone"
+      ? { zIndex: -2, connectable: false, deletable: true, draggable: !zoneLocked }
+      : {}),
+    ...(kind === "text" ? { connectable: false } : {}),
   };
 }
 
