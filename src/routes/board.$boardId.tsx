@@ -16,6 +16,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
+import { Shapes } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
   Check,
@@ -50,6 +57,7 @@ import {
   NoteNode,
   SHAPES,
   ShapeNode,
+  shapeKind,
   ZONE_COLORS,
   ZoneNode,
 } from "@/components/canvas/nodes";
@@ -61,7 +69,6 @@ import { segmentsFromFile } from "@/lib/segments";
 import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
-import { shapeKind } from "@/components/canvas/nodes";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 
 import {
@@ -1256,6 +1263,20 @@ function BoardPage() {
               metadata: { model: "openai/gpt-6-astra" },
             }),
         },
+        ...SHAPES.map((shape) => ({
+          label: `Form: ${shape.label}`,
+          icon: Shapes,
+          run: () =>
+            void createRecord({
+              type: "shape",
+              title: shape.label,
+              content: "",
+              color: "var(--chat)",
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
+              metadata: { shape: shape.id },
+            }),
+        })),
         {
           label: "Hintergrundfeld",
           icon: PanelsTopLeft,
@@ -1486,6 +1507,48 @@ function BoardPage() {
                 </TooltipTrigger>
                 <TooltipContent side="top">Datei hochladen</TooltipContent>
               </Tooltip>
+
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={toolBtn()}
+                        aria-label="Form einfügen"
+                      >
+                        <Shapes className="size-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Form einfügen</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent side="top" align="center">
+                  {SHAPES.map((shape) => (
+                    <DropdownMenuItem
+                      key={shape.id}
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "shape",
+                          title: shape.label,
+                          content: "",
+                          color: "var(--chat)",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { shape: shape.id },
+                        });
+                      }}
+                    >
+                      {shape.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Tooltip>
                 <TooltipTrigger asChild>
