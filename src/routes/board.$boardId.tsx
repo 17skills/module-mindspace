@@ -314,7 +314,7 @@ function BoardPage() {
           trackSave(supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id));
         }
       }
-      if (drop.length) void supabase.from("edges").delete().in("id", drop);
+      if (drop.length) trackSave(supabase.from("edges").delete().in("id", drop));
       setEdges(keep);
       setReady(true);
       done = true;
@@ -868,7 +868,7 @@ function BoardPage() {
     if (stale.length) {
       const ids = stale.map((e) => e.id);
       setEdges((current) => current.filter((e) => !ids.includes(e.id)));
-      void supabase.from("edges").delete().in("id", ids);
+      trackSave(supabase.from("edges").delete().in("id", ids));
     }
     for (const otherId of outside) createEdge(frame.id, otherId);
   }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
@@ -1431,7 +1431,7 @@ function BoardPage() {
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => void supabase.from("boards").update({ title }).eq("id", boardId)}
+          onBlur={() => trackSave(supabase.from("boards").update({ title }).eq("id", boardId))}
           aria-label="Board-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
@@ -1523,7 +1523,7 @@ function BoardPage() {
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
-              deleted.forEach((e) => void supabase.from("edges").delete().eq("id", e.id));
+              deleted.forEach((e) => trackSave(supabase.from("edges").delete().eq("id", e.id)));
             }}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
