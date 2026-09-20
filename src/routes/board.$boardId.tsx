@@ -27,6 +27,9 @@ import {
 import {
   ArrowLeft,
   Check,
+  CloudCheck,
+  CloudOff,
+  CloudUpload,
   FileUp,
   LayoutTemplate,
   Link2,
@@ -47,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { trackSave, useSaveStatus, clearSaveError } from "@/lib/save-status";
 import {
   BoardContext,
   type InspectorTab,
@@ -307,10 +311,10 @@ function BoardPage() {
         seen.add(key);
         keep.push({ id, source, target, animated: true });
         if (source !== row.source_id || target !== row.target_id) {
-          void supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id);
+          trackSave(supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id));
         }
       }
-      if (drop.length) void supabase.from("edges").delete().in("id", drop);
+      if (drop.length) trackSave(supabase.from("edges").delete().in("id", drop));
       setEdges(keep);
       setReady(true);
       done = true;
@@ -347,13 +351,18 @@ function BoardPage() {
   const updateNode = useCallback(
     (id: string, patch: Partial<NodeRecord>) => {
       patchRecord(id, patch);
-      void supabase
-        .from("nodes")
-        .update(patch as never)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+      trackSave(
+        supabase
+          .from("nodes")
+          .update(patch as never)
+          .eq("id", id)
+          .then(({ error }) => {
+            if (error) {
+              toast.error(error.message);
+              throw error;
+            }
+          }),
+      );
     },
     [patchRecord],
   );
@@ -378,13 +387,18 @@ function BoardPage() {
         for (const key of list) delete next[key];
         return next;
       });
-      void supabase
-        .from("nodes")
-        .delete()
-        .in("id", list)
-        .then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+      trackSave(
+        supabase
+          .from("nodes")
+          .delete()
+          .in("id", list)
+          .then(({ error }) => {
+            if (error) {
+              toast.error(error.message);
+              throw error;
+            }
+          }),
+      );
     },
     [setNodes, setEdges],
   );
@@ -426,11 +440,13 @@ function BoardPage() {
           ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
         },
       };
-      const { data, error } = await supabase
+      const insertPromise = supabase
         .from("nodes")
         .insert(payload as never)
         .select("*")
         .single();
+      trackSave(insertPromise);
+      const { data, error } = await insertPromise;
       if (error) throw error;
       const record = data as unknown as NodeRecord;
       setRecords((current) => ({ ...current, [record.id]: record }));
@@ -458,18 +474,23 @@ function BoardPage() {
         ...current,
         { id, source: sourceId, target: targetId, animated: true },
       ]);
-      void supabase
-        .from("edges")
-        .insert({
-          id,
-          board_id: boardId,
-          user_id: user.id,
-          source_id: sourceId,
-          target_id: targetId,
-        } as never)
-        .then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+      trackSave(
+        supabase
+          .from("edges")
+          .insert({
+            id,
+            board_id: boardId,
+            user_id: user.id,
+            source_id: sourceId,
+            target_id: targetId,
+          } as never)
+          .then(({ error }) => {
+            if (error) {
+              toast.error(error.message);
+              throw error;
+            }
+          }),
+      );
     },
     [boardId, setEdges, user],
   );
@@ -849,7 +870,7 @@ function BoardPage() {
     if (stale.length) {
       const ids = stale.map((e) => e.id);
       setEdges((current) => current.filter((e) => !ids.includes(e.id)));
-      void supabase.from("edges").delete().in("id", ids);
+      trackSave(supabase.from("edges").delete().in("id", ids));
     }
     for (const otherId of outside) createEdge(frame.id, otherId);
   }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
@@ -1412,10 +1433,11 @@ function BoardPage() {
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => void supabase.from("boards").update({ title }).eq("id", boardId)}
+          onBlur={() => trackSave(supabase.from("boards").update({ title }).eq("id", boardId))}
           aria-label="Board-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
+        <SaveIndicator />
         <div className="ml-auto flex items-center gap-1">
           {isOwner ? (
             <Tooltip>
@@ -1504,7 +1526,7 @@ function BoardPage() {
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
-              deleted.forEach((e) => void supabase.from("edges").delete().eq("id", e.id));
+              deleted.forEach((e) => trackSave(supabase.from("edges").delete().eq("id", e.id)));
             }}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
@@ -1812,4 +1834,47 @@ function fileToBase64(file: File) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+function SaveIndicator() {
+  const { status, lastSavedAt, lastError } = useSaveStatus();
+  const time = lastSavedAt
+    ? new Date(lastSavedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+    : null;
+  const config =
+    status === "saving"
+      ? { icon: CloudUpload, text: "Speichert …", className: "text-muted-foreground", spin: true }
+      : status === "error"
+        ? { icon: CloudOff, text: "Fehler beim Speichern", className: "text-destructive", spin: false }
+        : status === "saved"
+          ? { icon: CloudCheck, text: `Gespeichert${time ? ` · ${time}` : ""}`, className: "text-muted-foreground", spin: false }
+          : null;
+  if (!config) return null;
+  const Icon = config.icon;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-live="polite"
+          onClick={() => status === "error" && clearSaveError()}
+          className={cn(
+            "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors",
+            config.className,
+            status === "error" && "hover:bg-destructive/10",
+          )}
+        >
+          <Icon className={cn("size-3.5", config.spin && "animate-pulse")} />
+          <span>{config.text}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {status === "error"
+          ? `${lastError ?? "Unbekannter Fehler"} – zum Ausblenden klicken`
+          : status === "saving"
+            ? "Änderungen werden in der Cloud gespeichert"
+            : "Alle Änderungen sind gespeichert"}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
