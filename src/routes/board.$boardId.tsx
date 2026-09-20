@@ -785,6 +785,21 @@ function BoardPage() {
     [createRecord, createEdge],
   );
 
+  const zonesList = useCallback(
+    () => Object.values(records).filter((item) => item.type === "zone"),
+    [records],
+  );
+
+  const zoneOf = useCallback(
+    (id: string) => {
+      const record = records[id];
+      if (!record) return null;
+      const field = zoneLabel(record, records);
+      return field ? { title: field.title, role: field.role, color: field.color } : null;
+    },
+    [records],
+  );
+
   const api = useMemo(
     () => ({
       updateNode,
@@ -796,6 +811,8 @@ function BoardPage() {
       sourcesFor,
       applyStructure,
       createStructure,
+      zones: zonesList,
+      zoneOf,
     }),
     [
       updateNode,
@@ -807,6 +824,8 @@ function BoardPage() {
       sourcesFor,
       applyStructure,
       createStructure,
+      zonesList,
+      zoneOf,
     ],
   );
 
