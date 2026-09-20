@@ -21,7 +21,7 @@ export type NodeRecord = {
   metadata: Record<string, unknown> | null;
 };
 
-export type InspectorTab = "source" | "data" | "refresh" | "assign";
+export type InspectorTab = "source" | "data" | "refresh" | "assign" | "overview";
 
 export type StructureItem = {
   kind: "table" | "list" | "chart";
@@ -48,6 +48,10 @@ export type BoardApi = {
   zones: () => NodeRecord[];
   /** Field a card belongs to, for the badge on the card. */
   zoneOf: (id: string) => { title: string; role: string; color: string | null } | null;
+  /** Every module of this board. */
+  allNodes: () => NodeRecord[];
+  /** Centre the canvas on a module and select it. */
+  focusNode: (id: string) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
