@@ -823,6 +823,40 @@ function BoardPage() {
               metadata: { model: "openai/gpt-6-astra" },
             }),
         },
+        {
+          label: "Hintergrundfeld",
+          run: () =>
+            void createRecord({
+              type: "zone",
+              title: "Feld",
+              color: ZONE_COLORS[0],
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
+            }).catch((error: unknown) =>
+              toast.error(error instanceof Error ? error.message : "Feld konnte nicht angelegt werden"),
+            ),
+        },
+        {
+          label: "Vorlage: Business Model Canvas",
+          run: () =>
+            void (async () => {
+              const originX = menu?.flowX ?? 0;
+              const originY = menu?.flowY ?? 0;
+              for (const field of BMC_TEMPLATE) {
+                await createRecord({
+                  type: "zone",
+                  title: field.title,
+                  color: ZONE_COLORS[0],
+                  position_x: originX + field.x,
+                  position_y: originY + field.y,
+                  width: field.w,
+                  height: field.h,
+                });
+              }
+            })().catch((error: unknown) =>
+              toast.error(error instanceof Error ? error.message : "Vorlage fehlgeschlagen"),
+            ),
+        },
         { label: "Auswahl gruppieren", run: () => void groupSelection() },
       ];
 
