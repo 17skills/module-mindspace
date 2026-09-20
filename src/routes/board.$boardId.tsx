@@ -865,6 +865,24 @@ function BoardPage() {
     [records],
   );
 
+  const allNodes = useCallback(() => Object.values(records), [records]);
+
+  const focusNode = useCallback(
+    (id: string) => {
+      const record = recordsRef.current[id];
+      if (!record) return;
+      setCenter(
+        record.position_x + (record.width ?? 320) / 2,
+        record.position_y + (record.height ?? 220) / 2,
+        { zoom: 1, duration: 400 },
+      );
+      setNodes((current) =>
+        current.map((node) => ({ ...node, selected: node.id === id })),
+      );
+    },
+    [setCenter, setNodes],
+  );
+
   const api = useMemo(
     () => ({
       updateNode,
@@ -878,6 +896,8 @@ function BoardPage() {
       createStructure,
       zones: zonesList,
       zoneOf,
+      allNodes,
+      focusNode,
     }),
     [
       updateNode,
@@ -891,6 +911,8 @@ function BoardPage() {
       createStructure,
       zonesList,
       zoneOf,
+      allNodes,
+      focusNode,
     ],
   );
 
