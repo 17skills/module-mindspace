@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type React } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { RotateCw } from "lucide-react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
 import {
@@ -738,7 +738,7 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) 
   useEffect(() => setText(record.content ?? ""), [record.content]);
   useEffect(() => setAngle(Number(meta["rotation"] ?? 0)), [meta]);
 
-  function startRotate(event: React.PointerEvent) {
+  function startRotate(event: ReactPointerEvent) {
     event.stopPropagation();
     event.preventDefault();
     const box = wrapRef.current?.getBoundingClientRect();
