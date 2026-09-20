@@ -262,9 +262,17 @@ function BoardPage() {
     if (!loading && !user) void navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
+  const userId = user?.id ?? null;
+  const loadedKey = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
+    // a token refresh must never reload the board: that made modules flicker away
+    const key = `${boardId}:${userId}`;
+    if (loadedKey.current === key) return;
+    loadedKey.current = key;
     let active = true;
+    let done = false;
     void (async () => {
       const [boardRes, nodeRes, edgeRes] = await Promise.all([
         supabase.from("boards").select("title,user_id").eq("id", boardId).single(),
@@ -278,7 +286,7 @@ function BoardPage() {
         return;
       }
       setTitle(boardRes.data.title);
-      setIsOwner(boardRes.data.user_id === user.id);
+      setIsOwner(boardRes.data.user_id === userId);
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
@@ -305,11 +313,14 @@ function BoardPage() {
       if (drop.length) void supabase.from("edges").delete().in("id", drop);
       setEdges(keep);
       setReady(true);
+      done = true;
     })();
     return () => {
       active = false;
+      // allow a retry when the board never finished loading
+      if (!done) loadedKey.current = null;
     };
-  }, [boardId, user, navigate, setNodes, setEdges]);
+  }, [boardId, userId, navigate, setNodes, setEdges]);
 
   // keep node data in sync with records
   useEffect(() => {
