@@ -850,6 +850,23 @@ function BoardPage() {
 
   const menuItems = menuRecord?.type === "zone"
     ? [
+        {
+          label: "Chat zu diesem Feld",
+          run: () =>
+            void createRecord({
+              type: "chat",
+              title: `Chat: ${menuRecord.title ?? "Feld"}`,
+              position_x: menuRecord.position_x + 24,
+              position_y: menuRecord.position_y + 56,
+              metadata: { model: "openai/gpt-6-astra", zoneId: menuRecord.id, zoneAuto: false },
+            }).catch((error: unknown) =>
+              toast.error(error instanceof Error ? error.message : "Chat konnte nicht angelegt werden"),
+            ),
+        },
+        {
+          label: "Inhalte des Feldes zusammenfassen",
+          run: () => void summarizeZone(menuRecord),
+        },
         ...ZONE_COLORS.map((color, index) => ({
           label: `Farbe ${index + 1}`,
           run: () => updateNode(menuRecord.id, { color }),
