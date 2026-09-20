@@ -149,7 +149,7 @@ function BoardPage() {
   const { boardId } = Route.useParams();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setCenter } = useReactFlow();
 
   const [title, setTitle] = useState("");
   const [records, setRecords] = useState<Record<string, NodeRecord>>({});
