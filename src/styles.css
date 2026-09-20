@@ -44,6 +44,13 @@
   --color-frame: var(--frame);
   --color-brand-navy: var(--brand-navy);
   --color-brand-navy-foreground: var(--brand-navy-foreground);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-deep: var(--brand-green-deep);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-support: var(--brand-support);
+  --color-brand-ui-ink: var(--brand-ui-ink);
+  --color-brand-text-soft: var(--brand-text-soft);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
