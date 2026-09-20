@@ -1,5 +1,19 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,18 +45,33 @@ const QUICK_PROMPTS = [
   },
 ];
 
+const TYPE_GLYPH: Record<string, string> = {
+  youtube: "▶",
+  podcast: "🎧",
+  audio: "🎧",
+  document: "📄",
+  link: "🔗",
+  note: "✎",
+  chat: "💬",
+  table: "▦",
+  list: "≡",
+  chart: "📊",
+};
+
 type Data = { record: NodeRecord };
 
 function Shell({
   type,
   children,
   selected,
+  locked,
   minWidth = 240,
   minHeight = 160,
 }: {
   type: string;
   children: React.ReactNode;
   selected?: boolean;
+  locked?: boolean;
   minWidth?: number;
   minHeight?: number;
 }) {
@@ -54,14 +83,14 @@ function Shell({
         isVisible={Boolean(selected)}
         color="var(--primary)"
       />
-      <Handle type="target" position={Position.Left} />
+      {!locked && <Handle type="target" position={Position.Left} />}
       <div
         className="flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-card)]"
         style={{ borderTop: `3px solid ${NODE_ACCENT[type] ?? "var(--primary)"}` }}
       >
         {children}
       </div>
-      <Handle type="source" position={Position.Right} />
+      {!locked && <Handle type="source" position={Position.Right} />}
     </>
   );
 }
@@ -90,37 +119,81 @@ function Header({ record }: { record: NodeRecord }) {
   );
 }
 
-export const ContentNode = memo(function ContentNode({ data, selected }: NodeProps) {
-  const record = (data as unknown as Data).record;
+/** Preview image or a coloured fallback tile so every card stays recognisable. */
+function Preview({ record }: { record: NodeRecord }) {
   const thumbnail = (record.metadata?.["thumbnail"] as string | undefined) ?? null;
+  const accent = NODE_ACCENT[record.type] ?? "var(--primary)";
+
+  if (thumbnail) {
+    return (
+      <img
+        src={thumbnail}
+        alt=""
+        className="h-28 w-full shrink-0 bg-secondary object-cover"
+        draggable={false}
+      />
+    );
+  }
 
   return (
-    <Shell type={record.type} selected={selected}>
+    <div
+      className="flex h-28 w-full shrink-0 items-center gap-3 px-4"
+      style={{ background: `color-mix(in oklab, ${accent} 14%, transparent)` }}
+    >
+      <span
+        className="flex h-12 w-12 items-center justify-center rounded-xl text-xl text-white"
+        style={{ background: accent }}
+      >
+        {TYPE_GLYPH[record.type] ?? "◆"}
+      </span>
+      <span className="line-clamp-3 text-xs text-muted-foreground">
+        {record.content?.slice(0, 160) || NODE_LABEL[record.type] || record.type}
+      </span>
+    </div>
+  );
+}
+
+export const ContentNode = memo(function ContentNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { extractStructure } = useBoard();
+
+  return (
+    <Shell type={record.type} selected={selected} locked={Boolean(record.parent_id)}>
       <Header record={record} />
-      {thumbnail && (
-        <img src={thumbnail} alt="" className="h-28 w-full object-cover" draggable={false} />
-      )}
+      <Preview record={record} />
       <div className="nowheel flex-1 overflow-auto px-3 py-2 text-xs leading-relaxed text-muted-foreground">
         {record.status === "processing" && (
           <p className="animate-pulse text-foreground">Inhalt wird verarbeitet …</p>
         )}
         {record.status === "error" && <p className="text-destructive">{record.error}</p>}
         {record.status === "ready" && (
-          <p className="whitespace-pre-wrap">{record.content?.slice(0, 4000) || "Kein Text gefunden."}</p>
+          <p className="whitespace-pre-wrap">
+            {record.content?.slice(0, 4000) || "Kein Text gefunden."}
+          </p>
         )}
       </div>
-      <div className="flex items-center justify-between border-t px-3 py-1.5 text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[11px] text-muted-foreground">
         <span>{record.content ? `${record.content.length.toLocaleString("de-DE")} Zeichen` : "—"}</span>
-        {record.source_url && (
-          <a
-            className="nodrag hover:text-foreground hover:underline"
-            href={record.source_url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Quelle öffnen
-          </a>
-        )}
+        <div className="flex items-center gap-2">
+          {record.content && (
+            <button
+              className="nodrag hover:text-foreground hover:underline"
+              onClick={() => extractStructure(record.id)}
+            >
+              Daten herauslösen
+            </button>
+          )}
+          {record.source_url && (
+            <a
+              className="nodrag hover:text-foreground hover:underline"
+              href={record.source_url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Quelle
+            </a>
+          )}
+        </div>
       </div>
     </Shell>
   );
@@ -134,7 +207,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   useEffect(() => setText(record.content ?? ""), [record.content]);
 
   return (
-    <Shell type="note" selected={selected}>
+    <Shell type="note" selected={selected} locked={Boolean(record.parent_id)}>
       <Header record={record} />
       <Textarea
         value={text}
@@ -178,6 +251,160 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
     </>
   );
 });
+
+type TableData = { columns: string[]; rows: string[][]; chartType: string | undefined };
+
+function tableData(record: NodeRecord): TableData {
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const columns = Array.isArray(meta["columns"]) ? (meta["columns"] as string[]) : [];
+  const rows = Array.isArray(meta["rows"]) ? (meta["rows"] as string[][]) : [];
+  return { columns, rows, chartType: meta["chartType"] as string | undefined };
+}
+
+const CHART_COLORS = ["var(--primary)", "var(--video)", "var(--audio)", "var(--doc)", "var(--note)"];
+
+export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const { columns, rows, chartType } = tableData(record);
+  const type = record.type;
+
+  const chartRows = useMemo(
+    () =>
+      rows.map((row) => ({
+        name: row[0] ?? "",
+        value: Number(String(row[1] ?? "0").replace(/[^\d.,-]/g, "").replace(",", ".")) || 0,
+      })),
+    [rows],
+  );
+
+  return (
+    <Shell type={type} selected={selected} locked={Boolean(record.parent_id)} minHeight={200}>
+      <Header record={record} />
+
+      {type === "chart" && (
+        <>
+          <div className="flex gap-1 border-b px-3 py-1.5">
+            {(["bar", "line", "pie"] as const).map((option) => (
+              <button
+                key={option}
+                className={`nodrag rounded-full border px-2 py-0.5 text-[10px] ${
+                  (chartType ?? "bar") === option
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+                onClick={() =>
+                  updateNode(record.id, {
+                    metadata: { ...(record.metadata ?? {}), chartType: option },
+                  })
+                }
+              >
+                {option === "bar" ? "Balken" : option === "line" ? "Linie" : "Kreis"}
+              </button>
+            ))}
+          </div>
+          <div className="nodrag nowheel min-h-0 flex-1 p-2">
+            <ResponsiveContainer width="100%" height="100%">
+              {(chartType ?? "bar") === "pie" ? (
+                <PieChart>
+                  <Pie data={chartRows} dataKey="value" nameKey="name" outerRadius="75%" label>
+                    {chartRows.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              ) : (chartType ?? "bar") === "line" ? (
+                <LineChart data={chartRows}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} />
+                </LineChart>
+              ) : (
+                <BarChart data={chartRows}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="var(--primary)" radius={4} />
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+
+      {type === "list" && (
+        <ul className="nowheel nodrag flex-1 space-y-1 overflow-auto px-4 py-2 text-xs">
+          {rows.map((row, index) => (
+            <li key={index} className="flex gap-2">
+              <span className="text-muted-foreground">•</span>
+              <input
+                defaultValue={row[0] ?? ""}
+                onBlur={(e) => {
+                  const next = rows.map((r, i) => (i === index ? [e.target.value] : r));
+                  updateNode(record.id, {
+                    metadata: { ...(record.metadata ?? {}), rows: next },
+                    content: next.map((r) => `- ${r[0] ?? ""}`).join("\n"),
+                  });
+                }}
+                className="flex-1 bg-transparent outline-none"
+              />
+            </li>
+          ))}
+          {rows.length === 0 && <li className="text-muted-foreground">Keine Einträge</li>}
+        </ul>
+      )}
+
+      {type === "table" && (
+        <div className="nowheel nodrag flex-1 overflow-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead className="sticky top-0 bg-secondary/80">
+              <tr>
+                {columns.map((column, index) => (
+                  <th key={index} className="border-b px-2 py-1 text-left font-medium">
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="odd:bg-secondary/30">
+                  {columns.map((_, colIndex) => (
+                    <td key={colIndex} className="border-b px-2 py-1 align-top">
+                      <input
+                        defaultValue={row[colIndex] ?? ""}
+                        onBlur={(e) => {
+                          const next = rows.map((r, i) =>
+                            i === rowIndex
+                              ? r.map((cell, c) => (c === colIndex ? e.target.value : cell))
+                              : r,
+                          );
+                          updateNode(record.id, {
+                            metadata: { ...(record.metadata ?? {}), rows: next },
+                            content: toTableText(columns, next),
+                          });
+                        }}
+                        className="w-full bg-transparent outline-none"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Shell>
+  );
+});
+
+export function toTableText(columns: string[], rows: string[][]) {
+  return [columns.join(" | "), ...rows.map((row) => row.join(" | "))].join("\n");
+}
 
 type Msg = { id?: string; role: "user" | "assistant"; content: string };
 
@@ -269,7 +496,13 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
   const lastAnswer = [...messages].reverse().find((m) => m.role === "assistant")?.content;
 
   return (
-    <Shell type="chat" selected={selected} minWidth={320} minHeight={320}>
+    <Shell
+      type="chat"
+      selected={selected}
+      locked={Boolean(record.parent_id)}
+      minWidth={320}
+      minHeight={320}
+    >
       <Header record={record} />
       <div className="flex items-center gap-2 border-b px-3 py-1.5">
         <Select

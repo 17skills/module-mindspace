@@ -26,6 +26,7 @@ export type BoardApi = {
   deleteNode: (id: string) => void;
   collectContext: (id: string) => string;
   addNoteFrom: (id: string, text: string) => void;
+  extractStructure: (id: string) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
@@ -45,6 +46,9 @@ export const NODE_ACCENT: Record<string, string> = {
   note: "var(--note)",
   chat: "var(--chat)",
   frame: "var(--frame)",
+  table: "var(--primary)",
+  list: "var(--primary)",
+  chart: "var(--primary)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -56,4 +60,7 @@ export const NODE_LABEL: Record<string, string> = {
   note: "Notiz",
   chat: "Chat",
   frame: "Gruppe",
+  table: "Tabelle",
+  list: "Liste",
+  chart: "Diagramm",
 };
