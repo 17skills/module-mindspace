@@ -115,6 +115,8 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
 
 /** Space a template group leaves around its fields. */
 const GROUP_PAD = { x: 16, top: 52, bottom: 16 };
+/** Templates are placed larger so each field can hold several cards. */
+const TEMPLATE_SCALE = 2;
 
 /** Fields of a template group, with positions relative to the group. */
 function groupFields(container: NodeRecord, all: NodeRecord[]): NodeRecord[] {
@@ -285,14 +287,31 @@ function BoardPage() {
 
   const deleteNode = useCallback(
     (id: string) => {
-      setNodes((current) => current.filter((n) => n.id !== id && n.parentId !== id));
-      setEdges((current) => current.filter((e) => e.source !== id && e.target !== id));
+      // children keep living in the database (parent_id is set to null there),
+      // so collect the whole subtree and remove it explicitly
+      const ids = new Set<string>([id]);
+      for (;;) {
+        const before = ids.size;
+        for (const record of Object.values(recordsRef.current)) {
+          if (record.parent_id && ids.has(record.parent_id)) ids.add(record.id);
+        }
+        if (ids.size === before) break;
+      }
+      const list = [...ids];
+      setNodes((current) => current.filter((n) => !ids.has(n.id)));
+      setEdges((current) => current.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
       setRecords((current) => {
         const next = { ...current };
-        delete next[id];
+        for (const key of list) delete next[key];
         return next;
       });
-      void supabase.from("nodes").delete().eq("id", id);
+      void supabase
+        .from("nodes")
+        .delete()
+        .in("id", list)
+        .then(({ error }) => {
+          if (error) toast.error(error.message);
+        });
     },
     [setNodes, setEdges],
   );
@@ -948,15 +967,19 @@ function BoardPage() {
   /** Place a template as a group of white fields at the given canvas position. */
   const insertTemplate = useCallback(
     async (template: Template, x: number, y: number) => {
+      // fields should comfortably hold several cards, so place templates at double size
+      const scale = TEMPLATE_SCALE;
       const bounds = templateBounds(template.fields);
+      const width = bounds.width * scale + GROUP_PAD.x * 2;
+      const height = bounds.height * scale + GROUP_PAD.top + GROUP_PAD.bottom;
       const container = await createRecord({
         type: "zone",
         title: template.title,
         color: ZONE_WHITE,
         position_x: x,
         position_y: y,
-        width: bounds.width + GROUP_PAD.x * 2,
-        height: bounds.height + GROUP_PAD.top + GROUP_PAD.bottom,
+        width,
+        height,
         metadata: { templateGroup: true, zoneAuto: false },
       });
       for (const field of template.fields) {
@@ -965,15 +988,21 @@ function BoardPage() {
           title: field.title,
           color: ZONE_WHITE,
           parent_id: container.id,
-          position_x: GROUP_PAD.x + field.x,
-          position_y: GROUP_PAD.top + field.y,
-          width: field.w,
-          height: field.h,
+          position_x: GROUP_PAD.x + field.x * scale,
+          position_y: GROUP_PAD.top + field.y * scale,
+          width: field.w * scale,
+          height: field.h * scale,
         });
       }
+      // bring the fresh template fully into view
+      const zoom = Math.min(
+        1,
+        Math.max(0.2, Math.min(window.innerWidth / (width + 160), window.innerHeight / (height + 240))),
+      );
+      setCenter(x + width / 2, y + height / 2, { zoom, duration: 500 });
       toast.success(`${template.title} eingefügt`);
     },
-    [createRecord],
+    [createRecord, setCenter],
   );
 
   /** Fields of the selected template group, otherwise every field on the board. */
