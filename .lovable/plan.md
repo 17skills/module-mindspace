@@ -1,5 +1,15 @@
 # Kontextfenster rechts im Canvas
 
+## Designvorgabe (openinstitute-Designsystem)
+
+Das Kontextfenster und danach schrittweise die übrige Oberfläche folgen dem verlinkten Figma-Designsystem (Farben, Typografie, Abstände, Ecken, Schatten, Formularelemente). Umgesetzt wird das über die zentralen Design-Tokens, nicht über Einzelfarben in Bausteinen.
+
+Damit ich das Designsystem direkt auslesen kann, brauche ich einen der beiden Wege:
+- Lovable Desktop installieren (https://lovable.dev/download), in Figma Desktop den Dev-Modus öffnen (Shift+D), dort "Enable desktop MCP server" aktivieren und die Verbindung in Lovable unter Einstellungen -> Connectors -> Local MCP servers herstellen. Danach lese ich Farben und Schriften direkt aus der Datei.
+- Oder du schickst mir Screenshots der Farb-, Schrift- und Komponentenseiten; dann übertrage ich die Werte von Hand.
+
+Bis einer der Wege steht, baue ich das Kontextfenster funktional fertig im bestehenden Stil und ziehe das Design anschließend nach.
+
 Statt eines Dialogs bekommt die Arbeitsfläche ein festes Seitenfenster rechts. Es ist der Ort, an dem man Inhalte anschaut, Ausschnitte auswählt und daraus Tabellen, Listen und Diagramme erzeugt oder bestehende aktualisiert.
 
 ## Verhalten
