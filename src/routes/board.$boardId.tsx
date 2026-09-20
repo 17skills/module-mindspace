@@ -40,6 +40,7 @@ import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
 import { segmentsFromFile } from "@/lib/segments";
+import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
 
 import {
   extractStructured,
@@ -268,22 +269,37 @@ function BoardPage() {
     async (input: Partial<NodeRecord> & { type: string }) => {
       if (!user) throw new Error("Nicht angemeldet");
       const size = DEFAULT_SIZE[input.type] ?? DEFAULT_SIZE["default"]!;
+      const width = input.width ?? size.width;
+      const height = input.height ?? size.height;
+      const x = input.position_x ?? 0;
+      const y = input.position_y ?? 0;
+      // cards dropped onto a background field belong to that field
+      const zone =
+        input.type === "zone" || input.type === "frame" || input.parent_id
+          ? null
+          : zoneAt(
+              { x: x + width / 2, y: y + height / 2 },
+              Object.values(recordsRef.current).filter((item) => item.type === "zone"),
+            );
       const payload = {
         board_id: boardId,
         user_id: user.id,
         type: input.type,
         title: input.title ?? null,
-        position_x: input.position_x ?? 0,
-        position_y: input.position_y ?? 0,
-        width: input.width ?? size.width,
-        height: input.height ?? size.height,
+        position_x: x,
+        position_y: y,
+        width,
+        height,
         source_url: input.source_url ?? null,
         storage_path: input.storage_path ?? null,
         mime_type: input.mime_type ?? null,
         content: input.content ?? null,
         status: input.status ?? "ready",
         color: input.color ?? null,
-        metadata: input.metadata ?? {},
+        metadata: {
+          ...(input.metadata ?? {}),
+          ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
+        },
       };
       const { data, error } = await supabase
         .from("nodes")
@@ -348,18 +364,54 @@ function BoardPage() {
         }
       }
     }
+    // a chat sitting in a background field sees everything assigned to that field
+    const own = readAssignment(recordsRef.current[id]);
+    if (own) {
+      for (const candidate of Object.values(recordsRef.current)) {
+        if (candidate.id !== id && readAssignment(candidate)?.zoneId === own.zoneId) {
+          connected.add(candidate.id);
+        }
+      }
+    }
     const parts: string[] = [];
     for (const nodeId of connected) {
       const record = recordsRef.current[nodeId];
       if (!record || record.type === "chat" || record.type === "frame" || record.type === "zone")
         continue;
       if (!record.content) continue;
+      const field = zoneLabel(record, recordsRef.current);
+      const prefix = field
+        ? `[${field.title} · ${field.role}]${field.note ? ` — Begründung: ${field.note}` : ""} `
+        : "";
       parts.push(
-        `### ${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
+        `### ${prefix}${record.title ?? "Modul"} (${record.type}${record.source_url ? `, ${record.source_url}` : ""})\n${record.content.slice(0, 60_000)}`,
       );
     }
     return parts.join("\n\n---\n\n");
   }, []);
+
+  /** Assign a card to the background field it now sits on. */
+  const syncZone = useCallback((id: string, x: number, y: number) => {
+    const record = recordsRef.current[id];
+    if (!record || record.type === "zone" || record.type === "frame" || record.parent_id) return;
+    if (!isAuto(record)) return;
+    const centre = {
+      x: x + (record.width ?? 320) / 2,
+      y: y + (record.height ?? 300) / 2,
+    };
+    const zones = Object.values(recordsRef.current).filter((item) => item.type === "zone");
+    const zone = zoneAt(centre, zones);
+    const current = readAssignment(record);
+    if ((zone?.id ?? null) === (current?.zoneId ?? null)) return;
+    updateNode(id, {
+      metadata: {
+        ...(record.metadata ?? {}),
+        zoneId: zone?.id ?? null,
+        ...(zone && !current?.role ? { zoneRole: ZONE_ROLES[0] } : {}),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateNode]);
 
   const addNoteFrom = useCallback(
     (sourceId: string, text: string) => {
@@ -460,6 +512,7 @@ function BoardPage() {
             status: info.transcript ? "ready" : "error",
             error: info.transcript ? null : info.transcriptError,
             metadata: {
+              ...(recordsRef.current[record.id]?.metadata ?? {}),
               thumbnail: info.thumbnail,
               author: info.author,
               ...(info.segments?.length ? { segments: info.segments } : {}),
@@ -475,7 +528,14 @@ function BoardPage() {
           updateNode(record.id, {
             title: episode.title,
             source_url: episode.audioUrl,
-            ...(episode.image ? { metadata: { thumbnail: episode.image } } : {}),
+            ...(episode.image
+              ? {
+                  metadata: {
+                    ...(recordsRef.current[record.id]?.metadata ?? {}),
+                    thumbnail: episode.image,
+                  },
+                }
+              : {}),
           });
           const { text, segments } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
           updateNode(record.id, {
@@ -494,7 +554,14 @@ function BoardPage() {
           title: page.title,
           content: page.text,
           status: "ready",
-          ...(page.image ? { metadata: { thumbnail: page.image } } : {}),
+          ...(page.image
+            ? {
+                metadata: {
+                  ...(recordsRef.current[record.id]?.metadata ?? {}),
+                  thumbnail: page.image,
+                },
+              }
+            : {}),
         });
       } catch (error) {
         updateNode(record.id, {
@@ -531,7 +598,11 @@ function BoardPage() {
           updateNode(record.id, { storage_path: path });
 
           const thumbnail = await filePreview(file);
-          if (thumbnail) updateNode(record.id, { metadata: { thumbnail } });
+          if (thumbnail) {
+            updateNode(record.id, {
+              metadata: { ...(recordsRef.current[record.id]?.metadata ?? {}), thumbnail },
+            });
+          }
 
           if (audio) {
             if (file.size > 20 * 1024 * 1024) {
@@ -714,6 +785,86 @@ function BoardPage() {
     [createRecord, createEdge],
   );
 
+  const zonesList = useCallback(
+    () => Object.values(records).filter((item) => item.type === "zone"),
+    [records],
+  );
+
+  /** Summarise everything assigned to a background field as a note inside it. */
+  const summarizeZone = useCallback(
+    async (zone: NodeRecord) => {
+      const members = Object.values(recordsRef.current).filter(
+        (item) =>
+          readAssignment(item)?.zoneId === zone.id &&
+          item.type !== "chat" &&
+          item.type !== "zone" &&
+          item.content,
+      );
+      if (members.length === 0) {
+        toast.info("Diesem Feld ist noch kein Inhalt zugeordnet");
+        return;
+      }
+      const job = toast.loading("Feld wird zusammengefasst …");
+      const context = members
+        .map((item) => {
+          const assignment = readAssignment(item);
+          const note = assignment?.note ? ` — Begründung: ${assignment.note}` : "";
+          return `### [${zone.title ?? "Feld"} · ${assignment?.role ?? "Beispiel"}]${note} ${item.title ?? "Modul"}\n${(item.content ?? "").slice(0, 60_000)}`;
+        })
+        .join("\n\n---\n\n");
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            model: "openai/gpt-6-astra",
+            context,
+            messages: [
+              {
+                role: "user",
+                content: `Alle Inhalte gehören zum Feld „${zone.title ?? "Feld"}“ eines Canvas. Fasse zusammen, was sie über dieses Feld aussagen, und nenne die Beispiele mit kurzer Begründung.`,
+              },
+            ],
+          }),
+        });
+        if (!response.ok || !response.body) throw new Error(await response.text());
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let answer = "";
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          answer += decoder.decode(value, { stream: true });
+        }
+        if (!answer.trim()) throw new Error("Es kam keine Antwort zurück");
+        await createRecord({
+          type: "note",
+          title: `Zusammenfassung: ${zone.title ?? "Feld"}`,
+          content: answer,
+          position_x: zone.position_x + (zone.width ?? 420) + 40,
+          position_y: zone.position_y,
+          metadata: { zoneAuto: false },
+        });
+        toast.success("Zusammenfassung angelegt", { id: job });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Zusammenfassung fehlgeschlagen", {
+          id: job,
+        });
+      }
+    },
+    [createRecord],
+  );
+
+  const zoneOf = useCallback(
+    (id: string) => {
+      const record = records[id];
+      if (!record) return null;
+      const field = zoneLabel(record, records);
+      return field ? { title: field.title, role: field.role, color: field.color } : null;
+    },
+    [records],
+  );
+
   const api = useMemo(
     () => ({
       updateNode,
@@ -725,6 +876,8 @@ function BoardPage() {
       sourcesFor,
       applyStructure,
       createStructure,
+      zones: zonesList,
+      zoneOf,
     }),
     [
       updateNode,
@@ -736,6 +889,8 @@ function BoardPage() {
       sourcesFor,
       applyStructure,
       createStructure,
+      zonesList,
+      zoneOf,
     ],
   );
 
@@ -760,6 +915,23 @@ function BoardPage() {
 
   const menuItems = menuRecord?.type === "zone"
     ? [
+        {
+          label: "Chat zu diesem Feld",
+          run: () =>
+            void createRecord({
+              type: "chat",
+              title: `Chat: ${menuRecord.title ?? "Feld"}`,
+              position_x: menuRecord.position_x + 24,
+              position_y: menuRecord.position_y + 56,
+              metadata: { model: "openai/gpt-6-astra", zoneId: menuRecord.id, zoneAuto: false },
+            }).catch((error: unknown) =>
+              toast.error(error instanceof Error ? error.message : "Chat konnte nicht angelegt werden"),
+            ),
+        },
+        {
+          label: "Inhalte des Feldes zusammenfassen",
+          run: () => void summarizeZone(menuRecord),
+        },
         ...ZONE_COLORS.map((color, index) => ({
           label: `Farbe ${index + 1}`,
           run: () => updateNode(menuRecord.id, { color }),
@@ -916,6 +1088,7 @@ function BoardPage() {
             onConnect={onConnect}
             onNodeDragStop={(_, node) => {
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
+              syncZone(node.id, node.position.x, node.position.y);
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {

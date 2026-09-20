@@ -5,6 +5,7 @@ import { useBoard, NODE_LABEL, type InspectorTab } from "@/components/canvas/boa
 import type { Segment } from "@/lib/segments";
 import { SourceTab } from "./SourceTab";
 import { DataTab } from "./DataTab";
+import { AssignTab } from "./AssignTab";
 import { RefreshTab } from "./RefreshTab";
 import { useSegments } from "./use-segments";
 
@@ -76,6 +77,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
     { id: "source", label: "Quelle" },
     ...(isData ? [{ id: "data" as const, label: "Daten" }] : []),
     { id: "refresh", label: "Aktualisieren" },
+    ...(record.type === "zone" ? [] : [{ id: "assign" as const, label: "Zuordnung" }]),
   ];
   const activeTab = tabs.some((item) => item.id === tab) ? tab : "source";
 
@@ -148,6 +150,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
           />
         )}
         {activeTab === "data" && <DataTab record={record} />}
+        {activeTab === "assign" && <AssignTab record={record} />}
         {activeTab === "refresh" && (
           <RefreshTab
             record={record}
