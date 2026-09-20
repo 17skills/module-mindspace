@@ -1517,6 +1517,8 @@ function BoardPage() {
             minZoom={0.15}
             maxZoom={2.5}
             selectionOnDrag
+            selectionMode={SelectionMode.Partial}
+            multiSelectionKeyCode={["Meta", "Control", "Shift"]}
             panOnScroll
             proOptions={{ hideAttribution: true }}
           >
