@@ -151,6 +151,16 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     return { text: payload.text ?? "" };
   });
 
+function ogImage(html: string): string | null {
+  const match =
+    html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i) ??
+    html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i) ??
+    html.match(/<meta[^>]+name="twitter:image"[^>]+content="([^"]+)"/i) ??
+    html.match(/<itunes:image[^>]+href="([^"]+)"/i) ??
+    html.match(/<url>(https?:\/\/[^<]+\.(?:jpg|jpeg|png|webp))<\/url>/i);
+  return match?.[1] ? decodeEntities(match[1]) : null;
+}
+
 /** Resolve a podcast episode page or RSS feed to an audio file + metadata. */
 export const resolvePodcast = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -163,7 +173,11 @@ export const resolvePodcast = createServerFn({ method: "POST" })
     const contentType = res.headers.get("content-type") ?? "";
 
     if (contentType.includes("audio/")) {
-      return { title: data.url.split("/").pop() ?? "Audio", audioUrl: data.url };
+      return {
+        title: data.url.split("/").pop() ?? "Audio",
+        audioUrl: data.url,
+        image: null as string | null,
+      };
     }
 
     const body = await res.text();
@@ -176,7 +190,11 @@ export const resolvePodcast = createServerFn({ method: "POST" })
       );
       const audioUrl = item.match(/<enclosure[^>]*url="([^"]+)"/)?.[1];
       if (!audioUrl) throw new Error("Im Feed wurde keine Audiodatei gefunden");
-      return { title, audioUrl: decodeEntities(audioUrl) };
+      return {
+        title,
+        audioUrl: decodeEntities(audioUrl),
+        image: ogImage(item) ?? ogImage(body),
+      };
     }
 
     const title = decodeEntities(
@@ -188,7 +206,7 @@ export const resolvePodcast = createServerFn({ method: "POST" })
       body.match(/<meta property="og:audio" content="([^"]+)"/)?.[1] ??
       body.match(/https?:\/\/[^"'\s]+\.mp3/)?.[0];
     if (!audioUrl) throw new Error("Auf dieser Seite wurde keine Audiodatei gefunden");
-    return { title, audioUrl: decodeEntities(audioUrl) };
+    return { title, audioUrl: decodeEntities(audioUrl), image: ogImage(body) };
   });
 
 /** Plain page text for any other link. */
@@ -208,5 +226,137 @@ export const fetchPageText = createServerFn({ method: "POST" })
         .replace(/\s+/g, " ")
         .trim(),
     ).slice(0, 120_000);
-    return { title, text };
+    let image = ogImage(html);
+    if (image && !/^https?:\/\//i.test(image)) {
+      try {
+        image = new URL(image, data.url).toString();
+      } catch {
+        image = null;
+      }
+    }
+    return { title, text, image };
+  });
+
+const StructureSchema = z.object({
+  items: z.array(
+    z.object({
+      kind: z.enum(["table", "list", "chart"]),
+      title: z.string(),
+      chartType: z.enum(["bar", "line", "pie", "none"]),
+      columns: z.array(z.string()),
+      rows: z.array(z.array(z.string())),
+    }),
+  ),
+});
+
+export type StructuredItem = z.infer<typeof StructureSchema>["items"][number];
+
+/** Pull tables, lists and chartable series out of a module's text. */
+export const extractStructured = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ text: z.string().min(1), title: z.string().optional() }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const prompt = `Analysiere den folgenden Inhalt und gib die enthaltenen strukturierten Daten zurück.
+Erlaubt sind bis zu 6 Einträge. Regeln:
+- kind "table" für tabellarische Daten (columns = Spaltenköpfe, rows = Zeilen).
+- kind "list" für Aufzählungen (columns = ["Punkt"], jede Zeile ein Eintrag).
+- kind "chart" für Zahlenreihen, die sich visualisieren lassen (columns = ["Kategorie","Wert"], Werte als Zahl-Text).
+- chartType nur bei kind "chart" setzen (bar, line oder pie), sonst "none".
+- Erfinde keine Daten. Wenn nichts Strukturierbares vorhanden ist, gib eine leere Liste zurück.
+
+Titel: ${data.title ?? "Unbenannt"}
+
+Inhalt:
+${data.text.slice(0, 120_000)}`;
+
+    const response = await fetch(`${GATEWAY}/responses`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "Lovable-API-Key": apiKey(),
+        "X-Lovable-AIG-SDK": "fetch",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-6-astra",
+        input: prompt,
+        stream: true,
+        store: false,
+        reasoning: { effort: "low" },
+        text: {
+          format: {
+            type: "json_schema",
+            name: "structures",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      kind: { type: "string", enum: ["table", "list", "chart"] },
+                      title: { type: "string" },
+                      chartType: { type: "string", enum: ["bar", "line", "pie", "none"] },
+                      columns: { type: "array", items: { type: "string" } },
+                      rows: {
+                        type: "array",
+                        items: { type: "array", items: { type: "string" } },
+                      },
+                    },
+                    required: ["kind", "title", "chartType", "columns", "rows"],
+                  },
+                },
+              },
+              required: ["items"],
+            },
+          },
+        },
+      }),
+    });
+
+    if (!response.ok || !response.body) {
+      const detail = await response.text();
+      throw new Error(`Analyse fehlgeschlagen [${response.status}]: ${detail.slice(0, 300)}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let text = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          const event = JSON.parse(payload) as {
+            type?: string;
+            delta?: string;
+            response?: { output_text?: string };
+          };
+          if (event.type === "response.output_text.delta" && event.delta) text += event.delta;
+          if (event.type === "response.completed" && !text && event.response?.output_text) {
+            text = event.response.output_text;
+          }
+        } catch {
+          /* Teil-Event ignorieren */
+        }
+      }
+    }
+
+    try {
+      return StructureSchema.parse(JSON.parse(text));
+    } catch {
+      throw new Error("Es konnten keine strukturierten Daten gelesen werden");
+    }
   });
