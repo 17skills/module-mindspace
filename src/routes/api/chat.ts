@@ -67,9 +67,26 @@ export const Route = createFileRoute("/api/chat")({
                 onError,
               });
 
-          return result.toTextStreamResponse({
-            onError: (error) =>
-              error instanceof Error ? error.message : "Antwort fehlgeschlagen",
+          // Stream errors must reach the user instead of ending as an empty answer.
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+              try {
+                for await (const chunk of result.textStream) {
+                  controller.enqueue(encoder.encode(chunk));
+                }
+              } catch (streamError) {
+                const detail =
+                  streamError instanceof Error ? streamError.message : "Antwort fehlgeschlagen";
+                console.error("chat stream error", detail);
+                controller.enqueue(encoder.encode(`\n\n⚠️ Fehler: ${detail}`));
+              }
+              controller.close();
+            },
+          });
+
+          return new Response(stream, {
+            headers: { "content-type": "text/plain; charset=utf-8" },
           });
         } catch (error) {
           if ((error as Error)?.name === "AbortError") return new Response(null, { status: 499 });
