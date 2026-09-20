@@ -184,7 +184,7 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     const form = new FormData();
     form.append("file", new Blob([bytes], { type: mime }), "audio");
     form.append("model", "google/gemini-3.5-transcribe");
-    form.append("response_format", "json");
+    form.append("response_format", "verbose_json");
 
     const response = await fetch(`${GATEWAY}/audio/transcriptions`, {
       method: "POST",
@@ -197,8 +197,14 @@ export const transcribeAudio = createServerFn({ method: "POST" })
       throw new Error(`Transkription fehlgeschlagen [${response.status}]: ${detail.slice(0, 400)}`);
     }
 
-    const payload = (await response.json()) as { text?: string };
-    return { text: payload.text ?? "" };
+    const payload = (await response.json()) as {
+      text?: string;
+      segments?: { start?: number; text?: string }[];
+    };
+    const lines = (payload.segments ?? [])
+      .map((s) => ({ start: Number(s.start ?? 0), text: (s.text ?? "").trim() }))
+      .filter((line) => line.text);
+    return { text: payload.text ?? "", segments: lines.length ? chunkByTime(lines) : [] };
   });
 
 function ogImage(html: string): string | null {
