@@ -285,14 +285,31 @@ function BoardPage() {
 
   const deleteNode = useCallback(
     (id: string) => {
-      setNodes((current) => current.filter((n) => n.id !== id && n.parentId !== id));
-      setEdges((current) => current.filter((e) => e.source !== id && e.target !== id));
+      // children keep living in the database (parent_id is set to null there),
+      // so collect the whole subtree and remove it explicitly
+      const ids = new Set<string>([id]);
+      for (;;) {
+        const before = ids.size;
+        for (const record of Object.values(recordsRef.current)) {
+          if (record.parent_id && ids.has(record.parent_id)) ids.add(record.id);
+        }
+        if (ids.size === before) break;
+      }
+      const list = [...ids];
+      setNodes((current) => current.filter((n) => !ids.has(n.id)));
+      setEdges((current) => current.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
       setRecords((current) => {
         const next = { ...current };
-        delete next[id];
+        for (const key of list) delete next[key];
         return next;
       });
-      void supabase.from("nodes").delete().eq("id", id);
+      void supabase
+        .from("nodes")
+        .delete()
+        .in("id", list)
+        .then(({ error }) => {
+          if (error) toast.error(error.message);
+        });
     },
     [setNodes, setEdges],
   );
