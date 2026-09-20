@@ -7,7 +7,6 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
-  addEdge,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -515,7 +514,7 @@ function BoardPage() {
       if (sourceId === targetId) return;
       createEdge(sourceId, targetId);
     },
-    [createEdge, setEdges],
+    [createEdge],
   );
 
   const groupSelection = useCallback(async () => {
