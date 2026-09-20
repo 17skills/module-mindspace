@@ -1088,6 +1088,14 @@ function BoardPage() {
           label: "Inhalte des Feldes zusammenfassen",
           run: () => void summarizeZone(menuRecord),
         },
+        {
+          label: "Als eigene Vorlage speichern",
+          run: () => void saveGroupAsTemplate(menuRecord),
+        },
+        {
+          label: "Vorlagen verwalten …",
+          run: () => setTemplateOpen(true),
+        },
         ...ZONE_COLORS.map((zoneColor) => ({
           label: zoneColor.name,
           swatch: zoneColor.value,
