@@ -834,16 +834,168 @@ export function textSize(record: NodeRecord): TextSize {
   return TEXT_SIZES.find((item) => item.id === meta["textSize"]) ?? TEXT_SIZES[1]!;
 }
 
+export interface TextOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
+/** Schriftarten aus dem Designsystem. */
+export const TEXT_FONTS: readonly TextOption[] = [
+  { id: "sans", label: "Fließtext", value: "var(--font-sans)" },
+  { id: "display", label: "Überschrift", value: "var(--font-display)" },
+  { id: "mono", label: "Technisch", value: "var(--font-mono)" },
+] as const;
+
+export const TEXT_ALIGNS: readonly TextOption[] = [
+  { id: "left", label: "Linksbündig", value: "left" },
+  { id: "center", label: "Zentriert", value: "center" },
+  { id: "right", label: "Rechtsbündig", value: "right" },
+] as const;
+
+export const TEXT_COLORS: readonly ZoneColor[] = [
+  { name: "Standard", value: "var(--foreground)" },
+  { name: "Rot", value: "var(--video)" },
+  { name: "Violett", value: "var(--audio)" },
+  { name: "Blau", value: "var(--doc)" },
+  { name: "Amber", value: "var(--note)" },
+  { name: "Petrol", value: "var(--chat)" },
+  { name: "Grau", value: "var(--muted-foreground)" },
+] as const;
+
+export const TEXT_BACKGROUNDS: readonly ZoneColor[] = [
+  { name: "Ohne", value: "none" },
+  { name: "Weiß", value: ZONE_WHITE },
+  { name: "Salbei", value: "var(--frame)" },
+  { name: "Amber", value: "var(--note)" },
+  { name: "Blau", value: "var(--doc)" },
+  { name: "Petrol", value: "var(--chat)" },
+] as const;
+
+export function textStyle(record: NodeRecord) {
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const font = TEXT_FONTS.find((item) => item.id === meta["textFont"]) ?? TEXT_FONTS[0]!;
+  const align = TEXT_ALIGNS.find((item) => item.id === meta["textAlign"]) ?? TEXT_ALIGNS[0]!;
+  const color =
+    TEXT_COLORS.find((item) => item.value === meta["textColor"]) ?? TEXT_COLORS[0]!;
+  const background =
+    TEXT_BACKGROUNDS.find((item) => item.value === meta["textBg"]) ?? TEXT_BACKGROUNDS[0]!;
+  return { font, align, color, background };
+}
+
+function TextToolbar({ record }: { record: NodeRecord }) {
+  const { updateNode } = useBoard();
+  const style = textStyle(record);
+  const patch = (key: string, value: string) =>
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), [key]: value } });
+
+  const chip = (active: boolean) =>
+    `rounded-full px-2 py-0.5 text-[11px] transition-colors ${
+      active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary"
+    }`;
+
+  return (
+    <div
+      className="nodrag nowheel absolute -top-11 left-0 z-30 flex items-center gap-1 rounded-xl border border-border/70 bg-card/95 px-1.5 py-1 shadow-[var(--shadow-float)] backdrop-blur"
+      onDoubleClick={(event) => event.stopPropagation()}
+    >
+      {TEXT_FONTS.map((font) => (
+        <button
+          key={font.id}
+          title={font.label}
+          style={{ fontFamily: font.value }}
+          className={chip(style.font.id === font.id)}
+          onClick={() => patch("textFont", font.id)}
+        >
+          Aa
+        </button>
+      ))}
+      <span className="mx-0.5 h-4 w-px bg-border/70" />
+      {TEXT_ALIGNS.map((align) => (
+        <button
+          key={align.id}
+          title={align.label}
+          className={chip(style.align.id === align.id)}
+          onClick={() => patch("textAlign", align.id)}
+        >
+          {align.id === "left" ? "⌐" : align.id === "center" ? "≡" : "¬"}
+        </button>
+      ))}
+      <span className="mx-0.5 h-4 w-px bg-border/70" />
+      {TEXT_COLORS.map((color) => (
+        <button
+          key={color.name}
+          title={`Schriftfarbe: ${color.name}`}
+          onClick={() => patch("textColor", color.value)}
+          className={`size-4 rounded-full border ${
+            style.color.value === color.value ? "border-foreground" : "border-border/70"
+          }`}
+          style={{ background: color.value }}
+        />
+      ))}
+      <span className="mx-0.5 h-4 w-px bg-border/70" />
+      {TEXT_BACKGROUNDS.map((bg) => (
+        <button
+          key={bg.name}
+          title={`Hintergrund: ${bg.name}`}
+          onClick={() => patch("textBg", bg.value)}
+          className={`size-4 rounded-md border text-[9px] leading-none ${
+            style.background.value === bg.value ? "border-foreground" : "border-border/70"
+          }`}
+          style={{
+            background:
+              bg.value === "none"
+                ? "transparent"
+                : bg.value === ZONE_WHITE
+                  ? "var(--card)"
+                  : `color-mix(in oklab, ${bg.value} 30%, var(--card))`,
+          }}
+        >
+          {bg.value === "none" ? "∅" : ""}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const size = textSize(record);
+  const style = textStyle(record);
   const [text, setText] = useState(record.content ?? "");
+  const [editing, setEditing] = useState(false);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => setText(record.content ?? ""), [record.content]);
+  useEffect(() => {
+    if (editing) areaRef.current?.focus();
+  }, [editing]);
+  useEffect(() => {
+    if (!selected) setEditing(false);
+  }, [selected]);
+
+  function save() {
+    setEditing(false);
+    if (text !== record.content) {
+      updateNode(record.id, { content: text, title: text.slice(0, 60) || "Text" });
+    }
+  }
+
+  const boxStyle = {
+    fontFamily: style.font.value,
+    color: style.color.value,
+    textAlign: style.align.value as "left" | "center" | "right",
+    background:
+      style.background.value === "none"
+        ? "transparent"
+        : style.background.value === ZONE_WHITE
+          ? "var(--card)"
+          : `color-mix(in oklab, ${style.background.value} 22%, var(--card))`,
+  };
 
   return (
-    <div className="flex h-full w-full items-center px-1">
+    <div className="relative flex h-full w-full items-center px-1">
       <NodeResizer
         minWidth={60}
         minHeight={28}
@@ -851,19 +1003,35 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
         color="var(--primary)"
         keepAspectRatio={false}
       />
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() =>
-          text !== record.content &&
-          updateNode(record.id, { content: text, title: text.slice(0, 60) || "Text" })
-        }
-        placeholder="Beschriftung"
-        rows={1}
-        className={`nodrag nowheel w-full resize-none bg-transparent text-foreground outline-none placeholder:text-muted-foreground/60 ${size.className}${
-          selected ? " rounded-md ring-1 ring-ring/40" : ""
-        }`}
-      />
+      {selected && !editing ? <TextToolbar record={record} /> : null}
+      {editing ? (
+        <textarea
+          ref={areaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setText(record.content ?? "");
+              setEditing(false);
+            }
+          }}
+          placeholder="Beschriftung"
+          rows={1}
+          style={boxStyle}
+          className={`nodrag nowheel h-full w-full resize-none rounded-md px-1 outline-none ring-1 ring-ring/40 placeholder:text-muted-foreground/60 ${size.className}`}
+        />
+      ) : (
+        <div
+          onDoubleClick={() => setEditing(true)}
+          style={boxStyle}
+          className={`h-full w-full cursor-text overflow-hidden whitespace-pre-wrap rounded-md px-1 ${size.className}${
+            selected ? " ring-1 ring-ring/40" : ""
+          }`}
+        >
+          {text || <span className="text-muted-foreground/60">Beschriftung</span>}
+        </div>
+      )}
     </div>
   );
 });
