@@ -440,11 +440,13 @@ function BoardPage() {
           ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
         },
       };
-      const { data, error } = await supabase
+      const insertPromise = supabase
         .from("nodes")
         .insert(payload as never)
         .select("*")
         .single();
+      trackSave(insertPromise);
+      const { data, error } = await insertPromise;
       if (error) throw error;
       const record = data as unknown as NodeRecord;
       setRecords((current) => ({ ...current, [record.id]: record }));
@@ -1435,6 +1437,7 @@ function BoardPage() {
           aria-label="Board-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
+        <SaveIndicator />
         <div className="ml-auto flex items-center gap-1">
           {isOwner ? (
             <Tooltip>
