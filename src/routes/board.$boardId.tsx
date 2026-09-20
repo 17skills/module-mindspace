@@ -351,13 +351,18 @@ function BoardPage() {
   const updateNode = useCallback(
     (id: string, patch: Partial<NodeRecord>) => {
       patchRecord(id, patch);
-      void supabase
-        .from("nodes")
-        .update(patch as never)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+      trackSave(
+        supabase
+          .from("nodes")
+          .update(patch as never)
+          .eq("id", id)
+          .then(({ error }) => {
+            if (error) {
+              toast.error(error.message);
+              throw error;
+            }
+          }),
+      );
     },
     [patchRecord],
   );
@@ -382,13 +387,18 @@ function BoardPage() {
         for (const key of list) delete next[key];
         return next;
       });
-      void supabase
-        .from("nodes")
-        .delete()
-        .in("id", list)
-        .then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+      trackSave(
+        supabase
+          .from("nodes")
+          .delete()
+          .in("id", list)
+          .then(({ error }) => {
+            if (error) {
+              toast.error(error.message);
+              throw error;
+            }
+          }),
+      );
     },
     [setNodes, setEdges],
   );
