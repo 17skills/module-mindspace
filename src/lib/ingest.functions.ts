@@ -47,9 +47,12 @@ export const fetchYoutube = createServerFn({ method: "POST" })
     }
 
     let transcript = "";
+    let segments: TimedSegment[] = [];
     let transcriptError: string | null = null;
     try {
-      transcript = await youtubeTranscript(videoId);
+      const result = await youtubeTranscript(videoId);
+      transcript = result.text;
+      segments = result.segments;
     } catch (error) {
       transcriptError = error instanceof Error ? error.message : "Transkript nicht verfügbar";
     }
@@ -60,11 +63,52 @@ export const fetchYoutube = createServerFn({ method: "POST" })
       author,
       thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       transcript,
+      segments,
       transcriptError,
     };
   });
 
-async function youtubeTranscript(videoId: string): Promise<string> {
+export type TimedSegment = { id: string; label: string; text: string; start: number };
+
+/** Group caption lines into readable chunks of about 45 seconds. */
+function chunkByTime(lines: { start: number; text: string }[]): TimedSegment[] {
+  const chunks: TimedSegment[] = [];
+  let buffer = "";
+  let start = lines[0]?.start ?? 0;
+
+  for (const line of lines) {
+    if (buffer && (line.start - start > 45 || buffer.length > 900)) {
+      chunks.push({
+        id: `t${chunks.length + 1}`,
+        label: timeLabel(start),
+        text: buffer.trim(),
+        start,
+      });
+      buffer = "";
+      start = line.start;
+    }
+    buffer += (buffer ? " " : "") + line.text;
+  }
+  if (buffer.trim()) {
+    chunks.push({
+      id: `t${chunks.length + 1}`,
+      label: timeLabel(start),
+      text: buffer.trim(),
+      start,
+    });
+  }
+  return chunks;
+}
+
+function timeLabel(seconds: number) {
+  const total = Math.max(0, Math.round(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+async function youtubeTranscript(videoId: string): Promise<{
+  text: string;
+  segments: TimedSegment[];
+}> {
   const page = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=de`, {
     headers: {
       "user-agent":
@@ -89,12 +133,18 @@ async function youtubeTranscript(videoId: string): Promise<string> {
 
   const xmlResponse = await fetch(decodeEntities(track.baseUrl));
   const xml = await xmlResponse.text();
-  const lines = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((m) =>
-    decodeEntities(m[1] ?? "").replace(/\s+/g, " ").trim(),
-  );
-  const text = lines.filter(Boolean).join(" ");
+  const lines = [...xml.matchAll(/<text[^>]*start="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g)]
+    .map((m) => ({
+      start: Number(m[1] ?? 0),
+      text: decodeEntities(m[2] ?? "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    }))
+    .filter((line) => line.text);
+
+  const text = lines.map((line) => line.text).join(" ");
   if (!text) throw new Error("Untertitel sind leer");
-  return text;
+  return { text, segments: chunkByTime(lines) };
 }
 
 /** Podcast/audio transcription through Lovable AI. */
