@@ -16,6 +16,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
+import { Shapes } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
   Check,
@@ -48,6 +55,9 @@ import {
   DataNode,
   FrameNode,
   NoteNode,
+  SHAPES,
+  ShapeNode,
+  shapeKind,
   ZONE_COLORS,
   ZoneNode,
 } from "@/components/canvas/nodes";
@@ -101,6 +111,7 @@ const nodeTypes = {
   frame: FrameNode,
   data: DataNode,
   zone: ZoneNode,
+  shape: ShapeNode,
 };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
@@ -110,6 +121,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   chat: { width: 400, height: 460 },
   frame: { width: 640, height: 460 },
   zone: { width: 420, height: 360 },
+  shape: { width: 200, height: 140 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -162,7 +174,8 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "note" ||
     record.type === "chat" ||
     record.type === "frame" ||
-    record.type === "zone"
+    record.type === "zone" ||
+    record.type === "shape"
       ? record.type
       : DATA_TYPES.has(record.type)
         ? "data"
@@ -1129,7 +1142,25 @@ function BoardPage() {
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
 
-  const menuItems = menuRecord?.type === "zone"
+  const menuItems = menuRecord?.type === "shape"
+    ? [
+        ...SHAPES.map((shape) => ({
+          label: shape.label,
+          active: shapeKind(menuRecord).id === shape.id,
+          run: () =>
+            updateNode(menuRecord.id, {
+              metadata: { ...(menuRecord.metadata ?? {}), shape: shape.id },
+            }),
+        })),
+        ...ZONE_COLORS.map((shapeColor) => ({
+          label: shapeColor.name,
+          swatch: shapeColor.value,
+          active: (menuRecord.color ?? "var(--chat)") === shapeColor.value,
+          run: () => updateNode(menuRecord.id, { color: shapeColor.value }),
+        })),
+        { label: "Form löschen", run: () => deleteNode(menuRecord.id) },
+      ]
+    : menuRecord?.type === "zone"
     ? [
         {
           label: "Chat zu diesem Feld",
@@ -1232,6 +1263,20 @@ function BoardPage() {
               metadata: { model: "openai/gpt-6-astra" },
             }),
         },
+        ...SHAPES.map((shape) => ({
+          label: `Form: ${shape.label}`,
+          icon: Shapes,
+          run: () =>
+            void createRecord({
+              type: "shape",
+              title: shape.label,
+              content: "",
+              color: "var(--chat)",
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
+              metadata: { shape: shape.id },
+            }),
+        })),
         {
           label: "Hintergrundfeld",
           icon: PanelsTopLeft,
@@ -1462,6 +1507,48 @@ function BoardPage() {
                 </TooltipTrigger>
                 <TooltipContent side="top">Datei hochladen</TooltipContent>
               </Tooltip>
+
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={toolBtn()}
+                        aria-label="Form einfügen"
+                      >
+                        <Shapes className="size-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Form einfügen</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent side="top" align="center">
+                  {SHAPES.map((shape) => (
+                    <DropdownMenuItem
+                      key={shape.id}
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "shape",
+                          title: shape.label,
+                          content: "",
+                          color: "var(--chat)",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { shape: shape.id },
+                        });
+                      }}
+                    >
+                      {shape.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Tooltip>
                 <TooltipTrigger asChild>
