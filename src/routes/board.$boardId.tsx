@@ -756,7 +756,17 @@ function BoardPage() {
     );
   }
 
-  const menuItems = menu?.nodeId
+  const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
+
+  const menuItems = menuRecord?.type === "zone"
+    ? [
+        ...ZONE_COLORS.map((color, index) => ({
+          label: `Farbe ${index + 1}`,
+          run: () => updateNode(menuRecord.id, { color }),
+        })),
+        { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
+      ]
+    : menu?.nodeId
     ? [
         {
           label: "Im Kontextfenster öffnen",
