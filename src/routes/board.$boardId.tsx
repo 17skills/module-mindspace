@@ -1343,26 +1343,29 @@ function BoardPage() {
             style={{ left: menu.x, top: menu.y }}
             onMouseLeave={() => setMenu(null)}
           >
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                onClick={() => {
-                  setMenu(null);
-                  item.run();
-                }}
-              >
-                {"icon" in item && item.icon ? <item.icon className="size-4 shrink-0 text-muted-foreground" /> : null}
-                {"swatch" in item && item.swatch ? (
-                  <span
-                    className="size-3 shrink-0 rounded-full border"
-                    style={{ backgroundColor: item.swatch as string }}
-                  />
-                ) : null}
-                <span className="flex-1">{item.label}</span>
-                {"active" in item && item.active ? <Check className="size-3.5 text-primary" /> : null}
-              </button>
-            ))}
+            {menuItems.map((item) => {
+              const Icon = "icon" in item ? item.icon : null;
+              return (
+                <button
+                  key={item.label}
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                  onClick={() => {
+                    setMenu(null);
+                    item.run();
+                  }}
+                >
+                  {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" /> : null}
+                  {"swatch" in item && item.swatch ? (
+                    <span
+                      className="size-3 shrink-0 rounded-full border"
+                      style={{ backgroundColor: item.swatch as string }}
+                    />
+                  ) : null}
+                  <span className="flex-1">{item.label}</span>
+                  {"active" in item && item.active ? <Check className="size-3.5 text-primary" /> : null}
+                </button>
+              );
+            })}
           </div>
         )}
 
