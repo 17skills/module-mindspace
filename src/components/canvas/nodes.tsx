@@ -271,22 +271,29 @@ const CHART_COLORS = ["var(--primary)", "var(--video)", "var(--audio)", "var(--d
 
 export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode } = useBoard();
+  const { updateNode, openInspector } = useBoard();
   const { columns, rows, chartType } = tableData(record);
   const type = record.type;
 
-  const chartRows = useMemo(
-    () =>
-      rows.map((row) => ({
-        name: row[0] ?? "",
-        value: Number(String(row[1] ?? "0").replace(/[^\d.,-]/g, "").replace(",", ".")) || 0,
-      })),
-    [rows],
-  );
+  const chartRows = useMemo(() => chartSeries(readStructure(record)), [record]);
 
   return (
     <Shell type={type} selected={selected} locked={Boolean(record.parent_id)} minHeight={200}>
       <Header record={record} />
+      <div className="flex items-center justify-end gap-2 border-b px-3 py-1 text-[11px] text-muted-foreground">
+        <button
+          className="nodrag hover:text-foreground hover:underline"
+          onClick={() => openInspector(record.id, "data")}
+        >
+          Bearbeiten
+        </button>
+        <button
+          className="nodrag hover:text-foreground hover:underline"
+          onClick={() => openInspector(record.id, "refresh")}
+        >
+          Aktualisieren
+        </button>
+      </div>
 
       {type === "chart" && (
         <>
