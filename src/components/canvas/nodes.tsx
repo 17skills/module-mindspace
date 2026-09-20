@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { chartSeries, readStructure } from "@/lib/structure";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -155,7 +156,7 @@ function Preview({ record }: { record: NodeRecord }) {
 
 export const ContentNode = memo(function ContentNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { extractStructure } = useBoard();
+  const { extractStructure, openInspector } = useBoard();
 
   return (
     <Shell type={record.type} selected={selected} locked={Boolean(record.parent_id)}>
@@ -175,6 +176,12 @@ export const ContentNode = memo(function ContentNode({ data, selected }: NodePro
       <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[11px] text-muted-foreground">
         <span>{record.content ? `${record.content.length.toLocaleString("de-DE")} Zeichen` : "—"}</span>
         <div className="flex items-center gap-2">
+          <button
+            className="nodrag hover:text-foreground hover:underline"
+            onClick={() => openInspector(record.id, "source")}
+          >
+            Kontextfenster
+          </button>
           {record.content && (
             <button
               className="nodrag hover:text-foreground hover:underline"
@@ -265,22 +272,29 @@ const CHART_COLORS = ["var(--primary)", "var(--video)", "var(--audio)", "var(--d
 
 export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode } = useBoard();
+  const { updateNode, openInspector } = useBoard();
   const { columns, rows, chartType } = tableData(record);
   const type = record.type;
 
-  const chartRows = useMemo(
-    () =>
-      rows.map((row) => ({
-        name: row[0] ?? "",
-        value: Number(String(row[1] ?? "0").replace(/[^\d.,-]/g, "").replace(",", ".")) || 0,
-      })),
-    [rows],
-  );
+  const chartRows = useMemo(() => chartSeries(readStructure(record)), [record]);
 
   return (
     <Shell type={type} selected={selected} locked={Boolean(record.parent_id)} minHeight={200}>
       <Header record={record} />
+      <div className="flex items-center justify-end gap-2 border-b px-3 py-1 text-[11px] text-muted-foreground">
+        <button
+          className="nodrag hover:text-foreground hover:underline"
+          onClick={() => openInspector(record.id, "data")}
+        >
+          Bearbeiten
+        </button>
+        <button
+          className="nodrag hover:text-foreground hover:underline"
+          onClick={() => openInspector(record.id, "refresh")}
+        >
+          Aktualisieren
+        </button>
+      </div>
 
       {type === "chart" && (
         <>
@@ -308,7 +322,7 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
               {(chartType ?? "bar") === "pie" ? (
                 <PieChart>
                   <Pie data={chartRows} dataKey="value" nameKey="name" outerRadius="75%" label>
-                    {chartRows.map((_, index) => (
+                    {chartRows.map((_entry, index: number) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>

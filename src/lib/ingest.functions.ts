@@ -47,9 +47,12 @@ export const fetchYoutube = createServerFn({ method: "POST" })
     }
 
     let transcript = "";
+    let segments: TimedSegment[] = [];
     let transcriptError: string | null = null;
     try {
-      transcript = await youtubeTranscript(videoId);
+      const result = await youtubeTranscript(videoId);
+      transcript = result.text;
+      segments = result.segments;
     } catch (error) {
       transcriptError = error instanceof Error ? error.message : "Transkript nicht verfügbar";
     }
@@ -60,11 +63,52 @@ export const fetchYoutube = createServerFn({ method: "POST" })
       author,
       thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       transcript,
+      segments,
       transcriptError,
     };
   });
 
-async function youtubeTranscript(videoId: string): Promise<string> {
+export type TimedSegment = { id: string; label: string; text: string; start: number };
+
+/** Group caption lines into readable chunks of about 45 seconds. */
+function chunkByTime(lines: { start: number; text: string }[]): TimedSegment[] {
+  const chunks: TimedSegment[] = [];
+  let buffer = "";
+  let start = lines[0]?.start ?? 0;
+
+  for (const line of lines) {
+    if (buffer && (line.start - start > 45 || buffer.length > 900)) {
+      chunks.push({
+        id: `t${chunks.length + 1}`,
+        label: timeLabel(start),
+        text: buffer.trim(),
+        start,
+      });
+      buffer = "";
+      start = line.start;
+    }
+    buffer += (buffer ? " " : "") + line.text;
+  }
+  if (buffer.trim()) {
+    chunks.push({
+      id: `t${chunks.length + 1}`,
+      label: timeLabel(start),
+      text: buffer.trim(),
+      start,
+    });
+  }
+  return chunks;
+}
+
+function timeLabel(seconds: number) {
+  const total = Math.max(0, Math.round(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+async function youtubeTranscript(videoId: string): Promise<{
+  text: string;
+  segments: TimedSegment[];
+}> {
   const page = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=de`, {
     headers: {
       "user-agent":
@@ -89,12 +133,18 @@ async function youtubeTranscript(videoId: string): Promise<string> {
 
   const xmlResponse = await fetch(decodeEntities(track.baseUrl));
   const xml = await xmlResponse.text();
-  const lines = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((m) =>
-    decodeEntities(m[1] ?? "").replace(/\s+/g, " ").trim(),
-  );
-  const text = lines.filter(Boolean).join(" ");
+  const lines = [...xml.matchAll(/<text[^>]*start="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g)]
+    .map((m) => ({
+      start: Number(m[1] ?? 0),
+      text: decodeEntities(m[2] ?? "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    }))
+    .filter((line) => line.text);
+
+  const text = lines.map((line) => line.text).join(" ");
   if (!text) throw new Error("Untertitel sind leer");
-  return text;
+  return { text, segments: chunkByTime(lines) };
 }
 
 /** Podcast/audio transcription through Lovable AI. */
@@ -134,7 +184,7 @@ export const transcribeAudio = createServerFn({ method: "POST" })
     const form = new FormData();
     form.append("file", new Blob([bytes], { type: mime }), "audio");
     form.append("model", "google/gemini-3.5-transcribe");
-    form.append("response_format", "json");
+    form.append("response_format", "verbose_json");
 
     const response = await fetch(`${GATEWAY}/audio/transcriptions`, {
       method: "POST",
@@ -147,8 +197,14 @@ export const transcribeAudio = createServerFn({ method: "POST" })
       throw new Error(`Transkription fehlgeschlagen [${response.status}]: ${detail.slice(0, 400)}`);
     }
 
-    const payload = (await response.json()) as { text?: string };
-    return { text: payload.text ?? "" };
+    const payload = (await response.json()) as {
+      text?: string;
+      segments?: { start?: number; text?: string }[];
+    };
+    const lines = (payload.segments ?? [])
+      .map((s) => ({ start: Number(s.start ?? 0), text: (s.text ?? "").trim() }))
+      .filter((line) => line.text);
+    return { text: payload.text ?? "", segments: lines.length ? chunkByTime(lines) : [] };
   });
 
 function ogImage(html: string): string | null {
@@ -255,17 +311,34 @@ export type StructuredItem = z.infer<typeof StructureSchema>["items"][number];
 export const extractStructured = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ text: z.string().min(1), title: z.string().optional() }).parse(input),
+    z
+      .object({
+        text: z.string().min(1),
+        title: z.string().optional(),
+        instruction: z.string().optional(),
+        kind: z.enum(["auto", "table", "list", "chart"]).optional(),
+        max: z.number().int().min(1).max(6).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
+    const limit = data.max ?? 6;
+    const kindRule =
+      data.kind && data.kind !== "auto"
+        ? `- Gib ausschließlich Einträge mit kind "${data.kind}" zurück.`
+        : "";
+    const instructionRule = data.instruction?.trim()
+      ? `\nAnweisung der Nutzerin/des Nutzers (hat Vorrang):\n${data.instruction.trim()}\n`
+      : "";
+
     const prompt = `Analysiere den folgenden Inhalt und gib die enthaltenen strukturierten Daten zurück.
-Erlaubt sind bis zu 6 Einträge. Regeln:
+Erlaubt sind bis zu ${limit} Einträge. Regeln:
 - kind "table" für tabellarische Daten (columns = Spaltenköpfe, rows = Zeilen).
 - kind "list" für Aufzählungen (columns = ["Punkt"], jede Zeile ein Eintrag).
 - kind "chart" für Zahlenreihen, die sich visualisieren lassen (columns = ["Kategorie","Wert"], Werte als Zahl-Text).
 - chartType nur bei kind "chart" setzen (bar, line oder pie), sonst "none".
 - Erfinde keine Daten. Wenn nichts Strukturierbares vorhanden ist, gib eine leere Liste zurück.
-
+${kindRule}${instructionRule}
 Titel: ${data.title ?? "Unbenannt"}
 
 Inhalt:

@@ -20,10 +20,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { BoardContext, type NodeRecord } from "@/components/canvas/board-context";
+import {
+  BoardContext,
+  type InspectorTab,
+  type NodeRecord,
+  type StructureItem,
+} from "@/components/canvas/board-context";
 import { ChatNode, ContentNode, DataNode, FrameNode, NoteNode } from "@/components/canvas/nodes";
+import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
+import { itemToPatch } from "@/lib/structure";
+import { segmentsFromFile } from "@/lib/segments";
+
 import {
   extractStructured,
   fetchPageText,
@@ -116,6 +125,7 @@ function BoardPage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [ready, setReady] = useState(false);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [inspector, setInspector] = useState<{ nodeId: string; tab: InspectorTab } | null>(null);
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -414,7 +424,11 @@ function BoardPage() {
             content: info.transcript,
             status: info.transcript ? "ready" : "error",
             error: info.transcript ? null : info.transcriptError,
-            metadata: { thumbnail: info.thumbnail, author: info.author },
+            metadata: {
+              thumbnail: info.thumbnail,
+              author: info.author,
+              ...(info.segments?.length ? { segments: info.segments } : {}),
+            },
           });
           return;
         }
@@ -425,13 +439,17 @@ function BoardPage() {
             : await resolvePodcast({ data: { url } });
           updateNode(record.id, {
             title: episode.title,
+            source_url: episode.audioUrl,
             ...(episode.image ? { metadata: { thumbnail: episode.image } } : {}),
           });
-          const { text } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
+          const { text, segments } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
           updateNode(record.id, {
             content: text,
             status: text ? "ready" : "error",
             error: text ? null : "Transkript ist leer",
+            ...(segments?.length
+              ? { metadata: { ...(recordsRef.current[record.id]?.metadata ?? {}), segments } }
+              : {}),
           });
           return;
         }
@@ -485,20 +503,32 @@ function BoardPage() {
               throw new Error("Audiodatei ist zu groß (max. 20 MB direkt hochladen)");
             }
             const base64 = await fileToBase64(file);
-            const { text } = await transcribeAudio({
+            const { text, segments } = await transcribeAudio({
               data: { audioBase64: base64, mimeType: file.type || "audio/mpeg" },
             });
             updateNode(record.id, {
               content: text,
               status: text ? "ready" : "error",
               error: text ? null : "Transkript ist leer",
+              ...(segments?.length
+                ? { metadata: { ...(recordsRef.current[record.id]?.metadata ?? {}), segments } }
+                : {}),
             });
           } else {
             const text = await extractFileText(file);
+            const fileSegments = await segmentsFromFile(file, text);
             updateNode(record.id, {
               content: text,
               status: text.trim() ? "ready" : "error",
               error: text.trim() ? null : "Kein Text in der Datei gefunden",
+              ...(fileSegments.length
+                ? {
+                    metadata: {
+                      ...(recordsRef.current[record.id]?.metadata ?? {}),
+                      segments: fileSegments,
+                    },
+                  }
+                : {}),
             });
           }
         } catch (error) {
@@ -593,9 +623,83 @@ function BoardPage() {
     for (const otherId of outside) createEdge(frame.id, otherId);
   }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
 
+  const openInspector = useCallback((id: string, tab: InspectorTab = "source") => {
+    setInspector({ nodeId: id, tab });
+  }, []);
+
+  /** The module itself when it carries content, otherwise its connected content modules. */
+  const sourcesFor = useCallback((id: string) => {
+    const record = recordsRef.current[id];
+    if (!record) return [];
+    if (!DATA_TYPES.has(record.type)) return [record];
+    const neighbours: NodeRecord[] = [record];
+    for (const edge of edgesRef.current) {
+      const otherId = edge.source === id ? edge.target : edge.target === id ? edge.source : null;
+      if (!otherId) continue;
+      const other = recordsRef.current[otherId];
+      if (!other || other.type === "chat") continue;
+      if (other.type === "frame") {
+        for (const child of Object.values(recordsRef.current)) {
+          if (child.parent_id === other.id) neighbours.push(child);
+        }
+        continue;
+      }
+      neighbours.push(other);
+    }
+    return neighbours;
+  }, []);
+
+  const applyStructure = useCallback(
+    (id: string, item: StructureItem) => {
+      updateNode(id, itemToPatch(item));
+    },
+    [updateNode],
+  );
+
+  const createStructure = useCallback(
+    async (item: StructureItem, sourceIds: string[]) => {
+      const anchor = recordsRef.current[sourceIds[0] ?? ""];
+      const patch = itemToPatch(item);
+      const created = await createRecord({
+        type: patch.type!,
+        title: patch.title ?? item.title,
+        content: patch.content ?? "",
+        position_x: (anchor?.position_x ?? 0) + 420,
+        position_y: (anchor?.position_y ?? 0) + 60,
+        metadata: patch.metadata ?? {},
+      });
+      for (const sourceId of sourceIds) {
+        const source = recordsRef.current[sourceId];
+        if (source) createEdge(source.parent_id ?? source.id, created.id);
+      }
+      setInspector({ nodeId: created.id, tab: "data" });
+    },
+    [createRecord, createEdge],
+  );
+
   const api = useMemo(
-    () => ({ updateNode, deleteNode, collectContext, addNoteFrom, extractStructure }),
-    [updateNode, deleteNode, collectContext, addNoteFrom, extractStructure],
+    () => ({
+      updateNode,
+      deleteNode,
+      collectContext,
+      addNoteFrom,
+      extractStructure,
+      openInspector,
+      sourcesFor,
+      applyStructure,
+      createStructure,
+    }),
+    [
+      updateNode,
+      deleteNode,
+      collectContext,
+      addNoteFrom,
+      extractStructure,
+      openInspector,
+      sourcesFor,
+      applyStructure,
+      createStructure,
+    ],
   );
 
   useEffect(() => {
@@ -617,6 +721,10 @@ function BoardPage() {
 
   const menuItems = menu?.nodeId
     ? [
+        {
+          label: "Im Kontextfenster öffnen",
+          run: () => openInspector(menu.nodeId!),
+        },
         {
           label: "Strukturierte Daten herauslösen",
           run: () => extractStructure(menu.nodeId!),
@@ -704,7 +812,7 @@ function BoardPage() {
       />
 
       <div
-        className="relative flex-1"
+        className="relative flex min-h-0 flex-1"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -717,6 +825,7 @@ function BoardPage() {
         }}
       >
         <BoardContext.Provider value={api}>
+          <div className="relative min-w-0 flex-1">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -766,6 +875,17 @@ function BoardPage() {
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable className="!bg-card" />
           </ReactFlow>
+          </div>
+
+          {inspector && (
+            <InspectorPanel
+              key={inspector.nodeId}
+              nodeId={inspector.nodeId}
+              tab={inspector.tab}
+              onTab={(tab) => setInspector((current) => (current ? { ...current, tab } : current))}
+              onClose={() => setInspector(null)}
+            />
+          )}
         </BoardContext.Provider>
 
         {menu && (
