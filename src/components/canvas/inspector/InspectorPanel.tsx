@@ -6,6 +6,7 @@ import type { Segment } from "@/lib/segments";
 import { SourceTab } from "./SourceTab";
 import { DataTab } from "./DataTab";
 import { AssignTab } from "./AssignTab";
+import { OverviewTab } from "./OverviewTab";
 import { RefreshTab } from "./RefreshTab";
 import { useSegments } from "./use-segments";
 
