@@ -215,7 +215,18 @@ function layer(record: NodeRecord) {
 }
 
 function sortNodes(list: NodeRecord[]) {
-  return [...list].sort((a, b) => layer(a) - layer(b));
+  const byId = new Map(list.map((item) => [item.id, item]));
+  const depth = (record: NodeRecord) => {
+    let level = 0;
+    let parent = record.parent_id ? byId.get(record.parent_id) : null;
+    while (parent && level < 10) {
+      level += 1;
+      parent = parent.parent_id ? byId.get(parent.parent_id) : null;
+    }
+    return level;
+  };
+  // parents always before their children, then background fields before cards
+  return [...list].sort((a, b) => depth(a) - depth(b) || layer(a) - layer(b));
 }
 
 type Menu = { x: number; y: number; flowX: number; flowY: number; nodeId?: string };
