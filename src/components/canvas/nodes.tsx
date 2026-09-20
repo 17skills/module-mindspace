@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ZONE_WHITE } from "@/lib/templates";
 import { NODE_ACCENT, NODE_LABEL, useBoard, type NodeRecord } from "./board-context";
 
 const MODELS = [
@@ -276,6 +277,7 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
 });
 
 export const ZONE_COLORS = [
+  ZONE_WHITE,
   "var(--frame)",
   "var(--video)",
   "var(--audio)",
@@ -286,8 +288,10 @@ export const ZONE_COLORS = [
 
 export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode } = useBoard();
-  const color = record.color ?? ZONE_COLORS[0];
+  const { updateNode, resizeZone } = useBoard();
+  const color = record.color ?? ZONE_WHITE;
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const isGroup = meta["templateGroup"] === true;
   return (
     <>
       <NodeResizer
@@ -295,12 +299,20 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
         minHeight={120}
         isVisible={Boolean(selected)}
         color="var(--primary)"
+        onResizeEnd={(_, params) => resizeZone(record.id, params.width, params.height)}
       />
       <div
-        className="h-full w-full rounded-2xl border"
+        className={`h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
         style={{
-          background: `color-mix(in oklab, ${color} 8%, transparent)`,
-          borderColor: `color-mix(in oklab, ${color} 35%, transparent)`,
+          background: isGroup
+            ? "transparent"
+            : color === ZONE_WHITE
+              ? "var(--card)"
+              : `color-mix(in oklab, ${color} 8%, transparent)`,
+          borderColor:
+            color === ZONE_WHITE
+              ? "var(--border)"
+              : `color-mix(in oklab, ${color} 35%, transparent)`,
         }}
       >
         <input

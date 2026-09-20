@@ -52,6 +52,8 @@ export type BoardApi = {
   allNodes: () => NodeRecord[];
   /** Centre the canvas on a module and select it. */
   focusNode: (id: string) => void;
+  /** Persist a field size; template groups scale their fields along. */
+  resizeZone: (id: string, width: number, height: number) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
