@@ -33,12 +33,23 @@ Ein helles, ruhiges Whiteboard (Miro-artig), auf dem Inhalte als Karten liegen, 
 
 ## Später (nicht in diesem Plan)
 - YouTube-Suche mit Import der 10 meistgesehenen Videos als Frame
-- Beliebige MCP-Server als Modul auf dem Canvas
+- Beliebige MCP-Server als Modul auf dem Canvas (eingehende Werkzeuge anderer Dienste)
 - Figma-Markenhandbuch als Modul und PPT-Erzeugung daraus
 - Stripe-Abos und „eigener API-Schlüssel“ pro Nutzer
 - Erweiterte Whiteboard-Werkzeuge (Stifte, Formen, Kommentare, Echtzeit-Zusammenarbeit)
 
 Diese Punkte beeinflussen den Aufbau schon jetzt: Module sind als austauschbarer Kartentyp angelegt, Modellaufrufe laufen über eine zentrale Stelle, die später auch eigene Schlüssel akzeptieren kann.
+
+## Eigener MCP-Zugang (rein und raus)
+
+Die App bekommt eine eigene MCP-Schnittstelle, sodass externe KI-Werkzeuge (z. B. Lovable-Chat, Claude, Cursor) direkt mit der Bibliothek arbeiten können:
+
+- Lesen: Boards und Module auflisten, Inhalt und Transkript eines Moduls abrufen, in allen Inhalten suchen, Verbindungen und Frames abfragen.
+- Schreiben: neues Modul anlegen (Link, Text, Datei-Inhalt), Notiz aufs Board legen, Module verbinden, Frame anlegen.
+- Zugriff ist an den jeweiligen Nutzer gebunden; jeder sieht nur seine eigene Bibliothek.
+
+Das ist die Gegenrichtung zu „MCP-Server als Modul“: hier ist unsere App der Server. Sie wird in Phase 1 mit angelegt, weil das Datenmodell ohnehin entsteht; die Freigabe für externe Werkzeuge erfolgt anschließend.
+
 
 ## Technische Umsetzung
 - Lovable Cloud für Login, Datenbank und Dateispeicher; alle Tabellen mit nutzerbezogenen Zugriffsregeln.
