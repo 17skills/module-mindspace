@@ -554,7 +554,14 @@ function BoardPage() {
           title: page.title,
           content: page.text,
           status: "ready",
-          ...(page.image ? { metadata: { thumbnail: page.image } } : {}),
+          ...(page.image
+            ? {
+                metadata: {
+                  ...(recordsRef.current[record.id]?.metadata ?? {}),
+                  thumbnail: page.image,
+                },
+              }
+            : {}),
         });
       } catch (error) {
         updateNode(record.id, {
@@ -591,7 +598,11 @@ function BoardPage() {
           updateNode(record.id, { storage_path: path });
 
           const thumbnail = await filePreview(file);
-          if (thumbnail) updateNode(record.id, { metadata: { thumbnail } });
+          if (thumbnail) {
+            updateNode(record.id, {
+              metadata: { ...(recordsRef.current[record.id]?.metadata ?? {}), thumbnail },
+            });
+          }
 
           if (audio) {
             if (file.size > 20 * 1024 * 1024) {
