@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   BackgroundVariant,
+  SelectionMode,
   Controls,
   MiniMap,
   ReactFlow,
@@ -215,7 +216,18 @@ function layer(record: NodeRecord) {
 }
 
 function sortNodes(list: NodeRecord[]) {
-  return [...list].sort((a, b) => layer(a) - layer(b));
+  const byId = new Map(list.map((item) => [item.id, item]));
+  const depth = (record: NodeRecord) => {
+    let level = 0;
+    let parent = record.parent_id ? byId.get(record.parent_id) : null;
+    while (parent && level < 10) {
+      level += 1;
+      parent = parent.parent_id ? byId.get(parent.parent_id) : null;
+    }
+    return level;
+  };
+  // parents always before their children, then background fields before cards
+  return [...list].sort((a, b) => depth(a) - depth(b) || layer(a) - layer(b));
 }
 
 type Menu = { x: number; y: number; flowX: number; flowY: number; nodeId?: string };
@@ -769,11 +781,10 @@ function BoardPage() {
   );
 
   const groupSelection = useCallback(async () => {
-    const selected = nodes.filter(
-      (n) => n.selected && n.type !== "frame" && n.type !== "zone" && !n.parentId,
-    );
+    // Formen, Texte und Hintergrundfelder lassen sich mitgruppieren
+    const selected = nodes.filter((n) => n.selected && n.type !== "frame" && !n.parentId);
     if (selected.length < 2) {
-      toast.info("Mindestens zwei Module auswählen (Shift + Ziehen)");
+      toast.info("Mindestens zwei Elemente auswählen (Ziehen oder Shift + Klick)");
       return;
     }
     const padding = 48;
@@ -1153,6 +1164,19 @@ function BoardPage() {
     return () => window.removeEventListener("paste", onPaste);
   }, [addUrl]);
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        void groupSelection();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [groupSelection]);
+
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>
@@ -1494,6 +1518,8 @@ function BoardPage() {
             minZoom={0.15}
             maxZoom={2.5}
             selectionOnDrag
+            selectionMode={SelectionMode.Partial}
+            multiSelectionKeyCode={["Meta", "Control", "Shift"]}
             panOnScroll
             proOptions={{ hideAttribution: true }}
           >
