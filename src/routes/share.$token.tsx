@@ -22,6 +22,8 @@ import {
   DataNode,
   FrameNode,
   NoteNode,
+  ShapeNode,
+  TextNode,
   ZoneNode,
 } from "@/components/canvas/nodes";
 import { getSharedBoard } from "@/lib/share.functions";
@@ -58,6 +60,8 @@ const nodeTypes = {
   frame: FrameNode,
   data: DataNode,
   zone: ZoneNode,
+  shape: ShapeNode,
+  text: TextNode,
 };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
@@ -73,7 +77,9 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "note" ||
     record.type === "chat" ||
     record.type === "frame" ||
-    record.type === "zone"
+    record.type === "zone" ||
+    record.type === "shape" ||
+    record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
         ? "data"

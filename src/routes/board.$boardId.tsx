@@ -29,11 +29,14 @@ import {
   FileUp,
   LayoutTemplate,
   Link2,
+  Lock,
+  LockOpen,
   MessageSquare,
   NotebookPen,
   PanelsTopLeft,
   Share2,
   StickyNote,
+  Type,
   Upload,
   Workflow,
 } from "lucide-react";
@@ -58,6 +61,9 @@ import {
   SHAPES,
   ShapeNode,
   shapeKind,
+  TEXT_SIZES,
+  TextNode,
+  textSize,
   ZONE_COLORS,
   ZoneNode,
 } from "@/components/canvas/nodes";
@@ -112,6 +118,7 @@ const nodeTypes = {
   data: DataNode,
   zone: ZoneNode,
   shape: ShapeNode,
+  text: TextNode,
 };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
@@ -122,6 +129,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   frame: { width: 640, height: 460 },
   zone: { width: 420, height: 360 },
   shape: { width: 200, height: 140 },
+  text: { width: 260, height: 48 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -175,11 +183,15 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "chat" ||
     record.type === "frame" ||
     record.type === "zone" ||
-    record.type === "shape"
+    record.type === "shape" ||
+    record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
         ? "data"
         : "content";
+  const zoneLocked =
+    kind === "zone" &&
+    (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
   return {
     id: record.id,
     type: kind,
@@ -189,7 +201,10 @@ function toFlowNode(record: NodeRecord): Node {
     data: { record },
     ...(record.parent_id ? { parentId: record.parent_id, extent: "parent" as const } : {}),
     ...(kind === "frame" ? { zIndex: -1 } : {}),
-    ...(kind === "zone" ? { zIndex: -2, connectable: false, deletable: true } : {}),
+    ...(kind === "zone"
+      ? { zIndex: -2, connectable: false, deletable: true, draggable: !zoneLocked }
+      : {}),
+    ...(kind === "text" ? { connectable: false } : {}),
   };
 }
 
@@ -289,7 +304,11 @@ function BoardPage() {
     setNodes((current) =>
       current.map((node) => {
         const record = records[node.id];
-        return record ? { ...node, data: { record } } : node;
+        if (!record) return node;
+        const zoneLocked =
+          record.type === "zone" &&
+          (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
+        return { ...node, data: { record }, draggable: !zoneLocked };
       }),
     );
   }, [records, setNodes]);
@@ -1142,7 +1161,19 @@ function BoardPage() {
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
 
-  const menuItems = menuRecord?.type === "shape"
+  const menuItems = menuRecord?.type === "text"
+    ? [
+        ...TEXT_SIZES.map((size) => ({
+          label: size.label,
+          active: textSize(menuRecord).id === size.id,
+          run: () =>
+            updateNode(menuRecord.id, {
+              metadata: { ...(menuRecord.metadata ?? {}), textSize: size.id },
+            }),
+        })),
+        { label: "Text löschen", run: () => deleteNode(menuRecord.id) },
+      ]
+    : menuRecord?.type === "shape"
     ? [
         ...SHAPES.map((shape) => ({
           label: shape.label,
@@ -1201,6 +1232,24 @@ function BoardPage() {
           label: "Vorlagen verwalten …",
           icon: PanelsTopLeft,
           run: () => setTemplateOpen(true),
+        },
+        {
+          label:
+            (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
+              ? "Feld entsperren"
+              : "Feld sperren",
+          icon:
+            (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
+              ? LockOpen
+              : Lock,
+          run: () =>
+            updateNode(menuRecord.id, {
+              metadata: {
+                ...(menuRecord.metadata ?? {}),
+                locked:
+                  (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] !== true,
+              },
+            }),
         },
         ...ZONE_COLORS.map((zoneColor) => ({
           label: zoneColor.name,
@@ -1272,6 +1321,18 @@ function BoardPage() {
               position_x: menu?.flowX ?? 0,
               position_y: menu?.flowY ?? 0,
               metadata: { model: "openai/gpt-6-astra" },
+            }),
+        },
+        {
+          label: "Text",
+          icon: Type,
+          run: () =>
+            void createRecord({
+              type: "text",
+              title: "Text",
+              content: "",
+              position_x: menu?.flowX ?? 0,
+              position_y: menu?.flowY ?? 0,
             }),
         },
         {
@@ -1546,6 +1607,24 @@ function BoardPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Text einfügen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({ type: "text", title: "Text", content: "", position_x: at.x, position_y: at.y });
+                    }}
+                  >
+                    <Type className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Text einfügen</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>

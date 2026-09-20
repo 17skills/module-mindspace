@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { RotateCw } from "lucide-react";
+import { Lock, RotateCw } from "lucide-react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
 import {
   Bar,
@@ -312,17 +312,18 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const color = record.color ?? ZONE_WHITE;
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const isGroup = meta["templateGroup"] === true;
+  const locked = meta["locked"] === true;
   return (
     <>
       <NodeResizer
         minWidth={160}
         minHeight={120}
-        isVisible={Boolean(selected)}
+        isVisible={Boolean(selected) && !locked}
         color="var(--primary)"
         onResizeEnd={(_, params) => resizeZone(record.id, params.width, params.height)}
       />
       <div
-        className={`h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
+        className={`relative h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
         style={{
           background: isGroup
             ? "transparent"
@@ -337,9 +338,13 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
       >
         <input
           defaultValue={record.title ?? "Feld"}
+          readOnly={locked}
           onBlur={(e) => updateNode(record.id, { title: e.target.value })}
-          className="nodrag w-full bg-transparent px-4 py-2.5 font-display text-sm font-semibold tracking-wide text-muted-foreground uppercase outline-none"
+          className="nodrag w-full bg-transparent px-4 py-2.5 pr-9 font-display text-sm font-semibold tracking-wide text-muted-foreground uppercase outline-none read-only:cursor-default"
         />
+        {locked && (
+          <Lock className="pointer-events-none absolute top-3.5 right-3.5 size-3.5 text-muted-foreground/70" />
+        )}
       </div>
     </>
   );
@@ -806,6 +811,59 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) 
           <RotateCw className="mx-auto size-3 text-muted-foreground" />
         </button>
       ) : null}
+    </div>
+  );
+});
+
+/* ------------------------------------------------------------------ text */
+
+export interface TextSize {
+  id: string;
+  label: string;
+  className: string;
+}
+
+export const TEXT_SIZES: readonly TextSize[] = [
+  { id: "s", label: "Klein", className: "text-sm font-medium" },
+  { id: "m", label: "Mittel", className: "font-display text-lg font-semibold tracking-tight" },
+  { id: "l", label: "Groß", className: "font-display text-2xl font-semibold tracking-tight" },
+] as const;
+
+export function textSize(record: NodeRecord): TextSize {
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  return TEXT_SIZES.find((item) => item.id === meta["textSize"]) ?? TEXT_SIZES[1]!;
+}
+
+export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const size = textSize(record);
+  const [text, setText] = useState(record.content ?? "");
+
+  useEffect(() => setText(record.content ?? ""), [record.content]);
+
+  return (
+    <div className="flex h-full w-full items-center px-1">
+      <NodeResizer
+        minWidth={60}
+        minHeight={28}
+        isVisible={Boolean(selected)}
+        color="var(--primary)"
+        keepAspectRatio={false}
+      />
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() =>
+          text !== record.content &&
+          updateNode(record.id, { content: text, title: text.slice(0, 60) || "Text" })
+        }
+        placeholder="Beschriftung"
+        rows={1}
+        className={`nodrag nowheel w-full resize-none bg-transparent text-foreground outline-none placeholder:text-muted-foreground/60 ${size.className}${
+          selected ? " rounded-md ring-1 ring-ring/40" : ""
+        }`}
+      />
     </div>
   );
 });
