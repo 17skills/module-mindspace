@@ -1835,3 +1835,46 @@ function fileToBase64(file: File) {
     reader.readAsDataURL(file);
   });
 }
+
+function SaveIndicator() {
+  const { status, lastSavedAt, lastError } = useSaveStatus();
+  const time = lastSavedAt
+    ? new Date(lastSavedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+    : null;
+  const config =
+    status === "saving"
+      ? { icon: CloudUpload, text: "Speichert …", className: "text-muted-foreground", spin: true }
+      : status === "error"
+        ? { icon: CloudOff, text: "Fehler beim Speichern", className: "text-destructive", spin: false }
+        : status === "saved"
+          ? { icon: CloudCheck, text: `Gespeichert${time ? ` · ${time}` : ""}`, className: "text-muted-foreground", spin: false }
+          : null;
+  if (!config) return null;
+  const Icon = config.icon;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-live="polite"
+          onClick={() => status === "error" && clearSaveError()}
+          className={cn(
+            "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors",
+            config.className,
+            status === "error" && "hover:bg-destructive/10",
+          )}
+        >
+          <Icon className={cn("size-3.5", config.spin && "animate-pulse")} />
+          <span>{config.text}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {status === "error"
+          ? `${lastError ?? "Unbekannter Fehler"} – zum Ausblenden klicken`
+          : status === "saving"
+            ? "Änderungen werden in der Cloud gespeichert"
+            : "Alle Änderungen sind gespeichert"}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
