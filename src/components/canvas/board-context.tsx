@@ -21,7 +21,7 @@ export type NodeRecord = {
   metadata: Record<string, unknown> | null;
 };
 
-export type InspectorTab = "source" | "data" | "refresh";
+export type InspectorTab = "source" | "data" | "refresh" | "assign";
 
 export type StructureItem = {
   kind: "table" | "list" | "chart";
@@ -44,6 +44,10 @@ export type BoardApi = {
   applyStructure: (id: string, item: StructureItem) => void;
   /** Create a new data module next to its sources and connect it. */
   createStructure: (item: StructureItem, sourceIds: string[]) => Promise<void>;
+  /** All background fields of this board. */
+  zones: () => NodeRecord[];
+  /** Field a card belongs to, for the badge on the card. */
+  zoneOf: (id: string) => { title: string; role: string; color: string | null } | null;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);

@@ -1,0 +1,69 @@
+import type { NodeRecord } from "@/components/canvas/board-context";
+
+export const ZONE_ROLES = ["Beispiel", "Beleg", "Gegenbeispiel", "Idee", "Notiz"] as const;
+
+export type ZoneAssignment = {
+  zoneId: string;
+  role: string;
+  note: string;
+  auto: boolean;
+};
+
+export function readAssignment(record: NodeRecord | undefined | null): ZoneAssignment | null {
+  const meta = (record?.metadata ?? {}) as Record<string, unknown>;
+  const zoneId = meta["zoneId"];
+  if (typeof zoneId !== "string" || !zoneId) return null;
+  return {
+    zoneId,
+    role: typeof meta["zoneRole"] === "string" ? (meta["zoneRole"] as string) : "Beispiel",
+    note: typeof meta["zoneNote"] === "string" ? (meta["zoneNote"] as string) : "",
+    auto: meta["zoneAuto"] !== false,
+  };
+}
+
+export function isAuto(record: NodeRecord | undefined | null) {
+  const meta = (record?.metadata ?? {}) as Record<string, unknown>;
+  return meta["zoneAuto"] !== false;
+}
+
+/** Smallest background field containing the given point, if any. */
+export function zoneAt(point: { x: number; y: number }, zones: NodeRecord[]): NodeRecord | null {
+  let best: NodeRecord | null = null;
+  let bestArea = Infinity;
+  for (const zone of zones) {
+    const w = zone.width ?? 420;
+    const h = zone.height ?? 360;
+    if (
+      point.x < zone.position_x ||
+      point.y < zone.position_y ||
+      point.x > zone.position_x + w ||
+      point.y > zone.position_y + h
+    )
+      continue;
+    const area = w * h;
+    if (area < bestArea) {
+      bestArea = area;
+      best = zone;
+    }
+  }
+  return best;
+}
+
+/** Label for a card: which field it belongs to and in which role. */
+export function zoneLabel(
+  record: NodeRecord,
+  zones: Record<string, NodeRecord> | NodeRecord[],
+): { title: string; role: string; note: string; color: string | null } | null {
+  const assignment = readAssignment(record);
+  if (!assignment) return null;
+  const zone = Array.isArray(zones)
+    ? zones.find((item) => item.id === assignment.zoneId)
+    : zones[assignment.zoneId];
+  if (!zone || zone.type !== "zone") return null;
+  return {
+    title: zone.title ?? "Feld",
+    role: assignment.role,
+    note: assignment.note,
+    color: zone.color,
+  };
+}
