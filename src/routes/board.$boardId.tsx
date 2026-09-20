@@ -269,6 +269,18 @@ function BoardPage() {
     async (input: Partial<NodeRecord> & { type: string }) => {
       if (!user) throw new Error("Nicht angemeldet");
       const size = DEFAULT_SIZE[input.type] ?? DEFAULT_SIZE["default"]!;
+      const width = input.width ?? size.width;
+      const height = input.height ?? size.height;
+      const x = input.position_x ?? 0;
+      const y = input.position_y ?? 0;
+      // cards dropped onto a background field belong to that field
+      const zone =
+        input.type === "zone" || input.type === "frame" || input.parent_id
+          ? null
+          : zoneAt(
+              { x: x + width / 2, y: y + height / 2 },
+              Object.values(recordsRef.current).filter((item) => item.type === "zone"),
+            );
       const payload = {
         board_id: boardId,
         user_id: user.id,
