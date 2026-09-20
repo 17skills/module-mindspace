@@ -312,17 +312,18 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const color = record.color ?? ZONE_WHITE;
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const isGroup = meta["templateGroup"] === true;
+  const locked = meta["locked"] === true;
   return (
     <>
       <NodeResizer
         minWidth={160}
         minHeight={120}
-        isVisible={Boolean(selected)}
+        isVisible={Boolean(selected) && !locked}
         color="var(--primary)"
         onResizeEnd={(_, params) => resizeZone(record.id, params.width, params.height)}
       />
       <div
-        className={`h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
+        className={`relative h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
         style={{
           background: isGroup
             ? "transparent"
@@ -337,9 +338,13 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
       >
         <input
           defaultValue={record.title ?? "Feld"}
+          readOnly={locked}
           onBlur={(e) => updateNode(record.id, { title: e.target.value })}
-          className="nodrag w-full bg-transparent px-4 py-2.5 font-display text-sm font-semibold tracking-wide text-muted-foreground uppercase outline-none"
+          className="nodrag w-full bg-transparent px-4 py-2.5 pr-9 font-display text-sm font-semibold tracking-wide text-muted-foreground uppercase outline-none read-only:cursor-default"
         />
+        {locked && (
+          <Lock className="pointer-events-none absolute top-3.5 right-3.5 size-3.5 text-muted-foreground/70" />
+        )}
       </div>
     </>
   );
