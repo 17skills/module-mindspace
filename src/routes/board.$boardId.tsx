@@ -502,20 +502,32 @@ function BoardPage() {
               throw new Error("Audiodatei ist zu groß (max. 20 MB direkt hochladen)");
             }
             const base64 = await fileToBase64(file);
-            const { text } = await transcribeAudio({
+            const { text, segments } = await transcribeAudio({
               data: { audioBase64: base64, mimeType: file.type || "audio/mpeg" },
             });
             updateNode(record.id, {
               content: text,
               status: text ? "ready" : "error",
               error: text ? null : "Transkript ist leer",
+              ...(segments?.length
+                ? { metadata: { ...(recordsRef.current[record.id]?.metadata ?? {}), segments } }
+                : {}),
             });
           } else {
             const text = await extractFileText(file);
+            const fileSegments = await segmentsFromFile(file, text);
             updateNode(record.id, {
               content: text,
               status: text.trim() ? "ready" : "error",
               error: text.trim() ? null : "Kein Text in der Datei gefunden",
+              ...(fileSegments.length
+                ? {
+                    metadata: {
+                      ...(recordsRef.current[record.id]?.metadata ?? {}),
+                      segments: fileSegments,
+                    },
+                  }
+                : {}),
             });
           }
         } catch (error) {
