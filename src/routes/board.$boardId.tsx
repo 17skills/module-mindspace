@@ -16,6 +16,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
+import { Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -1055,9 +1056,11 @@ function BoardPage() {
           label: "Inhalte des Feldes zusammenfassen",
           run: () => void summarizeZone(menuRecord),
         },
-        ...ZONE_COLORS.map((color, index) => ({
-          label: `Farbe ${index + 1}`,
-          run: () => updateNode(menuRecord.id, { color }),
+        ...ZONE_COLORS.map((zoneColor) => ({
+          label: zoneColor.name,
+          swatch: zoneColor.value,
+          active: (menuRecord.color ?? ZONE_WHITE) === zoneColor.value,
+          run: () => updateNode(menuRecord.id, { color: zoneColor.value }),
         })),
         { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
       ]
@@ -1124,7 +1127,7 @@ function BoardPage() {
             void createRecord({
               type: "zone",
               title: "Feld",
-              color: ZONE_COLORS[0],
+              color: ZONE_WHITE,
               position_x: menu?.flowX ?? 0,
               position_y: menu?.flowY ?? 0,
             }).catch((error: unknown) =>
@@ -1290,13 +1293,20 @@ function BoardPage() {
             {menuItems.map((item) => (
               <button
                 key={item.label}
-                className="block w-full px-3 py-1.5 text-left hover:bg-secondary"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-secondary"
                 onClick={() => {
                   setMenu(null);
                   item.run();
                 }}
               >
-                {item.label}
+                {"swatch" in item && item.swatch ? (
+                  <span
+                    className="size-3 shrink-0 rounded-full border"
+                    style={{ backgroundColor: item.swatch as string }}
+                  />
+                ) : null}
+                <span className="flex-1">{item.label}</span>
+                {"active" in item && item.active ? <Check className="size-3.5 text-primary" /> : null}
               </button>
             ))}
           </div>

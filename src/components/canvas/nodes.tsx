@@ -276,14 +276,19 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
   );
 });
 
-export const ZONE_COLORS = [
-  ZONE_WHITE,
-  "var(--frame)",
-  "var(--video)",
-  "var(--audio)",
-  "var(--doc)",
-  "var(--note)",
-  "var(--chat)",
+export interface ZoneColor {
+  name: string;
+  value: string;
+}
+
+export const ZONE_COLORS: readonly ZoneColor[] = [
+  { name: "Weiß", value: ZONE_WHITE },
+  { name: "Salbei", value: "var(--frame)" },
+  { name: "Rot", value: "var(--video)" },
+  { name: "Violett", value: "var(--audio)" },
+  { name: "Blau", value: "var(--doc)" },
+  { name: "Amber", value: "var(--note)" },
+  { name: "Petrol", value: "var(--chat)" },
 ] as const;
 
 export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
