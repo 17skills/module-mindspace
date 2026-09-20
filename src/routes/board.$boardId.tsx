@@ -262,8 +262,15 @@ function BoardPage() {
     if (!loading && !user) void navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
+  const userId = user?.id ?? null;
+  const loadedKey = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
+    // a token refresh must never reload the board: that made modules flicker away
+    const key = `${boardId}:${userId}`;
+    if (loadedKey.current === key) return;
+    loadedKey.current = key;
     let active = true;
     void (async () => {
       const [boardRes, nodeRes, edgeRes] = await Promise.all([
