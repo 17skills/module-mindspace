@@ -175,6 +175,12 @@ export const ContentNode = memo(function ContentNode({ data, selected }: NodePro
       <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[11px] text-muted-foreground">
         <span>{record.content ? `${record.content.length.toLocaleString("de-DE")} Zeichen` : "—"}</span>
         <div className="flex items-center gap-2">
+          <button
+            className="nodrag hover:text-foreground hover:underline"
+            onClick={() => openInspector(record.id, "source")}
+          >
+            Kontextfenster
+          </button>
           {record.content && (
             <button
               className="nodrag hover:text-foreground hover:underline"
