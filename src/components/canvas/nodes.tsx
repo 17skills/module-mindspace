@@ -48,7 +48,12 @@ function Shell({
 }) {
   return (
     <>
-      <NodeResizer minWidth={minWidth} minHeight={minHeight} isVisible={selected} color="var(--primary)" />
+      <NodeResizer
+        minWidth={minWidth}
+        minHeight={minHeight}
+        isVisible={Boolean(selected)}
+        color="var(--primary)"
+      />
       <Handle type="target" position={Position.Left} />
       <div
         className="flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-card)]"
