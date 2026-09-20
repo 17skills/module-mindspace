@@ -14,7 +14,225 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      boards: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          node_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          node_id: string
+          role: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          node_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edges: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          label: string | null
+          source_id: string
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          source_id: string
+          target_id: string
+          user_id?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          source_id?: string
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edges_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edges_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edges_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nodes: {
+        Row: {
+          board_id: string
+          color: string | null
+          content: string | null
+          created_at: string
+          error: string | null
+          height: number
+          id: string
+          metadata: Json
+          mime_type: string | null
+          parent_id: string | null
+          position_x: number
+          position_y: number
+          source_url: string | null
+          status: string
+          storage_path: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+          width: number
+        }
+        Insert: {
+          board_id: string
+          color?: string | null
+          content?: string | null
+          created_at?: string
+          error?: string | null
+          height?: number
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          parent_id?: string | null
+          position_x?: number
+          position_y?: number
+          source_url?: string | null
+          status?: string
+          storage_path?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          width?: number
+        }
+        Update: {
+          board_id?: string
+          color?: string | null
+          content?: string | null
+          created_at?: string
+          error?: string | null
+          height?: number
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          parent_id?: string | null
+          position_x?: number
+          position_y?: number
+          source_url?: string | null
+          status?: string
+          storage_path?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nodes_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
