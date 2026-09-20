@@ -20,7 +20,7 @@ type Props = {
 };
 
 export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
-  const { sourcesFor, updateNode } = useBoard();
+  const { sourcesFor, updateNode, openInspector } = useBoard();
   const sources = sourcesFor(nodeId);
   const record = sources.find((item) => item.id === nodeId) ?? sources[0];
   const [activeSource, setActiveSource] = useState(sources[0]?.id ?? nodeId);
