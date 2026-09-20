@@ -97,25 +97,41 @@ function Shell({
 }
 
 function Header({ record }: { record: NodeRecord }) {
-  const { deleteNode } = useBoard();
+  const { deleteNode, zoneOf, openInspector } = useBoard();
+  const zone = zoneOf(record.id);
   return (
-    <div className="flex items-start gap-2 border-b px-3 py-2">
-      <span
-        className="mt-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white"
-        style={{ background: NODE_ACCENT[record.type] ?? "var(--primary)" }}
-      >
-        {NODE_LABEL[record.type] ?? record.type}
-      </span>
-      <span className="line-clamp-2 flex-1 text-sm font-medium leading-tight">
-        {record.title || "Ohne Titel"}
-      </span>
-      <button
-        className="nodrag text-xs text-muted-foreground hover:text-destructive"
-        onClick={() => deleteNode(record.id)}
-        title="Modul löschen"
-      >
-        ✕
-      </button>
+    <div className="border-b px-3 py-2">
+      <div className="flex items-start gap-2">
+        <span
+          className="mt-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white"
+          style={{ background: NODE_ACCENT[record.type] ?? "var(--primary)" }}
+        >
+          {NODE_LABEL[record.type] ?? record.type}
+        </span>
+        <span className="line-clamp-2 flex-1 text-sm font-medium leading-tight">
+          {record.title || "Ohne Titel"}
+        </span>
+        <button
+          className="nodrag text-xs text-muted-foreground hover:text-destructive"
+          onClick={() => deleteNode(record.id)}
+          title="Modul löschen"
+        >
+          ✕
+        </button>
+      </div>
+      {zone && (
+        <button
+          className="nodrag mt-1.5 flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+          onClick={() => openInspector(record.id, "assign")}
+          title="Zuordnung bearbeiten"
+        >
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ background: zone.color ?? "var(--primary)" }}
+          />
+          {zone.title} · {zone.role}
+        </button>
+      )}
     </div>
   );
 }
