@@ -1292,13 +1292,20 @@ function BoardPage() {
             {menuItems.map((item) => (
               <button
                 key={item.label}
-                className="block w-full px-3 py-1.5 text-left hover:bg-secondary"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-secondary"
                 onClick={() => {
                   setMenu(null);
                   item.run();
                 }}
               >
-                {item.label}
+                {"swatch" in item && item.swatch ? (
+                  <span
+                    className="size-3 shrink-0 rounded-full border"
+                    style={{ backgroundColor: item.swatch as string }}
+                  />
+                ) : null}
+                <span className="flex-1">{item.label}</span>
+                {"active" in item && item.active ? <Check className="size-3.5 text-primary" /> : null}
               </button>
             ))}
           </div>
