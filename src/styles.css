@@ -41,6 +41,8 @@
   --color-note: var(--note);
   --color-chat: var(--chat);
   --color-frame: var(--frame);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-foreground: var(--brand-navy-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -87,6 +89,8 @@
   --note: oklch(0.72 0.13 85);
   --chat: oklch(0.55 0.13 190);
   --frame: oklch(0.6 0.06 160);
+  --brand-navy: oklch(0.27 0.06 258);
+  --brand-navy-foreground: oklch(0.985 0.004 95);
   --chart-1: oklch(0.55 0.13 190);
   --chart-2: oklch(0.62 0.17 20);
   --chart-3: oklch(0.62 0.14 300);
@@ -132,6 +136,8 @@
   --sidebar-accent-foreground: oklch(0.96 0.005 250);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.7 0.11 200);
+  --brand-navy: oklch(0.92 0.02 258);
+  --brand-navy-foreground: oklch(0.2 0.02 258);
 }
 
 @layer base {

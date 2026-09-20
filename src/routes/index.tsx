@@ -93,10 +93,12 @@ function LibraryPage() {
       <header className="border-b bg-card/70 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-sm text-primary-foreground">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-navy text-sm text-brand-navy-foreground">
               ✦
             </span>
-            <span className="font-display text-lg font-semibold">Canvas Spark</span>
+            <span className="font-display text-lg font-semibold tracking-tight text-brand-navy">
+              Canvas Spark
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
@@ -110,7 +112,9 @@ function LibraryPage() {
       <section className="mx-auto max-w-5xl px-6 py-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold">Deine Boards</h1>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-brand-navy">
+              Deine Boards
+            </h1>
             <p className="mt-1 text-muted-foreground">
               Ein Board pro Thema: Videos, Podcasts, Dokumente, Notizen und Chat.
             </p>

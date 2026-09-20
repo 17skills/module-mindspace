@@ -85,7 +85,9 @@ function AuthPage() {
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-lg font-semibold text-primary-foreground">
             ✦
           </div>
-          <h1 className="text-2xl font-semibold">Canvas Spark</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-navy">
+            Canvas Spark
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Deine Inhalte auf einer Fläche – verbunden und mit KI auswertbar.
           </p>
