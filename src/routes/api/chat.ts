@@ -30,25 +30,25 @@ export const Route = createFileRoute("/api/chat")({
         if (history.length === 0) return new Response("Keine Nachricht", { status: 400 });
 
         const context = (body.context ?? "").slice(0, 400_000);
-        const messages: ModelMessage[] = [
-          { role: "system", content: SYSTEM },
-          ...(context
-            ? [
-                {
-                  role: "system" as const,
-                  content: `Verbundene Inhalte:\n\n${context}`,
-                },
-              ]
-            : []),
-          ...history.map((m) => ({ role: m.role, content: m.content }) as ModelMessage),
-        ];
+        const instructions = context
+          ? `${SYSTEM}\n\nVerbundene Inhalte:\n\n${context}`
+          : SYSTEM;
+        const messages: ModelMessage[] = history.map(
+          (m) => ({ role: m.role, content: m.content }) as ModelMessage,
+        );
+
+        const onError = ({ error }: { error: unknown }) => {
+          console.error("chat error", error);
+        };
 
         try {
           const result = isOpenAiModel(modelId)
             ? streamText({
                 model: responsesModel(modelId),
+                instructions,
                 messages,
                 abortSignal: request.signal,
+                onError,
                 providerOptions: {
                   openai: {
                     forceReasoning: true,
@@ -59,9 +59,18 @@ export const Route = createFileRoute("/api/chat")({
                   },
                 },
               })
-            : streamText({ model: chatModel(modelId), messages, abortSignal: request.signal });
+            : streamText({
+                model: chatModel(modelId),
+                instructions,
+                messages,
+                abortSignal: request.signal,
+                onError,
+              });
 
-          return result.toTextStreamResponse();
+          return result.toTextStreamResponse({
+            onError: (error) =>
+              error instanceof Error ? error.message : "Antwort fehlgeschlagen",
+          });
         } catch (error) {
           if ((error as Error)?.name === "AbortError") return new Response(null, { status: 499 });
           const message = error instanceof Error ? error.message : "Unbekannter Fehler";
