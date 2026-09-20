@@ -1,0 +1,59 @@
+import { createContext, useContext } from "react";
+
+export type NodeRecord = {
+  id: string;
+  board_id: string;
+  user_id: string;
+  parent_id: string | null;
+  type: string;
+  title: string | null;
+  position_x: number;
+  position_y: number;
+  width: number | null;
+  height: number | null;
+  color: string | null;
+  source_url: string | null;
+  storage_path: string | null;
+  mime_type: string | null;
+  content: string | null;
+  status: string | null;
+  error: string | null;
+  metadata: Record<string, unknown> | null;
+};
+
+export type BoardApi = {
+  updateNode: (id: string, patch: Partial<NodeRecord>) => void;
+  deleteNode: (id: string) => void;
+  collectContext: (id: string) => string;
+  addNoteFrom: (id: string, text: string) => void;
+};
+
+export const BoardContext = createContext<BoardApi | null>(null);
+
+export function useBoard() {
+  const ctx = useContext(BoardContext);
+  if (!ctx) throw new Error("BoardContext fehlt");
+  return ctx;
+}
+
+export const NODE_ACCENT: Record<string, string> = {
+  youtube: "var(--video)",
+  podcast: "var(--audio)",
+  audio: "var(--audio)",
+  document: "var(--doc)",
+  link: "var(--doc)",
+  note: "var(--note)",
+  chat: "var(--chat)",
+  frame: "var(--frame)",
+};
+
+export const NODE_LABEL: Record<string, string> = {
+  youtube: "YouTube",
+  podcast: "Podcast",
+  audio: "Audio",
+  document: "Dokument",
+  link: "Link",
+  note: "Notiz",
+  chat: "Chat",
+  frame: "Gruppe",
+};
