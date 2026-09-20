@@ -26,7 +26,15 @@ import {
   type NodeRecord,
   type StructureItem,
 } from "@/components/canvas/board-context";
-import { ChatNode, ContentNode, DataNode, FrameNode, NoteNode } from "@/components/canvas/nodes";
+import {
+  ChatNode,
+  ContentNode,
+  DataNode,
+  FrameNode,
+  NoteNode,
+  ZONE_COLORS,
+  ZoneNode,
+} from "@/components/canvas/nodes";
 import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
