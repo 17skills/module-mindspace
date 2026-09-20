@@ -16,7 +16,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { Check, Link2, MessageSquare, NotebookPen, PanelsTopLeft, Upload, Workflow } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
@@ -1073,6 +1073,7 @@ function BoardPage() {
     ? [
         {
           label: "Chat zu diesem Feld",
+          icon: MessageSquare,
           run: () =>
             void createRecord({
               type: "chat",
@@ -1086,14 +1087,17 @@ function BoardPage() {
         },
         {
           label: "Inhalte des Feldes zusammenfassen",
+          icon: NotebookPen,
           run: () => void summarizeZone(menuRecord),
         },
         {
           label: "Als eigene Vorlage speichern",
+          icon: PanelsTopLeft,
           run: () => void saveGroupAsTemplate(menuRecord),
         },
         {
           label: "Vorlagen verwalten …",
+          icon: PanelsTopLeft,
           run: () => setTemplateOpen(true),
         },
         ...ZONE_COLORS.map((zoneColor) => ({
@@ -1108,14 +1112,17 @@ function BoardPage() {
     ? [
         {
           label: "Im Kontextfenster öffnen",
+          icon: PanelsTopLeft,
           run: () => openInspector(menu.nodeId!),
         },
         {
           label: "Strukturierte Daten herauslösen",
+          icon: Workflow,
           run: () => extractStructure(menu.nodeId!),
         },
         {
           label: "Notiz daneben anlegen",
+          icon: NotebookPen,
           run: () =>
             void createRecord({
               type: "note",
@@ -1130,10 +1137,12 @@ function BoardPage() {
     : [
         {
           label: "Link einfügen …",
+          icon: Link2,
           run: () => setLinkPrompt({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
         },
         {
           label: "Datei hochladen …",
+          icon: Upload,
           run: () => {
             filePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
             fileRef.current?.click();
@@ -1141,6 +1150,7 @@ function BoardPage() {
         },
         {
           label: "Notiz",
+          icon: NotebookPen,
           run: () =>
             void createRecord({
               type: "note",
@@ -1152,6 +1162,7 @@ function BoardPage() {
         },
         {
           label: "Chat-Modul",
+          icon: MessageSquare,
           run: () =>
             void createRecord({
               type: "chat",
@@ -1163,6 +1174,7 @@ function BoardPage() {
         },
         {
           label: "Hintergrundfeld",
+          icon: PanelsTopLeft,
           run: () =>
             void createRecord({
               type: "zone",
@@ -1176,12 +1188,13 @@ function BoardPage() {
         },
         {
           label: "Vorlage einfügen …",
+          icon: PanelsTopLeft,
           run: () => {
             templatePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
             setTemplateOpen(true);
           },
         },
-        { label: "Auswahl gruppieren", run: () => void groupSelection() },
+        { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
       ];
 
   return (
@@ -1326,19 +1339,20 @@ function BoardPage() {
 
         {menu && (
           <div
-            className="fixed z-50 w-60 overflow-hidden rounded-xl border bg-popover py-1 text-sm shadow-lg"
+            className="fixed z-50 w-64 overflow-hidden rounded-xl border border-border/70 bg-popover p-1.5 text-sm text-popover-foreground shadow-[var(--shadow-float)]"
             style={{ left: menu.x, top: menu.y }}
             onMouseLeave={() => setMenu(null)}
           >
             {menuItems.map((item) => (
               <button
                 key={item.label}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-secondary"
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                 onClick={() => {
                   setMenu(null);
                   item.run();
                 }}
               >
+                {"icon" in item && item.icon ? <item.icon className="size-4 shrink-0 text-muted-foreground" /> : null}
                 {"swatch" in item && item.swatch ? (
                   <span
                     className="size-3 shrink-0 rounded-full border"
@@ -1354,8 +1368,9 @@ function BoardPage() {
 
         {linkPrompt && (
           <div className="absolute inset-0 z-50 flex items-start justify-center bg-background/40 pt-32">
-            <div className="w-96 rounded-2xl border bg-card p-4 shadow-lg">
-              <p className="mb-2 text-sm font-medium">Link einfügen</p>
+            <div className="w-96 rounded-2xl border border-border/70 bg-card p-5 shadow-[var(--shadow-float)]">
+              <p className="mb-1 font-display text-lg font-semibold">Link einfügen</p>
+              <p className="mb-4 text-sm text-muted-foreground">Füge einen Link zu einem Video, Podcast oder Artikel ein.</p>
               <Input
                 autoFocus
                 value={linkValue}
@@ -1371,11 +1386,12 @@ function BoardPage() {
                 }}
               />
               <div className="mt-3 flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setLinkPrompt(null)}>
+                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setLinkPrompt(null)}>
                   Abbrechen
                 </Button>
                 <Button
                   size="sm"
+                  className="rounded-full"
                   onClick={() => {
                     void addUrl(linkValue, linkPrompt);
                     setLinkValue("");
