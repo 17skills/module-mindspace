@@ -79,6 +79,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
     ...(isData ? [{ id: "data" as const, label: "Daten" }] : []),
     { id: "refresh", label: "Aktualisieren" },
     ...(record.type === "zone" ? [] : [{ id: "assign" as const, label: "Zuordnung" }]),
+    { id: "overview", label: "Übersicht" },
   ];
   const activeTab = tabs.some((item) => item.id === tab) ? tab : "source";
 
