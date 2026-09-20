@@ -304,7 +304,11 @@ function BoardPage() {
     setNodes((current) =>
       current.map((node) => {
         const record = records[node.id];
-        return record ? { ...node, data: { record } } : node;
+        if (!record) return node;
+        const zoneLocked =
+          record.type === "zone" &&
+          (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
+        return { ...node, data: { record }, draggable: !zoneLocked };
       }),
     );
   }, [records, setNodes]);
