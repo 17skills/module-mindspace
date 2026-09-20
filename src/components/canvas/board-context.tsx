@@ -21,12 +21,28 @@ export type NodeRecord = {
   metadata: Record<string, unknown> | null;
 };
 
+export type InspectorTab = "source" | "data" | "refresh";
+
+export type StructureItem = {
+  kind: "table" | "list" | "chart";
+  title: string;
+  chartType: "bar" | "line" | "pie" | "none";
+  columns: string[];
+  rows: string[][];
+};
+
 export type BoardApi = {
+  records: Record<string, NodeRecord>;
   updateNode: (id: string, patch: Partial<NodeRecord>) => void;
   deleteNode: (id: string) => void;
   collectContext: (id: string) => string;
   addNoteFrom: (id: string, text: string) => void;
   extractStructure: (id: string) => void;
+  openInspector: (id: string, tab?: InspectorTab) => void;
+  /** Overwrite a table/list/chart module with new data. */
+  applyStructure: (id: string, item: StructureItem) => void;
+  /** Create a new data module next to its sources and connect it. */
+  createStructure: (item: StructureItem, sourceIds: string[]) => Promise<void>;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
