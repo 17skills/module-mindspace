@@ -25,7 +25,7 @@ type Props = {
 function Preview({ fields }: { fields: TemplateField[] }) {
   const { width, height } = templateBounds(fields);
   return (
-    <div className="relative h-28 w-full overflow-hidden rounded-xl border border-border/70 bg-canvas">
+    <div className="relative h-28 w-full overflow-hidden rounded-lg border border-border/70 bg-canvas">
       {fields.map((field, index) => (
         <div
           key={index}
@@ -54,10 +54,10 @@ function Card({
   onDelete?: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-3 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-float)]">
+    <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-3 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-float)]">
       <Preview fields={template.fields} />
       <div className="min-h-10">
-        <p className="font-display text-sm font-semibold tracking-tight">{template.title}</p>
+        <p className="font-display text-sm font-semibold">{template.title}</p>
         <p className="text-xs text-muted-foreground">{template.description}</p>
       </div>
       <div className="flex gap-2">
@@ -102,7 +102,7 @@ function EditForm({
     );
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/30 p-4">
+    <div className="space-y-4 rounded-lg border border-border/70 bg-muted/30 p-4">
       <div className="grid gap-2 sm:grid-cols-2">
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name" className="h-9 rounded-xl" />
         <Input
@@ -288,7 +288,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto rounded-2xl sm:max-w-3xl">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">Vorlagen</DialogTitle>
           <DialogDescription>
@@ -311,7 +311,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
           </TabsContent>
 
           <TabsContent value="own" className="mt-4 space-y-4">
-            <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 p-3">
+            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/40 p-3">
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
