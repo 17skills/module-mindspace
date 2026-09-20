@@ -593,9 +593,83 @@ function BoardPage() {
     for (const otherId of outside) createEdge(frame.id, otherId);
   }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
 
+  const openInspector = useCallback((id: string, tab: InspectorTab = "source") => {
+    setInspector({ nodeId: id, tab });
+  }, []);
+
+  /** The module itself when it carries content, otherwise its connected content modules. */
+  const sourcesFor = useCallback((id: string) => {
+    const record = recordsRef.current[id];
+    if (!record) return [];
+    if (!DATA_TYPES.includes(record.type)) return [record];
+    const neighbours: NodeRecord[] = [record];
+    for (const edge of edgesRef.current) {
+      const otherId = edge.source === id ? edge.target : edge.target === id ? edge.source : null;
+      if (!otherId) continue;
+      const other = recordsRef.current[otherId];
+      if (!other || other.type === "chat") continue;
+      if (other.type === "frame") {
+        for (const child of Object.values(recordsRef.current)) {
+          if (child.parent_id === other.id) neighbours.push(child);
+        }
+        continue;
+      }
+      neighbours.push(other);
+    }
+    return neighbours;
+  }, []);
+
+  const applyStructure = useCallback(
+    (id: string, item: StructureItem) => {
+      updateNode(id, itemToPatch(item));
+    },
+    [updateNode],
+  );
+
+  const createStructure = useCallback(
+    async (item: StructureItem, sourceIds: string[]) => {
+      const anchor = recordsRef.current[sourceIds[0] ?? ""];
+      const patch = itemToPatch(item);
+      const created = await createRecord({
+        type: patch.type!,
+        title: patch.title ?? item.title,
+        content: patch.content ?? "",
+        position_x: (anchor?.position_x ?? 0) + 420,
+        position_y: (anchor?.position_y ?? 0) + 60,
+        metadata: patch.metadata ?? {},
+      });
+      for (const sourceId of sourceIds) {
+        const source = recordsRef.current[sourceId];
+        if (source) createEdge(source.parent_id ?? source.id, created.id);
+      }
+      setInspector({ nodeId: created.id, tab: "data" });
+    },
+    [createRecord, createEdge],
+  );
+
   const api = useMemo(
-    () => ({ updateNode, deleteNode, collectContext, addNoteFrom, extractStructure }),
-    [updateNode, deleteNode, collectContext, addNoteFrom, extractStructure],
+    () => ({
+      updateNode,
+      deleteNode,
+      collectContext,
+      addNoteFrom,
+      extractStructure,
+      openInspector,
+      sourcesFor,
+      applyStructure,
+      createStructure,
+    }),
+    [
+      updateNode,
+      deleteNode,
+      collectContext,
+      addNoteFrom,
+      extractStructure,
+      openInspector,
+      sourcesFor,
+      applyStructure,
+      createStructure,
+    ],
   );
 
   useEffect(() => {
