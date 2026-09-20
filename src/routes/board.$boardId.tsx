@@ -1163,6 +1163,19 @@ function BoardPage() {
     return () => window.removeEventListener("paste", onPaste);
   }, [addUrl]);
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        void groupSelection();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [groupSelection]);
+
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>
