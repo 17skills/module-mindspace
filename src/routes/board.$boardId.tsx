@@ -792,7 +792,7 @@ function BoardPage() {
       />
 
       <div
-        className="relative flex-1"
+        className="relative flex min-h-0 flex-1"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -805,6 +805,7 @@ function BoardPage() {
         }}
       >
         <BoardContext.Provider value={api}>
+          <div className="relative min-w-0 flex-1">
           <ReactFlow
             nodes={nodes}
             edges={edges}
