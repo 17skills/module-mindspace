@@ -272,6 +272,7 @@ function BoardPage() {
     if (loadedKey.current === key) return;
     loadedKey.current = key;
     let active = true;
+    let done = false;
     void (async () => {
       const [boardRes, nodeRes, edgeRes] = await Promise.all([
         supabase.from("boards").select("title,user_id").eq("id", boardId).single(),
