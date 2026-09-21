@@ -44,9 +44,18 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  function done() {
+    if (target) {
+      window.location.href = target;
+      return;
+    }
+    void navigate({ to: "/" });
+  }
+
   useEffect(() => {
-    if (!loading && user) void navigate({ to: "/" });
-  }, [loading, user, navigate]);
+    if (!loading && user) done();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -56,7 +65,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: target ? window.location.origin + target : window.location.origin },
         });
         if (error) throw error;
         toast.success("Fast fertig", {
@@ -65,7 +74,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        void navigate({ to: "/" });
+        done();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Anmeldung fehlgeschlagen");
@@ -76,14 +85,14 @@ function AuthPage() {
 
   async function google() {
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: target ? window.location.origin + target : window.location.origin,
     });
     if (result.error) {
       toast.error("Google-Anmeldung fehlgeschlagen");
       return;
     }
     if (result.redirected) return;
-    void navigate({ to: "/" });
+    done();
   }
 
   return (
