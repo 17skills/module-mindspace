@@ -3283,222 +3283,311 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         <span className="font-mono">{evidence.length} fachliche Einträge verbunden</span>
       </div>
 
+      {/* segmented switch: spreadsheet, matrix, classification */}
+      <div className="flex gap-1 border-b px-2 py-1.5">
+        {(["tabelle", "matrix", "einordnung"] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setView(item)}
+            className={`nodrag module-eyebrow flex-1 rounded-md px-2 py-1 transition-colors ${
+              view === item
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+
       <div className="nowheel flex-1 overflow-auto p-2">
-        {/* 5 x 5 matrix, likelihood over impact */}
-        <details className="group">
-          <summary className="nodrag mb-1 flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
-            5 × 5 Risikomatrix <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
-          </summary>
-        <div className="flex gap-1">
-          <span className="w-4 shrink-0 rotate-180 self-center text-center text-[9px] text-muted-foreground [writing-mode:vertical-rl]">
-            Eintrittswahrscheinlichkeit
-          </span>
-          <div className="min-w-0 flex-1">
-            {[5, 4, 3, 2, 1].map((chance) => (
-              <div key={chance} className="mb-0.5 flex items-stretch gap-0.5">
-                <span className="flex w-16 shrink-0 items-center justify-end pr-1 text-right text-[8px] leading-tight text-muted-foreground">
-                  {chance} {LIKELIHOOD_LABEL[chance]}
-                </span>
-                <div className="grid min-w-0 flex-1 grid-cols-5 gap-0.5">
-                  {[1, 2, 3, 4, 5].map((impact) => {
-                    const score = chance * impact;
-                    const here = result.fields.filter(
-                      (field) => field.chance === chance && field.impact === impact,
-                    );
-                    return (
-                      <div
-                        key={`${chance}-${impact}`}
-                        className="flex min-h-9 flex-col items-center justify-center rounded-sm px-0.5 py-1 text-slate-900"
-                        style={{ background: scoreColor(score) }}
-                        title={here.map((field) => field.name).join(", ")}
+        {view === "tabelle" && (
+          <div className="overflow-hidden rounded-md border border-border/70">
+            <table className="w-full table-fixed border-collapse text-[10px]">
+              <thead>
+                <tr className="bg-secondary/40 text-muted-foreground">
+                  <th className="w-7 px-1 py-1 text-left font-mono font-normal">R</th>
+                  <th className="px-1 py-1 text-left font-medium">Risiko</th>
+                  <th className="w-28 px-1 py-1 text-left font-medium">Messwert</th>
+                  <th className="w-20 px-1 py-1 text-left font-medium">Grenzwert</th>
+                  <th className="w-6 px-1 py-1 text-right font-medium">E</th>
+                  <th className="w-6 px-1 py-1 text-right font-medium">A</th>
+                  <th className="w-8 px-1 py-1 text-right font-medium">S</th>
+                  <th className="w-5 px-1 py-1 text-center font-medium">K</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.fields.map((field) => {
+                  const measure = measureOf(field, {
+                    config,
+                    weatherLevel: liveWeather,
+                    peakWind: peaks.wind,
+                    peakRain: peaks.rain,
+                    ageYears: liveAge?.years ?? null,
+                    ageLevel: liveAge?.level ?? null,
+                  });
+                  const open = openField === field.id;
+                  return (
+                    <Fragment key={field.id}>
+                      <tr
+                        className={`nodrag cursor-pointer border-t border-border/60 align-middle hover:bg-secondary/30 ${
+                          open ? "bg-secondary/30" : ""
+                        }`}
+                        onClick={() => {
+                          focusOnMap(field);
+                          setOpenField(open ? null : field.id);
+                        }}
+                        title="Zeile öffnen und Objekte auf der Karte zeigen"
                       >
-                        <span className="font-mono text-[9px] opacity-70">{score}</span>
-                        {here.map((field) => (
-                          <span key={field.id} className="text-[9px] font-semibold leading-tight">
-                            {field.code}
+                        <td className="px-1 py-1 font-mono text-muted-foreground">{field.code}</td>
+                        <td className="truncate px-1 py-1 font-medium" title={field.name}>
+                          {field.name}
+                        </td>
+                        <td
+                          className={`px-1 py-1 font-mono tabular-nums ${
+                            measure.breach ? "text-destructive" : "text-foreground"
+                          }`}
+                        >
+                          {measure.text ?? <span className="text-muted-foreground">–</span>}
+                        </td>
+                        <td className="truncate px-1 py-1 font-mono text-muted-foreground">
+                          {measure.limit ?? "–"}
+                        </td>
+                        <td className="px-1 py-1 text-right font-mono tabular-nums">
+                          {field.chance}
+                        </td>
+                        <td className="px-1 py-1 text-right font-mono tabular-nums">
+                          {field.impact}
+                        </td>
+                        <td className="px-1 py-1 text-right">
+                          <span
+                            className="rounded px-1 font-mono font-semibold tabular-nums text-slate-900"
+                            style={{ background: field.klass.color }}
+                          >
+                            {field.score}
                           </span>
-                        ))}
-                      </div>
-                    );
-                  })}
+                        </td>
+                        <td className="px-1 py-1 text-center font-semibold">{field.klass.key}</td>
+                      </tr>
+                      {open && (
+                        <tr className="border-t border-border/60 bg-secondary/10">
+                          <td colSpan={8} className="px-1.5 py-1.5">
+                            <div className="space-y-1 text-[10px]">
+                              <p className="font-mono text-[9px] text-muted-foreground">
+                                {measure.rule} · Quelle: {measure.source}
+                              </p>
+                              <input
+                                defaultValue={field.name}
+                                aria-label="Name des Risikos"
+                                className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
+                                onBlur={(e) => updateField(field.id, { name: e.target.value.trim() })}
+                              />
+                              <input
+                                defaultValue={field.note}
+                                aria-label="Hinweis / Nachweis"
+                                placeholder="Nachweis, z. B. Störungsstatistik, DWD-Projektion"
+                                className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
+                                onBlur={(e) => updateField(field.id, { note: e.target.value })}
+                              />
+                              <label className="flex items-center gap-1">
+                                <span className="w-24 shrink-0">Eintritt (E)</span>
+                                <input
+                                  type="range"
+                                  min={1}
+                                  max={5}
+                                  step={1}
+                                  value={field.chance}
+                                  disabled={field.auto !== "none"}
+                                  aria-label="Eintrittswahrscheinlichkeit"
+                                  className="nodrag min-w-0 flex-1"
+                                  onChange={(e) =>
+                                    updateField(field.id, { chance: Number(e.target.value) })
+                                  }
+                                />
+                                <span className="w-4 text-right font-mono">{field.chance}</span>
+                              </label>
+                              <label className="flex items-center gap-1">
+                                <span className="w-24 shrink-0">Auswirkung (A)</span>
+                                <input
+                                  type="range"
+                                  min={1}
+                                  max={5}
+                                  step={1}
+                                  value={field.impact}
+                                  aria-label="Auswirkung"
+                                  className="nodrag min-w-0 flex-1"
+                                  onChange={(e) =>
+                                    updateField(field.id, { impact: Number(e.target.value) })
+                                  }
+                                />
+                                <span className="w-4 text-right font-mono">{field.impact}</span>
+                              </label>
+                              <label className="flex items-center gap-1">
+                                <span className="w-24 shrink-0">Eintritt kommt aus</span>
+                                <select
+                                  value={field.auto}
+                                  aria-label="Quelle der Eintrittswahrscheinlichkeit"
+                                  className="nodrag h-6 min-w-0 flex-1 rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
+                                  onChange={(e) =>
+                                    updateField(field.id, {
+                                      auto: e.target.value as RiskField["auto"],
+                                    })
+                                  }
+                                >
+                                  <option value="none">eigener Wert</option>
+                                  <option value="weather">Wetter auf der Karte</option>
+                                  <option value="age">Alter der Anlagen</option>
+                                </select>
+                              </label>
+                              <div className="flex items-center justify-between pt-0.5">
+                                <span className="text-muted-foreground">{field.klass.action}</span>
+                                <button
+                                  type="button"
+                                  className="nodrag rounded-full px-2 py-0.5 text-destructive hover:bg-accent"
+                                  onClick={() =>
+                                    setFields(config.fields.filter((item) => item.id !== field.id))
+                                  }
+                                >
+                                  entfernen
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+                {/* aggregation row, like the sum line of a spreadsheet */}
+                <tr className="border-t-2 border-border bg-secondary/40 font-medium">
+                  <td className="px-1 py-1" />
+                  <td className="px-1 py-1">Portfolio ({result.fields.length} Risiken)</td>
+                  <td className="px-1 py-1 font-mono text-muted-foreground" colSpan={2}>
+                    Index {result.index} / 100
+                  </td>
+                  <td className="px-1 py-1 text-right font-mono text-muted-foreground" colSpan={2}>
+                    max
+                  </td>
+                  <td className="px-1 py-1 text-right">
+                    <span
+                      className="rounded px-1 font-mono font-semibold tabular-nums text-slate-900"
+                      style={{ background: result.portfolio.color }}
+                    >
+                      {result.highest}
+                    </span>
+                  </td>
+                  <td className="px-1 py-1 text-center font-semibold">{result.portfolio.key}</td>
+                </tr>
+              </tbody>
+            </table>
+            <button
+              type="button"
+              className="nodrag w-full border-t border-border/60 py-1 text-[10px] text-muted-foreground hover:bg-accent"
+              onClick={addField}
+            >
+              + Zeile hinzufügen
+            </button>
+          </div>
+        )}
+
+        {view === "matrix" && (
+          <div className="flex gap-1">
+            <span className="w-4 shrink-0 rotate-180 self-center text-center text-[9px] text-muted-foreground [writing-mode:vertical-rl]">
+              Eintrittswahrscheinlichkeit
+            </span>
+            <div className="min-w-0 flex-1">
+              {[5, 4, 3, 2, 1].map((chance) => (
+                <div key={chance} className="mb-0.5 flex items-stretch gap-0.5">
+                  <span className="flex w-16 shrink-0 items-center justify-end pr-1 text-right text-[8px] leading-tight text-muted-foreground">
+                    {chance} {LIKELIHOOD_LABEL[chance]}
+                  </span>
+                  <div className="grid min-w-0 flex-1 grid-cols-5 gap-0.5">
+                    {[1, 2, 3, 4, 5].map((impact) => {
+                      const score = chance * impact;
+                      const here = result.fields.filter(
+                        (field) => field.chance === chance && field.impact === impact,
+                      );
+                      return (
+                        <div
+                          key={`${chance}-${impact}`}
+                          className="flex min-h-9 flex-col items-center justify-center rounded-sm px-0.5 py-1 text-slate-900"
+                          style={{ background: scoreColor(score) }}
+                          title={here.map((field) => field.name).join(", ")}
+                        >
+                          <span className="font-mono text-[9px] opacity-70">{score}</span>
+                          {here.map((field) => (
+                            <span key={field.id} className="text-[9px] font-semibold leading-tight">
+                              {field.code}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
+              ))}
+              <div className="flex gap-0.5 pl-16">
+                {[1, 2, 3, 4, 5].map((impact) => (
+                  <span
+                    key={impact}
+                    className="flex-1 text-center text-[8px] leading-tight text-muted-foreground"
+                  >
+                    {impact} {IMPACT_LABEL[impact]}
+                  </span>
+                ))}
               </div>
-            ))}
-            <div className="flex gap-0.5 pl-16">
-              {[1, 2, 3, 4, 5].map((impact) => (
-                <span
-                  key={impact}
-                  className="flex-1 text-center text-[8px] leading-tight text-muted-foreground"
-                >
-                  {impact} {IMPACT_LABEL[impact]}
+              <p className="pl-16 pt-0.5 text-center text-[9px] text-muted-foreground">Auswirkung</p>
+            </div>
+          </div>
+        )}
+
+        {view === "einordnung" && (
+          <div className="space-y-1.5 text-[10px] text-muted-foreground">
+            <div className="flex flex-wrap gap-x-2 gap-y-1">
+              {RISK_CLASSES.map((item) => (
+                <span key={item.key} className="flex items-center gap-1">
+                  <span className="size-2 rounded-sm" style={{ background: item.color }} />
+                  {item.label} · {item.range}
                 </span>
               ))}
             </div>
-            <p className="pl-16 pt-0.5 text-center text-[9px] text-muted-foreground">Auswirkung</p>
-          </div>
-        </div>
-        </details>
-
-        {/* risk fields, editable */}
-        <div className="mt-2 space-y-1 border-t pt-2">
-          <p className="mb-1 text-[9px] font-bold uppercase text-muted-foreground">Priorisierte Risiken</p>
-          {result.fields.map((field) => (
-            <div key={field.id} className="rounded-md border border-border/60">
-              <div className="flex items-center gap-1.5 px-1.5 py-1 text-[10px]">
-                <span className="w-6 shrink-0 font-mono text-muted-foreground">{field.code}</span>
-                <button
-                  type="button"
-                  className="nodrag min-w-0 flex-1 truncate text-left font-medium hover:underline"
-                  onClick={() => {
-                    focusOnMap(field);
-                    setOpenField(openField === field.id ? null : field.id);
-                  }}
-                  title="Auf der Karte zeigen und Werte ändern"
-                >
-                  {field.name}
-                </button>
-                <span className="shrink-0 font-mono text-muted-foreground">
-                  {field.chance} × {field.impact} ={" "}
-                </span>
-                <span
-                  className="shrink-0 rounded px-1.5 py-0.5 font-mono font-semibold text-slate-900"
-                  style={{ background: field.klass.color }}
-                >
-                  {field.score}
-                </span>
-                <span className="w-4 shrink-0 text-center font-semibold">{field.klass.key}</span>
-              </div>
-              {openField === field.id && (
-                <div className="space-y-1 border-t border-border/60 px-1.5 py-1.5 text-[10px]">
-                  <input
-                    defaultValue={field.name}
-                    aria-label="Name des Risikos"
-                    className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
-                    onBlur={(e) => updateField(field.id, { name: e.target.value.trim() })}
-                  />
-                  <input
-                    defaultValue={field.note}
-                    aria-label="Hinweis / Nachweis"
-                    placeholder="Nachweis, z. B. Störungsstatistik, DWD-Projektion"
-                    className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
-                    onBlur={(e) => updateField(field.id, { note: e.target.value })}
-                  />
-                  <label className="flex items-center gap-1">
-                    <span className="w-24 shrink-0">Eintritt</span>
-                    <input
-                      type="range"
-                      min={1}
-                      max={5}
-                      step={1}
-                      value={field.chance}
-                      disabled={field.auto !== "none"}
-                      aria-label="Eintrittswahrscheinlichkeit"
-                      className="nodrag min-w-0 flex-1"
-                      onChange={(e) => updateField(field.id, { chance: Number(e.target.value) })}
-                    />
-                    <span className="w-4 text-right font-mono">{field.chance}</span>
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <span className="w-24 shrink-0">Auswirkung</span>
-                    <input
-                      type="range"
-                      min={1}
-                      max={5}
-                      step={1}
-                      value={field.impact}
-                      aria-label="Auswirkung"
-                      className="nodrag min-w-0 flex-1"
-                      onChange={(e) => updateField(field.id, { impact: Number(e.target.value) })}
-                    />
-                    <span className="w-4 text-right font-mono">{field.impact}</span>
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <span className="w-24 shrink-0">Eintritt kommt aus</span>
-                    <select
-                      value={field.auto}
-                      aria-label="Quelle der Eintrittswahrscheinlichkeit"
-                      className="nodrag h-6 min-w-0 flex-1 rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
-                      onChange={(e) =>
-                        updateField(field.id, { auto: e.target.value as RiskField["auto"] })
-                      }
-                    >
-                      <option value="none">eigener Wert</option>
-                      <option value="weather">Wetter auf der Karte</option>
-                      <option value="age">Alter der Anlagen</option>
-                    </select>
-                  </label>
-                  <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-muted-foreground">
-                      {field.auto === "weather"
-                        ? liveWeather != null
-                          ? `aktuelles Wetter → ${liveWeather}`
-                          : "noch kein Wetter geholt"
-                        : field.auto === "age"
-                          ? liveAge
-                            ? `Ø ${liveAge.years} Jahre → ${liveAge.level}`
-                            : "kein Baujahr in der Tabelle"
-                          : field.klass.action}
-                    </span>
-                    <button
-                      type="button"
-                      className="nodrag rounded-full px-2 py-0.5 text-destructive hover:bg-accent"
-                      onClick={() =>
-                        setFields(config.fields.filter((item) => item.id !== field.id))
-                      }
-                    >
-                      entfernen
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            className="nodrag w-full rounded-md border border-dashed border-border/70 py-1 text-[10px] text-muted-foreground hover:bg-accent"
-            onClick={addField}
-          >
-            + Risiko hinzufügen
-          </button>
-        </div>
-
-        <details className="group mt-2 border-t pt-1.5">
-          <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[9px] font-bold uppercase text-muted-foreground">
-            Einordnung & Weitergabe <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
-          </summary>
-          <div className="mt-1.5 space-y-1.5 text-[9px] text-muted-foreground">
-            <div className="flex flex-wrap gap-x-2 gap-y-1">
-              {RISK_CLASSES.map((item) => <span key={item.key} className="flex items-center gap-1"><span className="size-2 rounded-sm" style={{ background: item.color }} />{item.label} · {item.range}</span>)}
-            </div>
             <p>{result.portfolio.action}</p>
-            <p>{focus.label ? `Karte: ${focus.label} (${focus.ids.length} Objekte)` : "Risiko auswählen, um Objekte auf der Karte zu markieren."}</p>
-            <p>{decisions.length ? `Weitergabe an ${decisions.map((item) => item.title ?? "Entscheidung").join(", ")}` : "Noch keine Entscheidung verbunden"}</p>
-          </div>
-        </details>
-
-        {selected && (
-          <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2 text-[10px]">
-            {(
-              [
-                ["rainWarn", "Regen Warnung mm/h"],
-                ["rainDanger", "Regen Gefahr mm/h"],
-                ["windWarn", "Wind Warnung km/h"],
-                ["windDanger", "Wind Gefahr km/h"],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-1">
-                <span className="min-w-0 flex-1 truncate">{label}</span>
-                <input
-                  defaultValue={String(config[key])}
-                  aria-label={label}
-                  className="nodrag h-6 w-14 rounded-md border border-border/70 bg-background px-1 text-right font-mono text-[10px] outline-none"
-                  onBlur={(e) => {
-                    const value = Number(e.target.value.replace(",", "."));
-                    if (Number.isFinite(value)) patch({ [key]: value });
-                  }}
-                />
-              </label>
-            ))}
+            <p>
+              {focus.label
+                ? `Karte: ${focus.label} (${focus.ids.length} Objekte)`
+                : "Zeile auswählen, um Objekte auf der Karte zu markieren."}
+            </p>
+            <p>
+              {decisions.length
+                ? `Weitergabe an ${decisions.map((item) => item.title ?? "Entscheidung").join(", ")}`
+                : "Noch keine Entscheidung verbunden"}
+            </p>
+            {selected && (
+              <div className="grid grid-cols-2 gap-1 border-t pt-2">
+                {(
+                  [
+                    ["rainWarn", "Regen Warnung mm/h"],
+                    ["rainDanger", "Regen Gefahr mm/h"],
+                    ["windWarn", "Wind Warnung km/h"],
+                    ["windDanger", "Wind Gefahr km/h"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-1">
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    <input
+                      defaultValue={String(config[key])}
+                      aria-label={label}
+                      className="nodrag h-6 w-14 rounded-md border border-border/70 bg-background px-1 text-right font-mono text-[10px] outline-none"
+                      onBlur={(e) => {
+                        const value = Number(e.target.value.replace(",", "."));
+                        if (Number.isFinite(value)) patch({ [key]: value });
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
