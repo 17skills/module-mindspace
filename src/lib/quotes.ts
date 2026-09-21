@@ -69,6 +69,7 @@ export function readQuotes(record: NodeRecord | undefined | null): QuotesConfig 
         const row = (item ?? {}) as Record<string, unknown>;
         const price = Number(row["price"]);
         const confidence = Number(row["confidence"]);
+        const seriesAt = Number(row["seriesAt"]);
         return {
           at: str(row["at"], new Date().toISOString()),
           asset: str(row["asset"]),
@@ -76,6 +77,7 @@ export function readQuotes(record: NodeRecord | undefined | null): QuotesConfig 
           buy: row["buy"] === true,
           confidence: Number.isFinite(confidence) ? confidence : null,
           price: Number.isFinite(price) ? price : null,
+          seriesAt: Number.isFinite(seriesAt) ? seriesAt : null,
         };
       })
     : [];
