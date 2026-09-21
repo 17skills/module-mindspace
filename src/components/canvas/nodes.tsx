@@ -3115,8 +3115,26 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         </span>
       </div>
 
+      <div className="border-b px-3 py-3" style={{ background: `color-mix(in oklab, ${result.portfolio.color} 20%, var(--card))` }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold uppercase text-muted-foreground">Aktuelle Risikostufe</span>
+            <p className="truncate font-display text-2xl font-bold leading-none">{result.portfolio.label}</p>
+            <p className="mt-1 truncate text-[10px] text-muted-foreground">Höchstes Risiko: {result.fields.find((field) => field.score === result.highest)?.name ?? "–"}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="font-mono text-xl font-bold">{result.index}</span>
+            <p className="text-[9px] uppercase text-muted-foreground">Index / 100</p>
+          </div>
+        </div>
+      </div>
+
       <div className="nowheel flex-1 overflow-auto p-2">
         {/* 5 x 5 matrix, likelihood over impact */}
+        <details className="group" open={selected}>
+          <summary className="nodrag mb-1 flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
+            5 × 5 Risikomatrix <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          </summary>
         <div className="flex gap-1">
           <span className="w-4 shrink-0 rotate-180 self-center text-center text-[9px] text-muted-foreground [writing-mode:vertical-rl]">
             Eintrittswahrscheinlichkeit
@@ -3165,9 +3183,11 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
             <p className="pl-16 pt-0.5 text-center text-[9px] text-muted-foreground">Auswirkung</p>
           </div>
         </div>
+        </details>
 
         {/* risk fields, editable */}
         <div className="mt-2 space-y-1 border-t pt-2">
+          <p className="mb-1 text-[9px] font-bold uppercase text-muted-foreground">Priorisierte Risiken</p>
           {result.fields.map((field) => (
             <div key={field.id} className="rounded-md border border-border/60">
               <div className="flex items-center gap-1.5 px-1.5 py-1 text-[10px]">
@@ -3288,37 +3308,19 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
           </button>
         </div>
 
-        {/* legend */}
-        <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 border-t pt-1.5 text-[9px]">
-          {RISK_CLASSES.map((item) => (
-            <span key={item.key} className="flex items-center gap-1">
-              <span className="size-2 rounded-sm" style={{ background: item.color }} />
-              {item.label} · {item.range}
-            </span>
-          ))}
-        </div>
-
-        {/* portfolio result */}
-        <div
-          className="mt-2 rounded-md px-2 py-1.5 text-[10px] text-slate-900"
-          style={{ background: result.portfolio.color }}
-        >
-          <strong>Portfolio-Klasse {result.portfolio.label}</strong> · {result.portfolio.action}
-          <br />
-          Höchster Einzelscore {result.highest} · Index {result.index} / 100
-        </div>
-
-        <p className="mt-1.5 text-[9px] text-muted-foreground">
-          {focus.label
-            ? `Auf der Karte hervorgehoben: ${focus.label} (${focus.ids.length} Objekte)`
-            : "Auf ein Risiko tippen: betroffene Objekte werden auf der Karte hervorgehoben."}
-        </p>
-
-        <p className="mt-1.5 border-t pt-1.5 text-[10px] text-muted-foreground">
-          {decisions.length
-            ? `Lage geht an: ${decisions.map((item) => item.title ?? "Entscheidung").join(", ")} – dort auf „Entscheiden“ klicken.`
-            : "Noch mit keinem Entscheidungs-Modul verbunden – Verbindung vom rechten Punkt zum Entscheidungs-Modul ziehen."}
-        </p>
+        <details className="group mt-2 border-t pt-1.5">
+          <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[9px] font-bold uppercase text-muted-foreground">
+            Einordnung & Weitergabe <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          </summary>
+          <div className="mt-1.5 space-y-1.5 text-[9px] text-muted-foreground">
+            <div className="flex flex-wrap gap-x-2 gap-y-1">
+              {RISK_CLASSES.map((item) => <span key={item.key} className="flex items-center gap-1"><span className="size-2 rounded-sm" style={{ background: item.color }} />{item.label} · {item.range}</span>)}
+            </div>
+            <p>{result.portfolio.action}</p>
+            <p>{focus.label ? `Karte: ${focus.label} (${focus.ids.length} Objekte)` : "Risiko auswählen, um Objekte auf der Karte zu markieren."}</p>
+            <p>{decisions.length ? `Weitergabe an ${decisions.map((item) => item.title ?? "Entscheidung").join(", ")}` : "Noch keine Entscheidung verbunden"}</p>
+          </div>
+        </details>
 
         {selected && (
           <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2 text-[10px]">
