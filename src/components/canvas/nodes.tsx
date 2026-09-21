@@ -2037,11 +2037,13 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
               });
             }}
           />
-          % – darunter keine Empfehlung
+          % – darunter keine Empfehlung (gilt für alle Fragen ohne eigene Angabe)
         </label>
         {questions.map((question, index) => {
           const answer = answers.find((item) => item.id === question.id);
-          const low = typeof answer?.confidence === "number" && answer.confidence * 100 < threshold;
+          const own = typeof question.minConfidence === "number" ? question.minConfidence : null;
+          const limit = own ?? threshold;
+          const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
             <div key={question.id} className="rounded-lg border border-border/70 p-2">
               <div className="flex items-start gap-1">
