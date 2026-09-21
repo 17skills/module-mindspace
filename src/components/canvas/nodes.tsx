@@ -3930,8 +3930,27 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                   <option value="none">eigener Wert</option>
                                   <option value="weather">Wetter auf der Karte</option>
                                   <option value="age">Alter der Anlagen</option>
+                                  <option value="factor">gewichtete Faktorkarte</option>
                                 </select>
                               </label>
+                              {field.auto === "factor" && (
+                                <label className="flex items-center gap-1">
+                                  <span className="w-24 shrink-0">Faktorkarte</span>
+                                  <select
+                                    value={field.factorId ?? ""}
+                                    aria-label="Verbundene Faktorkarte"
+                                    className="nodrag h-6 min-w-0 flex-1 rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
+                                    onChange={(e) => commit(field.id, "factorId", e.target.value)}
+                                  >
+                                    <option value="">Faktor wählen …</option>
+                                    {Object.entries(factors).map(([factorId, factor]) => (
+                                      <option key={factorId} value={factorId}>
+                                        {factor.label} · {factor.score.toFixed(1)}/10
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              )}
                               <div className="flex items-center justify-between pt-0.5">
                                 <span className="text-muted-foreground">{field.klass.action}</span>
                                 <span className="flex items-center gap-1">
