@@ -182,6 +182,7 @@ function SharedBoardPage() {
     const noop = () => {};
     return {
       sourcesFor: () => [],
+      createZone: async () => null,
       updateNode: noop,
       updateEdge: noop,
       runAgent: noop,
