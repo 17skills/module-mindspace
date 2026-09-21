@@ -83,9 +83,17 @@ export function valueOfNode(
   edges: Edge[],
   depth = 0,
 ): number | null {
-  if (record.type !== "calc" || depth > 8) return nodeValue(record);
+  if (depth > 8) return nodeValue(record);
+  // metric/gauge mirror the first incoming value when connected
+  if (record.type === "metric" || record.type === "gauge") {
+    const inputs = calcInputs(record.id, records, edges, depth);
+    const linked = inputs.find((input) => input.value != null);
+    return linked?.value ?? nodeValue(record);
+  }
+  if (record.type !== "calc") return nodeValue(record);
   const formula = typeof record.metadata?.["formula"] === "string" ? record.metadata["formula"] : "";
   if (!formula.trim()) return nodeValue(record);
+
   const inputs = calcInputs(record.id, records, edges, depth);
   const vars: Record<string, number> = {};
   for (const input of inputs) {
