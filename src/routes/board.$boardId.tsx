@@ -1446,6 +1446,74 @@ function BoardPage() {
     [createRecord, setCenter],
   );
 
+  /** Modules chosen by the context menu, otherwise everything selected on the canvas. */
+  const captureSelection = useCallback((): CapturedSelection | null => {
+    const ids =
+      librarySelection.current ??
+      nodes.filter((node) => node.selected && !node.parentId).map((node) => node.id);
+    if (!ids.length) return null;
+    const records = Object.values(recordsRef.current);
+    const payload = capture(ids, records, edgesRef.current);
+    if (!payload.nodes.length) return null;
+    const first = recordsRef.current[ids[0] ?? ""];
+    return {
+      payload,
+      scope: ids.length > 1 ? "group" : "single",
+      title: (ids.length > 1 ? "Modulgruppe" : first?.title) || "Modul",
+    };
+  }, [nodes]);
+
+  /** Place a library entry on the canvas, optionally without any stored content. */
+  const insertLibraryEntry = useCallback(
+    async (entry: LibraryEntry, mode: "empty" | "full") => {
+      const payload: LibraryPayload = mode === "empty" ? stripContent(entry.payload) : entry.payload;
+      if (!payload.nodes.length) {
+        toast.error("Dieser Eintrag enthält keine Module");
+        return;
+      }
+      const at = screenToFlowPosition({
+        x: window.innerWidth / 2 - payload.bounds.width / 2,
+        y: window.innerHeight / 2 - payload.bounds.height / 2,
+      });
+      const idMap = new Map<string, string>();
+      // parents first, so children can reference them
+      const ordered = [...payload.nodes].sort(
+        (a, b) => (a.parentLocalId ? 1 : 0) - (b.parentLocalId ? 1 : 0),
+      );
+      for (const node of ordered) {
+        const parentId = node.parentLocalId ? idMap.get(node.parentLocalId) ?? null : null;
+        const created = await createRecord({
+          type: node.type,
+          title: node.title || null,
+          parent_id: parentId,
+          position_x: parentId ? node.x : at.x + node.x,
+          position_y: parentId ? node.y : at.y + node.y,
+          width: node.w,
+          height: node.h,
+          color: node.color,
+          content: node.content,
+          source_url: node.sourceUrl,
+          metadata: node.metadata,
+        });
+        idMap.set(node.localId, created.id);
+      }
+      for (const edge of payload.edges) {
+        const source = idMap.get(edge.source);
+        const target = idMap.get(edge.target);
+        if (source && target) createEdge(source, target);
+      }
+      setCenter(at.x + payload.bounds.width / 2, at.y + payload.bounds.height / 2, {
+        zoom: Math.min(1, Math.max(0.25, 900 / Math.max(payload.bounds.width, 1))),
+        duration: 500,
+      });
+      toast.success(
+        mode === "empty" ? `${entry.title} leer eingefügt` : `${entry.title} eingefügt`,
+      );
+    },
+    [createRecord, createEdge, screenToFlowPosition, setCenter],
+  );
+
+
   /** Fields of the selected template group, otherwise every field on the board. */
   const currentFields = useCallback((): TemplateField[] => {
     const all = Object.values(recordsRef.current);
