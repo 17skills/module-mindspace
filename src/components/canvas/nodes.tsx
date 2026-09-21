@@ -3577,15 +3577,29 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                               </label>
                               <div className="flex items-center justify-between pt-0.5">
                                 <span className="text-muted-foreground">{field.klass.action}</span>
-                                <button
-                                  type="button"
-                                  className="nodrag rounded-full px-2 py-0.5 text-destructive hover:bg-accent"
-                                  onClick={() =>
-                                    setFields(config.fields.filter((item) => item.id !== field.id))
-                                  }
-                                >
-                                  entfernen
-                                </button>
+                                <span className="flex items-center gap-1">
+                                  {(field.measureText || field.limitText) && (
+                                    <button
+                                      type="button"
+                                      className="nodrag rounded-full px-2 py-0.5 text-muted-foreground hover:bg-accent"
+                                      onClick={() => {
+                                        commit(field.id, "measureText", "");
+                                        commit(field.id, "limitText", "");
+                                      }}
+                                    >
+                                      eigene Werte zurücksetzen
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="nodrag rounded-full px-2 py-0.5 text-destructive hover:bg-accent"
+                                    onClick={() =>
+                                      setFields(config.fields.filter((item) => item.id !== field.id))
+                                    }
+                                  >
+                                    entfernen
+                                  </button>
+                                </span>
                               </div>
                             </div>
                           </td>
