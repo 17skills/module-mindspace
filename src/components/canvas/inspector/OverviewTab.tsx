@@ -85,6 +85,8 @@ export function OverviewTab({ onOpen }: { onOpen: (id: string) => void }) {
               <TooltipContent>Zuordnung entfernen</TooltipContent>
             </Tooltip>
           </>
+        ) : zones.length === 0 ? (
+          <span className="text-[11px] text-muted-foreground">Kein Feld vorhanden</span>
         ) : (
           <select
             value=""
@@ -112,9 +114,26 @@ export function OverviewTab({ onOpen }: { onOpen: (id: string) => void }) {
 
   return (
     <div className="h-full space-y-4 overflow-auto p-3">
+      <div className="rounded-md border bg-secondary/40 p-2.5">
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Ein <span className="font-medium text-foreground">Feld</span> ist eine benannte Fläche im
+          Hintergrund, z. B. „Eintritt“, „Auswirkung“ oder „Maßnahmen“. Jede Karte, die du darauf
+          legst, gehört automatisch dazu – hier kannst du die Zuordnung auch von Hand setzen. Die
+          <span className="font-medium text-foreground"> Rolle</span> daneben sagt, wozu die Karte im
+          Feld dient (Beispiel, Beleg, Gegenbeispiel …). Felder sammeln so zusammengehörige Karten
+          und können gemeinsam ausgewertet werden.
+        </p>
+        <button
+          onClick={() => void createZone()}
+          className="mt-2 rounded-md border bg-background px-2 py-1 text-[11px] font-medium hover:bg-secondary"
+        >
+          Neues Feld anlegen
+        </button>
+      </div>
+
       {zones.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          Auf dieser Fläche gibt es noch keine Hintergrundfelder. Lege sie per Rechtsklick an.
+          Es gibt noch keine Felder. Lege eines an – danach kannst du hier jede Karte zuordnen.
         </p>
       )}
 
