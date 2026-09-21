@@ -17,10 +17,12 @@ import {
   type NodeRecord,
 } from "@/components/canvas/board-context";
 import {
+  CalcNode,
   ChatNode,
   ContentNode,
   DataNode,
   FrameNode,
+  LabeledEdge,
   NoteNode,
   ShapeNode,
   TextNode,
@@ -203,6 +205,7 @@ function SharedBoardPage() {
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             nodesDraggable={false}
             nodesConnectable={false}
             elementsSelectable={false}
