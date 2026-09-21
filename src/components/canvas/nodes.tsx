@@ -1548,7 +1548,10 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={220} minHeight={200} />
       <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
+
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Tacho"}
