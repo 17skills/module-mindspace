@@ -4076,6 +4076,26 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
               ))}
             </div>
             <p>{result.portfolio.action}</p>
+            {themes.length > 0 && (
+              <div className="rounded-md border border-border/70 p-1.5">
+                <div className="module-eyebrow mb-1">
+                  Gesamtgewichtung der Themen · Index {overallIndex} / 100
+                </div>
+                <ul className="space-y-0.5">
+                  {themes.map((theme) => (
+                    <li key={theme.id} className="flex items-center gap-2">
+                      <span className="w-9 shrink-0 text-right font-mono tabular-nums">
+                        {theme.weight}%
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-foreground">{theme.title}</span>
+                      <span className="shrink-0 font-mono tabular-nums">
+                        {theme.score.toFixed(1)}/10
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <p>
               {focus.label
                 ? `Karte: ${focus.label} (${focus.ids.length} Objekte)`
