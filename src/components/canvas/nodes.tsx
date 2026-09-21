@@ -1469,6 +1469,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
   const manual = typeof meta["value"] === "number" ? meta["value"] : Number(meta["value"] ?? NaN);
   const unit = typeof meta["unit"] === "string" ? meta["unit"] : "";
   const compare = typeof meta["compare"] === "string" ? meta["compare"] : "";
+  const fmt = readFormat(meta);
   const inputs = useIncoming(id);
   const linked = inputs.find((input) => input.value != null);
   const value = linked?.value ?? manual;
@@ -1496,7 +1497,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
         <div className="flex items-baseline gap-1">
           {linked ? (
             <span className="min-w-0 flex-1 truncate font-display text-3xl font-semibold tracking-tight">
-              {formatValue(value ?? null)}
+              {formatValue(value ?? null, fmt)}
             </span>
           ) : (
             <input
