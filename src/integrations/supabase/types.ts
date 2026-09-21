@@ -166,6 +166,80 @@ export type Database = {
           },
         ]
       }
+      module_library: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          payload: Json
+          scope: string
+          share_token: string
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          payload?: Json
+          scope?: string
+          share_token?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          payload?: Json
+          scope?: string
+          share_token?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      module_library_shares: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          library_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          library_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          library_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_library_shares_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "module_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nodes: {
         Row: {
           board_id: string
@@ -304,7 +378,9 @@ export type Database = {
     }
     Functions: {
       can_edit_board: { Args: { _board: string }; Returns: boolean }
+      can_read_library: { Args: { _entry: string }; Returns: boolean }
       is_board_owner: { Args: { _board: string }; Returns: boolean }
+      is_library_owner: { Args: { _entry: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

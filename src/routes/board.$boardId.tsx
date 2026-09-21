@@ -106,6 +106,9 @@ import { runZoneAgent } from "@/lib/agent.functions";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
+import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
+import { Library } from "lucide-react";
+import { capture, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
 import {
   extractStructured,
@@ -313,6 +316,9 @@ function BoardPage() {
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Module ids chosen through the context menu; empty means "use the canvas selection". */
+  const librarySelection = useRef<string[] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1440,6 +1446,82 @@ function BoardPage() {
     [createRecord, setCenter],
   );
 
+  /** Modules chosen by the context menu, otherwise everything selected on the canvas. */
+  const captureSelection = useCallback((): CapturedSelection | null => {
+    const ids =
+      librarySelection.current ??
+      nodes.filter((node) => node.selected && !node.parentId).map((node) => node.id);
+    if (!ids.length) return null;
+    const records = Object.values(recordsRef.current);
+    const payload = capture(
+      ids,
+      records,
+      edgesRef.current.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+        label: typeof edge.label === "string" ? edge.label : null,
+      })),
+    );
+    if (!payload.nodes.length) return null;
+    const first = recordsRef.current[ids[0] ?? ""];
+    return {
+      payload,
+      scope: ids.length > 1 ? "group" : "single",
+      title: (ids.length > 1 ? "Modulgruppe" : first?.title) || "Modul",
+    };
+  }, [nodes]);
+
+  /** Place a library entry on the canvas, optionally without any stored content. */
+  const insertLibraryEntry = useCallback(
+    async (entry: LibraryEntry, mode: "empty" | "full") => {
+      const payload: LibraryPayload = mode === "empty" ? stripContent(entry.payload) : entry.payload;
+      if (!payload.nodes.length) {
+        toast.error("Dieser Eintrag enthält keine Module");
+        return;
+      }
+      const at = screenToFlowPosition({
+        x: window.innerWidth / 2 - payload.bounds.width / 2,
+        y: window.innerHeight / 2 - payload.bounds.height / 2,
+      });
+      const idMap = new Map<string, string>();
+      // parents first, so children can reference them
+      const ordered = [...payload.nodes].sort(
+        (a, b) => (a.parentLocalId ? 1 : 0) - (b.parentLocalId ? 1 : 0),
+      );
+      for (const node of ordered) {
+        const parentId = node.parentLocalId ? idMap.get(node.parentLocalId) ?? null : null;
+        const created = await createRecord({
+          type: node.type,
+          title: node.title || null,
+          parent_id: parentId,
+          position_x: parentId ? node.x : at.x + node.x,
+          position_y: parentId ? node.y : at.y + node.y,
+          width: node.w,
+          height: node.h,
+          color: node.color,
+          content: node.content,
+          source_url: node.sourceUrl,
+          metadata: node.metadata,
+        });
+        idMap.set(node.localId, created.id);
+      }
+      for (const edge of payload.edges) {
+        const source = idMap.get(edge.source);
+        const target = idMap.get(edge.target);
+        if (source && target) createEdge(source, target);
+      }
+      setCenter(at.x + payload.bounds.width / 2, at.y + payload.bounds.height / 2, {
+        zoom: Math.min(1, Math.max(0.25, 900 / Math.max(payload.bounds.width, 1))),
+        duration: 500,
+      });
+      toast.success(
+        mode === "empty" ? `${entry.title} leer eingefügt` : `${entry.title} eingefügt`,
+      );
+    },
+    [createRecord, createEdge, screenToFlowPosition, setCenter],
+  );
+
+
   /** Fields of the selected template group, otherwise every field on the board. */
   const currentFields = useCallback((): TemplateField[] => {
     const all = Object.values(recordsRef.current);
@@ -1709,6 +1791,22 @@ function BoardPage() {
               position_y: menu.flowY + 40,
             }),
         },
+        {
+          label: "In Bibliothek speichern",
+          icon: Library,
+          run: () => {
+            librarySelection.current = [menu.nodeId!];
+            setLibraryOpen(true);
+          },
+        },
+        {
+          label: "Auswahl in Bibliothek speichern",
+          icon: Library,
+          run: () => {
+            librarySelection.current = null;
+            setLibraryOpen(true);
+          },
+        },
         { label: "Modul löschen", run: () => deleteNode(menu.nodeId!) },
       ]
     : [
@@ -1784,6 +1882,14 @@ function BoardPage() {
           },
         },
         { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
+        {
+          label: "Bibliothek öffnen …",
+          icon: Library,
+          run: () => {
+            librarySelection.current = null;
+            setLibraryOpen(true);
+          },
+        },
       ];
 
   return (
@@ -1833,6 +1939,23 @@ function BoardPage() {
       </header>
 
       <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
+
+      <LibraryDialog
+        open={libraryOpen}
+        onOpenChange={(next) => {
+          setLibraryOpen(next);
+          if (!next) librarySelection.current = null;
+        }}
+        userId={user?.id}
+        captureSelection={captureSelection}
+        onInsert={async (entry, mode) => {
+          try {
+            await insertLibraryEntry(entry, mode);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Einfügen fehlgeschlagen");
+          }
+        }}
+      />
 
       <TemplateDialog
         open={templateOpen}
@@ -1958,6 +2081,26 @@ function BoardPage() {
                 </TooltipTrigger>
                 <TooltipContent side="top">Vorlagen</TooltipContent>
               </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn(libraryOpen)}
+                    aria-label="Bibliothek"
+                    aria-pressed={libraryOpen}
+                    onClick={() => {
+                      librarySelection.current = null;
+                      setLibraryOpen(true);
+                    }}
+                  >
+                    <Library className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Bibliothek</TooltipContent>
+              </Tooltip>
+
 
               <div className="mx-1 h-6 w-px shrink-0 bg-border/70" />
 
