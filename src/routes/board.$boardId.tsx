@@ -159,6 +159,28 @@ function toolBtn(active = false) {
 }
 
 /** Fields of a template group, with positions relative to the group. */
+/** Social networks whose profiles need a login — never scrape them for context. */
+const PROFILE_HOSTS: Record<string, string> = {
+  "linkedin.com": "LinkedIn",
+  "xing.com": "Xing",
+  "x.com": "X",
+  "twitter.com": "X",
+  "instagram.com": "Instagram",
+  "facebook.com": "Facebook",
+  "fb.com": "Facebook",
+  "threads.net": "Threads",
+  "tiktok.com": "TikTok",
+  "mastodon.social": "Mastodon",
+};
+
+function profileProvider(hostname: string): string | null {
+  const host = hostname.toLowerCase();
+  for (const [domain, label] of Object.entries(PROFILE_HOSTS)) {
+    if (host === domain || host.endsWith(`.${domain}`)) return label;
+  }
+  return null;
+}
+
 function groupFields(container: NodeRecord, all: NodeRecord[]): NodeRecord[] {
   return all.filter((item) => item.type === "zone" && item.parent_id === container.id);
 }
