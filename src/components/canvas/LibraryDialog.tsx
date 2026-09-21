@@ -42,6 +42,7 @@ import {
   shareLibraryEntry,
 } from "@/lib/library.functions";
 import { cn } from "@/lib/utils";
+import { shareLink } from "@/lib/share-link";
 
 export type CapturedSelection = {
   payload: LibraryPayload;

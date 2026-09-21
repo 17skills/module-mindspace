@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { addMember, listMembers, removeMember } from "@/lib/share.functions";
+import { shareLink } from "@/lib/share-link";
 
 type Member = { id: string; userId: string; role: string; email: string };
 
