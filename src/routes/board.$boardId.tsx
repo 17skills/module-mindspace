@@ -17,7 +17,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, Scale, Shapes } from "lucide-react";
+import { Globe, LayoutGrid, Scale, Shapes } from "lucide-react";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
@@ -1140,6 +1140,164 @@ function BoardPage() {
     for (const otherId of outside) createEdge(frame.id, otherId);
   }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
 
+  /** Arrange selected content modules into compact grids without changing their sizes. */
+  const arrangeSelection = useCallback(() => {
+    const selected = nodesRef.current.filter((node) => {
+      const record = recordsRef.current[node.id];
+      return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
+    });
+    if (selected.length < 2) {
+      toast.info("Mindestens zwei Module auswählen (Ziehen oder Shift + Klick)");
+      return;
+    }
+
+    const selectedIds = new Set(selected.map((node) => node.id));
+    const scopeOf = (node: Node) => {
+      const record = recordsRef.current[node.id];
+      if (node.parentId) return `parent:${node.parentId}`;
+      const zoneId = record ? readAssignment(record)?.zoneId : null;
+      return zoneId ? `zone:${zoneId}` : "canvas";
+    };
+    const byParent = new Map<string, Node[]>();
+    for (const node of selected) {
+      const key = scopeOf(node);
+      byParent.set(key, [...(byParent.get(key) ?? []), node]);
+    }
+    const changes = new Map<string, { x: number; y: number }>();
+
+    for (const [parentKey, group] of byParent) {
+      if (group.length < 2) continue;
+      const ordered = [...group].sort(
+        (a, b) => a.position.y - b.position.y || a.position.x - b.position.x,
+      );
+      const parentId = parentKey.startsWith("parent:") ? parentKey.slice(7) : null;
+      const zoneId = parentKey.startsWith("zone:") ? parentKey.slice(5) : null;
+      const parent = parentId
+        ? nodesRef.current.find((node) => node.id === parentId)
+        : null;
+      const zone = zoneId
+        ? absoluteZones(Object.values(recordsRef.current)).find((record) => record.id === zoneId)
+        : null;
+      const parentWidth = parent
+        ? parent.width ?? recordsRef.current[parent.id]?.width ?? 1200
+        : zone?.width ?? Number.POSITIVE_INFINITY;
+      const parentHeight = parent
+        ? parent.height ?? recordsRef.current[parent.id]?.height ?? 900
+        : zone?.height ?? Number.POSITIVE_INFINITY;
+      const boundaryX = zone?.position_x ?? 0;
+      const boundaryY = zone?.position_y ?? 0;
+      const hasBoundary = Boolean(parent || zone);
+      const inset = hasBoundary ? 28 : 0;
+      const widthOf = (node: Node) =>
+        node.width ?? recordsRef.current[node.id]?.width ?? DEFAULT_SIZE[node.type ?? "default"]?.width ?? 320;
+      const heightOf = (node: Node) =>
+        node.height ?? recordsRef.current[node.id]?.height ?? DEFAULT_SIZE[node.type ?? "default"]?.height ?? 240;
+
+      let columns = Math.min(3, Math.ceil(Math.sqrt(ordered.length)));
+      const layoutAt = (originX: number, originY: number, count: number) => {
+        const columnWidths = Array.from({ length: count }, () => 0);
+        const rowHeights = Array.from({ length: Math.ceil(ordered.length / count) }, () => 0);
+        ordered.forEach((node, index) => {
+          const column = index % count;
+          const row = Math.floor(index / count);
+          columnWidths[column] = Math.max(columnWidths[column] ?? 0, widthOf(node));
+          rowHeights[row] = Math.max(rowHeights[row] ?? 0, heightOf(node));
+        });
+        const columnX: number[] = [];
+        const rowY: number[] = [];
+        columnWidths.reduce((x, width, index) => {
+          columnX[index] = x;
+          return x + width + MODULE_GAP;
+        }, originX);
+        rowHeights.reduce((y, height, index) => {
+          rowY[index] = y;
+          return y + height + MODULE_GAP;
+        }, originY);
+        const rects = ordered.map((node, index): LayoutRect => ({
+          id: node.id,
+          x: columnX[index % count] ?? originX,
+          y: rowY[Math.floor(index / count)] ?? originY,
+          width: widthOf(node),
+          height: heightOf(node),
+        }));
+        const width = Math.max(...rects.map((rect) => rect.x + rect.width)) - originX;
+        const height = Math.max(...rects.map((rect) => rect.y + rect.height)) - originY;
+        return { rects, width, height };
+      };
+
+      while (columns > 1 && layoutAt(inset, inset, columns).width > parentWidth - inset * 2) {
+        columns -= 1;
+      }
+      const startX = hasBoundary
+        ? Math.min(
+            Math.max(boundaryX + inset, Math.min(...ordered.map((node) => node.position.x))),
+            boundaryX + parentWidth - inset,
+          )
+        : Math.min(...ordered.map((node) => node.position.x));
+      const startY = hasBoundary
+        ? Math.min(
+            Math.max(boundaryY + inset, Math.min(...ordered.map((node) => node.position.y))),
+            boundaryY + parentHeight - inset,
+          )
+        : Math.min(...ordered.map((node) => node.position.y));
+      const obstacles: LayoutRect[] = nodesRef.current
+        .filter((node) => {
+          const record = recordsRef.current[node.id];
+          return (
+            !selectedIds.has(node.id) &&
+            scopeOf(node) === parentKey &&
+            Boolean(record) &&
+            !NON_BLOCKING_TYPES.has(record?.type ?? "")
+          );
+        })
+        .map((node) => ({
+          id: node.id,
+          x: node.position.x,
+          y: node.position.y,
+          width: widthOf(node),
+          height: heightOf(node),
+        }));
+
+      let arranged = layoutAt(startX, startY, columns);
+      const candidates: Array<{ x: number; y: number }> = [{ x: startX, y: startY }];
+      for (let step = 1; step <= 20; step += 1) {
+        candidates.push(
+          { x: startX + step * (arranged.width + MODULE_GAP), y: startY },
+          { x: startX, y: startY + step * (arranged.height + MODULE_GAP) },
+        );
+      }
+      for (const candidate of candidates) {
+        const attempt = layoutAt(candidate.x, candidate.y, columns);
+        const withinParent =
+          !hasBoundary ||
+          (candidate.x >= boundaryX + inset &&
+            candidate.y >= boundaryY + inset &&
+            candidate.x + attempt.width <= boundaryX + parentWidth - inset &&
+            candidate.y + attempt.height <= boundaryY + parentHeight - inset);
+        if (withinParent && !attempt.rects.some((rect) => obstacles.some((other) => overlaps(rect, other)))) {
+          arranged = attempt;
+          break;
+        }
+      }
+      for (const rect of arranged.rects) changes.set(rect.id, { x: rect.x, y: rect.y });
+    }
+
+    if (!changes.size) {
+      toast.info("Wähle mindestens zwei Module im selben Bereich aus");
+      return;
+    }
+    setNodes((current) =>
+      current.map((node) => {
+        const change = changes.get(node.id);
+        return change ? { ...node, position: change } : node;
+      }),
+    );
+    for (const [id, position] of changes) {
+      updateNode(id, { position_x: position.x, position_y: position.y });
+    }
+    toast.success(`${changes.size} Module übersichtlich angeordnet`);
+  }, [setNodes, updateNode]);
+
   const openInspector = useCallback((id: string, tab: InspectorTab = "source") => {
     setInspector({ nodeId: id, tab });
   }, []);
@@ -1936,6 +2094,10 @@ function BoardPage() {
   }
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
+  const selectedModuleCount = nodes.filter((node) => {
+    const record = records[node.id];
+    return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
+  }).length;
 
   const menuItems = menuRecord?.type === "text"
     ? [
@@ -2051,6 +2213,9 @@ function BoardPage() {
       ]
     : menu?.nodeId
     ? [
+        ...(selectedModuleCount >= 2
+          ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
+          : []),
         {
           label: "Im Kontextfenster öffnen",
           icon: PanelsTopLeft,
@@ -2163,6 +2328,9 @@ function BoardPage() {
             setTemplateOpen(true);
           },
         },
+        ...(selectedModuleCount >= 2
+          ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
+          : []),
         { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
         {
           label: "Bibliothek öffnen …",
@@ -2389,6 +2557,23 @@ function BoardPage() {
 
 
               <div className="mx-1 h-6 w-px shrink-0 bg-border/70" />
+
+              {selectedModuleCount >= 2 ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label="Ausgewählte Module anordnen"
+                      onClick={arrangeSelection}
+                    >
+                      <LayoutGrid className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Auswahl anordnen</TooltipContent>
+                </Tooltip>
+              ) : null}
 
               <Tooltip>
                 <TooltipTrigger asChild>

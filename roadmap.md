@@ -6,3 +6,4 @@
 - [x] Signale, Kennzahlen, Notizen und Tabellen verdichten
 - [x] Vollständiges Board visuell und technisch prüfen
 - [x] Modulhöhen automatisch an sichtbare Inhalte anpassen und Kollisionen bereinigen
+- [x] Ausgewählte Module automatisch übersichtlich und kollisionsfrei anordnen
