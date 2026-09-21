@@ -55,9 +55,7 @@ export function ShareDialog({
     };
   }, [boardId, open]);
 
-  const link = token
-    ? `${typeof window === "undefined" ? "" : window.location.origin}/share/${token}`
-    : "";
+  const link = token ? shareLink(`/share/${token}`) : "";
 
   async function togglePublic(value: boolean) {
     setIsPublic(value);

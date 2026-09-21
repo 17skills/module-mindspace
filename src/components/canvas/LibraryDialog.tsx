@@ -516,7 +516,7 @@ function ShareBox({
   const [email, setEmail] = useState("");
   const [people, setPeople] = useState<{ id: string; email: string }[]>([]);
   const [busy, setBusy] = useState(false);
-  const link = typeof window === "undefined" ? "" : `${window.location.origin}/library/${entry.shareToken}`;
+  const link = shareLink(`/library/${entry.shareToken}`);
 
   const load = useCallback(async () => {
     try {
