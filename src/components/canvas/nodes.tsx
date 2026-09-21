@@ -1747,6 +1747,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
   for (const input of inputs) if (input.value != null) extra[input.letter] = input.value;
   const rows = sheetRows(record);
   const values = sheetValues(record, extra);
+  const output = sheetOutputRow(record);
 
   function writeRows(next: { name: string; value: string; formula: string }[]) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), rows: next } });
