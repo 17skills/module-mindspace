@@ -1780,7 +1780,22 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
         )}
         {rows.map((row, index) => (
           <div key={index} className="flex items-center gap-1 py-0.5 text-xs">
-            <span className="w-6 shrink-0 font-mono text-[10px] text-muted-foreground">R{index + 1}</span>
+            <button
+              title={output === index ? "Wird weitergegeben" : "Diese Zeile weitergeben"}
+              aria-label={`Zeile ${index + 1} weitergeben`}
+              className={`w-6 shrink-0 rounded-md font-mono text-[10px] ${
+                output === index
+                  ? "bg-accent font-semibold text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent"
+              }`}
+              onClick={() =>
+                updateNode(record.id, {
+                  metadata: { ...(record.metadata ?? {}), outputRow: output === index ? null : index },
+                })
+              }
+            >
+              R{index + 1}
+            </button>
             <input
               defaultValue={row.name}
               key={`n${index}${row.name}`}
