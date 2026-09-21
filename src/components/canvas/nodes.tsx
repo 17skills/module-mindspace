@@ -1352,7 +1352,7 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] transition-shadow ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
       data-selected={Boolean(selected)}
@@ -1917,6 +1917,7 @@ export const ApiNode = memo(function ApiNode({ data, selected }: NodeProps) {
       className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
       style={{ borderTop: `3px solid ${NODE_ACCENT["api"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={280} minHeight={200} />
@@ -2007,6 +2008,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
       className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
       style={{ borderTop: `3px solid ${NODE_ACCENT["decision"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={220} />
