@@ -31,12 +31,21 @@ export type StructureItem = {
   rows: string[][];
 };
 
+export type ContextReport = {
+  /** Modules whose content is actually sent to the chat. */
+  used: { id: string; title: string; type: string; chars: number }[];
+  /** Connected modules that are excluded, with the reason why. */
+  excluded: { id: string; title: string; reason: string }[];
+};
+
 export type BoardApi = {
   /** Content modules feeding this module (connected neighbours, or the module itself). */
   sourcesFor: (id: string) => NodeRecord[];
   updateNode: (id: string, patch: Partial<NodeRecord>) => void;
   deleteNode: (id: string) => void;
   collectContext: (id: string) => string;
+  /** Transparent breakdown of what the chat context actually contains. */
+  contextReport: (id: string) => ContextReport;
   addNoteFrom: (id: string, text: string) => void;
   extractStructure: (id: string) => void;
   openInspector: (id: string, tab?: InspectorTab) => void;
