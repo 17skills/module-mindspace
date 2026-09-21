@@ -15,6 +15,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
+import { Route as LibraryTokenRouteImport } from './routes/library.$token'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
@@ -49,6 +50,11 @@ const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
   path: '/board/$boardId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryTokenRoute = LibraryTokenRouteImport.update({
+  id: '/library/$token',
+  path: '/library/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShareTokenRoute = ShareTokenRouteImport.update({
   id: '/share/$token',
   path: '/share/$token',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
     | '/board/$boardId'
+    | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
   fileRoutesByTo: FileRoutesByTo
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
     | '/board/$boardId'
+    | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
   id:
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
     | '/board/$boardId'
+    | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
   fileRoutesById: FileRoutesById
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiChatRoute: typeof ApiChatRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
+  LibraryTokenRoute: typeof LibraryTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
 }
@@ -179,6 +192,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoardBoardIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/library/$token': {
+      id: '/library/$token'
+      path: '/library/$token'
+      fullPath: '/library/$token'
+      preLoaderRoute: typeof LibraryTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/share/$token': {
       id: '/share/$token'
       path: '/share/$token'
@@ -204,6 +224,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiChatRoute: ApiChatRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
+  LibraryTokenRoute: LibraryTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
 }

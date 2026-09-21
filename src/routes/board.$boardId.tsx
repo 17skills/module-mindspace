@@ -106,6 +106,9 @@ import { runZoneAgent } from "@/lib/agent.functions";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
+import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
+import { Library } from "lucide-react";
+import { capture, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
 import {
   extractStructured,
