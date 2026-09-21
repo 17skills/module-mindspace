@@ -107,6 +107,7 @@ export const runDecision = createServerFn({ method: "POST" })
     z
       .object({
         context: z.string().min(1),
+        policy: z.string().optional(),
         questions: z.array(Question).min(1),
       })
       .parse(input),
