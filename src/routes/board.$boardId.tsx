@@ -17,7 +17,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Shapes } from "lucide-react";
+import { Globe, Scale, Shapes } from "lucide-react";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
@@ -2125,6 +2125,55 @@ function BoardPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="API-Modul anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "api",
+                        title: "API",
+                        content: "",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { url: "", method: "GET", params: [], headers: [], pick: "" },
+                      });
+                    }}
+                  >
+                    <Globe className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">API-Modul anlegen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Entscheidungs-Modul anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "decision",
+                        title: "Entscheidung",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { questions: [], answers: [] },
+                      });
+                    }}
+                  >
+                    <Scale className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Entscheidungs-Modul anlegen</TooltipContent>
+              </Tooltip>
             </div>
           </div>
           </div>
