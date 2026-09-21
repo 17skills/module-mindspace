@@ -2388,7 +2388,7 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
                   >
                     {item.buy ? "KAUFEN" : "NICHT KAUFEN"}
                   </span>
-                  {item.label} ·{" "}
+                  {" "}{item.label} ·{" "}
                   {new Date(item.at).toLocaleString("de-DE", {
                     day: "2-digit",
                     month: "2-digit",
