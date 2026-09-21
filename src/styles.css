@@ -289,3 +289,33 @@
   .react-flow__handle { transition: none; }
   .module-card:hover { transform: none; }
 }
+
+/* Monospace-Mikrolabel für Karten-Kopfzeilen und Parameter */
+@utility module-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-text-soft);
+}
+
+/* Große Kennzahl im KPI-Block */
+@utility kpi-value {
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+/* Schwellenwert-Balken unter der Kennzahl */
+@utility kpi-bar {
+  display: block;
+  height: 3px;
+  width: 100%;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
