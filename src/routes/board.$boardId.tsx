@@ -65,11 +65,14 @@ import {
   ContentNode,
   DataNode,
   FrameNode,
+  GaugeNode,
   LabeledEdge,
+  MetricNode,
   NoteNode,
   SHAPES,
   ShapeNode,
   shapeKind,
+  SheetNode,
   TEXT_SIZES,
   TextNode,
   textSize,
@@ -82,7 +85,18 @@ import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
 import { isProfileLink, profileProvider } from "@/lib/profiles";
 import { segmentsFromFile } from "@/lib/segments";
-import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
+import {
+  ZONE_ROLES,
+  isAuto,
+  readAgent,
+  readAssignment,
+  zoneAt,
+  zoneContext,
+  zoneFingerprint,
+  zoneLabel,
+  zoneMembers,
+} from "@/lib/zones";
+import { runZoneAgent } from "@/lib/agent.functions";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
@@ -131,6 +145,9 @@ const nodeTypes = {
   shape: ShapeNode,
   text: TextNode,
   calc: CalcNode,
+  metric: MetricNode,
+  gauge: GaugeNode,
+  sheet: SheetNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -145,11 +162,21 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   shape: { width: 200, height: 140 },
   text: { width: 260, height: 48 },
   calc: { width: 320, height: 240 },
+  metric: { width: 240, height: 170 },
+  gauge: { width: 260, height: 240 },
+  sheet: { width: 360, height: 240 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
   default: { width: 320, height: 340 },
 };
+
+/** Modules of the dashboard family, added through one toolbar menu. */
+const DASHBOARD_MODULES = [
+  { id: "metric", label: "Kennzahl", title: "Kennzahl", metadata: { value: null, unit: "", compare: "" } },
+  { id: "gauge", label: "Tacho", title: "Tacho", metadata: { min: 0, max: 100, warn: 60, danger: 85, value: 0 } },
+  { id: "sheet", label: "Rechenblatt", title: "Rechenblatt", metadata: { rows: [] } },
+] as const;
 
 /** Space a template group leaves around its fields. */
 const GROUP_PAD = { x: 16, top: 52, bottom: 16 };
