@@ -1514,6 +1514,20 @@ function BoardPage() {
     : menuRecord?.type === "zone"
     ? [
         {
+          label: readAgent(menuRecord) ? "Agent bearbeiten" : "Als Agent einrichten",
+          icon: Workflow,
+          run: () => openInspector(menuRecord.id, "agent"),
+        },
+        ...(readAgent(menuRecord)
+          ? [
+              {
+                label: "Feld jetzt analysieren",
+                icon: Workflow,
+                run: () => runAgent(menuRecord.id),
+              },
+            ]
+          : []),
+        {
           label: "Chat zu diesem Feld",
           icon: MessageSquare,
           run: () =>
@@ -1782,6 +1796,7 @@ function BoardPage() {
             onEdgesDelete={(deleted) => {
               deleted.forEach((e) => trackSave(supabase.from("edges").delete().eq("id", e.id)));
             }}
+            onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
             onPaneContextMenu={(event) => {
