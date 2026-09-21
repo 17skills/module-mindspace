@@ -537,6 +537,59 @@ function BoardPage() {
     return parts.join("\n\n---\n\n");
   }, []);
 
+  /**
+   * Transparent breakdown for the chat module: which connected modules
+   * actually feed the chat, and which are deliberately left out (and why).
+   * Mirrors collectContext exactly — profile links never carry content.
+   */
+  const contextReport = useCallback((id: string): ContextReport => {
+    const connected = new Set<string>();
+    for (const edge of edgesRef.current) {
+      if (edge.source === id) connected.add(edge.target);
+      if (edge.target === id) connected.add(edge.source);
+    }
+    for (const nodeId of [...connected]) {
+      const record = recordsRef.current[nodeId];
+      if (record?.type === "frame") {
+        for (const candidate of Object.values(recordsRef.current)) {
+          if (candidate.parent_id === nodeId) connected.add(candidate.id);
+        }
+      }
+    }
+    const own = readAssignment(recordsRef.current[id]);
+    if (own) {
+      for (const candidate of Object.values(recordsRef.current)) {
+        if (candidate.id !== id && readAssignment(candidate)?.zoneId === own.zoneId) {
+          connected.add(candidate.id);
+        }
+      }
+    }
+    const report: ContextReport = { used: [], excluded: [] };
+    for (const nodeId of connected) {
+      const record = recordsRef.current[nodeId];
+      if (!record || record.type === "chat" || record.type === "frame" || record.type === "zone")
+        continue;
+      const title = record.title ?? "Modul";
+      if (isProfileLink(record)) {
+        report.excluded.push({ id: record.id, title, reason: "Profil-Link — kontextfrei" });
+      } else if (!record.content) {
+        report.excluded.push({
+          id: record.id,
+          title,
+          reason: record.status === "processing" ? "Wird noch eingelesen" : "Kein Inhalt",
+        });
+      } else {
+        report.used.push({
+          id: record.id,
+          title,
+          type: record.type,
+          chars: Math.min(record.content.length, 60_000),
+        });
+      }
+    }
+    return report;
+  }, []);
+
   /** Assign a card to the background field it now sits on. */
   const syncZone = useCallback((id: string, x: number, y: number) => {
     const record = recordsRef.current[id];
@@ -1184,6 +1237,7 @@ function BoardPage() {
       updateNode,
       deleteNode,
       collectContext,
+      contextReport,
       addNoteFrom,
       extractStructure,
       openInspector,
