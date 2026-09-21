@@ -39,7 +39,77 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { NODE_ACCENT, NODE_LABEL, useBoard, type NodeRecord } from "./board-context";
+import { NODE_ACCENT, NODE_LABEL, useBoard, type ContextReport, type NodeRecord } from "./board-context";
+
+/** Shows exactly which modules feed this chat — and which are excluded. */
+function ContextBar({
+  report,
+  onFocus,
+}: {
+  report: ContextReport;
+  onFocus: (id: string) => void;
+}) {
+  const total = report.used.length + report.excluded.length;
+  return (
+    <div className="flex items-center border-b px-3 py-1">
+      <Popover>
+        <UiTooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button className="nodrag flex items-center gap-1.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground">
+                <BookOpen className="size-3" />
+                {total === 0
+                  ? "Kein Kontext verbunden"
+                  : `Kontext: ${report.used.length} ${report.used.length === 1 ? "Inhalt" : "Inhalte"}`}
+                {report.excluded.length > 0 && ` · ${report.excluded.length} ausgenommen`}
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <UiTooltipContent>Anzeigen, welche Inhalte an den Chat übertragen werden</UiTooltipContent>
+        </UiTooltip>
+        <PopoverContent align="start" className="nodrag nowheel w-72 p-0 text-xs">
+          <p className="border-b px-3 py-2 font-medium">Übertragener Kontext</p>
+          <div className="max-h-64 overflow-auto p-1.5">
+            {report.used.length === 0 && report.excluded.length === 0 && (
+              <p className="px-1.5 py-2 text-muted-foreground">
+                Verbinde Module mit diesem Chat, damit ihr Inhalt als Kontext übertragen wird.
+              </p>
+            )}
+            {report.used.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onFocus(item.id)}
+                className="flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-accent"
+              >
+                <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                <span className="shrink-0 text-muted-foreground">
+                  {NODE_LABEL[item.type] ?? item.type} · {Math.round(item.chars / 1000)}k Zeichen
+                </span>
+              </button>
+            ))}
+            {report.excluded.length > 0 && (
+              <>
+                <p className="px-1.5 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Nicht übertragen
+                </p>
+                {report.excluded.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => onFocus(item.id)}
+                    className="flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent"
+                  >
+                    <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                    <span className="shrink-0">{item.reason}</span>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 const MODELS = [
   { id: "openai/gpt-6-astra", label: "GPT-6 Astra" },
