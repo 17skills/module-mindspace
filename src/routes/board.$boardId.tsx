@@ -212,6 +212,29 @@ const READABLE_WIDTH: Record<string, number> = {
 
 const MODULE_GAP = 32;
 const NON_BLOCKING_TYPES = new Set(["zone", "frame", "shape", "text"]);
+const AUTO_HEIGHT_TYPES = new Set([
+  "note",
+  "calc",
+  "metric",
+  "gauge",
+  "sheet",
+  "api",
+  "decision",
+  "signal",
+  "risk",
+]);
+const AUTO_MIN_HEIGHT: Record<string, number> = {
+  note: 180,
+  calc: 180,
+  metric: 150,
+  gauge: 220,
+  sheet: 180,
+  api: 220,
+  decision: 300,
+  signal: 140,
+  risk: 520,
+};
+const AUTO_MAX_HEIGHT = 1800;
 
 type LayoutRect = { id: string; x: number; y: number; width: number; height: number };
 
@@ -222,6 +245,37 @@ function overlaps(a: LayoutRect, b: LayoutRect, gap = MODULE_GAP) {
     a.y < b.y + b.height + gap &&
     a.y + a.height + gap > b.y
   );
+}
+
+/** Natural height of a vertical card, including content currently living in scroll areas. */
+function naturalElementHeight(element: HTMLElement): number {
+  const style = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  if (element instanceof HTMLTextAreaElement) return Math.max(rect.height, element.scrollHeight);
+
+  const children = Array.from(element.children).filter(
+    (child): child is HTMLElement =>
+      child instanceof HTMLElement && window.getComputedStyle(child).position !== "absolute",
+  );
+  const isVerticalFlex = style.display === "flex" && style.flexDirection === "column";
+  const scrolls = style.overflowY === "auto" || style.overflowY === "scroll";
+  if (!children.length || (!isVerticalFlex && !scrolls)) return rect.height;
+
+  const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+  const border = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
+  const gap = Number.parseFloat(style.rowGap) || 0;
+  return (
+    padding +
+    border +
+    children.reduce((sum, child) => sum + naturalElementHeight(child), 0) +
+    gap * Math.max(0, children.length - 1)
+  );
+}
+
+function measuredCardHeight(nodeElement: HTMLElement) {
+  const card = nodeElement.querySelector<HTMLElement>(":scope > .module-card");
+  if (!card) return null;
+  return Math.ceil(Math.max(card.scrollHeight, naturalElementHeight(card)) + 2);
 }
 
 /** Modules of the dashboard family, added through one toolbar menu. */
@@ -364,6 +418,8 @@ function BoardPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
+  const flowWrapRef = useRef<HTMLDivElement>(null);
+  const heightTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const nodesRef = useRef(nodes);
@@ -1417,28 +1473,43 @@ function BoardPage() {
     [setCenter, setNodes],
   );
 
-  /** Expand a selected content module to its readable width and move colliding peers aside. */
+  /** Fit a content module to its readable size and move colliding peers aside. */
   const ensureReadableLayout = useCallback(
-    (id: string) => {
+    (id: string, measuredHeight?: number) => {
       const record = recordsRef.current[id];
       const target = nodesRef.current.find((node) => node.id === id);
       const readableWidth = record ? READABLE_WIDTH[record.type] : undefined;
-      if (!record || !target || !readableWidth || record.parent_id) return;
+      const autoHeight = record ? AUTO_HEIGHT_TYPES.has(record.type) : false;
+      if (!record || !target || record.parent_id || (!readableWidth && !autoHeight)) return;
 
       const currentWidth = target.width ?? record.width ?? DEFAULT_SIZE[record.type]?.width ?? 320;
       const currentHeight = target.height ?? record.height ?? DEFAULT_SIZE[record.type]?.height ?? 240;
-      const width = Math.max(currentWidth, readableWidth);
+      const width = readableWidth ? Math.max(currentWidth, readableWidth) : currentWidth;
+      const height =
+        autoHeight && measuredHeight != null
+          ? Math.min(
+              AUTO_MAX_HEIGHT,
+              Math.max(AUTO_MIN_HEIGHT[record.type] ?? 160, Math.round(measuredHeight)),
+            )
+          : currentHeight;
       const targetRect: LayoutRect = {
         id,
         x: target.position.x,
         y: target.position.y,
         width,
-        height: currentHeight,
+        height,
       };
       const placed: LayoutRect[] = [targetRect];
-      const changes = new Map<string, { x: number; y: number; width?: number }>();
+      const changes = new Map<string, { x: number; y: number; width?: number; height?: number }>();
 
-      if (width !== currentWidth) changes.set(id, { x: target.position.x, y: target.position.y, width });
+      if (width !== currentWidth || Math.abs(height - currentHeight) >= 8) {
+        changes.set(id, {
+          x: target.position.x,
+          y: target.position.y,
+          ...(width !== currentWidth ? { width } : {}),
+          ...(Math.abs(height - currentHeight) >= 8 ? { height } : {}),
+        });
+      }
 
       const peers = nodesRef.current
         .filter((node) => {
@@ -1494,6 +1565,7 @@ function BoardPage() {
             ...node,
             position: { x: change.x, y: change.y },
             ...(change.width ? { width: change.width } : {}),
+            ...(change.height ? { height: change.height } : {}),
           };
         }),
       );
@@ -1502,11 +1574,61 @@ function BoardPage() {
           position_x: change.x,
           position_y: change.y,
           ...(change.width ? { width: change.width } : {}),
+          ...(change.height ? { height: change.height } : {}),
         });
       }
     },
     [setNodes, updateNode],
   );
+
+  const scheduleAutoHeight = useCallback(
+    (id?: string) => {
+      const ids = id
+        ? [id]
+        : Object.values(recordsRef.current)
+            .filter((record) => AUTO_HEIGHT_TYPES.has(record.type) && !record.parent_id)
+            .map((record) => record.id);
+      for (const nodeId of ids) {
+        const previous = heightTimers.current.get(nodeId);
+        if (previous) clearTimeout(previous);
+        const timer = setTimeout(() => {
+          heightTimers.current.delete(nodeId);
+          const root = flowWrapRef.current;
+          const nodeElement = root?.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`);
+          if (!nodeElement) return;
+          const height = measuredCardHeight(nodeElement);
+          if (height != null) ensureReadableLayout(nodeId, height);
+        }, 120);
+        heightTimers.current.set(nodeId, timer);
+      }
+    },
+    [ensureReadableLayout],
+  );
+
+  useEffect(() => {
+    if (!ready) return;
+    scheduleAutoHeight();
+    const root = flowWrapRef.current;
+    if (!root) return;
+    const observer = new MutationObserver((mutations) => {
+      const ids = new Set<string>();
+      for (const mutation of mutations) {
+        const element =
+          mutation.target instanceof Element
+            ? mutation.target.closest<HTMLElement>(".react-flow__node")
+            : null;
+        const id = element?.dataset["id"];
+        if (id && AUTO_HEIGHT_TYPES.has(recordsRef.current[id]?.type ?? "")) ids.add(id);
+      }
+      for (const id of ids) scheduleAutoHeight(id);
+    });
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => {
+      observer.disconnect();
+      for (const timer of heightTimers.current.values()) clearTimeout(timer);
+      heightTimers.current.clear();
+    };
+  }, [ready, scheduleAutoHeight]);
 
   /** Persist a field size; a template group scales its fields along. */
   const resizeZone = useCallback(
@@ -2165,7 +2287,7 @@ function BoardPage() {
         }}
       >
         <BoardContext.Provider value={api}>
-          <div className="relative min-w-0 flex-1">
+          <div ref={flowWrapRef} className="relative min-w-0 flex-1">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -2174,7 +2296,10 @@ function BoardPage() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(_, node) => ensureReadableLayout(node.id)}
+            onNodeClick={(_, node) => {
+              ensureReadableLayout(node.id);
+              scheduleAutoHeight(node.id);
+            }}
             onNodeDragStop={(_, node) => {
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
               syncZone(node.id, node.position.x, node.position.y);
