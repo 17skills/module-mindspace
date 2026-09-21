@@ -227,6 +227,9 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "zone" ||
     record.type === "shape" ||
     record.type === "calc" ||
+    record.type === "metric" ||
+    record.type === "gauge" ||
+    record.type === "sheet" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -235,6 +238,8 @@ function toFlowNode(record: NodeRecord): Node {
   const zoneLocked =
     kind === "zone" &&
     (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
+  // a field with an agent task can hand its result on through a connection
+  const zoneAgent = kind === "zone" && Boolean(readAgent(record));
   return {
     id: record.id,
     type: kind,
@@ -245,7 +250,7 @@ function toFlowNode(record: NodeRecord): Node {
     ...(record.parent_id ? { parentId: record.parent_id, extent: "parent" as const } : {}),
     ...(kind === "frame" ? { zIndex: -1 } : {}),
     ...(kind === "zone"
-      ? { zIndex: -2, connectable: false, deletable: true, draggable: !zoneLocked }
+      ? { zIndex: -2, connectable: zoneAgent, deletable: true, draggable: !zoneLocked }
       : {}),
     ...(kind === "text" ? { connectable: false } : {}),
   };
