@@ -1198,7 +1198,7 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
 
 /** Connection with an editable value label ("25 %", "2500") at its midpoint. */
 export function LabeledEdge(props: EdgeProps) {
-  const { updateEdge } = useBoard();
+  const { updateEdge, calcForEdge } = useBoard();
   const [path, labelX, labelY] = getBezierPath({
     sourceX: props.sourceX,
     sourceY: props.sourceY,
@@ -1228,25 +1228,39 @@ export function LabeledEdge(props: EdgeProps) {
           }}
         >
           {props.selected ? (
-            <input
-              key={label}
-              autoFocus
-              defaultValue={label}
-              placeholder="z. B. 25 %"
-              aria-label="Wert der Verbindung"
-              className="h-6 w-20 rounded-md border border-border bg-card text-center text-[11px] shadow-sm outline-none focus:ring-2 focus:ring-ring/50"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                if (e.key === "Escape") {
-                  (e.target as HTMLInputElement).value = label;
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              onBlur={(e) => {
-                const next = e.target.value.trim();
-                if (next !== label) updateEdge(props.id, next);
-              }}
-            />
+            <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-card p-1 shadow-[var(--shadow-float)]">
+              <input
+                key={label}
+                autoFocus
+                defaultValue={label}
+                placeholder="z. B. 25 %"
+                aria-label="Wert der Verbindung"
+                className="h-6 w-20 rounded-md border border-border bg-card text-center text-[11px] outline-none focus:ring-2 focus:ring-ring/50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") {
+                    (e.target as HTMLInputElement).value = label;
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onBlur={(e) => {
+                  const next = e.target.value.trim();
+                  if (next !== label) updateEdge(props.id, next);
+                }}
+              />
+              <UiTooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    aria-label="Rechnung zu dieser Verbindung"
+                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => calcForEdge(props.id)}
+                  >
+                    <Calculator className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <UiTooltipContent>Rechnung anlegen</UiTooltipContent>
+              </UiTooltip>
+            </div>
           ) : label ? (
             <span className="rounded-full border border-border/70 bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground shadow-sm">
               {label}
