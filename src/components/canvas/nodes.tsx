@@ -2763,18 +2763,27 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
     setBusy(true);
     try {
       const batch = points.slice(0, 50);
-      const answer = await runApiModule({
-        data: {
-          url: "https://api.open-meteo.com/v1/forecast",
-          method: "GET",
-          params: [
-            { key: "latitude", value: batch.map((point) => point.lat.toFixed(4)).join(",") },
-            { key: "longitude", value: batch.map((point) => point.lon.toFixed(4)).join(",") },
-            { key: "current", value: "precipitation,wind_speed_10m,temperature_2m" },
-          ],
-          headers: [],
-        },
-      });
+      let answer: { status: number; body: string } | null = null;
+      // Open-Meteo begrenzt Anfragen zeitweise (429) – bis zu dreimal mit Pause wiederholen.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        answer = await runApiModule({
+          data: {
+            url: "https://api.open-meteo.com/v1/forecast",
+            method: "GET",
+            params: [
+              { key: "latitude", value: batch.map((point) => point.lat.toFixed(4)).join(",") },
+              { key: "longitude", value: batch.map((point) => point.lon.toFixed(4)).join(",") },
+              { key: "current", value: "precipitation,wind_speed_10m,temperature_2m" },
+            ],
+            headers: [],
+          },
+        });
+        if (answer.status !== 429) break;
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 3000 + attempt * 4000));
+      }
+      if (!answer || answer.status === 429) {
+        throw new Error("Wetterdienst gerade überlastet – bitte in einer Minute erneut versuchen");
+      }
       if (answer.status !== 200) throw new Error(`Wetter: Status ${answer.status}`);
       const parsed = JSON.parse(answer.body) as
         | { current?: Record<string, number> }
