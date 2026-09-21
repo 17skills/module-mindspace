@@ -1785,7 +1785,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
             <button
               title={output === index ? "Wird weitergegeben" : "Diese Zeile weitergeben"}
               aria-label={`Zeile ${index + 1} weitergeben`}
-              className={`w-6 shrink-0 rounded-md font-mono text-[10px] ${
+              className={`nodrag w-6 shrink-0 rounded-md font-mono text-[10px] ${
                 output === index
                   ? "bg-accent font-semibold text-accent-foreground"
                   : "text-muted-foreground hover:bg-accent"
@@ -1803,7 +1803,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
               key={`n${index}${row.name}`}
               placeholder="Name"
               aria-label={`Name Zeile ${index + 1}`}
-              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 outline-none hover:border-border focus:border-border"
+              className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 outline-none hover:border-border focus:border-border"
               onBlur={(e) => {
                 const next = [...rows];
                 next[index] = { ...row, name: e.target.value };
@@ -1815,7 +1815,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
               key={`v${index}${row.formula}${row.value}`}
               placeholder="Wert oder =R1*A"
               aria-label={`Wert Zeile ${index + 1}`}
-              className="w-28 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border"
+              className="nodrag w-28 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border"
               onBlur={(e) => {
                 const text = e.target.value.trim();
                 const formula = text.startsWith("=") ? text.slice(1).trim() : /[A-Za-z(]/.test(text) ? text : "";
@@ -1829,7 +1829,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
             </span>
             <button
               aria-label={`Zeile ${index + 1} löschen`}
-              className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
+              className="nodrag shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
               onClick={() => writeRows(rows.filter((_, other) => other !== index))}
             >
               <Trash2 className="size-3" />
@@ -1837,7 +1837,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
           </div>
         ))}
         <button
-          className="mt-1 flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+          className="nodrag mt-1 flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
           onClick={() => writeRows([...rows, { name: "", value: "", formula: "" }])}
         >
           <Plus className="size-3" /> Zeile
