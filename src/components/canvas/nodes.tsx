@@ -14,6 +14,17 @@ import {
 } from "@xyflow/react";
 import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent } from "@/lib/zones";
+import { runApiModule } from "@/lib/api-module.functions";
+import {
+  QUOTE_COLORS,
+  chartRows,
+  evaluateMarks,
+  formatPrice,
+  hitRate,
+  latestPrice,
+  readQuotes,
+  type QuoteMark,
+} from "@/lib/quotes";
 import {
   answerLabel,
   apiPreview,
@@ -2189,6 +2200,239 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
           </select>
         </div>
       )}
+    </div>
+  );
+});
+
+/** Price history of crypto or stock values, with a check of past decisions. */
+export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
+  const [busy, setBusy] = useState(false);
+  const config = readQuotes(record);
+  const results = useMemo(() => evaluateMarks(config), [config]);
+  const rate = hitRate(results);
+  const rows = useMemo(() => chartRows(config), [config]);
+
+  const decisions = useMemo(() => {
+    const byId = Object.fromEntries(
+      flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    return edges
+      .filter((edge) => edge.target === id)
+      .map((edge) => byId[edge.source])
+      .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision");
+  }, [edges, flowNodes, id]);
+
+  function patch(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
+  }
+
+  async function loadQuotes() {
+    setBusy(true);
+    try {
+      const series: Record<string, [number, number][]> = { ...config.series };
+      for (const asset of config.assets) {
+        const answer = await runApiModule({
+          data: {
+            url: `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(asset.id)}/market_chart`,
+            method: "GET",
+            params: [
+              { key: "vs_currency", value: config.currency },
+              { key: "days", value: String(config.days) },
+            ],
+            headers: [],
+          },
+        });
+        if (answer.status !== 200) throw new Error(`${asset.label}: Status ${answer.status}`);
+        const parsed = JSON.parse(answer.body) as { prices?: [number, number][] };
+        series[asset.id] = Array.isArray(parsed.prices) ? parsed.prices : [];
+      }
+      patch({ series, lastAt: new Date().toISOString() });
+      toast.success("Kurse aktualisiert");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Kurse konnten nicht geladen werden");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Stores the current decisions with today's price so they can be checked later. */
+  function recordDecisions() {
+    const at = new Date().toISOString();
+    const added: QuoteMark[] = [];
+    for (const decision of decisions) {
+      const questions = readQuestions(decision);
+      const answers = readAnswers(decision);
+      for (const asset of config.assets) {
+        const question = questions.find((item) =>
+          `${item.instructions} ${item.id}`.toLowerCase().includes(asset.label.toLowerCase()) ||
+          `${item.instructions} ${item.id}`.toLowerCase().includes(asset.id.toLowerCase()),
+        );
+        const answer = answers.find((item) => item.id === question?.id);
+        if (!answer || typeof answer.noul !== "number") continue;
+        added.push({
+          at,
+          asset: asset.id,
+          label: asset.label,
+          buy: answer.noul >= 0.5,
+          confidence: typeof answer.confidence === "number" ? answer.confidence : null,
+          price: latestPrice(config, asset.id),
+        });
+      }
+    }
+    if (added.length === 0) {
+      toast.error("Keine passende Entscheidung gefunden – erst verbinden und entscheiden");
+      return;
+    }
+    patch({ marks: [...config.marks, ...added].slice(-60) });
+    toast.success(`${added.length} Entscheidungen festgehalten`);
+  }
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
+      <div className="flex items-center gap-2 border-b px-3 py-2">
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "Kurse"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Kurse" })}
+        />
+        <select
+          value={String(config.days)}
+          aria-label="Zeitraum"
+          className="nodrag cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+          onChange={(e) => patch({ days: Number(e.target.value) })}
+        >
+          <option value="1">24 h</option>
+          <option value="7">7 Tage</option>
+          <option value="30">30 Tage</option>
+          <option value="90">90 Tage</option>
+        </select>
+        <Button size="sm" variant="secondary" className="nodrag h-7 rounded-full px-2 text-[11px]" disabled={busy} onClick={() => void loadQuotes()}>
+          <RefreshCw className={`size-3 ${busy ? "animate-spin" : ""}`} /> Kurse
+        </Button>
+      </div>
+
+      <div className="h-36 shrink-0 px-2 pt-2">
+        {rows.length > 1 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="t" tick={{ fontSize: 9 }} minTickGap={24} />
+              <YAxis tick={{ fontSize: 9 }} unit="%" width={38} />
+              <Tooltip formatter={(value: number) => `${value} %`} />
+              {config.assets.map((asset, index) => (
+                <Line
+                  key={asset.id}
+                  type="monotone"
+                  dataKey={asset.id}
+                  name={asset.label}
+                  stroke={QUOTE_COLORS[index % QUOTE_COLORS.length]}
+                  dot={false}
+                  strokeWidth={1.6}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+            Noch keine Kursdaten – „Kurse“ klicken
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 text-[10px] text-muted-foreground">
+        {config.assets.map((asset, index) => (
+          <span key={asset.id} className="flex items-center gap-1">
+            <span
+              className="inline-block size-2 rounded-full"
+              style={{ background: QUOTE_COLORS[index % QUOTE_COLORS.length] }}
+            />
+            {asset.label}
+            <span className="font-mono">{formatPrice(latestPrice(config, asset.id), config.currency)}</span>
+          </span>
+        ))}
+      </div>
+
+      <div className="nowheel flex-1 overflow-auto border-t px-3 py-2 text-[11px]">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="font-medium">Entscheidungen im Rückblick</span>
+          {rate !== null && (
+            <span className="text-muted-foreground">Trefferquote {Math.round(rate * 100)} %</span>
+          )}
+        </div>
+        {results.length === 0 ? (
+          <p className="text-muted-foreground">
+            Noch nichts festgehalten. Mit dem Entscheidungs-Modul verbinden und „Entscheidung festhalten“ klicken.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {results.map((item, index) => (
+              <li key={`${item.at}-${item.asset}-${index}`} className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate">
+                  <span
+                    className="mr-1 font-medium"
+                    style={{ color: item.buy ? "var(--ok, #16a34a)" : "var(--danger, #dc2626)" }}
+                  >
+                    {item.buy ? "KAUFEN" : "NICHT KAUFEN"}
+                  </span>
+                  {" "}{item.label} ·{" "}
+                  {new Date(item.at).toLocaleString("de-DE", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  · {formatPrice(item.price, config.currency)}
+                </span>
+                <span className="shrink-0 font-mono">
+                  {item.changePct === null ? "–" : `${item.changePct > 0 ? "+" : ""}${item.changePct.toFixed(2)} %`}{" "}
+                  {item.correct === null ? "" : item.correct ? "✓" : "✗"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t px-2 py-1.5 text-[10px] text-muted-foreground">
+        <span>
+          {config.lastAt
+            ? `Stand ${new Date(config.lastAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+            : "Noch kein Abruf"}
+        </span>
+        <div className="flex items-center gap-1">
+          {config.marks.length > 0 && (
+            <button
+              type="button"
+              className="nodrag rounded-full px-2 py-0.5 hover:bg-accent"
+              onClick={() => patch({ marks: [] })}
+            >
+              Verlauf leeren
+            </button>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            className="nodrag h-7 rounded-full px-2 text-[11px]"
+            onClick={recordDecisions}
+          >
+            Entscheidung festhalten
+          </Button>
+        </div>
+      </div>
     </div>
   );
 });

@@ -111,6 +111,7 @@ export const NODE_ACCENT: Record<string, string> = {
   api: "var(--doc)",
   decision: "var(--chat)",
   signal: "var(--primary)",
+  quotes: "var(--primary)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -133,4 +134,5 @@ export const NODE_LABEL: Record<string, string> = {
   api: "API",
   decision: "Entscheidung",
   signal: "Signal",
+  quotes: "Kursverlauf",
 };

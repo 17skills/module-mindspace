@@ -31,6 +31,7 @@ import {
   ApiNode,
   DecisionNode,
   SignalNode,
+  QuotesNode,
   TextNode,
   ZoneNode,
 } from "@/components/canvas/nodes";
@@ -77,6 +78,7 @@ const nodeTypes = {
   api: ApiNode,
   decision: DecisionNode,
   signal: SignalNode,
+  quotes: QuotesNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -103,6 +105,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "api" ||
     record.type === "decision" ||
     record.type === "signal" ||
+    record.type === "quotes" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
