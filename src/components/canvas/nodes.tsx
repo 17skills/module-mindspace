@@ -3513,7 +3513,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                 defaultValue={field.name}
                                 aria-label="Name des Risikos"
                                 className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
-                                onBlur={(e) => updateField(field.id, { name: e.target.value.trim() })}
+                                onBlur={(e) => commit(field.id, "name", e.target.value.trim())}
                               />
                               <input
                                 defaultValue={field.note}
