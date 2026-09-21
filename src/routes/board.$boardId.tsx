@@ -84,6 +84,7 @@ import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@
 
 import {
   extractStructured,
+  fetchLinkMeta,
   fetchPageText,
   fetchYoutube,
   resolvePodcast,

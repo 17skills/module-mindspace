@@ -201,7 +201,9 @@ export const ContentNode = memo(function ContentNode({ data, selected }: NodePro
         {record.status === "error" && <p className="text-destructive">{record.error}</p>}
         {record.status === "ready" && (
           <p className="whitespace-pre-wrap">
-            {record.content?.slice(0, 4000) || "Kein Text gefunden."}
+            {record.content?.slice(0, 4000) ||
+              (record.metadata?.["subtitle"] as string | undefined) ||
+              "Kein Text gefunden."}
           </p>
         )}
       </div>
