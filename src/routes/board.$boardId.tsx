@@ -1411,6 +1411,9 @@ function BoardPage() {
       allNodes,
       focusNode,
       resizeZone,
+      runAgent,
+      agentStale,
+      calcForEdge,
     }),
     [
       updateNode,
@@ -1429,6 +1432,9 @@ function BoardPage() {
       allNodes,
       focusNode,
       resizeZone,
+      runAgent,
+      agentStale,
+      calcForEdge,
     ],
   );
 
