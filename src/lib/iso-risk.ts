@@ -13,8 +13,10 @@ export type RiskField = {
   chance: number;
   /** Impact 1..5 */
   impact: number;
-  /** Where the likelihood comes from: manual, live weather or asset age. */
-  auto: "none" | "weather" | "age";
+  /** Where the likelihood comes from: manual, live weather, asset age or a factor card. */
+  auto: "none" | "weather" | "age" | "factor";
+  /** Id of the connected factor card when auto === "factor". */
+  factorId?: string;
   /** Own measured value, overrides the live measurement when set. */
   measureText?: string;
   /** Own threshold, overrides the automatic threshold when set. */
@@ -28,7 +30,7 @@ export type RiskChange = {
   fieldId: string;
   code: string;
   label: string;
-  key: "name" | "note" | "chance" | "impact" | "auto" | "measureText" | "limitText";
+  key: "name" | "note" | "chance" | "impact" | "auto" | "measureText" | "limitText" | "factorId";
   from: string | number | undefined;
   to: string | number | undefined;
 };
@@ -123,7 +125,9 @@ export function readIsoRisk(record: NodeRecord | null | undefined): IsoRiskConfi
           note: typeof row["note"] === "string" ? row["note"] : "",
           chance: clamp(row["chance"], 3),
           impact: clamp(row["impact"], 3),
-          auto: auto === "weather" || auto === "age" ? auto : "none",
+          auto:
+            auto === "weather" || auto === "age" || auto === "factor" ? auto : "none",
+          ...(typeof row["factorId"] === "string" ? { factorId: row["factorId"] } : {}),
           ...(typeof row["measureText"] === "string" ? { measureText: row["measureText"] } : {}),
           ...(typeof row["limitText"] === "string" ? { limitText: row["limitText"] } : {}),
         };
@@ -154,6 +158,7 @@ export const CHANGE_LABEL: Record<RiskChange["key"], string> = {
   auto: "Datenquelle",
   measureText: "Messwert",
   limitText: "Grenzwert",
+  factorId: "Faktor-Quelle",
 };
 
 /** Colour of a matrix cell / score, following the ISO legend. */
@@ -333,6 +338,8 @@ export type RiskContext = {
   peakRain: number | null;
   ageYears: number | null;
   ageLevel: number | null;
+  /** Weighted factor cards connected to this matrix, keyed by card id. */
+  factors?: Record<string, { label: string; score: number; level: number; count: number }>;
 };
 
 function num(value: number | null, digits = 0): string | null {
@@ -383,6 +390,16 @@ function baseMeasure(field: RiskField, ctx: RiskContext): RiskMeasure {
       source: "Baujahr der Anlagentabelle",
     };
   }
+  if (field.auto === "factor") {
+    const factor = ctx.factors?.[field.factorId ?? ""];
+    return {
+      text: factor ? `${factor.score.toFixed(1)} / 10 gewichtet` : null,
+      limit: "6,0 / 10",
+      breach: (factor?.score ?? 0) >= 6,
+      rule: "Eintritt = gewichteter Faktorwert ÷ 2 (1 – 5)",
+      source: factor ? `${factor.label} · ${factor.count} Parameter` : "Faktor nicht verbunden",
+    };
+  }
   return {
     text: null,
     limit: null,
@@ -409,7 +426,9 @@ export function explainScore(
       ? "aus dem Wetter der Karte berechnet"
       : field.auto === "age"
         ? "aus dem Baujahr der Anlagentabelle berechnet"
-        : "von Hand gesetzt";
+        : field.auto === "factor"
+          ? "aus der gewichteten Faktorkarte berechnet"
+          : "von Hand gesetzt";
   return {
     formula: `Score = Eintritt × Auswirkung = ${field.chance} × ${field.impact} = ${field.score}`,
     inputs: [
