@@ -1495,11 +1495,16 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
       />
       <div className="nodrag flex flex-1 flex-col justify-center px-3 py-2">
         <div className="flex items-baseline gap-1">
-          {linked ? (
-            <span className="min-w-0 flex-1 truncate font-display text-3xl font-semibold tracking-tight">
-              {formatValue(value ?? null, fmt)}
-            </span>
-          ) : (
+          {(() => {
+            const text = formatValue(value ?? null, fmt);
+            const size = text.length > 12 ? "text-lg" : text.length > 8 ? "text-2xl" : "text-3xl";
+            return linked ? (
+              <span className={`min-w-0 flex-1 truncate font-display font-semibold tracking-tight ${size}`}>
+                {text}
+              </span>
+            ) : null;
+          })()}
+          {linked ? null : (
             <input
               key={record.id + String(meta["value"] ?? "")}
               defaultValue={Number.isFinite(manual) ? String(manual) : ""}
