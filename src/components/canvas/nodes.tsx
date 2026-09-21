@@ -3582,10 +3582,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                     <button
                                       type="button"
                                       className="nodrag rounded-full px-2 py-0.5 text-muted-foreground hover:bg-accent"
-                                      onClick={() => {
-                                        commit(field.id, "measureText", "");
-                                        commit(field.id, "limitText", "");
-                                      }}
+                                      onClick={() => resetOverrides(field.id)}
                                     >
                                       eigene Werte zurücksetzen
                                     </button>
