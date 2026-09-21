@@ -1152,9 +1152,15 @@ function BoardPage() {
     }
 
     const selectedIds = new Set(selected.map((node) => node.id));
+    const scopeOf = (node: Node) => {
+      const record = recordsRef.current[node.id];
+      if (node.parentId) return `parent:${node.parentId}`;
+      const zoneId = record ? readAssignment(record)?.zoneId : null;
+      return zoneId ? `zone:${zoneId}` : "canvas";
+    };
     const byParent = new Map<string, Node[]>();
     for (const node of selected) {
-      const key = node.parentId ?? "__canvas__";
+      const key = scopeOf(node);
       byParent.set(key, [...(byParent.get(key) ?? []), node]);
     }
     const changes = new Map<string, { x: number; y: number }>();
@@ -1164,16 +1170,24 @@ function BoardPage() {
       const ordered = [...group].sort(
         (a, b) => a.position.y - b.position.y || a.position.x - b.position.x,
       );
-      const parent = parentKey === "__canvas__"
-        ? null
-        : nodesRef.current.find((node) => node.id === parentKey);
+      const parentId = parentKey.startsWith("parent:") ? parentKey.slice(7) : null;
+      const zoneId = parentKey.startsWith("zone:") ? parentKey.slice(5) : null;
+      const parent = parentId
+        ? nodesRef.current.find((node) => node.id === parentId)
+        : null;
+      const zone = zoneId
+        ? absoluteZones(Object.values(recordsRef.current)).find((record) => record.id === zoneId)
+        : null;
       const parentWidth = parent
         ? parent.width ?? recordsRef.current[parent.id]?.width ?? 1200
-        : Number.POSITIVE_INFINITY;
+        : zone?.width ?? Number.POSITIVE_INFINITY;
       const parentHeight = parent
         ? parent.height ?? recordsRef.current[parent.id]?.height ?? 900
-        : Number.POSITIVE_INFINITY;
-      const inset = parent ? 28 : 0;
+        : zone?.height ?? Number.POSITIVE_INFINITY;
+      const boundaryX = zone?.position_x ?? 0;
+      const boundaryY = zone?.position_y ?? 0;
+      const hasBoundary = Boolean(parent || zone);
+      const inset = hasBoundary ? 28 : 0;
       const widthOf = (node: Node) =>
         node.width ?? recordsRef.current[node.id]?.width ?? DEFAULT_SIZE[node.type ?? "default"]?.width ?? 320;
       const heightOf = (node: Node) =>
@@ -1214,18 +1228,24 @@ function BoardPage() {
       while (columns > 1 && layoutAt(inset, inset, columns).width > parentWidth - inset * 2) {
         columns -= 1;
       }
-      const startX = parent
-        ? Math.min(Math.max(inset, Math.min(...ordered.map((node) => node.position.x))), parentWidth - inset)
+      const startX = hasBoundary
+        ? Math.min(
+            Math.max(boundaryX + inset, Math.min(...ordered.map((node) => node.position.x))),
+            boundaryX + parentWidth - inset,
+          )
         : Math.min(...ordered.map((node) => node.position.x));
-      const startY = parent
-        ? Math.min(Math.max(inset, Math.min(...ordered.map((node) => node.position.y))), parentHeight - inset)
+      const startY = hasBoundary
+        ? Math.min(
+            Math.max(boundaryY + inset, Math.min(...ordered.map((node) => node.position.y))),
+            boundaryY + parentHeight - inset,
+          )
         : Math.min(...ordered.map((node) => node.position.y));
       const obstacles: LayoutRect[] = nodesRef.current
         .filter((node) => {
           const record = recordsRef.current[node.id];
           return (
             !selectedIds.has(node.id) &&
-            (node.parentId ?? "__canvas__") === parentKey &&
+            scopeOf(node) === parentKey &&
             Boolean(record) &&
             !NON_BLOCKING_TYPES.has(record?.type ?? "")
           );
@@ -1249,11 +1269,11 @@ function BoardPage() {
       for (const candidate of candidates) {
         const attempt = layoutAt(candidate.x, candidate.y, columns);
         const withinParent =
-          !parent ||
-          (candidate.x >= inset &&
-            candidate.y >= inset &&
-            candidate.x + attempt.width <= parentWidth - inset &&
-            candidate.y + attempt.height <= parentHeight - inset);
+          !hasBoundary ||
+          (candidate.x >= boundaryX + inset &&
+            candidate.y >= boundaryY + inset &&
+            candidate.x + attempt.width <= boundaryX + parentWidth - inset &&
+            candidate.y + attempt.height <= boundaryY + parentHeight - inset);
         if (withinParent && !attempt.rects.some((rect) => obstacles.some((other) => overlaps(rect, other)))) {
           arranged = attempt;
           break;
