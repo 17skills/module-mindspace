@@ -4116,9 +4116,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
               </div>
             )}
           </div>
-        )}
+        </section>
 
-        {view === "verlauf" && (
+        <section className="mt-3">
+          <div className="module-eyebrow mb-1">Verlauf</div>
           <div className="space-y-1.5 text-[10px]">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
@@ -4160,7 +4161,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
               ))}
             </ul>
           </div>
-        )}
+        </section>
       </div>
     </div>
   );
