@@ -24,7 +24,8 @@ export function nodeValue(record: NodeRecord | undefined): number | null {
 
 /**
  * Turns an edge label into a factor/override applied to the source value.
- * "25%" → 25 % of the source value, "2500" → fixed 2500, empty → source value.
+ * "25%" → 25 % of the source value, "2500" → fixed 2500, empty → source value,
+ * "x * 0.75" / "x - 100" → formula where x is the source value.
  */
 export function edgeValue(label: string | null | undefined, sourceValue: number | null): number | null {
   const text = (label ?? "").trim();
@@ -36,8 +37,14 @@ export function edgeValue(label: string | null | undefined, sourceValue: number 
   }
   const fixed = text.match(/^-?\d+(?:[.,]\d+)?$/);
   if (fixed) return Number(text.replace(",", "."));
+  // formula with x = source value, e.g. "x * 0.75" or "x - 100"
+  if (/x/i.test(text) && /^[\dxX\s+\-*/%.,()]+$/.test(text)) {
+    if (sourceValue == null) return null;
+    return evalFormula(text, { X: sourceValue });
+  }
   return sourceValue;
 }
+
 
 export type CalcInput = {
   letter: string;

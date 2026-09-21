@@ -153,8 +153,52 @@ export function hitRate(results: MarkResult[]): number | null {
   return judged.filter((item) => item.correct).length / judged.length;
 }
 
-/** Chart rows: one entry per timestamp with the percentage change per asset. */
-export function chartRows(config: QuotesConfig): Record<string, number | string>[] {
+/** How the chart shows the values. */
+export type QuoteMode = "pct" | "price" | "value";
+
+/** Selected display mode of a quotes module. */
+export function readMode(record: NodeRecord | undefined | null): QuoteMode {
+  const raw = (record?.metadata ?? {})["mode"];
+  return raw === "price" || raw === "value" ? raw : "pct";
+}
+
+/** Manually entered holdings per asset (metadata.holdings). */
+export function readHoldings(record: NodeRecord | undefined | null): Record<string, number> {
+  const raw = ((record?.metadata ?? {})["holdings"] ?? {}) as Record<string, unknown>;
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const num = Number(value);
+    if (Number.isFinite(num)) out[key] = num;
+  }
+  return out;
+}
+
+/** Current portfolio value: sum of holding × latest price. */
+export function totalValue(
+  config: QuotesConfig,
+  holdings: Record<string, number>,
+): number | null {
+  let sum = 0;
+  let any = false;
+  for (const asset of config.assets) {
+    const amount = holdings[asset.id];
+    const price = latestPrice(config, asset.id);
+    if (!amount || price === null) continue;
+    sum += amount * price;
+    any = true;
+  }
+  return any ? sum : null;
+}
+
+/**
+ * Chart rows: one entry per timestamp.
+ * "pct" = change in percent, "price" = price, "value" = holding × price.
+ */
+export function chartRows(
+  config: QuotesConfig,
+  mode: QuoteMode = "pct",
+  holdings: Record<string, number> = {},
+): Record<string, number | string>[] {
   const base: Record<string, number> = {};
   const stamps = new Set<number>();
   for (const asset of config.assets) {
@@ -171,6 +215,8 @@ export function chartRows(config: QuotesConfig): Record<string, number | string>
       const row: Record<string, number | string> = {
         t: new Date(stamp).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
       };
+      let total = 0;
+      let anyTotal = false;
       for (const asset of config.assets) {
         const points = config.series[asset.id];
         const start = base[asset.id];
@@ -180,11 +226,25 @@ export function chartRows(config: QuotesConfig): Record<string, number | string>
           if (point[0] <= stamp) value = point[1];
           else break;
         }
-        if (value !== null) row[asset.id] = Math.round(((value - start) / start) * 10000) / 100;
+        if (value === null) continue;
+        if (mode === "pct") {
+          row[asset.id] = Math.round(((value - start) / start) * 10000) / 100;
+        } else if (mode === "price") {
+          row[asset.id] = Math.round(value * 100) / 100;
+        } else {
+          const amount = holdings[asset.id];
+          if (!amount) continue;
+          const worth = Math.round(value * amount * 100) / 100;
+          row[asset.id] = worth;
+          total += worth;
+          anyTotal = true;
+        }
       }
+      if (mode === "value" && anyTotal) row["__total"] = Math.round(total * 100) / 100;
       return row;
     });
 }
+
 
 /** Money formatting for prices. */
 export function formatPrice(value: number | null, currency: string): string {
