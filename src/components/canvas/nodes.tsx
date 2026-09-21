@@ -2322,14 +2322,15 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
     [flowNodes],
   );
 
-  const decisions = useMemo(
-    () =>
-      edges
-        .filter((edge) => edge.target === id)
-        .map((edge) => records[edge.source])
-        .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision"),
-    [edges, records, id],
-  );
+  const decisions = useMemo(() => {
+    const connected = edges
+      .filter((edge) => edge.target === id)
+      .map((edge) => records[edge.source])
+      .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision");
+    if (connected.length > 0) return connected;
+    // no direct connection: fall back to decision modules elsewhere on the board
+    return Object.values(records).filter((item) => item?.type === "decision");
+  }, [edges, records, id]);
 
   /** Amounts held per asset: manual entry wins, otherwise matched incoming values. */
   const manual = readHoldings(record);
