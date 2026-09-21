@@ -9,8 +9,8 @@ type Step = {
   hint: string;
   status: string;
   done: boolean;
-  target?: NodeRecord;
-  action?: { label: string; run: () => void };
+  target?: NodeRecord | undefined;
+  action?: { label: string; run: () => void } | undefined;
 };
 
 /** Step-by-step guide through the board: data, calculation, decision, measures. */
