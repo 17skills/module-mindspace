@@ -2007,8 +2007,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
         <textarea
           key={record.id + "policy"}
           defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
-          placeholder="Regel, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
-          aria-label="Regel für die Entscheidung"
+          placeholder="Regel für alle Fragen, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
+          aria-label="Regel für alle Fragen"
           className="nodrag min-h-12 w-full resize-none rounded-md border border-border/70 bg-background px-2 py-1 text-xs outline-none"
           onBlur={(e) =>
             updateNode(record.id, {
