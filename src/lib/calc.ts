@@ -1,5 +1,6 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
+import { apiValue, decisionValue } from "@/lib/api-module";
 
 function toNumber(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
