@@ -150,7 +150,10 @@ export const runDecision = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         model: "typesafe/jev-latest",
-        state: { context: data.context.slice(0, 200_000) },
+        state: {
+          context: data.context.slice(0, 200_000),
+          ...(data.policy?.trim() ? { rules: data.policy.trim().slice(0, 4000) } : {}),
+        },
         questions,
       }),
     });
