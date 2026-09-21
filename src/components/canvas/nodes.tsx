@@ -230,7 +230,8 @@ function Shell({
       />
       {!locked && <Handle type="target" position={Position.Left} />}
       <div
-        className="flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-card)]"
+        className="module-card flex h-full w-full flex-col overflow-hidden border bg-card"
+        data-selected={Boolean(selected)}
         style={{ borderTop: `3px solid ${NODE_ACCENT[type] ?? "var(--primary)"}` }}
       >
         {children}
@@ -244,7 +245,7 @@ function Header({ record }: { record: NodeRecord }) {
   const { deleteNode, zoneOf, openInspector } = useBoard();
   const zone = zoneOf(record.id);
   return (
-    <div className="border-b px-3 py-2">
+    <div className="module-heading border-b px-3 py-2">
       <div className="flex items-start gap-2">
         <span
           className="mt-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white"
@@ -818,7 +819,7 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
       minHeight={320}
     >
       <Header record={record} />
-      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
         <Select
           value={model}
           onValueChange={(value) => {
@@ -1351,14 +1352,15 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] transition-shadow ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={260} minHeight={180} />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-2">
         <span
           className="h-2 w-2 shrink-0 rounded-full"
           style={{ background: NODE_ACCENT["calc"] ?? "var(--primary)" }}
@@ -1568,9 +1570,10 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
   }
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={180} minHeight={130} />
       <Handle type="target" position={Position.Left} />
@@ -1580,7 +1583,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Kennzahl"}
-        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        className="module-heading nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Kennzahl" })}
       />
       <div className="flex flex-1 flex-col justify-center px-3 py-2">
@@ -1693,9 +1696,10 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
   }
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={220} minHeight={200} />
       <Handle type="target" position={Position.Left} />
@@ -1706,7 +1710,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Tacho"}
-        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        className="module-heading nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Tacho" })}
       />
       <div className="flex flex-1 flex-col items-center justify-center px-3 py-2">
@@ -1806,9 +1810,10 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={280} minHeight={180} />
       <Handle type="target" position={Position.Left} />
@@ -1816,7 +1821,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Rechenblatt"}
-        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        className="module-heading nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Rechenblatt" })}
       />
       <div className="nowheel flex-1 overflow-auto px-2 py-1.5">
@@ -1909,15 +1914,16 @@ export const ApiNode = memo(function ApiNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
       style={{ borderTop: `3px solid ${NODE_ACCENT["api"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={280} minHeight={200} />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
-      <div className="flex items-center gap-1.5 border-b px-3 py-2">
+      <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
         <Globe className="size-3.5 shrink-0 text-muted-foreground" />
         <input
           key={record.id + (record.title ?? "")}
@@ -1933,7 +1939,7 @@ export const ApiNode = memo(function ApiNode({ data, selected }: NodeProps) {
         </button>
       </div>
 
-      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
         <Button
           size="sm"
           variant="secondary"
@@ -1999,15 +2005,16 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
       style={{ borderTop: `3px solid ${NODE_ACCENT["decision"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={220} />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
-      <div className="flex items-center gap-1.5 border-b px-3 py-2">
+      <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
         <Scale className="size-3.5 shrink-0 text-muted-foreground" />
         <input
           key={record.id + (record.title ?? "")}
@@ -2074,7 +2081,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           const limit = own ?? threshold;
           const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
-            <div key={question.id} className="rounded-lg border border-border/70 p-2">
+            <div key={question.id} className="rounded-md border border-border/70 bg-secondary/20 p-2 transition-colors hover:bg-secondary/35">
               <div className="flex items-start gap-1">
                 <textarea
                   key={question.id + question.instructions}
@@ -2270,9 +2277,10 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={180} minHeight={140} />
       <Handle type="target" position={Position.Left} />
@@ -2280,7 +2288,7 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Signal"}
-        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        className="module-heading nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Signal" })}
       />
       <div
@@ -2496,16 +2504,17 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
       <Handle type="target" position={Position.Left} />
       <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Right} />
       <Handle type="source" position={Position.Bottom} />
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-2">
         <input
           key={record.id + (record.title ?? "")}
           defaultValue={record.title ?? "Kurse"}
@@ -2828,9 +2837,10 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
       <Handle type="target" position={Position.Left} />
@@ -2838,7 +2848,7 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
       <Handle type="source" position={Position.Right} />
       <Handle type="source" position={Position.Bottom} />
 
-      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
         <input
           key={record.id + (record.title ?? "")}
           defaultValue={record.title ?? "Karte"}
@@ -3065,9 +3075,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
+      data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={360} minHeight={320} />
       <Handle type="target" position={Position.Left} />
@@ -3075,7 +3086,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
       <Handle type="source" position={Position.Right} />
       <Handle type="source" position={Position.Bottom} />
 
-      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
         <input
           key={record.id + (record.title ?? "")}
           defaultValue={record.title ?? "Risikomatrix"}
