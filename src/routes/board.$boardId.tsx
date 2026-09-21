@@ -1817,12 +1817,12 @@ function BoardPage() {
           run: () => extractStructure(menu.nodeId!),
         },
         {
-          label: "Notiz daneben anlegen",
+          label: "Faktor daneben anlegen",
           icon: NotebookPen,
           run: () =>
             void createRecord({
               type: "note",
-              title: "Notiz",
+              title: "Faktor",
               content: "",
               position_x: menu.flowX + 40,
               position_y: menu.flowY + 40,
@@ -1861,12 +1861,12 @@ function BoardPage() {
           },
         },
         {
-          label: "Notiz",
+          label: "Faktor",
           icon: NotebookPen,
           run: () =>
             void createRecord({
               type: "note",
-              title: "Notiz",
+              title: "Faktor",
               content: "",
               position_x: menu?.flowX ?? 0,
               position_y: menu?.flowY ?? 0,
@@ -2243,16 +2243,16 @@ function BoardPage() {
                     size="icon"
                     variant="ghost"
                     className={toolBtn()}
-                    aria-label="Notiz anlegen"
+                    aria-label="Faktor anlegen"
                     onClick={() => {
                       const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({ type: "note", title: "Notiz", content: "", position_x: at.x, position_y: at.y });
+                      void createRecord({ type: "note", title: "Faktor", content: "", position_x: at.x, position_y: at.y });
                     }}
                   >
                     <StickyNote className="size-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Notiz anlegen</TooltipContent>
+                <TooltipContent side="top">Faktor anlegen</TooltipContent>
               </Tooltip>
 
               <Tooltip>

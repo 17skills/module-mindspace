@@ -487,7 +487,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
-          placeholder="Notiz schreiben …"
+          placeholder="Faktor schreiben …"
           className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
         />
       ) : (
@@ -994,7 +994,7 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
             className="nodrag rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
             onClick={() => addNoteFrom(record.id, lastAnswer)}
           >
-            Als Notiz ablegen
+            Als Faktor ablegen
           </button>
         )}
       </div>

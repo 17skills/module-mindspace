@@ -1,6 +1,6 @@
 import type { NodeRecord } from "@/components/canvas/board-context";
 
-export const ZONE_ROLES = ["Beispiel", "Beleg", "Gegenbeispiel", "Idee", "Notiz"] as const;
+export const ZONE_ROLES = ["Beispiel", "Beleg", "Gegenbeispiel", "Idee", "Faktor"] as const;
 
 export type ZoneAssignment = {
   zoneId: string;
