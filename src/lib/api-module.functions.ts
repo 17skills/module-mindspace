@@ -122,7 +122,8 @@ export const runDecision = createServerFn({ method: "POST" })
     const questions: Record<string, unknown> = {};
     data.questions.forEach((question, index) => {
       const id = `q${index}`;
-      const instructions = `${question.instructions}${rules}`;
+      const own = question.rule?.trim() ? `\n\nRegel für diese Frage: ${question.rule.trim().slice(0, 2000)}` : "";
+      const instructions = `${question.instructions}${rules}${own}`;
       if (question.type === "choice") {
         const criteria: Record<string, string> = {};
         const options = question.options.filter((option) => option.trim());
