@@ -8,6 +8,7 @@ import {
   readMapConfig,
   readRiskConfig,
   riskColor,
+  levelColor,
   riskEntries,
   riskText,
   type RiskEntry,
@@ -3030,7 +3031,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
             <span key={index} className="flex items-center gap-1">
               <span
                 className="size-2 rounded-full"
-                style={{ background: riskColor(index + 1, index + 1) }}
+                style={{ background: levelColor(index + 1) }}
               />
               {RISK_LABEL[index + 1]}: {count}
             </span>
@@ -3053,7 +3054,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                     >
                       <span
                         className="size-2.5 shrink-0 rounded-full"
-                        style={{ background: riskColor(entry.likelihood, entry.impact) }}
+                        style={{ background: levelColor(entry.level) }}
                       />
                       <span className="min-w-0 flex-1 truncate">{entry.point.label}</span>
                       <span className="shrink-0 font-mono text-muted-foreground">
