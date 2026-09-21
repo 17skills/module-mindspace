@@ -275,7 +275,7 @@ function naturalElementHeight(element: HTMLElement): number {
 function measuredCardHeight(nodeElement: HTMLElement) {
   const card = nodeElement.querySelector<HTMLElement>(":scope > .module-card");
   if (!card) return null;
-  return Math.ceil(naturalElementHeight(card) + 2);
+  return Math.ceil(Math.max(card.scrollHeight, naturalElementHeight(card)) + 2);
 }
 
 /** Modules of the dashboard family, added through one toolbar menu. */
