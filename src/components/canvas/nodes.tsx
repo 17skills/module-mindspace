@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { BookOpen, Lock, RotateCw, ShieldOff } from "lucide-react";
+import { BookOpen, Calculator, Lock, Plus, RefreshCw, RotateCw, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -12,7 +12,8 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { calcInputs, evalFormula, formatValue } from "@/lib/calc";
+import { calcInputs, evalFormula, formatValue, sheetRows, sheetValues } from "@/lib/calc";
+import { readAgent } from "@/lib/zones";
 import {
   Bar,
   BarChart,
