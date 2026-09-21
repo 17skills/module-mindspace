@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
+  Calculator,
   Check,
   CloudCheck,
   CloudOff,
@@ -59,10 +60,12 @@ import {
   type StructureItem,
 } from "@/components/canvas/board-context";
 import {
+  CalcNode,
   ChatNode,
   ContentNode,
   DataNode,
   FrameNode,
+  LabeledEdge,
   NoteNode,
   SHAPES,
   ShapeNode,
@@ -127,7 +130,10 @@ const nodeTypes = {
   zone: ZoneNode,
   shape: ShapeNode,
   text: TextNode,
+  calc: CalcNode,
 };
+
+const edgeTypes = { labeled: LabeledEdge };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
 
@@ -138,6 +144,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   zone: { width: 420, height: 360 },
   shape: { width: 200, height: 140 },
   text: { width: 260, height: 48 },
+  calc: { width: 320, height: 240 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -192,6 +199,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "frame" ||
     record.type === "zone" ||
     record.type === "shape" ||
+    record.type === "calc" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -312,7 +320,14 @@ function BoardPage() {
           continue;
         }
         seen.add(key);
-        keep.push({ id, source, target, animated: true });
+        keep.push({
+          id,
+          source,
+          target,
+          animated: true,
+          type: "labeled",
+          label: (row.label as string | null) ?? undefined,
+        });
         if (source !== row.source_id || target !== row.target_id) {
           trackSave(supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id));
         }
@@ -474,7 +489,7 @@ function BoardPage() {
       const id = crypto.randomUUID();
       setEdges((current) => [
         ...current,
-        { id, source: sourceId, target: targetId, animated: true },
+        { id, source: sourceId, target: targetId, animated: true, type: "labeled" },
       ]);
       trackSave(
         supabase
@@ -495,6 +510,19 @@ function BoardPage() {
       );
     },
     [boardId, setEdges, user],
+  );
+
+  const updateEdge = useCallback(
+    (id: string, label: string) => {
+      const value = label.trim();
+      setEdges((current) =>
+        current.map((edge) =>
+          edge.id === id ? { ...edge, label: value || undefined } : edge,
+        ),
+      );
+      trackSave(supabase.from("edges").update({ label: value || null }).eq("id", id));
+    },
+    [setEdges],
   );
 
   const collectContext = useCallback((id: string) => {
@@ -1236,6 +1264,7 @@ function BoardPage() {
   const api = useMemo(
     () => ({
       updateNode,
+      updateEdge,
       deleteNode,
       collectContext,
       contextReport,
@@ -1253,6 +1282,7 @@ function BoardPage() {
     }),
     [
       updateNode,
+      updateEdge,
       deleteNode,
       collectContext,
       contextReport,
@@ -1602,6 +1632,7 @@ function BoardPage() {
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -1809,6 +1840,29 @@ function BoardPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    className={toolBtn()}
+                    aria-label="Rechen-Modul anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "calc",
+                        title: "Rechnung",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { formula: "" },
+                      });
+                    }}
+                  >
+                    <Calculator className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Rechen-Modul anlegen</TooltipContent>
               </Tooltip>
             </div>
           </div>

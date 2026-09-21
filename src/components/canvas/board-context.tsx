@@ -42,6 +42,8 @@ export type BoardApi = {
   /** Content modules feeding this module (connected neighbours, or the module itself). */
   sourcesFor: (id: string) => NodeRecord[];
   updateNode: (id: string, patch: Partial<NodeRecord>) => void;
+  /** Persist a connection label (e.g. "25%") used by calculation modules. */
+  updateEdge: (id: string, label: string) => void;
   deleteNode: (id: string) => void;
   collectContext: (id: string) => string;
   /** Transparent breakdown of what the chat context actually contains. */
@@ -85,6 +87,7 @@ export const NODE_ACCENT: Record<string, string> = {
   table: "var(--primary)",
   list: "var(--primary)",
   chart: "var(--primary)",
+  calc: "var(--primary)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -99,4 +102,5 @@ export const NODE_LABEL: Record<string, string> = {
   table: "Tabelle",
   list: "Liste",
   chart: "Diagramm",
+  calc: "Rechnung",
 };

@@ -1,6 +1,18 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { BookOpen, Lock, RotateCw, ShieldOff } from "lucide-react";
-import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  Handle,
+  NodeResizer,
+  Position,
+  getBezierPath,
+  useEdges,
+  useStore,
+  type EdgeProps,
+  type NodeProps,
+} from "@xyflow/react";
+import { calcInputs, evalFormula, formatValue } from "@/lib/calc";
 import {
   Bar,
   BarChart,
@@ -1125,6 +1137,203 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
           {text || <span className="text-muted-foreground/60">Beschriftung</span>}
         </div>
       )}
+    </div>
+  );
+});
+
+/** Connection with an editable value label ("25 %", "2500") at its midpoint. */
+export function LabeledEdge(props: EdgeProps) {
+  const { updateEdge } = useBoard();
+  const [path, labelX, labelY] = getBezierPath({
+    sourceX: props.sourceX,
+    sourceY: props.sourceY,
+    sourcePosition: props.sourcePosition,
+    targetX: props.targetX,
+    targetY: props.targetY,
+    targetPosition: props.targetPosition,
+  });
+  const label = typeof props.label === "string" ? props.label : "";
+  return (
+    <>
+      <BaseEdge
+        id={props.id}
+        path={path}
+        interactionWidth={24}
+        style={{
+          stroke: props.selected ? "var(--ring)" : "var(--border)",
+          strokeWidth: props.selected ? 2 : 1.5,
+        }}
+      />
+      <EdgeLabelRenderer>
+        <div
+          className="nodrag nopan absolute"
+          style={{
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: "all",
+          }}
+        >
+          {props.selected ? (
+            <input
+              key={label}
+              autoFocus
+              defaultValue={label}
+              placeholder="z. B. 25 %"
+              aria-label="Wert der Verbindung"
+              className="h-6 w-20 rounded-md border border-border bg-card text-center text-[11px] shadow-sm outline-none focus:ring-2 focus:ring-ring/50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") {
+                  (e.target as HTMLInputElement).value = label;
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                if (next !== label) updateEdge(props.id, next);
+              }}
+            />
+          ) : label ? (
+            <span className="rounded-full border border-border/70 bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground shadow-sm">
+              {label}
+            </span>
+          ) : (
+            <span className="block size-2 rounded-full bg-border/60 opacity-0 transition-opacity hover:opacity-100" />
+          )}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+/** Calculation module: resolves values from incoming connections and a formula. */
+export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps) {
+  const record = (data as { record: NodeRecord }).record;
+  const { updateNode, focusNode } = useBoard();
+  const edges = useEdges();
+  // subscribe to the live canvas so changes in other modules re-run the formula
+  const flowNodes = useStore((state) => state.nodes);
+  const records = useMemo(
+    () =>
+      Object.fromEntries(
+        flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+      ),
+    [flowNodes],
+  );
+  const inputs = calcInputs(id, records, edges);
+  const formula =
+    typeof record.metadata?.["formula"] === "string" ? record.metadata["formula"] : "";
+  const vars: Record<string, number> = {};
+  for (const input of inputs) if (input.value != null) vars[input.letter] = input.value;
+  const result = formula.trim() ? evalFormula(formula, vars) : null;
+  const invalid = formula.trim().length > 0 && result == null;
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] transition-shadow ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={260} minHeight={180} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <div className="flex items-center gap-2 border-b px-3 py-2">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ background: NODE_ACCENT["calc"] ?? "var(--primary)" }}
+        />
+        <input
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          defaultValue={record.title ?? ""}
+          key={record.id + (record.title ?? "")}
+          placeholder="Rechnung"
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next !== (record.title ?? "")) updateNode(id, { title: next || "Rechnung" });
+          }}
+        />
+      </div>
+      <div className="nodrag nowheel flex-1 space-y-1 overflow-auto px-3 py-2">
+        {inputs.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Verbinde Module mit diesem Modul — jede Verbindung wird ein Wert (A, B, C …).
+            Verbindungen lassen sich per Klick mit einem Prozentwert oder einer Zahl beschriften.
+          </p>
+        )}
+        {inputs.map((input) => (
+          <div key={input.edgeId} className="flex items-center gap-2 text-xs">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/10 font-mono text-[10px] font-semibold text-primary">
+              {input.letter}
+            </span>
+            <button
+              className="min-w-0 flex-1 truncate text-left hover:underline"
+              onClick={() => focusNode(input.sourceId)}
+              title={input.title}
+            >
+              {input.title}
+            </button>
+            {input.label && (
+              <span className="shrink-0 rounded-full border border-border/70 px-1.5 font-mono text-[10px] text-muted-foreground">
+                {input.label}
+              </span>
+            )}
+            {input.label ? (
+              <span className="w-16 shrink-0 text-right font-mono">{formatValue(input.value)}</span>
+            ) : (
+              <input
+                key={input.sourceId + String(input.raw ?? "")}
+                defaultValue={input.raw ?? ""}
+                placeholder="Wert"
+                inputMode="decimal"
+                aria-label={`Wert von ${input.title}`}
+                className="w-16 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border focus:bg-background"
+                onBlur={(e) => {
+                  const text = e.target.value.trim().replace(",", ".");
+                  const next = text === "" ? null : Number(text);
+                  if (next !== null && !Number.isFinite(next)) return;
+                  if (next !== input.raw) {
+                    const source = records[input.sourceId];
+                    if (source) {
+                      updateNode(input.sourceId, {
+                        metadata: { ...(source.metadata ?? {}), value: next },
+                      });
+                    }
+                  }
+                }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="border-t px-3 py-2">
+        <input
+          key={record.id + formula}
+          defaultValue={formula}
+          placeholder={inputs.length > 1 ? "Formel, z. B. A * B" : "Formel, z. B. A * 2"}
+          aria-label="Formel"
+          className="nodrag w-full rounded-md border border-border/70 bg-background px-2 py-1 font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+          onBlur={(e) => {
+            const next = e.target.value.trim();
+            if (next !== formula) {
+              updateNode(id, { metadata: { ...(record.metadata ?? {}), formula: next } });
+            }
+          }}
+        />
+        <div className="mt-1.5 flex items-baseline justify-between">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Ergebnis
+          </span>
+          <span
+            className={`font-display text-lg font-semibold tracking-tight ${
+              invalid ? "text-destructive" : ""
+            }`}
+          >
+            {invalid ? "Formel unvollständig" : formatValue(result)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 });

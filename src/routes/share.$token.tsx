@@ -17,10 +17,12 @@ import {
   type NodeRecord,
 } from "@/components/canvas/board-context";
 import {
+  CalcNode,
   ChatNode,
   ContentNode,
   DataNode,
   FrameNode,
+  LabeledEdge,
   NoteNode,
   ShapeNode,
   TextNode,
@@ -62,7 +64,10 @@ const nodeTypes = {
   zone: ZoneNode,
   shape: ShapeNode,
   text: TextNode,
+  calc: CalcNode,
 };
+
+const edgeTypes = { labeled: LabeledEdge };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
 const SIZE: Record<string, { width: number; height: number }> = {
@@ -79,6 +84,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "frame" ||
     record.type === "zone" ||
     record.type === "shape" ||
+    record.type === "calc" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -126,6 +132,8 @@ function SharedBoardPage() {
             source: edge.source_id as string,
             target: edge.target_id as string,
             animated: true,
+            type: "labeled",
+            label: (edge.label as string | null) ?? undefined,
           })),
         );
       })
@@ -148,6 +156,7 @@ function SharedBoardPage() {
     return {
       sourcesFor: () => [],
       updateNode: noop,
+      updateEdge: noop,
       deleteNode: noop,
       collectContext: () => "",
       contextReport: () => ({ used: [], excluded: [] }),
@@ -196,6 +205,7 @@ function SharedBoardPage() {
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             nodesDraggable={false}
             nodesConnectable={false}
             elementsSelectable={false}
