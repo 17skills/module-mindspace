@@ -438,7 +438,7 @@ function noteKpi(entries: string[]) {
     (entry) => entry.includes(":") && firstNumber(entry.split(":").slice(1).join(":")) !== null,
   );
   if (metricIndex < 0) return null;
-  const [rawLabel, ...rest] = entries[metricIndex].split(":");
+  const [rawLabel = "", ...rest] = (entries[metricIndex] ?? "").split(":");
   const value = rest.join(":").trim();
   const limitEntry = entries.find((entry, index) =>
     index !== metricIndex && /schwelle|limit|grenzwert|ziel/i.test(entry),
