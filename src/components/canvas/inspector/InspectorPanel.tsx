@@ -9,6 +9,7 @@ import { AssignTab } from "./AssignTab";
 import { AgentTab } from "./AgentTab";
 import { FetchTab } from "./FetchTab";
 import { OverviewTab } from "./OverviewTab";
+import { GuideTab } from "./GuideTab";
 import { RefreshTab } from "./RefreshTab";
 import { useSegments } from "./use-segments";
 
@@ -86,6 +87,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
     { id: "refresh", label: "Aktualisieren" },
     ...(isZone ? [] : [{ id: "assign" as const, label: "Zuordnung" }]),
     { id: "overview", label: "Übersicht" },
+    { id: "guide", label: "Leitfaden" },
   ];
   const activeTab = tabs.some((item) => item.id === tab) ? tab : "source";
 
@@ -164,6 +166,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
         {activeTab === "overview" && (
           <OverviewTab onOpen={(id) => openInspector(id, "assign")} />
         )}
+        {activeTab === "guide" && <GuideTab />}
         {activeTab === "refresh" && (
           <RefreshTab
             record={record}

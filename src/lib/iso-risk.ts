@@ -274,6 +274,69 @@ export function evaluate(fields: RiskField[]): IsoResult {
   return { fields: scored, highest, index, portfolio: classOf(highest) };
 }
 
+/** Live evidence behind the likelihood of one row, shown like a spreadsheet cell. */
+export type RiskMeasure = {
+  /** Measured value as text, e.g. "58 km/h" — null when nothing was measured yet. */
+  text: string | null;
+  /** Threshold the value is compared against. */
+  limit: string | null;
+  /** True when the measurement is at or above the threshold. */
+  breach: boolean;
+  /** The rule in words, like a formula in a cell. */
+  rule: string;
+  /** Where the number comes from. */
+  source: string;
+};
+
+export type RiskContext = {
+  config: IsoRiskConfig;
+  weatherLevel: number | null;
+  peakWind: number | null;
+  peakRain: number | null;
+  ageYears: number | null;
+  ageLevel: number | null;
+};
+
+function num(value: number | null, digits = 0): string | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return value.toLocaleString("de-DE", { maximumFractionDigits: digits });
+}
+
+/** The evidence cell of a risk row: measured value, threshold and rule. */
+export function measureOf(field: RiskField, ctx: RiskContext): RiskMeasure {
+  if (field.auto === "weather") {
+    const wind = num(ctx.peakWind);
+    const rain = num(ctx.peakRain, 1);
+    const parts = [wind ? `${wind} km/h Böen` : null, rain ? `${rain} mm/h Regen` : null].filter(
+      Boolean,
+    );
+    return {
+      text: parts.length ? parts.join(" · ") : null,
+      limit: `${num(ctx.config.windDanger)} km/h · ${num(ctx.config.rainDanger, 1)} mm/h`,
+      breach:
+        (ctx.peakWind ?? 0) >= ctx.config.windWarn || (ctx.peakRain ?? 0) >= ctx.config.rainWarn,
+      rule: "Eintritt = Stufe der schlechtesten Wettermeldung (1 – 5)",
+      source: "Wetter der Karte",
+    };
+  }
+  if (field.auto === "age") {
+    return {
+      text: ctx.ageYears == null ? null : `Ø ${num(ctx.ageYears)} Jahre`,
+      limit: "25 Jahre",
+      breach: (ctx.ageYears ?? 0) >= 25,
+      rule: "Eintritt = 5 ab 35 J., 4 ab 25 J., 3 ab 15 J., 2 ab 8 J.",
+      source: "Baujahr der Anlagentabelle",
+    };
+  }
+  return {
+    text: null,
+    limit: null,
+    breach: false,
+    rule: "Eintritt von Hand gesetzt",
+    source: field.note || "eigene Einschätzung",
+  };
+}
+
 /** Readable summary handed to the decision module and chat. */
 export function isoText(result: IsoResult): string {
   if (!result.fields.length) return "";
