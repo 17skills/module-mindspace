@@ -43,6 +43,13 @@
       "when": 1790006017137,
       "tag": "0005_create_module_library",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790014158068,
+      "tag": "0006_harden_definer_functions_and_public_reads",
+      "breakpoints": true
     }
   ]
 }
