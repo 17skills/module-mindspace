@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
-  Calculator,
+  Gauge,
   Check,
   CloudCheck,
   CloudOff,
@@ -1995,28 +1995,45 @@ function BoardPage() {
                 <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    className={toolBtn()}
-                    aria-label="Rechen-Modul anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({
-                        type: "calc",
-                        title: "Rechnung",
-                        position_x: at.x,
-                        position_y: at.y,
-                        metadata: { formula: "" },
-                      });
-                    }}
-                  >
-                    <Calculator className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Rechen-Modul anlegen</TooltipContent>
-              </Tooltip>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={toolBtn()}
+                        aria-label="Kennzahlen"
+                      >
+                        <Gauge className="size-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Kennzahlen</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent side="top" align="center">
+                  {DASHBOARD_MODULES.map((module) => (
+                    <DropdownMenuItem
+                      key={module.id}
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: module.id,
+                          title: module.title,
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { ...module.metadata },
+                        });
+                      }}
+                    >
+                      {module.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           </div>
