@@ -3122,6 +3122,19 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
   );
   const liveAge = useMemo(() => ageChance(tables), [tables]);
 
+  /** Worst measured weather value across all objects, shown as the evidence cell. */
+  const peaks = useMemo(() => {
+    let wind: number | null = null;
+    let rain: number | null = null;
+    for (const point of points) {
+      const value = weather[point.id];
+      if (!value) continue;
+      if (value.wind != null) wind = Math.max(wind ?? 0, value.wind);
+      if (value.rain != null) rain = Math.max(rain ?? 0, value.rain);
+    }
+    return { wind, rain };
+  }, [points, weather]);
+
   /** Fields with automatic likelihood replaced by live evidence. */
   const fields = useMemo(
     () =>
