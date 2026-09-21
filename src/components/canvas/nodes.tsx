@@ -23,9 +23,13 @@ import {
   hitRate,
   latestPrice,
   latestStamp,
+  readHoldings,
+  readMode,
   readQuotes,
+  totalValue,
   type QuoteMark,
 } from "@/lib/quotes";
+
 import {
   answerLabel,
   apiPreview,
