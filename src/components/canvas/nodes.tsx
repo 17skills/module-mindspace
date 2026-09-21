@@ -3075,7 +3075,8 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
   const flowNodes = useStore((state) => state.nodes);
   const config = readIsoRisk(record);
   const [openField, setOpenField] = useState<string | null>(null);
-  const [view, setView] = useState<"tabelle" | "matrix" | "einordnung">("tabelle");
+  const [explainField, setExplainField] = useState<string | null>(null);
+  const [view, setView] = useState<"tabelle" | "matrix" | "einordnung" | "verlauf">("tabelle");
 
   const { mapRecords, tables, decisions } = useMemo(() => {
     const byId = Object.fromEntries(
