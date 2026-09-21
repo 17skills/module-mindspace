@@ -125,7 +125,9 @@ export function readIsoRisk(record: NodeRecord | null | undefined): IsoRiskConfi
           note: typeof row["note"] === "string" ? row["note"] : "",
           chance: clamp(row["chance"], 3),
           impact: clamp(row["impact"], 3),
-          auto: auto === "weather" || auto === "age" ? auto : "none",
+          auto:
+            auto === "weather" || auto === "age" || auto === "factor" ? auto : "none",
+          ...(typeof row["factorId"] === "string" ? { factorId: row["factorId"] } : {}),
           ...(typeof row["measureText"] === "string" ? { measureText: row["measureText"] } : {}),
           ...(typeof row["limitText"] === "string" ? { limitText: row["limitText"] } : {}),
         };
