@@ -2223,7 +2223,7 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
     return edges
       .filter((edge) => edge.target === id)
       .map((edge) => byId[edge.source])
-      .filter((item): item is NodeRecord => Boolean(item) && item.type === "decision");
+      .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision");
   }, [edges, flowNodes, id]);
 
   function patch(next: Record<string, unknown>) {
