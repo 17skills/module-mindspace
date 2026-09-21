@@ -3232,6 +3232,30 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     });
   }
 
+  /** Drop own measurement and threshold of one row in a single step. */
+  function resetOverrides(fieldId: string) {
+    const current = config.fields.find((field) => field.id === fieldId);
+    if (!current) return;
+    const entries: RiskChange[] = (["measureText", "limitText"] as const)
+      .filter((key) => current[key])
+      .map((key) => ({
+        id: `${Date.now()}-${key}-${fieldId}`,
+        at: Date.now(),
+        fieldId,
+        code: current.code,
+        label: current.name,
+        key,
+        from: current[key],
+        to: "",
+      }));
+    patch({
+      fields: config.fields.map((field) =>
+        field.id === fieldId ? { ...field, measureText: "", limitText: "" } : field,
+      ),
+      history: [...entries, ...config.history].slice(0, 40),
+    });
+  }
+
   /** Take back the latest edit and restore the previous cell value. */
   function undoLast() {
     const [last, ...rest] = config.history;
