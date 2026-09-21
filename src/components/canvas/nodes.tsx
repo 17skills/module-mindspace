@@ -2890,12 +2890,28 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
         )}
       </div>
 
+      {focus.ids.length > 0 && (
+        <div className="flex items-center justify-between gap-2 border-t bg-accent/60 px-3 py-1 text-[10px]">
+          <span className="min-w-0 truncate">
+            Hervorgehoben: {focus.label} ({focus.ids.length})
+          </span>
+          <button
+            type="button"
+            className="nodrag shrink-0 rounded-full px-2 py-0.5 hover:bg-background"
+            onClick={() => clearMapFocus()}
+          >
+            zurücksetzen
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[10px] text-muted-foreground">
         <span>
           {points.length} Objekte · {risky} mit starkem Regen
         </span>
         <span>{config.lastAt ? new Date(config.lastAt).toLocaleString("de-DE") : "kein Abruf"}</span>
       </div>
+
 
       {picked && (
         <div className="border-t px-3 py-1.5 text-[11px]">
