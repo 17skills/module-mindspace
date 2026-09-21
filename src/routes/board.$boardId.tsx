@@ -1263,6 +1263,7 @@ function BoardPage() {
   const api = useMemo(
     () => ({
       updateNode,
+      updateEdge,
       deleteNode,
       collectContext,
       contextReport,
@@ -1280,6 +1281,7 @@ function BoardPage() {
     }),
     [
       updateNode,
+      updateEdge,
       deleteNode,
       collectContext,
       contextReport,
