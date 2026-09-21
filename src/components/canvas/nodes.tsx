@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Lock, RotateCw } from "lucide-react";
+import { BookOpen, Lock, RotateCw, ShieldOff } from "lucide-react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
 import {
   Bar,
@@ -33,6 +33,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ZONE_WHITE } from "@/lib/templates";
+import { isProfileLink } from "@/lib/profiles";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { NODE_ACCENT, NODE_LABEL, useBoard, type NodeRecord } from "./board-context";
 
 const MODELS = [
