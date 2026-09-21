@@ -2875,6 +2875,8 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
               center={center}
               zoom={points.length ? 6 : config.zoom}
               selectedId={picked}
+              highlightIds={focus.ids}
+
               onSelect={setPicked}
             />
           </Suspense>
