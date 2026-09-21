@@ -511,6 +511,19 @@ function BoardPage() {
     [boardId, setEdges, user],
   );
 
+  const updateEdge = useCallback(
+    (id: string, label: string) => {
+      const value = label.trim();
+      setEdges((current) =>
+        current.map((edge) =>
+          edge.id === id ? { ...edge, label: value || undefined } : edge,
+        ),
+      );
+      trackSave(supabase.from("edges").update({ label: value || null }).eq("id", id));
+    },
+    [setEdges],
+  );
+
   const collectContext = useCallback((id: string) => {
     const connected = new Set<string>();
     for (const edge of edgesRef.current) {
