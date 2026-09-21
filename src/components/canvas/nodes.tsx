@@ -1,6 +1,17 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { BookOpen, Lock, RotateCw, ShieldOff } from "lucide-react";
-import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  Handle,
+  NodeResizer,
+  Position,
+  getBezierPath,
+  useEdges,
+  type EdgeProps,
+  type NodeProps,
+} from "@xyflow/react";
+import { calcInputs, evalFormula, formatValue } from "@/lib/calc";
 import {
   Bar,
   BarChart,
