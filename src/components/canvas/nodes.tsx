@@ -3530,11 +3530,12 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                   max={5}
                                   step={1}
                                   value={field.chance}
-                                  disabled={field.auto !== "none"}
                                   aria-label="Eintrittswahrscheinlichkeit"
                                   className="nodrag min-w-0 flex-1"
                                   onChange={(e) =>
-                                    updateField(field.id, { chance: Number(e.target.value) })
+                                    commit(field.id, "chance", Number(e.target.value), {
+                                      auto: "none",
+                                    })
                                   }
                                 />
                                 <span className="w-4 text-right font-mono">{field.chance}</span>
