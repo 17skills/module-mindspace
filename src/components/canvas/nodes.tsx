@@ -2350,10 +2350,30 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
     }
   }
 
-  /** Stores the current decisions with today's price so they can be checked later. */
-  function recordDecisions() {
+  /** Stores the current decisions with the live price so they can be checked later. */
+  async function recordDecisions() {
     const at = new Date().toISOString();
     const added: QuoteMark[] = [];
+    let live: Record<string, { eur?: number; usd?: number }> = {};
+    setBusy(true);
+    try {
+      const answer = await runApiModule({
+        data: {
+          url: "https://api.coingecko.com/api/v3/simple/price",
+          method: "GET",
+          params: [
+            { key: "ids", value: config.assets.map((asset) => asset.id).join(",") },
+            { key: "vs_currencies", value: config.currency },
+          ],
+          headers: [],
+        },
+      });
+      if (answer.status === 200) live = JSON.parse(answer.body) as typeof live;
+    } catch {
+      live = {};
+    } finally {
+      setBusy(false);
+    }
     for (const decision of decisions) {
       const questions = readQuestions(decision);
       const answers = readAnswers(decision);
