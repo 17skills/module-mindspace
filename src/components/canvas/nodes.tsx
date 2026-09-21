@@ -1540,6 +1540,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
           className="mt-1 bg-transparent text-xs text-muted-foreground outline-none"
           onBlur={(e) => patch({ compare: e.target.value.trim() })}
         />
+        {selected ? <FormatRow meta={meta} onPatch={patch} /> : null}
       </div>
     </div>
   );
