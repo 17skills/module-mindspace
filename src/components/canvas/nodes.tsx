@@ -2250,14 +2250,15 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
   const confidence = typeof answer?.confidence === "number" ? answer.confidence * 100 : null;
   const unsure = confidence !== null && confidence < threshold;
 
+  const invert = meta["invert"] === true;
   const tone =
     yes === null
       ? { bg: "var(--muted)", fg: "var(--muted-foreground)", text: "Noch keine Entscheidung" }
       : unsure
         ? { bg: "var(--warn, #ea580c)", fg: "#ffffff", text: "KEINE EMPFEHLUNG" }
-        : yes
-          ? { bg: "var(--ok, #16a34a)", fg: "#ffffff", text: yesLabel }
-          : { bg: "var(--danger, #dc2626)", fg: "#ffffff", text: noLabel };
+        : yes !== invert
+          ? { bg: "var(--ok, #16a34a)", fg: "#ffffff", text: yes ? yesLabel : noLabel }
+          : { bg: "var(--danger, #dc2626)", fg: "#ffffff", text: yes ? yesLabel : noLabel };
 
   return (
     <div
@@ -2314,6 +2315,19 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
               </option>
             ))}
           </select>
+          <label className="mt-1 flex cursor-pointer items-center gap-1.5 text-[10px] text-muted-foreground">
+            <input
+              type="checkbox"
+              className="nodrag"
+              checked={invert}
+              onChange={(e) =>
+                updateNode(record.id, {
+                  metadata: { ...(record.metadata ?? {}), invert: e.target.checked },
+                })
+              }
+            />
+            Maßnahme: grün bei „Nein" (nichts zu tun)
+          </label>
         </div>
       )}
     </div>
