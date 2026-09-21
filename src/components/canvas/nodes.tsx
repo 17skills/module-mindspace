@@ -866,12 +866,34 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
               : `color-mix(in oklab, ${color} 35%, transparent)`,
         }}
       >
-        <input
-          defaultValue={record.title ?? "Feld"}
-          readOnly={locked}
-          onBlur={(e) => updateNode(record.id, { title: e.target.value })}
-          className="nodrag w-full bg-transparent px-4 py-2.5 pr-9 font-display text-sm font-semibold tracking-wide text-muted-foreground uppercase outline-none read-only:cursor-default"
-        />
+        <div className="flex items-center gap-2 pr-9">
+          <input
+            defaultValue={record.title ?? "Feld"}
+            readOnly={locked}
+            onBlur={(e) => updateNode(record.id, { title: e.target.value })}
+            className="nodrag min-w-0 flex-1 bg-transparent px-4 py-2.5 font-display text-sm font-semibold tracking-wide text-muted-foreground uppercase outline-none read-only:cursor-default"
+          />
+          <label className="nodrag flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-card/80 px-2 py-0.5">
+            <span className="module-eyebrow">Gewicht</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              aria-label="Themengewicht in Prozent"
+              defaultValue={readThemeWeight(record) || ""}
+              placeholder="–"
+              readOnly={locked}
+              onBlur={(e) =>
+                updateNode(record.id, {
+                  metadata: { ...(record.metadata ?? {}), weight: Number(e.target.value) || 0 },
+                })
+              }
+              className="w-9 bg-transparent text-right font-mono text-[10px] tabular-nums outline-none"
+            />
+            <span className="font-mono text-[10px] text-muted-foreground">%</span>
+          </label>
+        </div>
         {locked && (
           <Lock className="pointer-events-none absolute top-3.5 right-3.5 size-3.5 text-muted-foreground/70" />
         )}
