@@ -2286,7 +2286,11 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
             Sicherheit · Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : ""}
           </span>
         )}
-        <span className="text-[10px] opacity-80">Simulation – kein echter Kauf</span>
+        <span className="text-[10px] opacity-80">
+          {typeof meta["hint"] === "string" && meta["hint"]
+            ? (meta["hint"] as string)
+            : "Simulation – kein echter Kauf"}
+        </span>
       </div>
       {selected && (
         <div className="border-t px-2 py-1.5">
