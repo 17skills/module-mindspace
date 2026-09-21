@@ -2510,7 +2510,7 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
               <XAxis dataKey="t" tick={{ fontSize: 9 }} minTickGap={24} />
               <YAxis
                 tick={{ fontSize: 9 }}
-                unit={mode === "pct" ? "%" : undefined}
+                {...(mode === "pct" ? { unit: "%" } : {})}
                 width={mode === "pct" ? 38 : 56}
                 tickFormatter={(value: number) =>
                   mode === "pct" ? String(value) : value.toLocaleString("de-DE", { notation: "compact" })
