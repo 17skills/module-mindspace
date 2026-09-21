@@ -426,6 +426,35 @@ const NOTE_TONE: Record<NoteRole["tone"], string> = {
   reference: "bg-secondary text-muted-foreground",
 };
 
+/** Extracts a leading metric ("Anteil > 25 Jahre: 41,7 %") from evidence text. */
+function firstNumber(text: string): number | null {
+  const hit = text.replace(/\s/g, "").match(/-?\d+(?:[.,]\d+)?/);
+  if (!hit) return null;
+  return Number.parseFloat(hit[0].replace(",", "."));
+}
+
+function noteKpi(entries: string[]) {
+  const metricIndex = entries.findIndex(
+    (entry) => entry.includes(":") && firstNumber(entry.split(":").slice(1).join(":")) !== null,
+  );
+  if (metricIndex < 0) return null;
+  const [rawLabel, ...rest] = entries[metricIndex].split(":");
+  const value = rest.join(":").trim();
+  const limitEntry = entries.find((entry, index) =>
+    index !== metricIndex && /schwelle|limit|grenzwert|ziel/i.test(entry),
+  );
+  const valueNumber = firstNumber(value);
+  const limitNumber = limitEntry ? firstNumber(limitEntry.split(":").slice(1).join(":") || limitEntry) : null;
+  const breach = valueNumber !== null && limitNumber !== null ? valueNumber >= limitNumber : null;
+  return {
+    label: rawLabel.trim(),
+    value,
+    caption: limitEntry ?? null,
+    breach,
+    rest: entries.filter((_, index) => index !== metricIndex && entries[index] !== limitEntry),
+  };
+}
+
 export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
@@ -435,6 +464,8 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
     .split("\n")
     .map((entry) => entry.trim())
     .filter(Boolean);
+  const kpi = noteKpi(entries);
+  const listEntries = kpi ? kpi.rest : entries;
 
   useEffect(() => setText(record.content ?? ""), [record.content]);
 
@@ -442,7 +473,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
     <Shell type="note" selected={selected} locked={Boolean(record.parent_id)}>
       <Header record={record} />
       <div className={`flex items-center justify-between border-b px-3 py-2 ${NOTE_TONE[role.tone]}`}>
-        <span className="text-[9px] font-bold uppercase">{role.eyebrow}</span>
+        <span className="module-eyebrow text-current">{role.eyebrow}</span>
         <span className="rounded-sm border border-current/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold">
           {role.state}
         </span>
@@ -456,24 +487,47 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
           className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
         />
       ) : (
-        <div className="nowheel flex-1 overflow-auto px-3 py-2.5">
-          {entries.length ? (
-            <ul className="space-y-2" aria-label={role.eyebrow}>
-              {entries.map((entry, index) => (
-                <li key={`${entry}-${index}`} className="flex gap-2 text-xs leading-snug text-foreground">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-note" />
-                  <span>{entry}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-muted-foreground">Noch kein fachlicher Eintrag</p>
-          )}
+        <div className="nowheel flex-1 overflow-auto">
+          {kpi ? (
+            <div className="border-b px-3 py-3">
+              <div className="module-eyebrow">{kpi.label}</div>
+              <div className="kpi-value mt-1">{kpi.value}</div>
+              <span
+                className="kpi-bar mt-2"
+                style={{
+                  background:
+                    kpi.breach === null
+                      ? "color-mix(in oklab, var(--foreground) 14%, transparent)"
+                      : kpi.breach
+                        ? "var(--destructive)"
+                        : "var(--note)",
+                }}
+              />
+              {kpi.caption ? (
+                <div className="module-eyebrow mt-2 normal-case tracking-normal">{kpi.caption}</div>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="px-3 py-2.5">
+            {listEntries.length ? (
+              <ul className="space-y-2" aria-label={role.eyebrow}>
+                {listEntries.map((entry, index) => (
+                  <li key={`${entry}-${index}`} className="flex gap-2 text-xs leading-snug text-foreground">
+                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-note" />
+                    <span>{entry}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : kpi ? null : (
+              <p className="text-xs text-muted-foreground">Noch kein fachlicher Eintrag</p>
+            )}
+          </div>
         </div>
       )}
     </Shell>
   );
 });
+
 
 export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
