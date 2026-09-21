@@ -2512,7 +2512,11 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
                   · {formatPrice(item.price, config.currency)}
                 </span>
                 <span className="shrink-0 font-mono">
-                  {item.changePct === null ? "–" : `${item.changePct > 0 ? "+" : ""}${item.changePct.toFixed(2)} %`}{" "}
+                  {item.pending
+                    ? "offen"
+                    : item.changePct === null
+                      ? "–"
+                      : `${item.changePct > 0 ? "+" : ""}${item.changePct.toFixed(2)} %`}{" "}
                   {item.correct === null ? "" : item.correct ? "✓" : "✗"}
                 </span>
               </li>
