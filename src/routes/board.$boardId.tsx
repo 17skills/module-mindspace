@@ -1874,6 +1874,14 @@ function BoardPage() {
           },
         },
         { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
+        {
+          label: "Bibliothek öffnen …",
+          icon: Library,
+          run: () => {
+            librarySelection.current = null;
+            setLibraryOpen(true);
+          },
+        },
       ];
 
   return (
