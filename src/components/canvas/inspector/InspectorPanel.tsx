@@ -166,6 +166,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
         {activeTab === "overview" && (
           <OverviewTab onOpen={(id) => openInspector(id, "assign")} />
         )}
+        {activeTab === "guide" && <GuideTab />}
         {activeTab === "refresh" && (
           <RefreshTab
             record={record}
