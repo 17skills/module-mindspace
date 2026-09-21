@@ -126,6 +126,8 @@ export function readQuestions(record: NodeRecord | undefined | null): DecisionQu
       type: type === "choice" || type === "score" ? type : "noul",
       instructions: text(row["instructions"]),
       options: Array.isArray(row["options"]) ? row["options"].map((o) => String(o)) : [],
+      rule: text(row["rule"]),
+      minConfidence: typeof row["minConfidence"] === "number" ? row["minConfidence"] : null,
     };
   });
 }
