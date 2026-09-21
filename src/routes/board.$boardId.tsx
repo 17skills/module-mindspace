@@ -366,6 +366,8 @@ function BoardPage() {
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
   const recordsRef = useRef(records);
   recordsRef.current = records;
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
   const edgesRef = useRef(edges);
   edgesRef.current = edges;
 
@@ -1415,6 +1417,97 @@ function BoardPage() {
     [setCenter, setNodes],
   );
 
+  /** Expand a selected content module to its readable width and move colliding peers aside. */
+  const ensureReadableLayout = useCallback(
+    (id: string) => {
+      const record = recordsRef.current[id];
+      const target = nodesRef.current.find((node) => node.id === id);
+      const readableWidth = record ? READABLE_WIDTH[record.type] : undefined;
+      if (!record || !target || !readableWidth || record.parent_id) return;
+
+      const currentWidth = target.width ?? record.width ?? DEFAULT_SIZE[record.type]?.width ?? 320;
+      const currentHeight = target.height ?? record.height ?? DEFAULT_SIZE[record.type]?.height ?? 240;
+      const width = Math.max(currentWidth, readableWidth);
+      const targetRect: LayoutRect = {
+        id,
+        x: target.position.x,
+        y: target.position.y,
+        width,
+        height: currentHeight,
+      };
+      const placed: LayoutRect[] = [targetRect];
+      const changes = new Map<string, { x: number; y: number; width?: number }>();
+
+      if (width !== currentWidth) changes.set(id, { x: target.position.x, y: target.position.y, width });
+
+      const peers = nodesRef.current
+        .filter((node) => {
+          const item = recordsRef.current[node.id];
+          return (
+            node.id !== id &&
+            Boolean(item) &&
+            !item?.parent_id &&
+            !NON_BLOCKING_TYPES.has(item?.type ?? "")
+          );
+        })
+        .sort((a, b) => {
+          const da = Math.hypot(a.position.x - target.position.x, a.position.y - target.position.y);
+          const db = Math.hypot(b.position.x - target.position.x, b.position.y - target.position.y);
+          return da - db;
+        });
+
+      for (const peer of peers) {
+        const item = recordsRef.current[peer.id];
+        if (!item) continue;
+        const peerWidth = peer.width ?? item.width ?? DEFAULT_SIZE[item.type]?.width ?? 320;
+        const peerHeight = peer.height ?? item.height ?? DEFAULT_SIZE[item.type]?.height ?? 240;
+        let rect: LayoutRect = {
+          id: peer.id,
+          x: peer.position.x,
+          y: peer.position.y,
+          width: peerWidth,
+          height: peerHeight,
+        };
+        let moved = false;
+        for (let attempt = 0; attempt < placed.length + 2; attempt += 1) {
+          const collision = placed.find((other) => overlaps(rect, other));
+          if (!collision) break;
+          const rightX = collision.x + collision.width + MODULE_GAP;
+          const belowY = collision.y + collision.height + MODULE_GAP;
+          const moveRight = Math.abs(rightX - rect.x);
+          const moveBelow = Math.abs(belowY - rect.y);
+          rect = moveRight <= moveBelow
+            ? { ...rect, x: rightX }
+            : { ...rect, y: belowY };
+          moved = true;
+        }
+        placed.push(rect);
+        if (moved) changes.set(peer.id, { x: rect.x, y: rect.y });
+      }
+
+      if (!changes.size) return;
+      setNodes((current) =>
+        current.map((node) => {
+          const change = changes.get(node.id);
+          if (!change) return node;
+          return {
+            ...node,
+            position: { x: change.x, y: change.y },
+            ...(change.width ? { width: change.width } : {}),
+          };
+        }),
+      );
+      for (const [nodeId, change] of changes) {
+        updateNode(nodeId, {
+          position_x: change.x,
+          position_y: change.y,
+          ...(change.width ? { width: change.width } : {}),
+        });
+      }
+    },
+    [setNodes, updateNode],
+  );
+
   /** Persist a field size; a template group scales its fields along. */
   const resizeZone = useCallback(
     (id: string, width: number, height: number) => {
@@ -2081,6 +2174,7 @@ function BoardPage() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeClick={(_, node) => ensureReadableLayout(node.id)}
             onNodeDragStop={(_, node) => {
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
               syncZone(node.id, node.position.x, node.position.y);
