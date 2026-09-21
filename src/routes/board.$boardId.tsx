@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils";
 import { trackSave, useSaveStatus, clearSaveError } from "@/lib/save-status";
 import {
   BoardContext,
+  type ContextReport,
   type InspectorTab,
   type NodeRecord,
   type StructureItem,
