@@ -35,6 +35,8 @@ export type RiskChange = {
 
 export type IsoRiskConfig = {
   fields: RiskField[];
+  /** Newest first change log of the table. */
+  history: RiskChange[];
   rainWarn: number;
   rainDanger: number;
   windWarn: number;
