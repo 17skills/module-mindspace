@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { addMember, listMembers, removeMember } from "@/lib/share.functions";
+import { shareLink } from "@/lib/share-link";
 
 type Member = { id: string; userId: string; role: string; email: string };
 
@@ -55,9 +56,7 @@ export function ShareDialog({
     };
   }, [boardId, open]);
 
-  const link = token
-    ? `${typeof window === "undefined" ? "" : window.location.origin}/share/${token}`
-    : "";
+  const link = token ? shareLink(`/share/${token}`) : "";
 
   async function togglePublic(value: boolean) {
     setIsPublic(value);
