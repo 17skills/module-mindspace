@@ -24,13 +24,13 @@ export function FetchTab({ record }: { record: NodeRecord }) {
           {list.map((pair, index) => (
             <div key={index} className="flex items-center gap-1">
               <Input
-                defaultValue={pair.name}
+                defaultValue={pair.key}
                 placeholder="Name"
                 aria-label={`${title} Name ${index + 1}`}
                 className="h-8 text-xs"
                 onBlur={(event) => {
                   const next = [...list];
-                  next[index] = { ...pair, name: event.target.value };
+                  next[index] = { ...pair, key: event.target.value };
                   patch({ [key]: next });
                 }}
               />
@@ -57,7 +57,7 @@ export function FetchTab({ record }: { record: NodeRecord }) {
         </div>
         <button
           className="mt-1 flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-secondary"
-          onClick={() => patch({ [key]: [...list, { name: "", value: "" }] })}
+          onClick={() => patch({ [key]: [...list, { key: "", value: "" }] })}
         >
           <Plus className="size-3" /> Zeile
         </button>
