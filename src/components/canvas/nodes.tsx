@@ -21,7 +21,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { BookOpen, Calculator, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, ChevronRight, CloudSun, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -401,13 +401,22 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   return (
     <Shell type="note" selected={selected} locked={Boolean(record.parent_id)}>
       <Header record={record} />
-      <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
-        placeholder="Notiz schreiben …"
-        className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
-      />
+      {selected ? (
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
+          placeholder="Notiz schreiben …"
+          className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
+        />
+      ) : (
+        <div className="flex flex-1 flex-col justify-between gap-2 px-3 py-2.5">
+          <p className="line-clamp-4 whitespace-pre-line text-xs leading-relaxed text-foreground/80">
+            {text || "Leere Notiz"}
+          </p>
+          <span className="text-[9px] font-semibold uppercase text-muted-foreground">Auswählen zum Bearbeiten</span>
+        </div>
+      )}
     </Shell>
   );
 });
@@ -1998,6 +2007,15 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
   const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
+  const answered = answers.filter((answer) => typeof answer.confidence === "number");
+  const confidence = answered.length
+    ? Math.round(answered.reduce((sum, answer) => sum + (answer.confidence ?? 0), 0) / answered.length * 100)
+    : null;
+  const reviewCount = questions.filter((question) => {
+    const answer = answers.find((item) => item.id === question.id);
+    const limit = typeof question.minConfidence === "number" ? question.minConfidence : threshold;
+    return !answer || typeof answer.confidence !== "number" || answer.confidence * 100 < limit;
+  }).length;
 
   function writeQuestions(next: DecisionQuestion[]) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), questions: next } });
@@ -2022,67 +2040,45 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
           onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Entscheidung" })}
         />
-        <Button
-          size="sm"
-          variant="secondary"
-          className="nodrag h-7 rounded-full text-xs"
-          disabled={running || questions.length === 0}
-          onClick={() => runDecide(record.id)}
-        >
-          <Sparkles className={`mr-1 size-3 ${running ? "animate-pulse" : ""}`} />
-          {running ? "Prüft …" : "Entscheiden"}
-        </Button>
+        <span className="rounded-full border bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+          {inputs.length} Quellen
+        </span>
       </div>
 
-      <div className="nowheel flex-1 space-y-2 overflow-auto px-3 py-2">
-        <p className="text-[10px] text-muted-foreground">
-          {inputs.length > 0
-            ? `Kontext aus ${inputs.length} Verbindung${inputs.length === 1 ? "" : "en"}`
-            : "Verbinde Inhalte, Felder oder API-Module mit diesem Modul."}
-        </p>
-        <textarea
-          key={record.id + "policy"}
-          defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
-          placeholder="Regel für alle Fragen, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
-          aria-label="Regel für alle Fragen"
-          className="nodrag min-h-12 w-full resize-none rounded-md border border-border/70 bg-background px-2 py-1 text-xs outline-none"
-          onBlur={(e) =>
-            updateNode(record.id, {
-              metadata: { ...(record.metadata ?? {}), policy: e.target.value },
-            })
-          }
-        />
-        <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          Mindest-Sicherheit
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={5}
-            key={record.id + "minconf"}
-            defaultValue={threshold}
-            aria-label="Mindest-Sicherheit in Prozent"
-            className="nodrag w-16 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
-            onBlur={(e) => {
-              const value = Number(e.target.value);
-              updateNode(record.id, {
-                metadata: {
-                  ...(record.metadata ?? {}),
-                  minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80,
-                },
-              });
-            }}
-          />
-          % – darunter keine Empfehlung (gilt für alle Fragen ohne eigene Angabe)
-        </label>
+      <div className={`border-b px-3 py-3 ${reviewCount ? "bg-destructive/10" : "bg-support/10"}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <span className="text-[9px] font-bold uppercase text-muted-foreground">Aktuelle Lage</span>
+            <p className="font-display text-xl font-bold leading-tight">
+              {answered.length === 0 ? "Noch nicht bewertet" : reviewCount ? `${reviewCount} Prüfungen offen` : "Entscheidung belastbar"}
+            </p>
+          </div>
+          <span className="rounded-full border bg-card px-2 py-1 font-mono text-[10px] font-semibold">
+            {confidence === null ? "–" : `${confidence} % sicher`}
+          </span>
+        </div>
+      </div>
+
+      <div className="nowheel flex-1 overflow-auto px-3 py-2">
         {questions.map((question, index) => {
           const answer = answers.find((item) => item.id === question.id);
           const own = typeof question.minConfidence === "number" ? question.minConfidence : null;
           const limit = own ?? threshold;
           const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
-            <div key={question.id} className="rounded-md border border-border/70 bg-secondary/20 p-2 transition-colors hover:bg-secondary/35">
-              <div className="flex items-start gap-1">
+            <details key={question.id} className="group border-b border-border/60 py-1.5 last:border-0">
+              <summary className="nodrag flex cursor-pointer list-none items-center gap-2 py-1">
+                <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${low ? "bg-destructive/10 text-destructive" : answer ? "bg-support/10 text-support" : "bg-secondary text-muted-foreground"}`}>
+                  {low ? <AlertTriangle className="size-3.5" /> : <span className="font-mono text-[10px]">{index + 1}</span>}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">{question.instructions || `Frage ${index + 1}`}</span>
+                <span className={`shrink-0 text-[10px] font-semibold ${low ? "text-destructive" : "text-muted-foreground"}`}>
+                  {answer ? answerLabel(answer) : "Offen"}
+                </span>
+                <ChevronRight className="size-3 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+              </summary>
+              <div className="mt-1 rounded-md bg-secondary/30 p-2">
+                <div className="flex items-start gap-1">
                 <textarea
                   key={question.id + question.instructions}
                   defaultValue={question.instructions}
@@ -2210,20 +2206,38 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                   )}
                 </p>
               )}
-            </div>
+              </div>
+            </details>
           );
         })}
-        <button
-          className="nodrag flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
-          onClick={() =>
-            writeQuestions([
-              ...questions,
-              { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] },
-            ])
-          }
-        >
-          <Plus className="size-3" /> Frage
-        </button>
+      </div>
+      <details className="group border-t bg-secondary/20 px-3 py-1.5">
+        <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
+          Konfiguration <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="space-y-2 py-2">
+          <textarea
+            key={record.id + "policy"}
+            defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
+            placeholder="Gemeinsame Regel"
+            aria-label="Regel für alle Fragen"
+            className="nodrag min-h-12 w-full resize-none rounded-md border bg-background px-2 py-1 text-xs outline-none"
+            onBlur={(e) => updateNode(record.id, { metadata: { ...(record.metadata ?? {}), policy: e.target.value } })}
+          />
+          <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            Mindest-Sicherheit
+            <span><input type="number" min={0} max={100} step={5} key={record.id + "minconf"} defaultValue={threshold} aria-label="Mindest-Sicherheit in Prozent" className="nodrag w-14 rounded-md border bg-background px-1 py-0.5 text-right" onBlur={(e) => { const value = Number(e.target.value); updateNode(record.id, { metadata: { ...(record.metadata ?? {}), minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80 } }); }} /> %</span>
+          </label>
+          <button className="nodrag flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground" onClick={() => writeQuestions([...questions, { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] }])}>
+            <Plus className="size-3" /> Frage hinzufügen
+          </button>
+        </div>
+      </details>
+      <div className="border-t p-2.5">
+        <Button className="nodrag w-full font-semibold" disabled={running || questions.length === 0} onClick={() => runDecide(record.id)}>
+          <Sparkles className={`mr-1.5 size-3.5 ${running ? "animate-pulse" : ""}`} />
+          {running ? "Prüft …" : "Entscheidung aktualisieren"}
+        </Button>
       </div>
     </div>
   );
