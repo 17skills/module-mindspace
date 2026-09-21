@@ -2300,13 +2300,6 @@ function BoardPage() {
               ensureReadableLayout(node.id);
               scheduleAutoHeight(node.id);
             }}
-            onNodeResizeEnd={(_, node) => {
-              const record = recordsRef.current[node.id];
-              if (!record) return;
-              const width = node.width ?? record.width;
-              const height = node.height ?? record.height;
-              updateNode(node.id, { width, height });
-            }}
             onNodeDragStop={(_, node) => {
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
               syncZone(node.id, node.position.x, node.position.y);
