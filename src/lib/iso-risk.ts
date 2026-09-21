@@ -13,8 +13,10 @@ export type RiskField = {
   chance: number;
   /** Impact 1..5 */
   impact: number;
-  /** Where the likelihood comes from: manual, live weather or asset age. */
-  auto: "none" | "weather" | "age";
+  /** Where the likelihood comes from: manual, live weather, asset age or a factor card. */
+  auto: "none" | "weather" | "age" | "factor";
+  /** Id of the connected factor card when auto === "factor". */
+  factorId?: string;
   /** Own measured value, overrides the live measurement when set. */
   measureText?: string;
   /** Own threshold, overrides the automatic threshold when set. */
@@ -28,7 +30,7 @@ export type RiskChange = {
   fieldId: string;
   code: string;
   label: string;
-  key: "name" | "note" | "chance" | "impact" | "auto" | "measureText" | "limitText";
+  key: "name" | "note" | "chance" | "impact" | "auto" | "measureText" | "limitText" | "factorId";
   from: string | number | undefined;
   to: string | number | undefined;
 };
