@@ -22,9 +22,12 @@ import {
   ContentNode,
   DataNode,
   FrameNode,
+  GaugeNode,
   LabeledEdge,
+  MetricNode,
   NoteNode,
   ShapeNode,
+  SheetNode,
   TextNode,
   ZoneNode,
 } from "@/components/canvas/nodes";
@@ -65,6 +68,9 @@ const nodeTypes = {
   shape: ShapeNode,
   text: TextNode,
   calc: CalcNode,
+  metric: MetricNode,
+  gauge: GaugeNode,
+  sheet: SheetNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -85,6 +91,9 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "zone" ||
     record.type === "shape" ||
     record.type === "calc" ||
+    record.type === "metric" ||
+    record.type === "gauge" ||
+    record.type === "sheet" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
