@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
+  Calculator,
   Check,
   CloudCheck,
   CloudOff,
@@ -1631,6 +1632,7 @@ function BoardPage() {
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -1838,6 +1840,29 @@ function BoardPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    className={toolBtn()}
+                    aria-label="Rechen-Modul anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "calc",
+                        title: "Rechnung",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { formula: "" },
+                      });
+                    }}
+                  >
+                    <Calculator className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Rechen-Modul anlegen</TooltipContent>
               </Tooltip>
             </div>
           </div>
