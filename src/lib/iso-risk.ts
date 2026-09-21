@@ -15,6 +15,22 @@ export type RiskField = {
   impact: number;
   /** Where the likelihood comes from: manual, live weather or asset age. */
   auto: "none" | "weather" | "age";
+  /** Own measured value, overrides the live measurement when set. */
+  measureText?: string;
+  /** Own threshold, overrides the automatic threshold when set. */
+  limitText?: string;
+};
+
+/** One tracked edit of the risk table, used for the change log and undo. */
+export type RiskChange = {
+  id: string;
+  at: number;
+  fieldId: string;
+  code: string;
+  label: string;
+  key: "name" | "note" | "chance" | "impact" | "auto" | "measureText" | "limitText";
+  from: string | number | undefined;
+  to: string | number | undefined;
 };
 
 export type IsoRiskConfig = {
