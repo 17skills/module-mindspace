@@ -474,7 +474,6 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const [text, setText] = useState(record.content ?? "");
-  const [tab, setTab] = useState<"text" | "gewichtung">("text");
   const [busy, setBusy] = useState(false);
   const role = noteRole(record);
   const entries = text
