@@ -1783,6 +1783,22 @@ function BoardPage() {
               position_y: menu.flowY + 40,
             }),
         },
+        {
+          label: "In Bibliothek speichern",
+          icon: Library,
+          run: () => {
+            librarySelection.current = [menu.nodeId!];
+            setLibraryOpen(true);
+          },
+        },
+        {
+          label: "Auswahl in Bibliothek speichern",
+          icon: Library,
+          run: () => {
+            librarySelection.current = null;
+            setLibraryOpen(true);
+          },
+        },
         { label: "Modul löschen", run: () => deleteNode(menu.nodeId!) },
       ]
     : [
