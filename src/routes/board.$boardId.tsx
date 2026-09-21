@@ -172,7 +172,7 @@ const edgeTypes = { labeled: LabeledEdge };
 const DATA_TYPES = new Set(["table", "list", "chart"]);
 
 const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
-  note: { width: 260, height: 200 },
+  note: { width: 420, height: 360 },
   chat: { width: 400, height: 460 },
   frame: { width: 640, height: 460 },
   zone: { width: 420, height: 360 },
@@ -183,16 +183,46 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   gauge: { width: 260, height: 240 },
   sheet: { width: 360, height: 240 },
   api: { width: 360, height: 280 },
-  decision: { width: 400, height: 320 },
+  decision: { width: 560, height: 560 },
   signal: { width: 220, height: 170 },
   quotes: { width: 460, height: 420 },
   map: { width: 520, height: 420 },
-  risk: { width: 420, height: 380 },
-  table: { width: 400, height: 300 },
+  risk: { width: 760, height: 720 },
+  table: { width: 520, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
   default: { width: 320, height: 340 },
 };
+
+/** Width at which every permanently open module section remains comfortably readable. */
+const READABLE_WIDTH: Record<string, number> = {
+  note: 420,
+  chat: 440,
+  table: 520,
+  list: 380,
+  chart: 480,
+  calc: 380,
+  sheet: 440,
+  api: 420,
+  decision: 560,
+  quotes: 500,
+  map: 560,
+  risk: 760,
+};
+
+const MODULE_GAP = 32;
+const NON_BLOCKING_TYPES = new Set(["zone", "frame", "shape", "text"]);
+
+type LayoutRect = { id: string; x: number; y: number; width: number; height: number };
+
+function overlaps(a: LayoutRect, b: LayoutRect, gap = MODULE_GAP) {
+  return (
+    a.x < b.x + b.width + gap &&
+    a.x + a.width + gap > b.x &&
+    a.y < b.y + b.height + gap &&
+    a.y + a.height + gap > b.y
+  );
+}
 
 /** Modules of the dashboard family, added through one toolbar menu. */
 const DASHBOARD_MODULES = [
