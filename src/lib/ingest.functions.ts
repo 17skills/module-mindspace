@@ -24,7 +24,7 @@ function decodeEntities(value: string) {
 /** YouTube metadata + transcript (when captions exist). */
 export const fetchYoutube = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
+  .validator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
   .handler(async ({ data }) => {
     const videoId = data.url.match(
       /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/,
@@ -150,7 +150,7 @@ async function youtubeTranscript(videoId: string): Promise<{
 /** Podcast/audio transcription through Lovable AI. */
 export const transcribeAudio = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         audioUrl: z.string().url().optional(),
@@ -220,7 +220,7 @@ function ogImage(html: string): string | null {
 /** Resolve a podcast episode page or RSS feed to an audio file + metadata. */
 export const resolvePodcast = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
+  .validator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
   .handler(async ({ data }) => {
     const res = await fetch(data.url, {
       headers: { "user-agent": "Mozilla/5.0 CanvasSpark/1.0", accept: "*/*" },
@@ -268,7 +268,7 @@ export const resolvePodcast = createServerFn({ method: "POST" })
 /** Plain page text for any other link. */
 export const fetchPageText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
+  .validator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
   .handler(async ({ data }) => {
     const res = await fetch(data.url, { headers: { "user-agent": "Mozilla/5.0 CanvasSpark/1.0" } });
     if (!res.ok) throw new Error(`Seite konnte nicht geladen werden (${res.status})`);
@@ -315,7 +315,7 @@ export type StructuredItem = z.infer<typeof StructureSchema>["items"][number];
 /** Pull tables, lists and chartable series out of a module's text. */
 export const extractStructured = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         text: z.string().min(1),
