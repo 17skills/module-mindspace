@@ -463,6 +463,8 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const [text, setText] = useState(record.content ?? "");
+  const [tab, setTab] = useState<"text" | "gewichtung">("text");
+  const [busy, setBusy] = useState(false);
   const role = noteRole(record);
   const entries = text
     .split("\n")
@@ -470,8 +472,51 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
     .filter(Boolean);
   const kpi = noteKpi(entries);
   const listEntries = kpi ? kpi.rest : entries;
+  const factor = readFactor(record);
 
   useEffect(() => setText(record.content ?? ""), [record.content]);
+
+  function saveParams(next: FactorParam[]) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), params: next } });
+  }
+
+  function patchParam(id: string, change: Partial<FactorParam>) {
+    saveParams(factor.params.map((param) => (param.id === id ? { ...param, ...change } : param)));
+  }
+
+  async function askForWeights() {
+    if (!factor.params.length) return;
+    setBusy(true);
+    try {
+      const result = await suggestFactorWeights({
+        data: {
+          title: record.title ?? "Faktor",
+          context: record.content ?? "",
+          params: factor.params.map((param) => ({
+            label: param.label,
+            weight: param.weight,
+            score: param.score,
+          })),
+        },
+      });
+      const next = factor.params.map((param, index) => {
+        const hit = result.params[index];
+        if (!hit) return param;
+        return {
+          ...param,
+          weight: Math.max(0, Math.min(100, Math.round(hit.weight * 10) / 10)),
+          score: Math.max(1, Math.min(10, Math.round(hit.score * 2) / 2)),
+          source: "JEV-Vorschlag",
+        };
+      });
+      saveParams(normalizeWeights(next));
+      toast.success("Gewichtung vorgeschlagen", { description: result.reason });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gewichtung fehlgeschlagen");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <Shell type="note" selected={selected} locked={Boolean(record.parent_id)}>
@@ -482,17 +527,193 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
           {role.state}
         </span>
       </div>
+
+      {factor.params.length > 0 && (
+        <div className="border-b px-3 py-2.5">
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              <div className="module-eyebrow">Gewichteter Faktorwert</div>
+              <div className="kpi-value mt-0.5">{factor.score.toFixed(1)} / 10</div>
+            </div>
+            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+              Stufe {factor.level} / 5
+            </span>
+          </div>
+          <span
+            className="kpi-bar mt-2"
+            style={{
+              width: `${Math.max(4, factor.score * 10)}%`,
+              background: factor.score >= 6 ? "var(--destructive)" : "var(--note)",
+            }}
+          />
+          <div className="module-eyebrow mt-2 normal-case tracking-normal">
+            {factor.params.length} Parameter · Summe {factor.weightSum} %
+            {factor.balanced ? "" : " (nicht 100 %)"}
+            {factor.stored ? "" : " · aus Text abgeleitet"}
+          </div>
+        </div>
+      )}
+
       {selected ? (
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
-          placeholder="Faktor schreiben …"
-          className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex gap-1 border-b px-2 py-1.5">
+            {(["text", "gewichtung"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setTab(item)}
+                className={`nodrag module-eyebrow flex-1 rounded-md px-2 py-1 transition-colors ${
+                  tab === item
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          {tab === "text" ? (
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
+              placeholder="Faktor schreiben …"
+              className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
+            />
+          ) : (
+            <div className="nowheel min-h-0 flex-1 overflow-auto p-2">
+              {factor.params.length === 0 ? (
+                <p className="px-1 py-2 text-[11px] text-muted-foreground">
+                  Noch keine Parameter. Schreiben Sie je Zeile einen Parameter in den Text.
+                </p>
+              ) : (
+                <table className="w-full table-fixed border-collapse text-[10px]">
+                  <thead>
+                    <tr className="text-muted-foreground">
+                      <th className="px-1 py-1 text-left font-medium">Parameter</th>
+                      <th className="w-12 px-1 py-1 text-right font-medium">%</th>
+                      <th className="w-12 px-1 py-1 text-right font-medium">1–10</th>
+                      <th className="w-10 px-1 py-1 text-right font-medium">Anteil</th>
+                      <th className="w-4" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {factor.params.map((param) => (
+                      <tr key={param.id} className="border-t border-border/60">
+                        <td className="px-1 py-1">
+                          <input
+                            defaultValue={param.label}
+                            aria-label="Parameter"
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent outline-none hover:border-border focus:border-ring"
+                            onBlur={(e) => patchParam(param.id, { label: e.target.value.trim() })}
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.5}
+                            defaultValue={param.weight}
+                            aria-label={`Gewicht ${param.label}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
+                            onBlur={(e) => patchParam(param.id, { weight: Number(e.target.value) })}
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={10}
+                            step={0.5}
+                            defaultValue={param.score}
+                            aria-label={`Zustand ${param.label}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
+                            onBlur={(e) => patchParam(param.id, { score: Number(e.target.value) })}
+                          />
+                        </td>
+                        <td className="px-1 py-1 text-right font-mono tabular-nums text-muted-foreground">
+                          {((param.weight * param.score) / 100).toFixed(2)}
+                        </td>
+                        <td className="px-1 py-1 text-right">
+                          <button
+                            type="button"
+                            aria-label="Parameter entfernen"
+                            className="nodrag text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              saveParams(factor.params.filter((item) => item.id !== param.id))
+                            }
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-border font-medium">
+                      <td className="px-1 py-1">Summe</td>
+                      <td
+                        className={`px-1 py-1 text-right font-mono tabular-nums ${
+                          factor.balanced ? "text-foreground" : "text-destructive"
+                        }`}
+                      >
+                        {factor.weightSum}
+                      </td>
+                      <td className="px-1 py-1 text-right font-mono tabular-nums" colSpan={2}>
+                        {factor.score.toFixed(1)} / 10
+                      </td>
+                      <td />
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+              <div className="mt-2 flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  className="nodrag rounded-full border border-border/70 px-2 py-0.5 text-[10px] hover:bg-accent"
+                  onClick={() =>
+                    saveParams([
+                      ...factor.params,
+                      {
+                        id: `p${Date.now()}`,
+                        label: "Neuer Parameter",
+                        weight: 0,
+                        score: 5,
+                        source: "manuell",
+                      },
+                    ])
+                  }
+                >
+                  + Parameter
+                </button>
+                <button
+                  type="button"
+                  className="nodrag rounded-full border border-border/70 px-2 py-0.5 text-[10px] hover:bg-accent"
+                  onClick={() => saveParams(normalizeWeights(factor.params))}
+                >
+                  Auf 100 % ausgleichen
+                </button>
+                <button
+                  type="button"
+                  className="nodrag rounded-full border border-border/70 px-2 py-0.5 text-[10px] hover:bg-accent"
+                  onClick={() => saveParams(paramsFromText(record.content))}
+                >
+                  Aus Text übernehmen
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !factor.params.length}
+                  className="nodrag rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground disabled:opacity-50"
+                  onClick={() => void askForWeights()}
+                >
+                  {busy ? "JEV rechnet …" : "Gewichtung mit JEV vorschlagen"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="nowheel flex-1 overflow-auto">
-          {kpi ? (
+          {kpi && !factor.params.length ? (
             <div className="border-b px-3 py-3">
               <div className="module-eyebrow">{kpi.label}</div>
               <div className="kpi-value mt-1">{kpi.value}</div>
@@ -513,7 +734,25 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
             </div>
           ) : null}
           <div className="px-3 py-2.5">
-            {listEntries.length ? (
+            {factor.params.length ? (
+              <ul className="space-y-1.5" aria-label="Parameter">
+                {factor.params.map((param) => (
+                  <li key={param.id} className="flex items-center gap-2 text-xs leading-snug">
+                    <span className="w-9 shrink-0 rounded-sm bg-secondary px-1 text-right font-mono text-[10px] tabular-nums">
+                      {param.weight}%
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{param.label}</span>
+                    <span
+                      className={`shrink-0 font-mono text-[10px] tabular-nums ${
+                        param.score >= 6 ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                    >
+                      {param.score}/10
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : listEntries.length ? (
               <ul className="space-y-2" aria-label={role.eyebrow}>
                 {listEntries.map((entry, index) => (
                   <li key={`${entry}-${index}`} className="flex gap-2 text-xs leading-snug text-foreground">
