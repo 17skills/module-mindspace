@@ -2901,8 +2901,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     return { maps: Object.values(byId).filter((item) => item?.type === "map"), records: byId };
   }, [edges, flowNodes, id]);
 
-  const entries = useMemo(() => {
+  const { entries, weather } = useMemo(() => {
     const all: RiskEntry[] = [];
+    const seen: Record<string, { rain: number | null; wind: number | null; temp: number | null }> =
+      {};
     for (const mapRecord of maps.maps) {
       const mapConfig = readMapConfig(mapRecord);
       const sources = edges
@@ -2912,10 +2914,21 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         )
         .filter((item): item is NodeRecord => Boolean(item));
       const points = pointsFromSources(sources, mapConfig);
+      Object.assign(seen, mapConfig.weather);
       all.push(...riskEntries(points, mapConfig.weather, config));
     }
-    return all;
+    return { entries: all, weather: seen };
   }, [maps, edges, config]);
+
+  /** Decision modules this risk map feeds. */
+  const feeds = useMemo(
+    () =>
+      edges
+        .filter((edge) => edge.source === id)
+        .map((edge) => maps.records[edge.target])
+        .filter((item): item is NodeRecord => item?.type === "decision"),
+    [edges, maps, id],
+  );
 
   const summary = useMemo(() => riskText(entries), [entries]);
   useEffect(() => {
