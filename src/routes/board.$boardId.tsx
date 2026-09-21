@@ -79,6 +79,8 @@ import {
   DecisionNode,
   SignalNode,
   QuotesNode,
+  MapNode,
+  RiskNode,
   TEXT_SIZES,
   TextNode,
   textSize,
@@ -161,6 +163,8 @@ const nodeTypes = {
   decision: DecisionNode,
   signal: SignalNode,
   quotes: QuotesNode,
+  map: MapNode,
+  risk: RiskNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -182,6 +186,8 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   decision: { width: 400, height: 320 },
   signal: { width: 220, height: 170 },
   quotes: { width: 460, height: 420 },
+  map: { width: 520, height: 420 },
+  risk: { width: 420, height: 380 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -195,6 +201,8 @@ const DASHBOARD_MODULES = [
   { id: "sheet", label: "Rechenblatt", title: "Rechenblatt", metadata: { rows: [] } },
   { id: "signal", label: "Signal (Ampel)", title: "Signal", metadata: { question: "" } },
   { id: "quotes", label: "Kursverlauf", title: "Kurse", metadata: { days: 7, currency: "eur" } },
+  { id: "map", label: "Karte (GIS)", title: "Karte", metadata: { columns: {}, weather: {}, zoom: 5 } },
+  { id: "risk", label: "Risikokarte", title: "Risikokarte", metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75, defaultImpact: 3 } },
 ] as const;
 
 /** Space a template group leaves around its fields. */
@@ -252,6 +260,8 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "api" ||
     record.type === "decision" ||
     record.type === "signal" ||
+    record.type === "map" ||
+    record.type === "risk" ||
     record.type === "quotes" ||
     record.type === "text"
       ? record.type

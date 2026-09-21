@@ -1,4 +1,17 @@
-import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { ClientOnly } from "@tanstack/react-router";
+import {
+  RISK_LABEL,
+  mapText,
+  maxRisk,
+  pointsFromSources,
+  readMapConfig,
+  readRiskConfig,
+  riskColor,
+  riskEntries,
+  riskText,
+  type RiskEntry,
+} from "@/lib/geo";
 import { BookOpen, Calculator, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
@@ -2683,6 +2696,343 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
             Entscheidung festhalten
           </Button>
         </div>
+      </div>
+    </div>
+  );
+});
+
+const LeafletMap = lazy(() => import("@/components/canvas/LeafletMap"));
+
+/** Map module: geocoded objects from a connected table plus a weather layer. */
+export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
+  const [busy, setBusy] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
+  const config = readMapConfig(record);
+
+  const sources = useMemo(() => {
+    const byId = Object.fromEntries(
+      flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    return edges
+      .filter((edge) => edge.target === id || edge.source === id)
+      .map((edge) => byId[edge.target === id ? edge.source : edge.target])
+      .filter((item): item is NodeRecord => Boolean(item));
+  }, [edges, flowNodes, id]);
+
+  const points = useMemo(() => pointsFromSources(sources, config), [sources, config]);
+  const summary = useMemo(() => mapText(points, config.weather), [points, config.weather]);
+
+  // keep the chat / decision context in sync with what the map shows
+  useEffect(() => {
+    if (summary && summary !== record.content) updateNode(record.id, { content: summary });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary]);
+
+  function patch(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
+  }
+
+  async function loadWeather() {
+    if (!points.length) {
+      toast.error("Keine Objekte – erst eine Tabelle mit Koordinaten verbinden");
+      return;
+    }
+    setBusy(true);
+    try {
+      const batch = points.slice(0, 50);
+      const answer = await runApiModule({
+        data: {
+          url: "https://api.open-meteo.com/v1/forecast",
+          method: "GET",
+          params: [
+            { key: "latitude", value: batch.map((point) => point.lat.toFixed(4)).join(",") },
+            { key: "longitude", value: batch.map((point) => point.lon.toFixed(4)).join(",") },
+            { key: "current", value: "precipitation,wind_speed_10m,temperature_2m" },
+          ],
+          headers: [],
+        },
+      });
+      if (answer.status !== 200) throw new Error(`Wetter: Status ${answer.status}`);
+      const parsed = JSON.parse(answer.body) as
+        | { current?: Record<string, number> }
+        | { current?: Record<string, number> }[];
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+      const weather: Record<string, unknown> = {};
+      batch.forEach((point, index) => {
+        const current = list[index]?.current ?? {};
+        weather[point.id] = {
+          rain: Number(current["precipitation"] ?? NaN),
+          wind: Number(current["wind_speed_10m"] ?? NaN),
+          temp: Number(current["temperature_2m"] ?? NaN),
+        };
+      });
+      patch({ weather, lastAt: new Date().toISOString() });
+      toast.success("Wetter aktualisiert");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Wetter konnte nicht geladen werden");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const center: [number, number] = points.length
+    ? [
+        points.reduce((sum, point) => sum + point.lat, 0) / points.length,
+        points.reduce((sum, point) => sum + point.lon, 0) / points.length,
+      ]
+    : config.center;
+
+  const risky = points.filter((point) => (config.weather[point.id]?.rain ?? 0) >= 10).length;
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
+
+      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "Karte"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Karte" })}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          className="nodrag h-7 rounded-full px-2 text-[11px]"
+          disabled={busy}
+          onClick={() => void loadWeather()}
+        >
+          <RefreshCw className={`size-3 ${busy ? "animate-spin" : ""}`} /> Wetter holen
+        </Button>
+      </div>
+
+      <div className="relative flex-1">
+        <ClientOnly
+          fallback={
+            <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+              Karte wird geladen …
+            </div>
+          }
+        >
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+                Karte wird geladen …
+              </div>
+            }
+          >
+            <LeafletMap
+              points={points}
+              weather={config.weather}
+              center={center}
+              zoom={points.length ? 6 : config.zoom}
+              selectedId={picked}
+              onSelect={setPicked}
+            />
+          </Suspense>
+        </ClientOnly>
+        {!points.length && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-card/90 px-2 py-1 text-[10px] text-muted-foreground">
+            Keine Objekte – eine Tabelle mit Spalten für Breitengrad und Längengrad verbinden.
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[10px] text-muted-foreground">
+        <span>
+          {points.length} Objekte · {risky} mit starkem Regen
+        </span>
+        <span>{config.lastAt ? new Date(config.lastAt).toLocaleString("de-DE") : "kein Abruf"}</span>
+      </div>
+
+      {picked && (
+        <div className="border-t px-3 py-1.5 text-[11px]">
+          {(() => {
+            const point = points.find((item) => item.id === picked);
+            if (!point) return null;
+            const w = config.weather[point.id];
+            return (
+              <span>
+                <strong>{point.label}</strong>
+                {point.klass ? ` · ${point.klass}` : ""} ·{" "}
+                {w ? `Regen ${w.rain ?? "?"} mm/h, Wind ${w.wind ?? "?"} km/h` : "kein Wetter"}
+              </span>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+});
+
+/** Risk map: objects of a connected map plotted over likelihood × impact. */
+export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
+  const config = readRiskConfig(record);
+
+  const maps = useMemo(() => {
+    const byId = Object.fromEntries(
+      flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    const connected = edges
+      .filter((edge) => edge.target === id || edge.source === id)
+      .map((edge) => byId[edge.target === id ? edge.source : edge.target])
+      .filter((item): item is NodeRecord => Boolean(item) && item?.type === "map");
+    if (connected.length) return { maps: connected, records: byId };
+    return { maps: Object.values(byId).filter((item) => item?.type === "map"), records: byId };
+  }, [edges, flowNodes, id]);
+
+  const entries = useMemo(() => {
+    const all: RiskEntry[] = [];
+    for (const mapRecord of maps.maps) {
+      const mapConfig = readMapConfig(mapRecord);
+      const sources = edges
+        .filter((edge) => edge.target === mapRecord.id || edge.source === mapRecord.id)
+        .map((edge) =>
+          maps.records[edge.target === mapRecord.id ? edge.source : edge.target],
+        )
+        .filter((item): item is NodeRecord => Boolean(item));
+      const points = pointsFromSources(sources, mapConfig);
+      all.push(...riskEntries(points, mapConfig.weather, config));
+    }
+    return all;
+  }, [maps, edges, config]);
+
+  const summary = useMemo(() => riskText(entries), [entries]);
+  useEffect(() => {
+    if (summary && summary !== record.content) updateNode(record.id, { content: summary });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary]);
+
+  function patch(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
+  }
+
+  const highest = maxRisk(entries);
+  const counts = [1, 2, 3, 4, 5].map(
+    (level) => entries.filter((entry) => entry.level === level).length,
+  );
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={280} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
+
+      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "Risikokarte"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Risikokarte" })}
+        />
+        <span className="shrink-0 text-[10px] text-muted-foreground">
+          höchste Stufe {highest ?? "–"}
+          {highest ? ` · ${RISK_LABEL[highest]}` : ""}
+        </span>
+      </div>
+
+      <div className="nowheel flex-1 overflow-auto p-2">
+        <div className="flex gap-1">
+          <div className="flex w-4 items-center justify-center">
+            <span className="rotate-180 text-[9px] text-muted-foreground [writing-mode:vertical-rl]">
+              Auswirkung
+            </span>
+          </div>
+          <div className="grid flex-1 grid-cols-5 gap-1">
+            {[5, 4, 3, 2, 1].map((impact) =>
+              [1, 2, 3, 4, 5].map((chance) => {
+                const cell = entries.filter(
+                  (entry) => entry.impact === impact && entry.likelihood === chance,
+                );
+                return (
+                  <div
+                    key={`${impact}-${chance}`}
+                    title={cell.map((entry) => entry.point.label).join(", ")}
+                    className="flex min-h-9 flex-wrap items-center justify-center gap-0.5 rounded-md p-1"
+                    style={{ background: riskColor(chance, impact), opacity: cell.length ? 1 : 0.35 }}
+                  >
+                    {cell.slice(0, 6).map((entry) => (
+                      <span
+                        key={entry.point.id}
+                        className="size-2 rounded-full bg-white/90"
+                        aria-label={entry.point.label}
+                      />
+                    ))}
+                    {cell.length > 6 && (
+                      <span className="text-[9px] font-medium text-white">+{cell.length - 6}</span>
+                    )}
+                  </div>
+                );
+              }),
+            )}
+          </div>
+        </div>
+        <p className="mt-1 pl-5 text-center text-[9px] text-muted-foreground">
+          Eintrittswahrscheinlichkeit (Wetterlage) →
+        </p>
+
+        <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+          {counts.map((count, index) => (
+            <span key={index}>
+              Stufe {index + 1}: {count}
+            </span>
+          ))}
+        </div>
+
+        {!entries.length && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Keine Objekte – mit einem Karten-Modul verbinden und dort „Wetter holen“ klicken.
+          </p>
+        )}
+
+        {selected && (
+          <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2 text-[10px]">
+            {(
+              [
+                ["rainWarn", "Regen Warnung mm/h"],
+                ["rainDanger", "Regen Gefahr mm/h"],
+                ["windWarn", "Wind Warnung km/h"],
+                ["windDanger", "Wind Gefahr km/h"],
+                ["defaultImpact", "Auswirkung Standard 1–5"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-1">
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                <input
+                  defaultValue={String(config[key])}
+                  aria-label={label}
+                  className="nodrag h-6 w-14 rounded-md border border-border/70 bg-background px-1 text-right font-mono text-[10px] outline-none"
+                  onBlur={(e) => {
+                    const value = Number(e.target.value.replace(",", "."));
+                    if (Number.isFinite(value)) patch({ [key]: value });
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
