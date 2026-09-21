@@ -107,6 +107,7 @@ export const runDecision = createServerFn({ method: "POST" })
     z
       .object({
         context: z.string().min(1),
+        policy: z.string().optional(),
         questions: z.array(Question).min(1),
       })
       .parse(input),
@@ -115,28 +116,30 @@ export const runDecision = createServerFn({ method: "POST" })
     const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw new Error("LOVABLE_API_KEY fehlt");
 
+    const rules = data.policy?.trim() ? `\n\nRegeln: ${data.policy.trim().slice(0, 4000)}` : "";
     const questions: Record<string, unknown> = {};
     data.questions.forEach((question, index) => {
       const id = `q${index}`;
+      const instructions = `${question.instructions}${rules}`;
       if (question.type === "choice") {
         const criteria: Record<string, string> = {};
         const options = question.options.filter((option) => option.trim());
         for (const option of options.length ? options : ["ja", "nein"]) {
           criteria[option] = option;
         }
-        questions[id] = { type: "choice", instructions: question.instructions, criteria };
+        questions[id] = { type: "choice", instructions, criteria };
       } else if (question.type === "score") {
         const levels = question.options.filter((option) => option.trim());
         questions[id] = {
           type: "score",
-          instructions: question.instructions,
+          instructions,
           criteria: (levels.length >= 2
             ? levels
             : ["trifft nicht zu", "trifft teilweise zu", "trifft voll zu"]
           ).map((description) => ({ description })),
         };
       } else {
-        questions[id] = { type: "noul", instructions: question.instructions };
+        questions[id] = { type: "noul", instructions };
       }
     });
 
@@ -149,7 +152,10 @@ export const runDecision = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         model: "typesafe/jev-latest",
-        state: { context: data.context.slice(0, 200_000) },
+        state: {
+          context: data.context.slice(0, 200_000),
+          ...(data.policy?.trim() ? { rules: data.policy.trim().slice(0, 4000) } : {}),
+        },
         questions,
       }),
     });

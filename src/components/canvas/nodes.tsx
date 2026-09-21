@@ -1961,6 +1961,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["decideRunning"] === true;
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
+  const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
 
   function writeQuestions(next: DecisionQuestion[]) {
@@ -2003,9 +2004,44 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
             ? `Kontext aus ${inputs.length} Verbindung${inputs.length === 1 ? "" : "en"}`
             : "Verbinde Inhalte, Felder oder API-Module mit diesem Modul."}
         </p>
+        <textarea
+          key={record.id + "policy"}
+          defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
+          placeholder="Regel, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
+          aria-label="Regel für die Entscheidung"
+          className="nodrag min-h-12 w-full resize-none rounded-md border border-border/70 bg-background px-2 py-1 text-xs outline-none"
+          onBlur={(e) =>
+            updateNode(record.id, {
+              metadata: { ...(record.metadata ?? {}), policy: e.target.value },
+            })
+          }
+        />
+        <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          Mindest-Sicherheit
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={5}
+            key={record.id + "minconf"}
+            defaultValue={threshold}
+            aria-label="Mindest-Sicherheit in Prozent"
+            className="nodrag w-16 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+            onBlur={(e) => {
+              const value = Number(e.target.value);
+              updateNode(record.id, {
+                metadata: {
+                  ...(record.metadata ?? {}),
+                  minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80,
+                },
+              });
+            }}
+          />
+          % – darunter keine Empfehlung
+        </label>
         {questions.map((question, index) => {
           const answer = answers.find((item) => item.id === question.id);
-          const low = typeof answer?.confidence === "number" && answer.confidence < 0.6;
+          const low = typeof answer?.confidence === "number" && answer.confidence * 100 < threshold;
           return (
             <div key={question.id} className="rounded-lg border border-border/70 p-2">
               <div className="flex items-start gap-1">
@@ -2142,13 +2178,22 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
   const yes = typeof answer?.noul === "number" ? answer.noul >= 0.5 : null;
   const yesLabel = typeof meta["yesLabel"] === "string" && meta["yesLabel"] ? meta["yesLabel"] : "KAUFEN";
   const noLabel = typeof meta["noLabel"] === "string" && meta["noLabel"] ? meta["noLabel"] : "NICHT KAUFEN";
+  const decisionMeta = (decision?.metadata ?? {}) as Record<string, unknown>;
+  const threshold =
+    typeof decisionMeta["minConfidence"] === "number"
+      ? (decisionMeta["minConfidence"] as number)
+      : 80;
+  const confidence = typeof answer?.confidence === "number" ? answer.confidence * 100 : null;
+  const unsure = confidence !== null && confidence < threshold;
 
   const tone =
     yes === null
       ? { bg: "var(--muted)", fg: "var(--muted-foreground)", text: "Noch keine Entscheidung" }
-      : yes
-        ? { bg: "var(--ok, #16a34a)", fg: "#ffffff", text: yesLabel }
-        : { bg: "var(--danger, #dc2626)", fg: "#ffffff", text: noLabel };
+      : unsure
+        ? { bg: "var(--warn, #ea580c)", fg: "#ffffff", text: "KEINE EMPFEHLUNG" }
+        : yes
+          ? { bg: "var(--ok, #16a34a)", fg: "#ffffff", text: yesLabel }
+          : { bg: "var(--danger, #dc2626)", fg: "#ffffff", text: noLabel };
 
   return (
     <div
@@ -2169,10 +2214,13 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
         className="flex flex-1 flex-col items-center justify-center gap-1 px-3 py-3 text-center"
         style={{ background: tone.bg, color: tone.fg }}
       >
-        <span className="font-display text-xl font-semibold tracking-tight">{tone.text}</span>
-        {typeof answer?.confidence === "number" && (
-          <span className="text-[11px] opacity-90">
-            {Math.round(answer.confidence * 100)} % sicher
+        <span className="font-display text-4xl font-semibold leading-none tracking-tight">
+          {confidence === null ? "–" : `${Math.round(confidence)} %`}
+        </span>
+        <span className="font-display text-base font-semibold tracking-tight">{tone.text}</span>
+        {confidence !== null && (
+          <span className="text-[10px] opacity-90">
+            Sicherheit · Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : ""}
           </span>
         )}
         <span className="text-[10px] opacity-80">Simulation – kein echter Kauf</span>

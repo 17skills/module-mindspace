@@ -1280,8 +1280,10 @@ function BoardPage() {
         toast.info("Verbinde zuerst Inhalte mit diesem Modul");
         return;
       }
+      const meta = (record.metadata ?? {}) as Record<string, unknown>;
+      const policy = typeof meta["policy"] === "string" ? meta["policy"] : "";
       updateNode(id, { metadata: { ...(record.metadata ?? {}), decideRunning: true } });
-      void runDecision({ data: { context, questions } })
+      void runDecision({ data: { context, questions, ...(policy.trim() ? { policy } : {}) } })
         .then((result) => {
           const current = recordsRef.current[id];
           updateNode(id, {
