@@ -474,7 +474,6 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const [text, setText] = useState(record.content ?? "");
-  const [tab, setTab] = useState<"text" | "gewichtung">("text");
   const [busy, setBusy] = useState(false);
   const role = noteRole(record);
   const entries = text
@@ -567,23 +566,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
 
       {selected ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex gap-1 border-b px-2 py-1.5">
-            {(["text", "gewichtung"] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setTab(item)}
-                className={`nodrag module-eyebrow flex-1 rounded-md px-2 py-1 transition-colors ${
-                  tab === item
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-          {tab === "text" ? (
+          <>
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -591,7 +574,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
               placeholder="Faktor schreiben …"
               className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
             />
-          ) : (
+            <div className="module-eyebrow border-t px-2 pt-1.5">Gewichtung</div>
             <div className="nowheel min-h-0 flex-1 overflow-auto p-2">
               {factor.params.length === 0 ? (
                 <p className="px-1 py-2 text-[11px] text-muted-foreground">
@@ -720,7 +703,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                 </button>
               </div>
             </div>
-          )}
+          </>
         </div>
       ) : (
         <div className="nowheel flex-1 overflow-auto">
@@ -929,7 +912,7 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
               </UiTooltip>
             </div>
             {agent.reason && (
-              <details className="mt-1">
+              <details open className="mt-1">
                 <summary className="cursor-pointer text-[11px] text-muted-foreground">
                   Begründung
                 </summary>
@@ -2449,7 +2432,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           const limit = own ?? threshold;
           const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
-            <details key={question.id} className="group border-b border-border/60 py-1.5 last:border-0">
+            <details key={question.id} open className="group border-b border-border/60 py-1.5 last:border-0">
               <summary className="nodrag flex cursor-pointer list-none items-center gap-2 py-1">
                 <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${low ? "bg-destructive/10 text-destructive" : answer ? "bg-support/10 text-support" : "bg-secondary text-muted-foreground"}`}>
                   {low ? <AlertTriangle className="size-3.5" /> : <span className="font-mono text-[10px]">{index + 1}</span>}
@@ -2594,7 +2577,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           );
         })}
       </div>
-      <details className="group border-t bg-secondary/20 px-3 py-1.5">
+      <details open className="group border-t bg-secondary/20 px-3 py-1.5">
         <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
           Konfiguration <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
         </summary>
@@ -3348,7 +3331,6 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
   const config = readIsoRisk(record);
   const [openField, setOpenField] = useState<string | null>(null);
   const [explainField, setExplainField] = useState<string | null>(null);
-  const [view, setView] = useState<"tabelle" | "matrix" | "einordnung" | "verlauf">("tabelle");
 
   const { mapRecords, tables, decisions } = useMemo(() => {
     const byId = Object.fromEntries(
@@ -3693,26 +3675,9 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         <span className="font-mono">{evidence.length} fachliche Einträge verbunden</span>
       </div>
 
-      {/* segmented switch: spreadsheet, matrix, classification */}
-      <div className="flex gap-1 border-b px-2 py-1.5">
-        {(["tabelle", "matrix", "einordnung", "verlauf"] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setView(item)}
-            className={`nodrag module-eyebrow flex-1 rounded-md px-2 py-1 transition-colors ${
-              view === item
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-
       <div className="nowheel flex-1 overflow-auto p-2">
-        {view === "tabelle" && (
+        <section>
+          <div className="module-eyebrow mb-1">Tabelle</div>
           <div className="overflow-hidden rounded-md border border-border/70">
             <table className="w-full table-fixed border-collapse text-[10px]">
               <thead>
@@ -4012,9 +3977,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
               + Zeile hinzufügen
             </button>
           </div>
-        )}
+        </section>
 
-        {view === "matrix" && (
+        <section className="mt-3">
+          <div className="module-eyebrow mb-1">Matrix</div>
           <div className="flex gap-1">
             <span className="w-4 shrink-0 rotate-180 self-center text-center text-[9px] text-muted-foreground [writing-mode:vertical-rl]">
               Eintrittswahrscheinlichkeit
@@ -4063,9 +4029,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
               <p className="pl-16 pt-0.5 text-center text-[9px] text-muted-foreground">Auswirkung</p>
             </div>
           </div>
-        )}
+        </section>
 
-        {view === "einordnung" && (
+        <section className="mt-3">
+          <div className="module-eyebrow mb-1">Einordnung</div>
           <div className="space-y-1.5 text-[10px] text-muted-foreground">
             <div className="flex flex-wrap gap-x-2 gap-y-1">
               {RISK_CLASSES.map((item) => (
@@ -4132,9 +4099,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
               </div>
             )}
           </div>
-        )}
+        </section>
 
-        {view === "verlauf" && (
+        <section className="mt-3">
+          <div className="module-eyebrow mb-1">Verlauf</div>
           <div className="space-y-1.5 text-[10px]">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
@@ -4176,7 +4144,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
               ))}
             </ul>
           </div>
-        )}
+        </section>
       </div>
     </div>
   );
