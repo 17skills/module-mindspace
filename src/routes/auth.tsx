@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** Only same-origin relative paths are accepted as a return target. */
+function safeNext(raw: unknown): string | null {
+  return typeof raw === "string" && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+}
+
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({ next: safeNext(s["next"]) ?? undefined }),
   head: () => ({
     meta: [
       { title: "Anmelden – Canvas Spark" },
