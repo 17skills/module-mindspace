@@ -462,11 +462,10 @@ function BoardPage() {
           ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
         },
       };
-      const insertPromise = supabase
-        .from("nodes")
-        .insert(payload as never)
-        .select("*")
-        .single();
+      // a Supabase builder fires a new request on every await — resolve it once
+      const insertPromise = Promise.resolve(
+        supabase.from("nodes").insert(payload as never).select("*").single(),
+      );
       trackSave(insertPromise);
       const { data, error } = await insertPromise;
       if (error) throw error;
