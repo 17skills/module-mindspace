@@ -154,6 +154,19 @@ function Header({ record }: { record: NodeRecord }) {
           <UiTooltipContent>Zuordnung bearbeiten</UiTooltipContent>
         </UiTooltip>
       )}
+      {isProfileLink(record) && (
+        <UiTooltip>
+          <TooltipTrigger asChild>
+            <span className="nodrag mt-1.5 inline-flex cursor-default items-center gap-1 rounded-full border border-border/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              <ShieldOff className="size-3" />
+              Kontextfrei
+            </span>
+          </TooltipTrigger>
+          <UiTooltipContent>
+            Profil-Link: Der Inhalt wird nicht ausgelesen und nie an den Chat übertragen.
+          </UiTooltipContent>
+        </UiTooltip>
+      )}
     </div>
   );
 }
