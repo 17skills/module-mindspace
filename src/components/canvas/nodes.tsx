@@ -3563,9 +3563,11 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                   aria-label="Quelle der Eintrittswahrscheinlichkeit"
                                   className="nodrag h-6 min-w-0 flex-1 rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
                                   onChange={(e) =>
-                                    updateField(field.id, {
-                                      auto: e.target.value as RiskField["auto"],
-                                    })
+                                     commit(
+                                      field.id,
+                                      "auto",
+                                      e.target.value as RiskField["auto"],
+                                    )
                                   }
                                 >
                                   <option value="none">eigener Wert</option>
