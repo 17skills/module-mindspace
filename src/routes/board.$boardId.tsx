@@ -316,6 +316,9 @@ function BoardPage() {
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  /** Module ids chosen through the context menu; empty means "use the canvas selection". */
+  const librarySelection = useRef<string[] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
