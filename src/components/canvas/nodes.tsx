@@ -1419,6 +1419,49 @@ function useIncoming(id: string) {
   return calcInputs(id, records, edges);
 }
 
+/** Small format bar: decimal places, prefix and suffix (metadata.numFormat). */
+function FormatRow({ meta, onPatch }: { meta: Record<string, unknown>; onPatch: (next: Record<string, unknown>) => void }) {
+  const fmt = (meta["numFormat"] ?? {}) as Record<string, unknown>;
+  const decimals = typeof fmt["decimals"] === "number" ? fmt["decimals"] : null;
+  const prefix = typeof fmt["prefix"] === "string" ? fmt["prefix"] : "";
+  const suffix = typeof fmt["suffix"] === "string" ? fmt["suffix"] : "";
+  function setFmt(next: Record<string, unknown>) {
+    onPatch({ numFormat: next });
+  }
+  const field =
+    "nodrag min-w-0 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border";
+  return (
+    <div className="flex items-center gap-1 border-t border-border/60 px-2 py-1 text-[10px] text-muted-foreground">
+      <input
+        defaultValue={prefix}
+        placeholder="Vor"
+        aria-label="Text vor dem Wert"
+        className={`${field} w-12 text-left`}
+        onBlur={(e) => setFmt({ ...fmt, prefix: e.target.value })}
+      />
+      <select
+        value={decimals == null ? "auto" : String(decimals)}
+        aria-label="Dezimalstellen"
+        className={`${field} cursor-pointer`}
+        onChange={(e) => setFmt({ ...fmt, decimals: e.target.value === "auto" ? null : Number(e.target.value) })}
+      >
+        <option value="auto">Auto</option>
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+      <input
+        defaultValue={suffix}
+        placeholder="Nach"
+        aria-label="Text nach dem Wert"
+        className={`${field} w-12 flex-1 text-left`}
+        onBlur={(e) => setFmt({ ...fmt, suffix: e.target.value })}
+      />
+    </div>
+  );
+}
+
 export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
