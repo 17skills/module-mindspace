@@ -1453,7 +1453,15 @@ function BoardPage() {
       nodes.filter((node) => node.selected && !node.parentId).map((node) => node.id);
     if (!ids.length) return null;
     const records = Object.values(recordsRef.current);
-    const payload = capture(ids, records, edgesRef.current);
+    const payload = capture(
+      ids,
+      records,
+      edgesRef.current.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+        label: typeof edge.label === "string" ? edge.label : null,
+      })),
+    );
     if (!payload.nodes.length) return null;
     const first = recordsRef.current[ids[0] ?? ""];
     return {
