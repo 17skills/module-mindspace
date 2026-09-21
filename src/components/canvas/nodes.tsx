@@ -391,16 +391,62 @@ export const ContentNode = memo(function ContentNode({ data, selected }: NodePro
   );
 });
 
+type NoteRole = {
+  eyebrow: string;
+  state: string;
+  tone: "risk" | "likelihood" | "impact" | "evidence" | "reference";
+};
+
+/** Notes on an assessment board are typed evidence, not passive prose. */
+function noteRole(record: NodeRecord): NoteRole {
+  const title = (record.title ?? "").toLocaleLowerCase("de-DE");
+  if (title.startsWith("eintritt:")) {
+    return { eyebrow: "Eintrittswahrscheinlichkeit", state: "EVIDENZ", tone: "likelihood" };
+  }
+  if (title.startsWith("auswirkung:")) {
+    return { eyebrow: "Auswirkungsnachweis", state: "EVIDENZ", tone: "impact" };
+  }
+  if (title.includes("befund")) {
+    return { eyebrow: "Prüfgrundlage", state: "VALIDIERUNG", tone: "evidence" };
+  }
+  if (title.includes("legende") || title.includes("risikoklasse")) {
+    return { eyebrow: "Bewertungsregel", state: "REFERENZ", tone: "reference" };
+  }
+  if (/^\d+[.)]/.test(title) || title.includes("risiko")) {
+    return { eyebrow: "Risikotreiber", state: "RISIKO", tone: "risk" };
+  }
+  return { eyebrow: "Fachlicher Eintrag", state: "EINGANG", tone: "evidence" };
+}
+
+const NOTE_TONE: Record<NoteRole["tone"], string> = {
+  risk: "bg-destructive/8 text-destructive",
+  likelihood: "bg-note/12 text-foreground",
+  impact: "bg-video/10 text-foreground",
+  evidence: "bg-doc/10 text-foreground",
+  reference: "bg-secondary text-muted-foreground",
+};
+
 export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const [text, setText] = useState(record.content ?? "");
+  const role = noteRole(record);
+  const entries = text
+    .split("\n")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 
   useEffect(() => setText(record.content ?? ""), [record.content]);
 
   return (
     <Shell type="note" selected={selected} locked={Boolean(record.parent_id)}>
       <Header record={record} />
+      <div className={`flex items-center justify-between border-b px-3 py-2 ${NOTE_TONE[role.tone]}`}>
+        <span className="text-[9px] font-bold uppercase">{role.eyebrow}</span>
+        <span className="rounded-sm border border-current/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold">
+          {role.state}
+        </span>
+      </div>
       {selected ? (
         <Textarea
           value={text}
@@ -410,11 +456,19 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
           className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
         />
       ) : (
-        <div className="flex flex-1 flex-col justify-between gap-2 px-3 py-2.5">
-          <p className="line-clamp-4 whitespace-pre-line text-xs leading-relaxed text-foreground/80">
-            {text || "Leere Notiz"}
-          </p>
-          <span className="text-[9px] font-semibold uppercase text-muted-foreground">Auswählen zum Bearbeiten</span>
+        <div className="nowheel flex-1 overflow-auto px-3 py-2.5">
+          {entries.length ? (
+            <ul className="space-y-2" aria-label={role.eyebrow}>
+              {entries.map((entry, index) => (
+                <li key={`${entry}-${index}`} className="flex gap-2 text-xs leading-snug text-foreground">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-note" />
+                  <span>{entry}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">Noch kein fachlicher Eintrag</p>
+          )}
         </div>
       )}
     </Shell>
@@ -3027,7 +3081,35 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
   );
 
   const result = useMemo(() => evaluate(fields), [fields]);
-  const summary = useMemo(() => isoText(result), [result]);
+  const evidence = useMemo(() => {
+    const byId = Object.fromEntries(
+      flowNodes.map((node) => [node.id, (node.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    const visited = new Set<string>([id]);
+    const pending = [id];
+    const notes: NodeRecord[] = [];
+    while (pending.length) {
+      const target = pending.shift();
+      if (!target) continue;
+      for (const edge of edges) {
+        if (edge.target !== target || visited.has(edge.source)) continue;
+        visited.add(edge.source);
+        const source = byId[edge.source];
+        if (!source) continue;
+        if (source.type === "note") notes.push(source);
+        if (source.type === "note" || source.type === "frame") pending.push(source.id);
+      }
+    }
+    return notes;
+  }, [edges, flowNodes, id]);
+  const summary = useMemo(() => {
+    const assessment = isoText(result);
+    if (!evidence.length) return assessment;
+    const evidenceText = evidence
+      .map((item) => `### ${noteRole(item).eyebrow}: ${item.title ?? "Eintrag"}\n${item.content ?? ""}`)
+      .join("\n\n");
+    return `${assessment}\n\nFachliche Nachweiskette (${evidence.length} Einträge):\n${evidenceText}`;
+  }, [evidence, result]);
 
   useEffect(() => {
     if (summary && summary !== record.content) updateNode(record.id, { content: summary });
@@ -3125,6 +3207,11 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
             <p className="text-[9px] uppercase text-muted-foreground">Index / 100</p>
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between border-b bg-secondary/20 px-3 py-1.5 text-[10px] text-muted-foreground">
+        <span className="font-semibold">Nachweiskette</span>
+        <span className="font-mono">{evidence.length} fachliche Einträge verbunden</span>
       </div>
 
       <div className="nowheel flex-1 overflow-auto p-2">
