@@ -2004,9 +2004,10 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
     const value = Number(answer?.confidence);
     return Number.isFinite(value) ? value : null;
   };
-  const answered = answers.filter((answer) => confidenceOf(answer) !== null);
-  const confidence = answered.length
-    ? Math.round(answered.reduce((sum, answer) => sum + (confidenceOf(answer) ?? 0), 0) / answered.length * 100)
+  const answered = answers.filter((answer) => answerLabel(answer) !== "–");
+  const ratedAnswers = answers.filter((answer) => confidenceOf(answer) !== null);
+  const confidence = ratedAnswers.length
+    ? Math.round(ratedAnswers.reduce((sum, answer) => sum + (confidenceOf(answer) ?? 0), 0) / ratedAnswers.length * 100)
     : null;
   const reviewCount = questions.filter((question) => {
     const answer = answers.find((item) => item.id === question.id);
