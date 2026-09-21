@@ -338,6 +338,8 @@ export type RiskContext = {
   peakRain: number | null;
   ageYears: number | null;
   ageLevel: number | null;
+  /** Weighted factor cards connected to this matrix, keyed by card id. */
+  factors?: Record<string, { label: string; score: number; level: number; count: number }>;
 };
 
 function num(value: number | null, digits = 0): string | null {
