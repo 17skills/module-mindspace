@@ -3457,7 +3457,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     const zoneRecords = records.filter((item) => item.type === "zone" && readThemeWeight(item) > 0);
     return zoneRecords.map((zone) => {
       const members = records.filter(
-        (item) => item.type === "note" && readAssignment(item).zoneId === zone.id,
+        (item) => item.type === "note" && (readAssignment(item)?.zoneId ?? null) === zone.id,
       );
       const scores = members.map((item) => readFactor(item)).filter((item) => item.params.length);
       const score = scores.length
