@@ -159,6 +159,28 @@ function toolBtn(active = false) {
 }
 
 /** Fields of a template group, with positions relative to the group. */
+/** Social networks whose profiles need a login — never scrape them for context. */
+const PROFILE_HOSTS: Record<string, string> = {
+  "linkedin.com": "LinkedIn",
+  "xing.com": "Xing",
+  "x.com": "X",
+  "twitter.com": "X",
+  "instagram.com": "Instagram",
+  "facebook.com": "Facebook",
+  "fb.com": "Facebook",
+  "threads.net": "Threads",
+  "tiktok.com": "TikTok",
+  "mastodon.social": "Mastodon",
+};
+
+function profileProvider(hostname: string): string | null {
+  const host = hostname.toLowerCase();
+  for (const [domain, label] of Object.entries(PROFILE_HOSTS)) {
+    if (host === domain || host.endsWith(`.${domain}`)) return label;
+  }
+  return null;
+}
+
 function groupFields(container: NodeRecord, all: NodeRecord[]): NodeRecord[] {
   return all.filter((item) => item.type === "zone" && item.parent_id === container.id);
 }
@@ -638,22 +660,23 @@ function BoardPage() {
       const isAudioUrl = /\.(mp3|m4a|wav|aac|ogg)(\?|$)/i.test(parsed.pathname);
       const isFeed =
         /\/(rss|feed)/i.test(parsed.pathname) || /podcast|spotify|apple/i.test(parsed.hostname);
-      // LinkedIn-Profile liefern ohne Anmeldung keinen verwertbaren Text —
-      // nur als reines Link-Modul anzeigen, keinen Inhalt auslesen.
-      const isLinkedIn = /(^|\.)linkedin\.com$/i.test(parsed.hostname);
+      // Profile sozialer Netzwerke liefern ohne Anmeldung keinen verwertbaren
+      // Text — nur als reines Link-Modul anzeigen, keinen Inhalt auslesen und
+      // nichts als Chat-Kontext übermitteln.
+      const profile = profileProvider(parsed.hostname);
 
       const record = await createRecord({
         type: isYoutube ? "youtube" : isAudioUrl || isFeed ? "podcast" : "link",
         title: url,
         source_url: url,
-        status: isLinkedIn ? "ready" : "processing",
+        status: profile ? "ready" : "processing",
         position_x: position.x,
         position_y: position.y,
       });
 
-      if (isLinkedIn) {
-        const name = parsed.pathname.split("/").filter(Boolean).pop() ?? "LinkedIn";
-        updateNode(record.id, { title: `LinkedIn: ${name}` });
+      if (profile) {
+        const name = parsed.pathname.split("/").filter(Boolean).pop() ?? profile;
+        updateNode(record.id, { title: `${profile}: ${name}` });
         return;
       }
 
