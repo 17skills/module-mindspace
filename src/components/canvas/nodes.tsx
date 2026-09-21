@@ -929,7 +929,7 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
               </UiTooltip>
             </div>
             {agent.reason && (
-              <details className="mt-1">
+              <details open className="mt-1">
                 <summary className="cursor-pointer text-[11px] text-muted-foreground">
                   Begründung
                 </summary>
@@ -2449,7 +2449,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           const limit = own ?? threshold;
           const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
-            <details key={question.id} className="group border-b border-border/60 py-1.5 last:border-0">
+            <details key={question.id} open className="group border-b border-border/60 py-1.5 last:border-0">
               <summary className="nodrag flex cursor-pointer list-none items-center gap-2 py-1">
                 <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${low ? "bg-destructive/10 text-destructive" : answer ? "bg-support/10 text-support" : "bg-secondary text-muted-foreground"}`}>
                   {low ? <AlertTriangle className="size-3.5" /> : <span className="font-mono text-[10px]">{index + 1}</span>}
@@ -2594,7 +2594,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           );
         })}
       </div>
-      <details className="group border-t bg-secondary/20 px-3 py-1.5">
+      <details open className="group border-t bg-secondary/20 px-3 py-1.5">
         <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
           Konfiguration <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
         </summary>
