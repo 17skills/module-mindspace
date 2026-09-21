@@ -2322,14 +2322,15 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
     [flowNodes],
   );
 
-  const decisions = useMemo(
-    () =>
-      edges
-        .filter((edge) => edge.target === id)
-        .map((edge) => records[edge.source])
-        .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision"),
-    [edges, records, id],
-  );
+  const decisions = useMemo(() => {
+    const connected = edges
+      .filter((edge) => edge.target === id)
+      .map((edge) => records[edge.source])
+      .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision");
+    if (connected.length > 0) return connected;
+    // no direct connection: fall back to decision modules elsewhere on the board
+    return Object.values(records).filter((item) => item?.type === "decision");
+  }, [edges, records, id]);
 
   /** Amounts held per asset: manual entry wins, otherwise matched incoming values. */
   const manual = readHoldings(record);
@@ -2442,7 +2443,11 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
       }
     }
     if (added.length === 0) {
-      toast.error("Keine passende Entscheidung gefunden – erst verbinden und entscheiden");
+      toast.error(
+        decisions.length === 0
+          ? "Kein Entscheidungs-Modul auf dem Board"
+          : "Noch kein Ergebnis – im Entscheidungs-Modul erst auf „Entscheiden“ klicken",
+      );
       return;
     }
     patch({ marks: [...config.marks, ...added].slice(-60) });
