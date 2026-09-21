@@ -2468,6 +2468,16 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
           onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Kurse" })}
         />
         <select
+          value={mode}
+          aria-label="Darstellung"
+          className="nodrag cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+          onChange={(e) => patch({ mode: e.target.value })}
+        >
+          <option value="pct">Relativ %</option>
+          <option value="price">Kurs</option>
+          <option value="value">Depotwert</option>
+        </select>
+        <select
           value={String(config.days)}
           aria-label="Zeitraum"
           className="nodrag cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
@@ -2483,14 +2493,44 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
         </Button>
       </div>
 
+      {mode === "value" && (
+        <div className="flex items-baseline justify-between gap-2 border-b px-3 py-1.5">
+          <span className="text-[10px] text-muted-foreground">Depotwert gesamt</span>
+          <span className="font-display text-xl font-semibold tracking-tight">
+            {formatPrice(total, config.currency)}
+          </span>
+        </div>
+      )}
+
       <div className="h-36 shrink-0 px-2 pt-2">
         {rows.length > 1 ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="t" tick={{ fontSize: 9 }} minTickGap={24} />
-              <YAxis tick={{ fontSize: 9 }} unit="%" width={38} />
-              <Tooltip formatter={(value: number) => `${value} %`} />
+              <YAxis
+                tick={{ fontSize: 9 }}
+                unit={mode === "pct" ? "%" : undefined}
+                width={mode === "pct" ? 38 : 56}
+                tickFormatter={(value: number) =>
+                  mode === "pct" ? String(value) : value.toLocaleString("de-DE", { notation: "compact" })
+                }
+              />
+              <Tooltip
+                formatter={(value: number) =>
+                  mode === "pct" ? `${value} %` : formatPrice(value, config.currency)
+                }
+              />
+              {mode === "value" && (
+                <Line
+                  type="monotone"
+                  dataKey="__total"
+                  name="Depotwert gesamt"
+                  stroke="var(--primary)"
+                  dot={false}
+                  strokeWidth={2.2}
+                />
+              )}
               {config.assets.map((asset, index) => (
                 <Line
                   key={asset.id}
@@ -2506,7 +2546,9 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
-            Noch keine Kursdaten – „Kurse“ klicken
+            {mode === "value" && Object.keys(holdings).length === 0
+              ? "Bestand fehlt – Kennzahl verbinden oder unten eintragen"
+              : "Noch keine Kursdaten – „Kurse“ klicken"}
           </div>
         )}
       </div>
@@ -2520,9 +2562,44 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
             />
             {asset.label}
             <span className="font-mono">{formatPrice(latestPrice(config, asset.id), config.currency)}</span>
+            {holdings[asset.id] ? (
+              <span className="font-mono opacity-80">
+                × {holdings[asset.id]!.toLocaleString("de-DE")} ={" "}
+                {formatPrice(holdings[asset.id]! * (latestPrice(config, asset.id) ?? 0), config.currency)}
+              </span>
+            ) : null}
           </span>
         ))}
       </div>
+
+      {selected && (
+        <div className="nowheel max-h-28 shrink-0 overflow-auto border-t px-3 py-1.5">
+          <p className="mb-1 text-[10px] text-muted-foreground">
+            Bestand je Wert – leer lassen, wenn eine verbundene Kennzahl den Bestand liefert.
+          </p>
+          <div className="grid grid-cols-2 gap-1">
+            {config.assets.map((asset) => (
+              <label key={asset.id} className="flex items-center gap-1 text-[10px]">
+                <span className="w-16 shrink-0 truncate">{asset.label}</span>
+                <input
+                  defaultValue={manual[asset.id] != null ? String(manual[asset.id]) : ""}
+                  placeholder={linked[asset.id] ? `${linked[asset.id]!.amount}` : "0"}
+                  aria-label={`Bestand ${asset.label}`}
+                  className="nodrag h-6 min-w-0 flex-1 rounded-md border border-border/70 bg-background px-1 text-right font-mono text-[10px] outline-none"
+                  onBlur={(e) => {
+                    const next = { ...manual };
+                    const num = Number(e.target.value.replace(",", "."));
+                    if (e.target.value.trim() && Number.isFinite(num)) next[asset.id] = num;
+                    else delete next[asset.id];
+                    patch({ holdings: next });
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       <div className="nowheel flex-1 overflow-auto border-t px-3 py-2 text-[11px]">
         <div className="mb-1 flex items-center justify-between">
