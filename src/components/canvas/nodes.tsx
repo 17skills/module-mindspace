@@ -3735,6 +3735,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                     peakRain: peaks.rain,
                     ageYears: liveAge?.years ?? null,
                     ageLevel: liveAge?.level ?? null,
+                    factors,
                   });
                   const open = openField === field.id;
                   const showExplain = explainField === field.id;
