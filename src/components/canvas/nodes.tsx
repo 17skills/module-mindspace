@@ -1408,13 +1408,27 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
 });
 
 /** Big single number with unit and an optional comparison line. */
-export const MetricNode = memo(function MetricNode({ data, selected }: NodeProps) {
+/** Incoming connection values of a module (A, B … like in calculations). */
+function useIncoming(id: string) {
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
+  const records = useMemo(
+    () => Object.fromEntries(flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record])),
+    [flowNodes],
+  );
+  return calcInputs(id, records, edges);
+}
+
+export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
-  const value = typeof meta["value"] === "number" ? meta["value"] : Number(meta["value"] ?? NaN);
+  const manual = typeof meta["value"] === "number" ? meta["value"] : Number(meta["value"] ?? NaN);
   const unit = typeof meta["unit"] === "string" ? meta["unit"] : "";
   const compare = typeof meta["compare"] === "string" ? meta["compare"] : "";
+  const inputs = useIncoming(id);
+  const linked = inputs.find((input) => input.value != null);
+  const value = linked?.value ?? manual;
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
@@ -1426,7 +1440,9 @@ export const MetricNode = memo(function MetricNode({ data, selected }: NodeProps
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={180} minHeight={130} />
       <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Kennzahl"}
@@ -1435,18 +1451,24 @@ export const MetricNode = memo(function MetricNode({ data, selected }: NodeProps
       />
       <div className="nodrag flex flex-1 flex-col justify-center px-3 py-2">
         <div className="flex items-baseline gap-1">
-          <input
-            key={record.id + String(meta["value"] ?? "")}
-            defaultValue={Number.isFinite(value) ? String(value) : ""}
-            inputMode="decimal"
-            placeholder="0"
-            aria-label="Wert"
-            className="min-w-0 flex-1 bg-transparent font-display text-3xl font-semibold tracking-tight outline-none"
-            onBlur={(e) => {
-              const text = e.target.value.trim().replace(",", ".");
-              patch({ value: text === "" ? null : Number(text) });
-            }}
-          />
+          {linked ? (
+            <span className="min-w-0 flex-1 truncate font-display text-3xl font-semibold tracking-tight">
+              {formatValue(value ?? null)}
+            </span>
+          ) : (
+            <input
+              key={record.id + String(meta["value"] ?? "")}
+              defaultValue={Number.isFinite(manual) ? String(manual) : ""}
+              inputMode="decimal"
+              placeholder="0"
+              aria-label="Wert"
+              className="min-w-0 flex-1 bg-transparent font-display text-3xl font-semibold tracking-tight outline-none"
+              onBlur={(e) => {
+                const text = e.target.value.trim().replace(",", ".");
+                patch({ value: text === "" ? null : Number(text) });
+              }}
+            />
+          )}
           <input
             key={record.id + unit}
             defaultValue={unit}
@@ -1456,6 +1478,16 @@ export const MetricNode = memo(function MetricNode({ data, selected }: NodeProps
             onBlur={(e) => patch({ unit: e.target.value.trim() })}
           />
         </div>
+        {linked ? (
+          <p className="mt-1 truncate text-[10px] text-muted-foreground">
+            Wert aus Verbindung: {linked.title}
+            {linked.label ? ` (${linked.label})` : ""}
+          </p>
+        ) : inputs.length > 0 ? (
+          <p className="mt-1 truncate text-[10px] text-muted-foreground">
+            Verbunden mit {inputs[0]?.title} – noch kein Zahlenwert
+          </p>
+        ) : null}
         <input
           key={record.id + compare}
           defaultValue={compare}
@@ -1468,6 +1500,7 @@ export const MetricNode = memo(function MetricNode({ data, selected }: NodeProps
     </div>
   );
 });
+
 
 function arc(cx: number, cy: number, r: number, from: number, to: number) {
   const point = (angle: number) => {
