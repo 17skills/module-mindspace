@@ -100,6 +100,10 @@ export type DecisionQuestion = {
   type: DecisionKind;
   instructions: string;
   options: string[];
+  /** Extra rule for this question only. */
+  rule?: string;
+  /** Minimum confidence in percent for this question only. */
+  minConfidence?: number | null;
 };
 
 export type StoredAnswer = {
