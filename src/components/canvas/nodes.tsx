@@ -1535,7 +1535,8 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
       <div className="nodrag flex flex-1 flex-col justify-center px-3 py-2">
         <div className="flex items-baseline gap-1">
           {(() => {
-            const text = formatValue(value ?? null, fmt);
+            const shown = linked ? linked.value : Number.isFinite(value) ? value : null;
+            const text = formatValue(shown ?? null, fmt);
             const size = text.length > 12 ? "text-lg" : text.length > 8 ? "text-2xl" : "text-3xl";
             return linked ? (
               <span className={`min-w-0 flex-1 truncate font-display font-semibold tracking-tight ${size}`}>
@@ -1557,24 +1558,19 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
               }}
             />
           )}
-          <input
-            key={record.id + unit}
-            defaultValue={unit}
-            placeholder="Einheit"
-            aria-label="Einheit"
-            className="w-16 bg-transparent text-sm text-muted-foreground outline-none"
-            onBlur={(e) => patch({ unit: e.target.value.trim() })}
-          />
         </div>
         {linked ? (
           <p className="mt-1 truncate text-[10px] text-muted-foreground">
-            Wert aus Verbindung: {linked.title}
+            {linked.value == null ? "Verbunden mit" : "Wert aus"} {linked.title}
             {linked.label ? ` (${linked.label})` : ""}
           </p>
-        ) : inputs.length > 0 ? (
-          <p className="mt-1 truncate text-[10px] text-muted-foreground">
-            Verbunden mit {inputs[0]?.title} – noch kein Zahlenwert
-          </p>
+        ) : null}
+        {selected ? (
+          <SourcePicker
+            inputs={inputs}
+            value={typeof meta["sourceEdge"] === "string" ? (meta["sourceEdge"] as string) : (linked?.edgeId ?? "")}
+            onChange={(edgeId) => patch({ sourceEdge: edgeId })}
+          />
         ) : null}
         <input
           key={record.id + compare}
