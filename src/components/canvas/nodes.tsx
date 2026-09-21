@@ -1961,6 +1961,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["decideRunning"] === true;
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
+  const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
 
   function writeQuestions(next: DecisionQuestion[]) {
