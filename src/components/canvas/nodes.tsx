@@ -1653,7 +1653,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
             onBlur={(e) => patch("value", e.target.value)}
           />
         )}
-
+        {selected ? <FormatRow meta={meta} onPatch={patchFmt} /> : null}
       </div>
     </div>
   );
