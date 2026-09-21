@@ -2551,7 +2551,8 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
             size="sm"
             variant="secondary"
             className="nodrag h-7 rounded-full px-2 text-[11px]"
-            onClick={recordDecisions}
+            disabled={busy}
+            onClick={() => void recordDecisions()}
           >
             Entscheidung festhalten
           </Button>
