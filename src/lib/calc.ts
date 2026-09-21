@@ -232,7 +232,12 @@ export function formatValue(value: number | null, fmt?: ValueFormat): string {
     decimals != null
       ? value.toLocaleString("de-DE", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
       : (Math.round(value * 100) / 100).toLocaleString("de-DE", { maximumFractionDigits: 2 });
-  return `${fmt?.prefix ?? ""}${body}${fmt?.suffix ?? ""}`;
+  const prefix = fmt?.prefix ?? "";
+  const suffix = fmt?.suffix ?? "";
+  // keep word-like prefixes/suffixes readable ("Euro 100.000", not "Euro100.000")
+  const pre = prefix ? `${prefix}${/[\p{L}\d]$/u.test(prefix) ? " " : ""}` : "";
+  const suf = suffix ? `${/^[\p{L}\d]/u.test(suffix) ? " " : ""}${suffix}` : "";
+  return `${pre}${body}${suf}`;
 }
 
 export type SheetRow = { name: string; value: string; formula: string };
