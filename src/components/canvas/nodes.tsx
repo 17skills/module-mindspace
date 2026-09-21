@@ -2384,13 +2384,15 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
         );
         const answer = answers.find((item) => item.id === question?.id);
         if (!answer || typeof answer.noul !== "number") continue;
+        const spot = (live[asset.id] as Record<string, number> | undefined)?.[config.currency];
         added.push({
           at,
           asset: asset.id,
           label: asset.label,
           buy: answer.noul >= 0.5,
           confidence: typeof answer.confidence === "number" ? answer.confidence : null,
-          price: latestPrice(config, asset.id),
+          price: typeof spot === "number" ? spot : latestPrice(config, asset.id),
+          seriesAt: latestStamp(config, asset.id),
         });
       }
     }
