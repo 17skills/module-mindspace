@@ -3760,6 +3760,50 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
             )}
           </div>
         )}
+
+        {view === "verlauf" && (
+          <div className="space-y-1.5 text-[10px]">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {config.history.length
+                  ? `${config.history.length} Änderungen aufgezeichnet`
+                  : "Noch keine Änderungen"}
+              </span>
+              <button
+                type="button"
+                disabled={!config.history.length}
+                className="nodrag rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent disabled:opacity-40"
+                onClick={undoLast}
+              >
+                Letzte Änderung rückgängig
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {config.history.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-md border border-border/60 px-1.5 py-1"
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="truncate font-medium">
+                      <span className="font-mono text-muted-foreground">{entry.code}</span>{" "}
+                      {entry.label} · {CHANGE_LABEL[entry.key]}
+                    </span>
+                    <span className="shrink-0 font-mono text-[9px] text-muted-foreground">
+                      {new Date(entry.at).toLocaleTimeString("de-DE", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  <p className="font-mono text-[9px] text-muted-foreground">
+                    vorher {changeText(entry.from)} → jetzt {changeText(entry.to)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
