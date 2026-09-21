@@ -1574,6 +1574,11 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
   const inputs = useIncoming(id);
   const linked = inputs.find((input) => input.value != null);
   const value = linked?.value ?? num("value", min);
+  const fmt = readFormat(meta);
+
+  function patchFmt(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), numFormat: next } });
+  }
 
   const span = max - min || 1;
   const ratio = Math.min(1, Math.max(0, (value - min) / span));
@@ -1614,7 +1619,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
             strokeLinecap="round"
           />
           <text x="100" y="94" textAnchor="middle" className="fill-foreground" style={{ fontSize: 26, fontWeight: 600 }}>
-            {formatValue(value)}
+            {formatValue(value, fmt)}
           </text>
         </svg>
         <div className="mt-1 grid w-full grid-cols-4 gap-1 text-[10px] text-muted-foreground">
