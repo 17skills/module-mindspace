@@ -319,7 +319,14 @@ function BoardPage() {
           continue;
         }
         seen.add(key);
-        keep.push({ id, source, target, animated: true });
+        keep.push({
+          id,
+          source,
+          target,
+          animated: true,
+          type: "labeled",
+          label: (row.label as string | null) ?? undefined,
+        });
         if (source !== row.source_id || target !== row.target_id) {
           trackSave(supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id));
         }
@@ -481,7 +488,7 @@ function BoardPage() {
       const id = crypto.randomUUID();
       setEdges((current) => [
         ...current,
-        { id, source: sourceId, target: targetId, animated: true },
+        { id, source: sourceId, target: targetId, animated: true, type: "labeled" },
       ]);
       trackSave(
         supabase
