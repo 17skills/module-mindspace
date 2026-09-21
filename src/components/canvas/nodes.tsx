@@ -1617,7 +1617,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
   const fmt = readFormat(meta);
 
   function patchFmt(next: Record<string, unknown>) {
-    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), numFormat: next } });
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
 
   const span = max - min || 1;
