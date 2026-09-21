@@ -1584,6 +1584,30 @@ function BoardPage() {
     [user],
   );
 
+  /** Create a background field in the middle of the current view. */
+  const createZone = useCallback(
+    async (title?: string) => {
+      const at = screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      });
+      try {
+        const record = await createRecord({
+          type: "zone",
+          title: title?.trim() || "Feld",
+          color: ZONE_WHITE,
+          position_x: at.x - 210,
+          position_y: at.y - 180,
+        });
+        return record.id;
+      } catch (error: unknown) {
+        toast.error(error instanceof Error ? error.message : "Feld konnte nicht angelegt werden");
+        return null;
+      }
+    },
+    [createRecord, screenToFlowPosition],
+  );
+
   const api = useMemo(
     () => ({
       updateNode,
@@ -1602,12 +1626,14 @@ function BoardPage() {
       allNodes,
       focusNode,
       resizeZone,
+      createZone,
       runAgent,
       agentStale,
       calcForEdge,
       runApi,
       runDecide,
     }),
+
     [
       updateNode,
       updateEdge,
