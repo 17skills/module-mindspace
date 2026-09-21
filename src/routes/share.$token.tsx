@@ -175,6 +175,8 @@ function SharedBoardPage() {
       runAgent: noop,
       agentStale: () => false,
       calcForEdge: noop,
+      runApi: noop,
+      runDecide: noop,
       deleteNode: noop,
       collectContext: () => "",
       contextReport: () => ({ used: [], excluded: [] }),
