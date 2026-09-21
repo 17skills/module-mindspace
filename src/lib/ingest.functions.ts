@@ -265,6 +265,62 @@ export const resolvePodcast = createServerFn({ method: "POST" })
     return { title, audioUrl: decodeEntities(audioUrl), image: ogImage(body) };
   });
 
+function metaContent(html: string, keys: string[]): string | null {
+  for (const key of keys) {
+    const match =
+      html.match(
+        new RegExp(`<meta[^>]+(?:property|name)="${key}"[^>]+content="([^"]*)"`, "i"),
+      ) ??
+      html.match(
+        new RegExp(`<meta[^>]+content="([^"]*)"[^>]+(?:property|name)="${key}"`, "i"),
+      );
+    const value = match?.[1]?.trim();
+    if (value) return decodeEntities(value);
+  }
+  return null;
+}
+
+/**
+ * Only the public card data of a page (name, tagline, picture) — never body text.
+ * Used for social profile links so nothing unreadable ends up as chat context.
+ */
+export const fetchLinkMeta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => z.object({ url: z.string().url() }).parse(input))
+  .handler(async ({ data }) => {
+    let title: string | null = null;
+    let description: string | null = null;
+    let image: string | null = null;
+    try {
+      const res = await fetch(data.url, {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (compatible; facebookexternalhit/1.1; +http://www.facebook.com/externalhit_uatext.php)",
+          "accept-language": "de,en;q=0.8",
+        },
+      });
+      if (res.ok) {
+        const html = (await res.text()).slice(0, 400_000);
+        title =
+          metaContent(html, ["og:title", "twitter:title"]) ??
+          decodeEntities(html.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() ?? "") ??
+          null;
+        description = metaContent(html, ["og:description", "twitter:description", "description"]);
+        image = metaContent(html, ["og:image", "og:image:secure_url", "twitter:image"]);
+        if (image && !/^https?:\/\//i.test(image)) {
+          try {
+            image = new URL(image, data.url).toString();
+          } catch {
+            image = null;
+          }
+        }
+      }
+    } catch {
+      /* Vorschau bleibt leer */
+    }
+    return { title: title || null, description, image };
+  });
+
 /** Plain page text for any other link. */
 export const fetchPageText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

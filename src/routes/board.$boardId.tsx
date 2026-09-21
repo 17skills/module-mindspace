@@ -84,6 +84,7 @@ import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@
 
 import {
   extractStructured,
+  fetchLinkMeta,
   fetchPageText,
   fetchYoutube,
   resolvePodcast,
@@ -462,11 +463,10 @@ function BoardPage() {
           ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
         },
       };
-      const insertPromise = supabase
-        .from("nodes")
-        .insert(payload as never)
-        .select("*")
-        .single();
+      // a Supabase builder fires a new request on every await — resolve it once
+      const insertPromise = Promise.resolve(
+        supabase.from("nodes").insert(payload as never).select("*").single(),
+      );
       trackSave(insertPromise);
       const { data, error } = await insertPromise;
       if (error) throw error;
@@ -675,8 +675,26 @@ function BoardPage() {
       });
 
       if (profile) {
-        const name = parsed.pathname.split("/").filter(Boolean).pop() ?? profile;
-        updateNode(record.id, { title: `${profile}: ${name}` });
+        const slug = parsed.pathname.split("/").filter(Boolean).pop() ?? profile;
+        updateNode(record.id, { title: `${profile}: ${slug}` });
+        try {
+          const meta = await fetchLinkMeta({ data: { url } });
+          const name =
+            meta.title
+              ?.replace(/\s*[|\-–—]\s*(LinkedIn|Xing|X|Twitter|Instagram|Facebook|Threads|TikTok|Mastodon).*$/i, "")
+              .trim() || slug;
+          updateNode(record.id, {
+            title: name,
+            metadata: {
+              ...(recordsRef.current[record.id]?.metadata ?? {}),
+              provider: profile,
+              ...(meta.description ? { subtitle: meta.description } : {}),
+              ...(meta.image ? { thumbnail: meta.image } : {}),
+            },
+          });
+        } catch {
+          /* Vorschau ist optional */
+        }
         return;
       }
 
