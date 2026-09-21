@@ -1651,6 +1651,7 @@ function BoardPage() {
       allNodes,
       focusNode,
       resizeZone,
+      createZone,
       runAgent,
       agentStale,
       calcForEdge,
