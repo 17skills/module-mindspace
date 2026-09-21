@@ -59,10 +59,12 @@ import {
   type StructureItem,
 } from "@/components/canvas/board-context";
 import {
+  CalcNode,
   ChatNode,
   ContentNode,
   DataNode,
   FrameNode,
+  LabeledEdge,
   NoteNode,
   SHAPES,
   ShapeNode,
@@ -127,7 +129,10 @@ const nodeTypes = {
   zone: ZoneNode,
   shape: ShapeNode,
   text: TextNode,
+  calc: CalcNode,
 };
+
+const edgeTypes = { labeled: LabeledEdge };
 
 const DATA_TYPES = new Set(["table", "list", "chart"]);
 
@@ -138,6 +143,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   zone: { width: 420, height: 360 },
   shape: { width: 200, height: 140 },
   text: { width: 260, height: 48 },
+  calc: { width: 320, height: 240 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -192,6 +198,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "frame" ||
     record.type === "zone" ||
     record.type === "shape" ||
+    record.type === "calc" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
