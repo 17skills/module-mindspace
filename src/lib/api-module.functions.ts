@@ -89,6 +89,8 @@ const Question = z.object({
   instructions: z.string().min(1),
   /** choice: option labels; score: ordered level descriptions; noul: unused. */
   options: z.array(z.string()).default([]),
+  /** Rule that applies to this question only. */
+  rule: z.string().optional(),
 });
 
 export type DecisionAnswer = {
@@ -120,7 +122,8 @@ export const runDecision = createServerFn({ method: "POST" })
     const questions: Record<string, unknown> = {};
     data.questions.forEach((question, index) => {
       const id = `q${index}`;
-      const instructions = `${question.instructions}${rules}`;
+      const own = question.rule?.trim() ? `\n\nRegel für diese Frage: ${question.rule.trim().slice(0, 2000)}` : "";
+      const instructions = `${question.instructions}${rules}${own}`;
       if (question.type === "choice") {
         const criteria: Record<string, string> = {};
         const options = question.options.filter((option) => option.trim());

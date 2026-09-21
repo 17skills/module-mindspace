@@ -2007,8 +2007,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
         <textarea
           key={record.id + "policy"}
           defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
-          placeholder="Regel, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
-          aria-label="Regel für die Entscheidung"
+          placeholder="Regel für alle Fragen, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
+          aria-label="Regel für alle Fragen"
           className="nodrag min-h-12 w-full resize-none rounded-md border border-border/70 bg-background px-2 py-1 text-xs outline-none"
           onBlur={(e) =>
             updateNode(record.id, {
@@ -2037,11 +2037,13 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
               });
             }}
           />
-          % – darunter keine Empfehlung
+          % – darunter keine Empfehlung (gilt für alle Fragen ohne eigene Angabe)
         </label>
         {questions.map((question, index) => {
           const answer = answers.find((item) => item.id === question.id);
-          const low = typeof answer?.confidence === "number" && answer.confidence * 100 < threshold;
+          const own = typeof question.minConfidence === "number" ? question.minConfidence : null;
+          const limit = own ?? threshold;
+          const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
             <div key={question.id} className="rounded-lg border border-border/70 p-2">
               <div className="flex items-start gap-1">
@@ -2122,6 +2124,45 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                   ⇢
                 </button>
               </div>
+              <div className="mt-1 flex items-center gap-1">
+                <input
+                  key={question.id + "rule"}
+                  defaultValue={question.rule ?? ""}
+                  placeholder="Eigene Regel für diese Frage (optional)"
+                  aria-label={`Regel der Frage ${index + 1}`}
+                  className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border"
+                  onBlur={(e) => {
+                    const next = [...questions];
+                    next[index] = { ...question, rule: e.target.value };
+                    writeQuestions(next);
+                  }}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={5}
+                  key={question.id + "minconf"}
+                  defaultValue={own ?? ""}
+                  placeholder={`${Math.round(threshold)}`}
+                  title="Eigene Mindest-Sicherheit in Prozent"
+                  aria-label={`Mindest-Sicherheit der Frage ${index + 1}`}
+                  className="nodrag w-14 shrink-0 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+                  onBlur={(e) => {
+                    const value = Number(e.target.value);
+                    const next = [...questions];
+                    next[index] = {
+                      ...question,
+                      minConfidence:
+                        e.target.value.trim() === "" || !Number.isFinite(value)
+                          ? null
+                          : Math.min(100, Math.max(0, value)),
+                    };
+                    writeQuestions(next);
+                  }}
+                />
+                <span className="shrink-0 text-[10px] text-muted-foreground">%</span>
+              </div>
               {answer && (
                 <p className="mt-1 text-xs">
                   <span className="font-medium">{answerLabel(answer)}</span>
@@ -2180,9 +2221,11 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
   const noLabel = typeof meta["noLabel"] === "string" && meta["noLabel"] ? meta["noLabel"] : "NICHT KAUFEN";
   const decisionMeta = (decision?.metadata ?? {}) as Record<string, unknown>;
   const threshold =
-    typeof decisionMeta["minConfidence"] === "number"
-      ? (decisionMeta["minConfidence"] as number)
-      : 80;
+    typeof question?.minConfidence === "number"
+      ? question.minConfidence
+      : typeof decisionMeta["minConfidence"] === "number"
+        ? (decisionMeta["minConfidence"] as number)
+        : 80;
   const confidence = typeof answer?.confidence === "number" ? answer.confidence * 100 : null;
   const unsure = confidence !== null && confidence < threshold;
 
