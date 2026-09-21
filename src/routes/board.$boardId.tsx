@@ -1932,6 +1932,23 @@ function BoardPage() {
 
       <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
 
+      <LibraryDialog
+        open={libraryOpen}
+        onOpenChange={(next) => {
+          setLibraryOpen(next);
+          if (!next) librarySelection.current = null;
+        }}
+        userId={user?.id}
+        captureSelection={captureSelection}
+        onInsert={async (entry, mode) => {
+          try {
+            await insertLibraryEntry(entry, mode);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Einfügen fehlgeschlagen");
+          }
+        }}
+      />
+
       <TemplateDialog
         open={templateOpen}
         onOpenChange={setTemplateOpen}
