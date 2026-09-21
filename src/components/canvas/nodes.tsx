@@ -2000,14 +2000,19 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
   const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
-  const answered = answers.filter((answer) => typeof answer.confidence === "number");
+  const confidenceOf = (answer: (typeof answers)[number] | undefined) => {
+    const value = Number(answer?.confidence);
+    return Number.isFinite(value) ? value : null;
+  };
+  const answered = answers.filter((answer) => confidenceOf(answer) !== null);
   const confidence = answered.length
-    ? Math.round(answered.reduce((sum, answer) => sum + (answer.confidence ?? 0), 0) / answered.length * 100)
+    ? Math.round(answered.reduce((sum, answer) => sum + (confidenceOf(answer) ?? 0), 0) / answered.length * 100)
     : null;
   const reviewCount = questions.filter((question) => {
     const answer = answers.find((item) => item.id === question.id);
     const limit = typeof question.minConfidence === "number" ? question.minConfidence : threshold;
-    return !answer || typeof answer.confidence !== "number" || answer.confidence * 100 < limit;
+    const answerConfidence = confidenceOf(answer);
+    return answerConfidence === null || answerConfidence * 100 < limit;
   }).length;
 
   function writeQuestions(next: DecisionQuestion[]) {
