@@ -1,6 +1,13 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { apiValue, decisionValue } from "@/lib/api-module";
+import {
+  maxRisk,
+  pointsFromSources,
+  readMapConfig,
+  readRiskConfig,
+  riskEntries,
+} from "@/lib/geo";
 
 function toNumber(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -99,6 +106,26 @@ export function valueOfNode(
     const inputs = calcInputs(record.id, records, edges, depth);
     const linked = inputs.find((input) => input.value != null);
     return linked?.value ?? nodeValue(record);
+  }
+  // map: number of objects with heavy rain; risk: highest risk level
+  if (record.type === "map" || record.type === "risk") {
+    const maps =
+      record.type === "map"
+        ? [record]
+        : Object.values(records).filter((item) => item.type === "map");
+    let risky = 0;
+    const entries = [];
+    for (const mapRecord of maps) {
+      const mapConfig = readMapConfig(mapRecord);
+      const sources = edges
+        .filter((edge) => edge.target === mapRecord.id || edge.source === mapRecord.id)
+        .map((edge) => records[edge.target === mapRecord.id ? edge.source : edge.target])
+        .filter((item): item is NodeRecord => Boolean(item));
+      const points = pointsFromSources(sources, mapConfig);
+      risky += points.filter((point) => (mapConfig.weather[point.id]?.rain ?? 0) >= 10).length;
+      entries.push(...riskEntries(points, mapConfig.weather, readRiskConfig(record)));
+    }
+    return record.type === "map" ? risky : maxRisk(entries);
   }
   if (record.type !== "calc") return nodeValue(record);
   const formula = typeof record.metadata?.["formula"] === "string" ? record.metadata["formula"] : "";
