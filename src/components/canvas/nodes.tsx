@@ -1698,28 +1698,35 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
           ))}
         </div>
         {linked ? (
-          selected ? (
-            <FormatRow meta={meta} onPatch={patchFmt} />
-          ) : (
-            <p className="mt-1 w-full truncate text-center text-[10px] text-muted-foreground">
-              Wert aus Verbindung: {linked.title}
-              {linked.label ? ` (${linked.label})` : ""}
-            </p>
-          )
+          <p className="mt-1 w-full truncate text-center text-[10px] text-muted-foreground">
+            {linked.value == null ? "Verbunden mit" : "Wert aus"} {linked.title}
+            {linked.label ? ` (${linked.label})` : ""}
+          </p>
         ) : (
-          <>
-            <input
-              key={record.id + "value" + String(meta["value"] ?? "")}
-              defaultValue={String(value)}
-              inputMode="decimal"
-              aria-label="Wert"
-              placeholder="Wert"
-              className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
-              onBlur={(e) => patch("value", e.target.value)}
-            />
-            {selected ? <FormatRow meta={meta} onPatch={patchFmt} /> : null}
-          </>
+          <input
+            key={record.id + "value" + String(meta["value"] ?? "")}
+            defaultValue={String(value)}
+            inputMode="decimal"
+            aria-label="Wert"
+            placeholder="Wert"
+            className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
+            onBlur={(e) => patch("value", e.target.value)}
+          />
         )}
+        {selected ? (
+          <>
+            <SourcePicker
+              inputs={inputs}
+              value={typeof meta["sourceEdge"] === "string" ? (meta["sourceEdge"] as string) : (linked?.edgeId ?? "")}
+              onChange={(edgeId) =>
+                updateNode(record.id, { metadata: { ...(record.metadata ?? {}), sourceEdge: edgeId } })
+              }
+            />
+            <div className="w-full">
+              <FormatRow meta={meta} onPatch={patchFmt} />
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
