@@ -17,7 +17,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, Scale, Shapes } from "lucide-react";
+import { Globe, LayoutGrid, Scale, Shapes } from "lucide-react";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
