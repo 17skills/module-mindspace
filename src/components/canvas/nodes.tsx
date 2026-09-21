@@ -2221,9 +2221,11 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
   const noLabel = typeof meta["noLabel"] === "string" && meta["noLabel"] ? meta["noLabel"] : "NICHT KAUFEN";
   const decisionMeta = (decision?.metadata ?? {}) as Record<string, unknown>;
   const threshold =
-    typeof decisionMeta["minConfidence"] === "number"
-      ? (decisionMeta["minConfidence"] as number)
-      : 80;
+    typeof question?.minConfidence === "number"
+      ? question.minConfidence
+      : typeof decisionMeta["minConfidence"] === "number"
+        ? (decisionMeta["minConfidence"] as number)
+        : 80;
   const confidence = typeof answer?.confidence === "number" ? answer.confidence * 100 : null;
   const unsure = confidence !== null && confidence < threshold;
 
