@@ -3338,7 +3338,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
 
       {/* segmented switch: spreadsheet, matrix, classification */}
       <div className="flex gap-1 border-b px-2 py-1.5">
-        {(["tabelle", "matrix", "einordnung"] as const).map((item) => (
+        {(["tabelle", "matrix", "einordnung", "verlauf"] as const).map((item) => (
           <button
             key={item}
             type="button"
