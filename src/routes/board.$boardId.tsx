@@ -78,6 +78,7 @@ import {
   ApiNode,
   DecisionNode,
   SignalNode,
+  QuotesNode,
   TEXT_SIZES,
   TextNode,
   textSize,
@@ -156,6 +157,7 @@ const nodeTypes = {
   api: ApiNode,
   decision: DecisionNode,
   signal: SignalNode,
+  quotes: QuotesNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -176,6 +178,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   api: { width: 360, height: 280 },
   decision: { width: 400, height: 320 },
   signal: { width: 220, height: 170 },
+  quotes: { width: 460, height: 420 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -188,6 +191,7 @@ const DASHBOARD_MODULES = [
   { id: "gauge", label: "Tacho", title: "Tacho", metadata: { min: 0, max: 100, warn: 60, danger: 85, value: 0 } },
   { id: "sheet", label: "Rechenblatt", title: "Rechenblatt", metadata: { rows: [] } },
   { id: "signal", label: "Signal (Ampel)", title: "Signal", metadata: { question: "" } },
+  { id: "quotes", label: "Kursverlauf", title: "Kurse", metadata: { days: 7, currency: "eur" } },
 ] as const;
 
 /** Space a template group leaves around its fields. */
@@ -245,6 +249,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "api" ||
     record.type === "decision" ||
     record.type === "signal" ||
+    record.type === "quotes" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)

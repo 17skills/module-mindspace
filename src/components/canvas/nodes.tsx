@@ -14,6 +14,17 @@ import {
 } from "@xyflow/react";
 import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent } from "@/lib/zones";
+import { runApiModule } from "@/lib/api-module.functions";
+import {
+  QUOTE_COLORS,
+  chartRows,
+  evaluateMarks,
+  formatPrice,
+  hitRate,
+  latestPrice,
+  readQuotes,
+  type QuoteMark,
+} from "@/lib/quotes";
 import {
   answerLabel,
   apiPreview,
