@@ -19,7 +19,7 @@ import {
   weatherChance,
   type RiskField,
 } from "@/lib/iso-risk";
-import { setMapFocus, useMapFocus } from "@/lib/map-focus";
+import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
 import { BookOpen, Calculator, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
