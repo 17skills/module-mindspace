@@ -429,7 +429,10 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
         color="var(--primary)"
         onResizeEnd={(_, params) => resizeZone(record.id, params.width, params.height)}
       />
-      {agent && <Handle type="source" position={Position.Right} />}
+      <Handle type="target" position={Position.Left} className="!size-3" />
+      <Handle type="target" position={Position.Top} className="!size-3" />
+      <Handle type="source" position={Position.Right} className="!size-3" />
+      <Handle type="source" position={Position.Bottom} className="!size-3" />
       <div
         className={`relative h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
         style={{
