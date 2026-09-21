@@ -1,18 +1,26 @@
 import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ClientOnly } from "@tanstack/react-router";
 import {
-  RISK_LABEL,
   mapText,
-  maxRisk,
   pointsFromSources,
   readMapConfig,
-  readRiskConfig,
-  riskColor,
-  levelColor,
-  riskEntries,
-  riskText,
-  type RiskEntry,
+  type GeoPoint,
+  type WeatherValue,
 } from "@/lib/geo";
+import {
+  IMPACT_LABEL,
+  LIKELIHOOD_LABEL,
+  RISK_CLASSES,
+  ageChance,
+  evaluate,
+  isoText,
+  readIsoRisk,
+  scoreColor,
+  weatherChance,
+  type RiskField,
+} from "@/lib/iso-risk";
+import { setMapFocus, useMapFocus } from "@/lib/map-focus";
+
 import { BookOpen, Calculator, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
