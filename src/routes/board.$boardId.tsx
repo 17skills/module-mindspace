@@ -1254,6 +1254,7 @@ function BoardPage() {
       updateNode,
       deleteNode,
       collectContext,
+      contextReport,
       addNoteFrom,
       extractStructure,
       openInspector,
