@@ -118,7 +118,16 @@ export type MarkResult = QuoteMark & {
   changePct: number | null;
   /** true = the recommendation would have paid off, false = not, null = unknown. */
   correct: boolean | null;
+  /** No newer prices since the decision was recorded — nothing to judge yet. */
+  pending: boolean;
 };
+
+/** Newest price timestamp stored for an asset. */
+export function latestStamp(config: QuotesConfig, assetId: string): number | null {
+  const points = config.series[assetId];
+  if (!points || points.length === 0) return null;
+  return points[points.length - 1]![0];
+}
 
 /** Compares each recorded decision with the current price. */
 export function evaluateMarks(config: QuotesConfig): MarkResult[] {
@@ -126,10 +135,13 @@ export function evaluateMarks(config: QuotesConfig): MarkResult[] {
     .map((mark) => {
       const start = mark.price ?? priceAt(config, mark.asset, mark.at);
       const now = latestPrice(config, mark.asset);
+      const stamp = latestStamp(config, mark.asset);
+      const since = mark.seriesAt ?? Date.parse(mark.at);
+      const pending = stamp === null || (Number.isFinite(since) && stamp <= since);
       const changePct =
-        start && now && start !== 0 ? ((now - start) / start) * 100 : null;
+        !pending && start && now && start !== 0 ? ((now - start) / start) * 100 : null;
       const correct = changePct === null ? null : mark.buy ? changePct > 0 : changePct <= 0;
-      return { ...mark, price: start, now, changePct, correct };
+      return { ...mark, price: start, now, changePct, correct, pending };
     })
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }
