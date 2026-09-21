@@ -77,6 +77,7 @@ import {
   SheetNode,
   ApiNode,
   DecisionNode,
+  SignalNode,
   TEXT_SIZES,
   TextNode,
   textSize,
@@ -154,6 +155,7 @@ const nodeTypes = {
   sheet: SheetNode,
   api: ApiNode,
   decision: DecisionNode,
+  signal: SignalNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -173,6 +175,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   sheet: { width: 360, height: 240 },
   api: { width: 360, height: 280 },
   decision: { width: 400, height: 320 },
+  signal: { width: 220, height: 170 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -240,6 +243,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "sheet" ||
     record.type === "api" ||
     record.type === "decision" ||
+    record.type === "signal" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)

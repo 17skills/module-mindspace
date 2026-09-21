@@ -2104,3 +2104,91 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
     </div>
   );
 });
+
+/** Traffic light: shows the yes/no result of a connected decision in green or red. */
+export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
+  const sources = useMemo(() => {
+    const byId = Object.fromEntries(
+      flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    return edges
+      .filter((edge) => edge.target === id)
+      .map((edge) => byId[edge.source])
+      .filter((item): item is NodeRecord => Boolean(item));
+  }, [edges, flowNodes, id]);
+
+  const decision = sources.find((item) => item.type === "decision");
+  const questions = readQuestions(decision);
+  const answers = readAnswers(decision);
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const pickedId = typeof meta["question"] === "string" ? meta["question"] : "";
+  const question = questions.find((item) => item.id === pickedId) ?? questions[0];
+  const answer = answers.find((item) => item.id === question?.id);
+  const yes = typeof answer?.noul === "number" ? answer.noul >= 0.5 : null;
+  const yesLabel = typeof meta["yesLabel"] === "string" && meta["yesLabel"] ? meta["yesLabel"] : "KAUFEN";
+  const noLabel = typeof meta["noLabel"] === "string" && meta["noLabel"] ? meta["noLabel"] : "NICHT KAUFEN";
+
+  const tone =
+    yes === null
+      ? { bg: "var(--muted)", fg: "var(--muted-foreground)", text: "Noch keine Entscheidung" }
+      : yes
+        ? { bg: "var(--ok, #16a34a)", fg: "#ffffff", text: yesLabel }
+        : { bg: "var(--danger, #dc2626)", fg: "#ffffff", text: noLabel };
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={180} minHeight={140} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
+      <input
+        key={record.id + (record.title ?? "")}
+        defaultValue={record.title ?? "Signal"}
+        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Signal" })}
+      />
+      <div
+        className="flex flex-1 flex-col items-center justify-center gap-1 px-3 py-3 text-center"
+        style={{ background: tone.bg, color: tone.fg }}
+      >
+        <span className="font-display text-xl font-semibold tracking-tight">{tone.text}</span>
+        {typeof answer?.confidence === "number" && (
+          <span className="text-[11px] opacity-90">
+            {Math.round(answer.confidence * 100)} % sicher
+          </span>
+        )}
+        <span className="text-[10px] opacity-80">Simulation – kein echter Kauf</span>
+      </div>
+      {selected && (
+        <div className="border-t px-2 py-1.5">
+          <select
+            value={question?.id ?? ""}
+            aria-label="Frage der Entscheidung"
+            className="nodrag w-full cursor-pointer rounded-md border border-border/70 bg-background px-1 py-1 text-[10px]"
+            onChange={(e) =>
+              updateNode(record.id, {
+                metadata: { ...(record.metadata ?? {}), question: e.target.value },
+              })
+            }
+          >
+            <option value="">
+              {decision ? "Frage wählen" : "Mit einem Entscheidungs-Modul verbinden"}
+            </option>
+            {questions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.instructions.slice(0, 60) || item.id}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  );
+});
