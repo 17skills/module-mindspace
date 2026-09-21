@@ -89,6 +89,8 @@ const Question = z.object({
   instructions: z.string().min(1),
   /** choice: option labels; score: ordered level descriptions; noul: unused. */
   options: z.array(z.string()).default([]),
+  /** Rule that applies to this question only. */
+  rule: z.string().optional(),
 });
 
 export type DecisionAnswer = {
