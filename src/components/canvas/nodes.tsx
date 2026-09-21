@@ -2178,13 +2178,22 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
   const yes = typeof answer?.noul === "number" ? answer.noul >= 0.5 : null;
   const yesLabel = typeof meta["yesLabel"] === "string" && meta["yesLabel"] ? meta["yesLabel"] : "KAUFEN";
   const noLabel = typeof meta["noLabel"] === "string" && meta["noLabel"] ? meta["noLabel"] : "NICHT KAUFEN";
+  const decisionMeta = (decision?.metadata ?? {}) as Record<string, unknown>;
+  const threshold =
+    typeof decisionMeta["minConfidence"] === "number"
+      ? (decisionMeta["minConfidence"] as number)
+      : 80;
+  const confidence = typeof answer?.confidence === "number" ? answer.confidence * 100 : null;
+  const unsure = confidence !== null && confidence < threshold;
 
   const tone =
     yes === null
       ? { bg: "var(--muted)", fg: "var(--muted-foreground)", text: "Noch keine Entscheidung" }
-      : yes
-        ? { bg: "var(--ok, #16a34a)", fg: "#ffffff", text: yesLabel }
-        : { bg: "var(--danger, #dc2626)", fg: "#ffffff", text: noLabel };
+      : unsure
+        ? { bg: "var(--warn, #ea580c)", fg: "#ffffff", text: "KEINE EMPFEHLUNG" }
+        : yes
+          ? { bg: "var(--ok, #16a34a)", fg: "#ffffff", text: yesLabel }
+          : { bg: "var(--danger, #dc2626)", fg: "#ffffff", text: noLabel };
 
   return (
     <div
