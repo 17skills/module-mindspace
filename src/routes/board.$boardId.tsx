@@ -638,22 +638,23 @@ function BoardPage() {
       const isAudioUrl = /\.(mp3|m4a|wav|aac|ogg)(\?|$)/i.test(parsed.pathname);
       const isFeed =
         /\/(rss|feed)/i.test(parsed.pathname) || /podcast|spotify|apple/i.test(parsed.hostname);
-      // LinkedIn-Profile liefern ohne Anmeldung keinen verwertbaren Text —
-      // nur als reines Link-Modul anzeigen, keinen Inhalt auslesen.
-      const isLinkedIn = /(^|\.)linkedin\.com$/i.test(parsed.hostname);
+      // Profile sozialer Netzwerke liefern ohne Anmeldung keinen verwertbaren
+      // Text — nur als reines Link-Modul anzeigen, keinen Inhalt auslesen und
+      // nichts als Chat-Kontext übermitteln.
+      const profile = profileProvider(parsed.hostname);
 
       const record = await createRecord({
         type: isYoutube ? "youtube" : isAudioUrl || isFeed ? "podcast" : "link",
         title: url,
         source_url: url,
-        status: isLinkedIn ? "ready" : "processing",
+        status: profile ? "ready" : "processing",
         position_x: position.x,
         position_y: position.y,
       });
 
-      if (isLinkedIn) {
-        const name = parsed.pathname.split("/").filter(Boolean).pop() ?? "LinkedIn";
-        updateNode(record.id, { title: `LinkedIn: ${name}` });
+      if (profile) {
+        const name = parsed.pathname.split("/").filter(Boolean).pop() ?? profile;
+        updateNode(record.id, { title: `${profile}: ${name}` });
         return;
       }
 
