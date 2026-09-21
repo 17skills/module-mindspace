@@ -208,3 +208,60 @@ export function formatValue(value: number | null): string {
   const rounded = Math.round(value * 100) / 100;
   return rounded.toLocaleString("de-DE", { maximumFractionDigits: 2 });
 }
+
+export type SheetRow = { name: string; value: string; formula: string };
+
+/** Rows of a sheet module (metadata.rows). */
+export function sheetRows(record: NodeRecord | undefined | null): SheetRow[] {
+  const raw = record?.metadata?.["rows"];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => {
+    const row = (item ?? {}) as Record<string, unknown>;
+    return {
+      name: typeof row["name"] === "string" ? row["name"] : "",
+      value: typeof row["value"] === "string" ? row["value"] : "",
+      formula: typeof row["formula"] === "string" ? row["formula"] : "",
+    };
+  });
+}
+
+/**
+ * Resolve every row of a sheet. Rows reference each other as R1, R2 …
+ * and incoming modules by their letter (A, B …) through `extra`.
+ */
+export function sheetValues(
+  record: NodeRecord | undefined | null,
+  extra: Record<string, number> = {},
+): (number | null)[] {
+  const rows = sheetRows(record);
+  const values: (number | null)[] = rows.map((row) =>
+    row.formula.trim() ? null : Number(row.value.replace(",", ".")) || (row.value.trim() ? null : null),
+  );
+  rows.forEach((row, index) => {
+    if (row.formula.trim()) return;
+    const parsed = Number(row.value.replace(",", "."));
+    values[index] = row.value.trim() && Number.isFinite(parsed) ? parsed : null;
+  });
+  // repeated passes resolve chains; the loop count caps cycles
+  for (let pass = 0; pass < rows.length + 1; pass++) {
+    rows.forEach((row, index) => {
+      if (!row.formula.trim() || values[index] != null) return;
+      const vars: Record<string, number> = { ...extra };
+      values.forEach((value, other) => {
+        if (value != null) vars[`R${other + 1}`] = value;
+      });
+      values[index] = evalFormula(row.formula, vars);
+    });
+  }
+  return values;
+}
+
+/** Result of a sheet: the last row that resolves to a number. */
+export function sheetResult(record: NodeRecord | undefined | null): number | null {
+  const values = sheetValues(record);
+  for (let i = values.length - 1; i >= 0; i--) {
+    const value = values[i];
+    if (value != null) return value;
+  }
+  return null;
+}
