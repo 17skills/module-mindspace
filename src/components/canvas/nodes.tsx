@@ -12,7 +12,7 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { calcInputs, evalFormula, formatValue, sheetRows, sheetValues } from "@/lib/calc";
+import { calcInputs, evalFormula, formatValue, readFormat, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent } from "@/lib/zones";
 import {
   Bar,
@@ -1419,6 +1419,49 @@ function useIncoming(id: string) {
   return calcInputs(id, records, edges);
 }
 
+/** Small format bar: decimal places, prefix and suffix (metadata.numFormat). */
+function FormatRow({ meta, onPatch }: { meta: Record<string, unknown>; onPatch: (next: Record<string, unknown>) => void }) {
+  const fmt = (meta["numFormat"] ?? {}) as Record<string, unknown>;
+  const decimals = typeof fmt["decimals"] === "number" ? fmt["decimals"] : null;
+  const prefix = typeof fmt["prefix"] === "string" ? fmt["prefix"] : "";
+  const suffix = typeof fmt["suffix"] === "string" ? fmt["suffix"] : "";
+  function setFmt(next: Record<string, unknown>) {
+    onPatch({ numFormat: next });
+  }
+  const field =
+    "nodrag min-w-0 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border";
+  return (
+    <div className="flex items-center gap-1 border-t border-border/60 px-2 py-1 text-[10px] text-muted-foreground">
+      <input
+        defaultValue={prefix}
+        placeholder="Vor"
+        aria-label="Text vor dem Wert"
+        className={`${field} w-12 text-left`}
+        onBlur={(e) => setFmt({ ...fmt, prefix: e.target.value })}
+      />
+      <select
+        value={decimals == null ? "auto" : String(decimals)}
+        aria-label="Dezimalstellen"
+        className={`${field} cursor-pointer`}
+        onChange={(e) => setFmt({ ...fmt, decimals: e.target.value === "auto" ? null : Number(e.target.value) })}
+      >
+        <option value="auto">Auto</option>
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+      <input
+        defaultValue={suffix}
+        placeholder="Nach"
+        aria-label="Text nach dem Wert"
+        className={`${field} w-12 flex-1 text-left`}
+        onBlur={(e) => setFmt({ ...fmt, suffix: e.target.value })}
+      />
+    </div>
+  );
+}
+
 export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
@@ -1426,6 +1469,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
   const manual = typeof meta["value"] === "number" ? meta["value"] : Number(meta["value"] ?? NaN);
   const unit = typeof meta["unit"] === "string" ? meta["unit"] : "";
   const compare = typeof meta["compare"] === "string" ? meta["compare"] : "";
+  const fmt = readFormat(meta);
   const inputs = useIncoming(id);
   const linked = inputs.find((input) => input.value != null);
   const value = linked?.value ?? manual;
@@ -1451,11 +1495,16 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
       />
       <div className="nodrag flex flex-1 flex-col justify-center px-3 py-2">
         <div className="flex items-baseline gap-1">
-          {linked ? (
-            <span className="min-w-0 flex-1 truncate font-display text-3xl font-semibold tracking-tight">
-              {formatValue(value ?? null)}
-            </span>
-          ) : (
+          {(() => {
+            const text = formatValue(value ?? null, fmt);
+            const size = text.length > 12 ? "text-lg" : text.length > 8 ? "text-2xl" : "text-3xl";
+            return linked ? (
+              <span className={`min-w-0 flex-1 truncate font-display font-semibold tracking-tight ${size}`}>
+                {text}
+              </span>
+            ) : null;
+          })()}
+          {linked ? null : (
             <input
               key={record.id + String(meta["value"] ?? "")}
               defaultValue={Number.isFinite(manual) ? String(manual) : ""}
@@ -1496,6 +1545,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
           className="mt-1 bg-transparent text-xs text-muted-foreground outline-none"
           onBlur={(e) => patch({ compare: e.target.value.trim() })}
         />
+        {selected ? <FormatRow meta={meta} onPatch={patch} /> : null}
       </div>
     </div>
   );
@@ -1529,6 +1579,11 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
   const inputs = useIncoming(id);
   const linked = inputs.find((input) => input.value != null);
   const value = linked?.value ?? num("value", min);
+  const fmt = readFormat(meta);
+
+  function patchFmt(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), numFormat: next } });
+  }
 
   const span = max - min || 1;
   const ratio = Math.min(1, Math.max(0, (value - min) / span));
@@ -1569,7 +1624,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
             strokeLinecap="round"
           />
           <text x="100" y="94" textAnchor="middle" className="fill-foreground" style={{ fontSize: 26, fontWeight: 600 }}>
-            {formatValue(value)}
+            {formatValue(value, fmt)}
           </text>
         </svg>
         <div className="mt-1 grid w-full grid-cols-4 gap-1 text-[10px] text-muted-foreground">
@@ -1588,22 +1643,28 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
           ))}
         </div>
         {linked ? (
-          <p className="mt-1 w-full truncate text-center text-[10px] text-muted-foreground">
-            Wert aus Verbindung: {linked.title}
-            {linked.label ? ` (${linked.label})` : ""}
-          </p>
+          selected ? (
+            <FormatRow meta={meta} onPatch={patchFmt} />
+          ) : (
+            <p className="mt-1 w-full truncate text-center text-[10px] text-muted-foreground">
+              Wert aus Verbindung: {linked.title}
+              {linked.label ? ` (${linked.label})` : ""}
+            </p>
+          )
         ) : (
-          <input
-            key={record.id + "value" + String(meta["value"] ?? "")}
-            defaultValue={String(value)}
-            inputMode="decimal"
-            aria-label="Wert"
-            placeholder="Wert"
-            className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
-            onBlur={(e) => patch("value", e.target.value)}
-          />
+          <>
+            <input
+              key={record.id + "value" + String(meta["value"] ?? "")}
+              defaultValue={String(value)}
+              inputMode="decimal"
+              aria-label="Wert"
+              placeholder="Wert"
+              className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
+              onBlur={(e) => patch("value", e.target.value)}
+            />
+            {selected ? <FormatRow meta={meta} onPatch={patchFmt} /> : null}
+          </>
         )}
-
       </div>
     </div>
   );
