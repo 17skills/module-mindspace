@@ -2487,6 +2487,12 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
             <span className="text-muted-foreground">Trefferquote {Math.round(rate * 100)} %</span>
           )}
         </div>
+        {results.some((item) => item.pending) && (
+          <p className="mb-1 text-[10px] text-muted-foreground">
+            „offen“ heißt: seit dem Festhalten gibt es noch keine neueren Kurse. Später erneut auf
+            „Kurse“ klicken – dann wird verglichen.
+          </p>
+        )}
         {results.length === 0 ? (
           <p className="text-muted-foreground">
             Noch nichts festgehalten. Mit dem Entscheidungs-Modul verbinden und „Entscheidung festhalten“ klicken.
