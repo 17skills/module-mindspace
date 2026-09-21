@@ -1513,7 +1513,7 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
 }
 
 /** Gauge with free min/max and two thresholds (green → orange → red). */
-export const GaugeNode = memo(function GaugeNode({ data, selected }: NodeProps) {
+export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
@@ -1526,7 +1526,10 @@ export const GaugeNode = memo(function GaugeNode({ data, selected }: NodeProps) 
   const max = num("max", 100);
   const warn = num("warn", 60);
   const danger = num("danger", 85);
-  const value = num("value", min);
+  const inputs = useIncoming(id);
+  const linked = inputs.find((input) => input.value != null);
+  const value = linked?.value ?? num("value", min);
+
   const span = max - min || 1;
   const ratio = Math.min(1, Math.max(0, (value - min) / span));
   const angle = 180 + ratio * 180;
