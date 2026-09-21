@@ -340,8 +340,25 @@ function num(value: number | null, digits = 0): string | null {
   return value.toLocaleString("de-DE", { maximumFractionDigits: digits });
 }
 
+/** Measurement and threshold with the user's own values applied. */
+function withOverrides(field: RiskField, base: RiskMeasure): RiskMeasure {
+  const own = field.measureText?.trim();
+  const ownLimit = field.limitText?.trim();
+  if (!own && !ownLimit) return base;
+  return {
+    ...base,
+    text: own ? own : base.text,
+    limit: ownLimit ? ownLimit : base.limit,
+    source: own ? "eigener Eintrag" : base.source,
+  };
+}
+
 /** The evidence cell of a risk row: measured value, threshold and rule. */
 export function measureOf(field: RiskField, ctx: RiskContext): RiskMeasure {
+  return withOverrides(field, baseMeasure(field, ctx));
+}
+
+function baseMeasure(field: RiskField, ctx: RiskContext): RiskMeasure {
   if (field.auto === "weather") {
     const wind = num(ctx.peakWind);
     const rain = num(ctx.peakRain, 1);
