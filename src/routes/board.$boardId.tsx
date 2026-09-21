@@ -1142,6 +1142,106 @@ function BoardPage() {
     [createRecord],
   );
 
+  /** True when the cards on a field changed since its last analysis. */
+  const agentStale = useCallback(
+    (id: string) => {
+      const zone = records[id];
+      const agent = readAgent(zone);
+      if (!zone || !agent || !agent.at) return false;
+      return zoneFingerprint(zoneMembers(id, Object.values(records))) !== agent.fingerprint;
+    },
+    [records],
+  );
+
+  /** Let a background field interpret everything lying on it. */
+  const runAgent = useCallback(
+    (id: string) => {
+      const zone = recordsRef.current[id];
+      const agent = readAgent(zone);
+      if (!zone || !agent?.task.trim()) {
+        toast.info("Gib dem Feld zuerst einen Auftrag");
+        return;
+      }
+      const members = zoneMembers(id, Object.values(recordsRef.current)).filter(
+        (item) => item.content,
+      );
+      if (members.length === 0) {
+        toast.info("Auf diesem Feld liegt noch kein auswertbarer Inhalt");
+        return;
+      }
+      const fingerprint = zoneFingerprint(zoneMembers(id, Object.values(recordsRef.current)));
+      updateNode(id, { metadata: { ...(zone.metadata ?? {}), agentRunning: true } });
+      void runZoneAgent({
+        data: {
+          field: zone.title ?? "Feld",
+          task: agent.task,
+          kind: agent.kind,
+          unit: agent.unit || undefined,
+          context: zoneContext(zone, members),
+        },
+      })
+        .then((result) => {
+          const current = recordsRef.current[id];
+          updateNode(id, {
+            metadata: {
+              ...(current?.metadata ?? {}),
+              agentRunning: false,
+              agentResult: result.value,
+              agentUnit: result.unit || agent.unit,
+              agentReason: result.reason,
+              agentAt: new Date().toISOString(),
+              agentFingerprint: fingerprint,
+            },
+          });
+        })
+        .catch((error: unknown) => {
+          const current = recordsRef.current[id];
+          updateNode(id, {
+            metadata: { ...(current?.metadata ?? {}), agentRunning: false },
+          });
+          toast.error(error instanceof Error ? error.message : "Analyse fehlgeschlagen");
+        });
+    },
+    [updateNode],
+  );
+
+  /** Open the calculation belonging to a connection, or create it. */
+  const calcForEdge = useCallback(
+    (edgeId: string) => {
+      const edge = edgesRef.current.find((item) => item.id === edgeId);
+      if (!edge) return;
+      const existing = Object.values(recordsRef.current).find(
+        (item) =>
+          item.type === "calc" &&
+          (item.metadata as Record<string, unknown> | null)?.["fromEdge"] === edgeId,
+      );
+      if (existing) {
+        focusNode(existing.id);
+        return;
+      }
+      const source = recordsRef.current[edge.source];
+      const target = recordsRef.current[edge.target];
+      const x = ((source?.position_x ?? 0) + (target?.position_x ?? 0)) / 2;
+      const y = ((source?.position_y ?? 0) + (target?.position_y ?? 0)) / 2 + 260;
+      void createRecord({
+        type: "calc",
+        title: "Rechnung",
+        position_x: x,
+        position_y: y,
+        metadata: { formula: "", fromEdge: edgeId, zoneAuto: false },
+      })
+        .then((created) => {
+          if (source) createEdge(source.id, created.id);
+          if (target) createEdge(created.id, target.id);
+        })
+        .catch((error: unknown) =>
+          toast.error(error instanceof Error ? error.message : "Rechnung fehlgeschlagen"),
+        );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [createRecord, createEdge],
+  );
+
   const zoneOf = useCallback(
     (id: string) => {
       const record = records[id];
