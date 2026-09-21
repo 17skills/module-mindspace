@@ -390,6 +390,16 @@ function baseMeasure(field: RiskField, ctx: RiskContext): RiskMeasure {
       source: "Baujahr der Anlagentabelle",
     };
   }
+  if (field.auto === "factor") {
+    const factor = ctx.factors?.[field.factorId ?? ""];
+    return {
+      text: factor ? `${factor.score.toFixed(1)} / 10 gewichtet` : null,
+      limit: "6,0 / 10",
+      breach: (factor?.score ?? 0) >= 6,
+      rule: "Eintritt = gewichteter Faktorwert ÷ 2 (1 – 5)",
+      source: factor ? `${factor.label} · ${factor.count} Parameter` : "Faktor nicht verbunden",
+    };
+  }
   return {
     text: null,
     limit: null,
