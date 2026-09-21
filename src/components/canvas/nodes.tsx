@@ -8,6 +8,7 @@ import {
   Position,
   getBezierPath,
   useEdges,
+  useStore,
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
@@ -1209,11 +1210,16 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
   const record = (data as { record: NodeRecord }).record;
   const { updateNode, allNodes, focusNode } = useBoard();
   const edges = useEdges();
+  // subscribe to the live canvas so changes in other modules re-run the formula
+  const flowNodes = useStore((state) => state.nodes);
   const records = useMemo(
-    () => Object.fromEntries(allNodes().map((r) => [r.id, r])),
-    // recompute whenever any module changes (allNodes reads the live store)
-    [allNodes, edges, record],
+    () =>
+      Object.fromEntries(
+        flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+      ),
+    [flowNodes],
   );
+  void allNodes;
   const inputs = calcInputs(id, records, edges);
   const formula =
     typeof record.metadata?.["formula"] === "string" ? record.metadata["formula"] : "";
