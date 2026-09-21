@@ -7,6 +7,7 @@ import { SourceTab } from "./SourceTab";
 import { DataTab } from "./DataTab";
 import { AssignTab } from "./AssignTab";
 import { AgentTab } from "./AgentTab";
+import { FetchTab } from "./FetchTab";
 import { OverviewTab } from "./OverviewTab";
 import { RefreshTab } from "./RefreshTab";
 import { useSegments } from "./use-segments";
@@ -76,8 +77,10 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
   if (!record) return null;
   const isData = DATA_TYPES.includes(record.type);
   const isZone = record.type === "zone";
+  const isApi = record.type === "api";
   const tabs: { id: InspectorTab; label: string }[] = [
     ...(isZone ? [{ id: "agent" as const, label: "Agent" }] : []),
+    ...(isApi ? [{ id: "fetch" as const, label: "Abruf" }] : []),
     { id: "source", label: "Quelle" },
     ...(isData ? [{ id: "data" as const, label: "Daten" }] : []),
     { id: "refresh", label: "Aktualisieren" },
@@ -157,6 +160,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
         {activeTab === "data" && <DataTab record={record} />}
         {activeTab === "assign" && <AssignTab record={record} />}
         {activeTab === "agent" && <AgentTab record={record} />}
+        {activeTab === "fetch" && <FetchTab record={record} />}
         {activeTab === "overview" && (
           <OverviewTab onOpen={(id) => openInspector(id, "assign")} />
         )}
