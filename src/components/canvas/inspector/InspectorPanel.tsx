@@ -9,6 +9,7 @@ import { AssignTab } from "./AssignTab";
 import { AgentTab } from "./AgentTab";
 import { FetchTab } from "./FetchTab";
 import { OverviewTab } from "./OverviewTab";
+import { GuideTab } from "./GuideTab";
 import { RefreshTab } from "./RefreshTab";
 import { useSegments } from "./use-segments";
 
