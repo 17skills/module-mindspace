@@ -3411,20 +3411,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     return { wind, rain };
   }, [points, weather]);
 
-  /** Fields with automatic likelihood replaced by live evidence. */
-  const fields = useMemo(
-    () =>
-      config.fields.map((field) => {
-        if (field.auto === "weather" && liveWeather != null) {
-          return { ...field, chance: liveWeather };
-        }
-        if (field.auto === "age" && liveAge) return { ...field, chance: liveAge.level };
-        return field;
-      }),
-    [config.fields, liveWeather, liveAge],
-  );
-
-  const result = useMemo(() => evaluate(fields), [fields]);
+  /** Factor cards connected to this matrix, collected across groups. */
   const evidence = useMemo(() => {
     const byId = Object.fromEntries(
       flowNodes.map((node) => [node.id, (node.data as { record: NodeRecord }).record]),
@@ -3446,14 +3433,88 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     }
     return notes;
   }, [edges, flowNodes, id]);
+
+  /** Weighted score of every connected factor card, keyed by card id. */
+  const factors = useMemo(() => {
+    const map: Record<string, { label: string; score: number; level: number; count: number }> = {};
+    for (const note of evidence) {
+      const factor = readFactor(note);
+      if (!factor.params.length) continue;
+      map[note.id] = {
+        label: note.title ?? "Faktor",
+        score: factor.score,
+        level: factor.level,
+        count: factor.params.length,
+      };
+    }
+    return map;
+  }, [evidence]);
+
+  /** Themes: background fields with a weight, scored by the factor cards on them. */
+  const themes = useMemo<ThemeScore[]>(() => {
+    const records = flowNodes.map((node) => (node.data as { record: NodeRecord }).record);
+    const zoneRecords = records.filter((item) => item.type === "zone" && readThemeWeight(item) > 0);
+    return zoneRecords.map((zone) => {
+      const members = records.filter(
+        (item) => item.type === "note" && readAssignment(item).zoneId === zone.id,
+      );
+      const scores = members.map((item) => readFactor(item)).filter((item) => item.params.length);
+      const score = scores.length
+        ? Math.round((scores.reduce((sum, item) => sum + item.score, 0) / scores.length) * 10) / 10
+        : 0;
+      return {
+        id: zone.id,
+        title: zone.title ?? "Feld",
+        weight: readThemeWeight(zone),
+        score,
+        factors: scores.length,
+      };
+    });
+  }, [flowNodes]);
+  const overallIndex = useMemo(() => themeIndex(themes), [themes]);
+
+  /** Fields with automatic likelihood replaced by live evidence. */
+  const fields = useMemo(
+    () =>
+      config.fields.map((field) => {
+        if (field.auto === "weather" && liveWeather != null) {
+          return { ...field, chance: liveWeather };
+        }
+        if (field.auto === "age" && liveAge) return { ...field, chance: liveAge.level };
+        if (field.auto === "factor") {
+          const factor = factors[field.factorId ?? ""];
+          if (factor) return { ...field, chance: factor.level };
+        }
+        return field;
+      }),
+    [config.fields, liveWeather, liveAge, factors],
+  );
+
+  const result = useMemo(() => evaluate(fields), [fields]);
   const summary = useMemo(() => {
     const assessment = isoText(result);
-    if (!evidence.length) return assessment;
-    const evidenceText = evidence
-      .map((item) => `### ${noteRole(item).eyebrow}: ${item.title ?? "Eintrag"}\n${item.content ?? ""}`)
-      .join("\n\n");
-    return `${assessment}\n\nFachliche Nachweiskette (${evidence.length} Einträge):\n${evidenceText}`;
-  }, [evidence, result]);
+    const parts = [assessment];
+    if (themes.length) {
+      const themeText = themes
+        .map(
+          (theme) =>
+            `- ${theme.title}: Themengewicht ${theme.weight} %, Faktorwert ${theme.score.toFixed(1)} / 10 aus ${theme.factors} Karten`,
+        )
+        .join("\n");
+      parts.push(`Gesamtgewichtung der Themen (Index ${overallIndex} / 100):\n${themeText}`);
+    }
+    if (evidence.length) {
+      const evidenceText = evidence
+        .map((item) => {
+          const factor = readFactor(item);
+          const weights = factor.params.length ? `\n${factorText(item.title ?? "Faktor", factor)}` : "";
+          return `### ${noteRole(item).eyebrow}: ${item.title ?? "Eintrag"}\n${item.content ?? ""}${weights}`;
+        })
+        .join("\n\n");
+      parts.push(`Fachliche Nachweiskette (${evidence.length} Einträge):\n${evidenceText}`);
+    }
+    return parts.join("\n\n");
+  }, [evidence, result, themes, overallIndex]);
 
   useEffect(() => {
     if (summary && summary !== record.content) updateNode(record.id, { content: summary });
