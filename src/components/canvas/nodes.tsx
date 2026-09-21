@@ -22,6 +22,7 @@ import {
   formatPrice,
   hitRate,
   latestPrice,
+  latestStamp,
   readQuotes,
   type QuoteMark,
 } from "@/lib/quotes";
@@ -2350,10 +2351,30 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
     }
   }
 
-  /** Stores the current decisions with today's price so they can be checked later. */
-  function recordDecisions() {
+  /** Stores the current decisions with the live price so they can be checked later. */
+  async function recordDecisions() {
     const at = new Date().toISOString();
     const added: QuoteMark[] = [];
+    let live: Record<string, { eur?: number; usd?: number }> = {};
+    setBusy(true);
+    try {
+      const answer = await runApiModule({
+        data: {
+          url: "https://api.coingecko.com/api/v3/simple/price",
+          method: "GET",
+          params: [
+            { key: "ids", value: config.assets.map((asset) => asset.id).join(",") },
+            { key: "vs_currencies", value: config.currency },
+          ],
+          headers: [],
+        },
+      });
+      if (answer.status === 200) live = JSON.parse(answer.body) as typeof live;
+    } catch {
+      live = {};
+    } finally {
+      setBusy(false);
+    }
     for (const decision of decisions) {
       const questions = readQuestions(decision);
       const answers = readAnswers(decision);
@@ -2364,13 +2385,15 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
         );
         const answer = answers.find((item) => item.id === question?.id);
         if (!answer || typeof answer.noul !== "number") continue;
+        const spot = (live[asset.id] as Record<string, number> | undefined)?.[config.currency];
         added.push({
           at,
           asset: asset.id,
           label: asset.label,
           buy: answer.noul >= 0.5,
           confidence: typeof answer.confidence === "number" ? answer.confidence : null,
-          price: latestPrice(config, asset.id),
+          price: typeof spot === "number" ? spot : latestPrice(config, asset.id),
+          seriesAt: latestStamp(config, asset.id),
         });
       }
     }
@@ -2464,6 +2487,12 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
             <span className="text-muted-foreground">Trefferquote {Math.round(rate * 100)} %</span>
           )}
         </div>
+        {results.some((item) => item.pending) && (
+          <p className="mb-1 text-[10px] text-muted-foreground">
+            „offen“ heißt: seit dem Festhalten gibt es noch keine neueren Kurse. Später erneut auf
+            „Kurse“ klicken – dann wird verglichen.
+          </p>
+        )}
         {results.length === 0 ? (
           <p className="text-muted-foreground">
             Noch nichts festgehalten. Mit dem Entscheidungs-Modul verbinden und „Entscheidung festhalten“ klicken.
@@ -2489,7 +2518,11 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
                   · {formatPrice(item.price, config.currency)}
                 </span>
                 <span className="shrink-0 font-mono">
-                  {item.changePct === null ? "–" : `${item.changePct > 0 ? "+" : ""}${item.changePct.toFixed(2)} %`}{" "}
+                  {item.pending
+                    ? "offen"
+                    : item.changePct === null
+                      ? "–"
+                      : `${item.changePct > 0 ? "+" : ""}${item.changePct.toFixed(2)} %`}{" "}
                   {item.correct === null ? "" : item.correct ? "✓" : "✗"}
                 </span>
               </li>
@@ -2518,7 +2551,8 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
             size="sm"
             variant="secondary"
             className="nodrag h-7 rounded-full px-2 text-[11px]"
-            onClick={recordDecisions}
+            disabled={busy}
+            onClick={() => void recordDecisions()}
           >
             Entscheidung festhalten
           </Button>
