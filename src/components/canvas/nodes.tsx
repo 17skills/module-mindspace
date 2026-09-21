@@ -1465,16 +1465,52 @@ function FormatRow({ meta, onPatch }: { meta: Record<string, unknown>; onPatch: 
   );
 }
 
+/** Pick which incoming connection a metric/gauge displays. */
+function SourcePicker({
+  inputs,
+  value,
+  onChange,
+}: {
+  inputs: ReturnType<typeof useIncoming>;
+  value: string;
+  onChange: (edgeId: string) => void;
+}) {
+  if (inputs.length === 0) return null;
+  return (
+    <select
+      value={value}
+      aria-label="Quelle"
+      className="nodrag mt-1 w-full cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px] text-muted-foreground outline-none"
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {inputs.map((input) => (
+        <option key={input.edgeId} value={input.edgeId}>
+          {input.title}
+          {input.label ? ` (${input.label})` : ""}
+          {input.value == null ? " – kein Wert" : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** The incoming connection a module shows: the chosen one, else the first with a value. */
+function pickLinked(inputs: ReturnType<typeof useIncoming>, chosen: unknown) {
+  const byId = typeof chosen === "string" ? inputs.find((input) => input.edgeId === chosen) : undefined;
+  return byId ?? inputs.find((input) => input.value != null);
+}
+
 export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const manual = typeof meta["value"] === "number" ? meta["value"] : Number(meta["value"] ?? NaN);
   const unit = typeof meta["unit"] === "string" ? meta["unit"] : "";
-  const compare = typeof meta["compare"] === "string" ? meta["compare"] : "";
-  const fmt = readFormat(meta);
+  const base = readFormat(meta);
+  // a unit typed before the format bar existed keeps working as a suffix
+  const fmt = base.suffix || !unit ? base : { ...base, suffix: unit };
   const inputs = useIncoming(id);
-  const linked = inputs.find((input) => input.value != null);
+  const linked = pickLinked(inputs, meta["sourceEdge"]);
   const value = linked?.value ?? manual;
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
