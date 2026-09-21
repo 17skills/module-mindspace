@@ -21,7 +21,14 @@ export type NodeRecord = {
   metadata: Record<string, unknown> | null;
 };
 
-export type InspectorTab = "source" | "data" | "refresh" | "assign" | "overview" | "agent";
+export type InspectorTab =
+  | "source"
+  | "data"
+  | "refresh"
+  | "assign"
+  | "overview"
+  | "agent"
+  | "fetch";
 
 export type StructureItem = {
   kind: "table" | "list" | "chart";
@@ -71,6 +78,10 @@ export type BoardApi = {
   agentStale: (id: string) => boolean;
   /** Open (or create) the calculation module belonging to a connection. */
   calcForEdge: (edgeId: string) => void;
+  /** Fetch the web API of an API module and store the answer. */
+  runApi: (id: string) => void;
+  /** Let a decision module judge its connected context. */
+  runDecide: (id: string) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
@@ -97,6 +108,8 @@ export const NODE_ACCENT: Record<string, string> = {
   metric: "var(--primary)",
   gauge: "var(--primary)",
   sheet: "var(--primary)",
+  api: "var(--doc)",
+  decision: "var(--chat)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -116,4 +129,6 @@ export const NODE_LABEL: Record<string, string> = {
   gauge: "Tacho",
   sheet: "Rechenblatt",
   zone: "Feld",
+  api: "API",
+  decision: "Entscheidung",
 };

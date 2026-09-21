@@ -28,6 +28,8 @@ import {
   NoteNode,
   ShapeNode,
   SheetNode,
+  ApiNode,
+  DecisionNode,
   TextNode,
   ZoneNode,
 } from "@/components/canvas/nodes";
@@ -71,6 +73,8 @@ const nodeTypes = {
   metric: MetricNode,
   gauge: GaugeNode,
   sheet: SheetNode,
+  api: ApiNode,
+  decision: DecisionNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -94,6 +98,8 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "metric" ||
     record.type === "gauge" ||
     record.type === "sheet" ||
+    record.type === "api" ||
+    record.type === "decision" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -169,6 +175,8 @@ function SharedBoardPage() {
       runAgent: noop,
       agentStale: () => false,
       calcForEdge: noop,
+      runApi: noop,
+      runDecide: noop,
       deleteNode: noop,
       collectContext: () => "",
       contextReport: () => ({ used: [], excluded: [] }),

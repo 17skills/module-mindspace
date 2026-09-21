@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { BookOpen, Calculator, Lock, Plus, RefreshCw, RotateCw, ShieldOff, Sparkles, Trash2 } from "lucide-react";
+import { BookOpen, Calculator, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -14,6 +14,16 @@ import {
 } from "@xyflow/react";
 import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent } from "@/lib/zones";
+import {
+  answerLabel,
+  apiPreview,
+  apiValue,
+  pickPath,
+  readAnswers,
+  readApi,
+  readQuestions,
+  type DecisionQuestion,
+} from "@/lib/api-module";
 import {
   Bar,
   BarChart,
@@ -1841,6 +1851,254 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
           onClick={() => writeRows([...rows, { name: "", value: "", formula: "" }])}
         >
           <Plus className="size-3" /> Zeile
+        </button>
+      </div>
+    </div>
+  );
+});
+
+/** Calls a web API (SerpAPI, weather, own endpoints) and holds its answer. */
+export const ApiNode = memo(function ApiNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode, runApi, openInspector } = useBoard();
+  const config = readApi(record);
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const running = meta["apiRunning"] === true;
+  const value = apiValue(record);
+  const picked = pickPath(record.content, config.pick);
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+      style={{ borderTop: `3px solid ${NODE_ACCENT["api"] ?? "var(--primary)"}` }}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={280} minHeight={200} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <div className="flex items-center gap-1.5 border-b px-3 py-2">
+        <Globe className="size-3.5 shrink-0 text-muted-foreground" />
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "API"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "API" })}
+        />
+        <button
+          className="nodrag rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+          onClick={() => openInspector(record.id, "fetch")}
+        >
+          Einrichten
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 border-b px-3 py-1.5">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="nodrag h-7 rounded-full text-xs"
+          disabled={running || !config.url.trim()}
+          onClick={() => runApi(record.id)}
+        >
+          <RefreshCw className={`mr-1 size-3 ${running ? "animate-spin" : ""}`} />
+          {running ? "Ruft ab …" : "Abrufen"}
+        </Button>
+        <span className="truncate text-[10px] text-muted-foreground">
+          {config.lastAt
+            ? `${config.lastStatus ?? "–"} · ${new Date(config.lastAt).toLocaleString("de-DE")}`
+            : config.url.trim()
+              ? "noch nicht abgerufen"
+              : "Adresse fehlt"}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1 border-b px-3 py-1.5 text-[10px] text-muted-foreground">
+        <span className="shrink-0">Feld</span>
+        <input
+          key={record.id + config.pick}
+          defaultValue={config.pick}
+          placeholder="z. B. trending_searches.0.search_volume"
+          aria-label="Feld für die Verbindung"
+          className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 font-mono outline-none hover:border-border focus:border-border"
+          onBlur={(e) =>
+            updateNode(record.id, { metadata: { ...(record.metadata ?? {}), pick: e.target.value } })
+          }
+        />
+        <span className="shrink-0 font-mono text-foreground">
+          {value != null
+            ? formatValue(value)
+            : typeof picked === "string"
+              ? picked.slice(0, 18)
+              : "–"}
+        </span>
+      </div>
+
+      <pre className="nowheel nodrag flex-1 overflow-auto whitespace-pre-wrap break-words px-3 py-2 font-mono text-[10px] leading-snug text-muted-foreground">
+        {apiPreview(record) || "Noch keine Antwort."}
+      </pre>
+    </div>
+  );
+});
+
+/** Typed decisions (choice, score, yes/no) over the connected context. */
+export const DecisionNode = memo(function DecisionNode({ id, data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode, runDecide } = useBoard();
+  const questions = readQuestions(record);
+  const answers = readAnswers(record);
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const running = meta["decideRunning"] === true;
+  const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
+  const inputs = useIncoming(id);
+
+  function writeQuestions(next: DecisionQuestion[]) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), questions: next } });
+  }
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+      style={{ borderTop: `3px solid ${NODE_ACCENT["decision"] ?? "var(--primary)"}` }}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={220} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <div className="flex items-center gap-1.5 border-b px-3 py-2">
+        <Scale className="size-3.5 shrink-0 text-muted-foreground" />
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "Entscheidung"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Entscheidung" })}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          className="nodrag h-7 rounded-full text-xs"
+          disabled={running || questions.length === 0}
+          onClick={() => runDecide(record.id)}
+        >
+          <Sparkles className={`mr-1 size-3 ${running ? "animate-pulse" : ""}`} />
+          {running ? "Prüft …" : "Entscheiden"}
+        </Button>
+      </div>
+
+      <div className="nowheel flex-1 space-y-2 overflow-auto px-3 py-2">
+        <p className="text-[10px] text-muted-foreground">
+          {inputs.length > 0
+            ? `Kontext aus ${inputs.length} Verbindung${inputs.length === 1 ? "" : "en"}`
+            : "Verbinde Inhalte, Felder oder API-Module mit diesem Modul."}
+        </p>
+        {questions.map((question, index) => {
+          const answer = answers.find((item) => item.id === question.id);
+          const low = typeof answer?.confidence === "number" && answer.confidence < 0.6;
+          return (
+            <div key={question.id} className="rounded-lg border border-border/70 p-2">
+              <div className="flex items-start gap-1">
+                <textarea
+                  key={question.id + question.instructions}
+                  defaultValue={question.instructions}
+                  placeholder="Frage, z. B. Ist der Markt groß genug für einen Eintritt?"
+                  aria-label={`Frage ${index + 1}`}
+                  className="nodrag min-h-10 min-w-0 flex-1 resize-none rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs outline-none hover:border-border focus:border-border"
+                  onBlur={(e) => {
+                    const next = [...questions];
+                    next[index] = { ...question, instructions: e.target.value };
+                    writeQuestions(next);
+                  }}
+                />
+                <button
+                  aria-label={`Frage ${index + 1} löschen`}
+                  className="nodrag shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
+                  onClick={() => writeQuestions(questions.filter((_, other) => other !== index))}
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
+              <div className="mt-1 flex items-center gap-1">
+                <select
+                  value={question.type}
+                  aria-label={`Art der Frage ${index + 1}`}
+                  className="nodrag cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+                  onChange={(e) => {
+                    const next = [...questions];
+                    next[index] = { ...question, type: e.target.value as DecisionQuestion["type"] };
+                    writeQuestions(next);
+                  }}
+                >
+                  <option value="noul">Ja / Nein</option>
+                  <option value="choice">Auswahl</option>
+                  <option value="score">Bewertung</option>
+                </select>
+                {question.type !== "noul" && (
+                  <input
+                    key={question.id + question.options.join("|")}
+                    defaultValue={question.options.join(", ")}
+                    placeholder={
+                      question.type === "choice" ? "Optionen, mit Komma" : "Stufen, mit Komma"
+                    }
+                    aria-label={`Optionen der Frage ${index + 1}`}
+                    className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border"
+                    onBlur={(e) => {
+                      const next = [...questions];
+                      next[index] = {
+                        ...question,
+                        options: e.target.value
+                          .split(",")
+                          .map((part) => part.trim())
+                          .filter(Boolean),
+                      };
+                      writeQuestions(next);
+                    }}
+                  />
+                )}
+                <button
+                  title="Ergebnis dieser Frage weitergeben"
+                  aria-label={`Frage ${index + 1} weitergeben`}
+                  className={`nodrag shrink-0 rounded-md px-1.5 py-0.5 text-[10px] ${
+                    output === question.id
+                      ? "bg-accent font-semibold text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent"
+                  }`}
+                  onClick={() =>
+                    updateNode(record.id, {
+                      metadata: {
+                        ...(record.metadata ?? {}),
+                        outputQuestion: output === question.id ? null : question.id,
+                      },
+                    })
+                  }
+                >
+                  ⇢
+                </button>
+              </div>
+              {answer && (
+                <p className="mt-1 text-xs">
+                  <span className="font-medium">{answerLabel(answer)}</span>
+                  {typeof answer.confidence === "number" && (
+                    <span className={`ml-1 text-[10px] ${low ? "text-destructive" : "text-muted-foreground"}`}>
+                      {low ? "zur Prüfung · " : ""}
+                      {Math.round(answer.confidence * 100)} % sicher
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+          );
+        })}
+        <button
+          className="nodrag flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+          onClick={() =>
+            writeQuestions([
+              ...questions,
+              { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] },
+            ])
+          }
+        >
+          <Plus className="size-3" /> Frage
         </button>
       </div>
     </div>

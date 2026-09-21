@@ -1,5 +1,6 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
+import { apiValue, decisionValue } from "@/lib/api-module";
 
 function toNumber(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -16,6 +17,8 @@ export function nodeValue(record: NodeRecord | undefined): number | null {
   // a background field contributes the result of its agent
   if (record.type === "zone") return toNumber(record.metadata?.["agentResult"]);
   if (record.type === "sheet") return sheetResult(record);
+  if (record.type === "api") return apiValue(record);
+  if (record.type === "decision") return decisionValue(record);
   return toNumber(record.metadata?.["value"]);
 }
 

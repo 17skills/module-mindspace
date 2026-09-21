@@ -17,7 +17,9 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Shapes } from "lucide-react";
+import { Globe, Scale, Shapes } from "lucide-react";
+import { runApiModule, runDecision } from "@/lib/api-module.functions";
+import { readApi, readQuestions } from "@/lib/api-module";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,6 +75,8 @@ import {
   ShapeNode,
   shapeKind,
   SheetNode,
+  ApiNode,
+  DecisionNode,
   TEXT_SIZES,
   TextNode,
   textSize,
@@ -148,6 +152,8 @@ const nodeTypes = {
   metric: MetricNode,
   gauge: GaugeNode,
   sheet: SheetNode,
+  api: ApiNode,
+  decision: DecisionNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -165,6 +171,8 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   metric: { width: 240, height: 170 },
   gauge: { width: 260, height: 240 },
   sheet: { width: 360, height: 240 },
+  api: { width: 360, height: 280 },
+  decision: { width: 400, height: 320 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -230,6 +238,8 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "metric" ||
     record.type === "gauge" ||
     record.type === "sheet" ||
+    record.type === "api" ||
+    record.type === "decision" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -1203,6 +1213,85 @@ function BoardPage() {
     [updateNode],
   );
 
+  /** Fetch the web API of an API module and keep its answer as content. */
+  const runApi = useCallback(
+    (id: string) => {
+      const record = recordsRef.current[id];
+      if (!record) return;
+      const config = readApi(record);
+      if (!config.url.trim()) {
+        toast.info("Trage zuerst eine Adresse ein");
+        return;
+      }
+      updateNode(id, { metadata: { ...(record.metadata ?? {}), apiRunning: true } });
+      void runApiModule({
+        data: {
+          url: config.url,
+          method: config.method,
+          params: config.params,
+          headers: config.headers,
+          body: config.body || undefined,
+        },
+      })
+        .then((result) => {
+          const current = recordsRef.current[id];
+          updateNode(id, {
+            content: result.body,
+            status: "ready",
+            metadata: {
+              ...(current?.metadata ?? {}),
+              apiRunning: false,
+              lastStatus: result.status,
+              lastAt: result.at,
+            },
+          });
+        })
+        .catch((error: unknown) => {
+          const current = recordsRef.current[id];
+          updateNode(id, { metadata: { ...(current?.metadata ?? {}), apiRunning: false } });
+          toast.error(error instanceof Error ? error.message : "Abruf fehlgeschlagen");
+        });
+    },
+    [updateNode],
+  );
+
+  /** Let a decision module judge the context of its connections. */
+  const runDecide = useCallback(
+    (id: string) => {
+      const record = recordsRef.current[id];
+      if (!record) return;
+      const questions = readQuestions(record).filter((item) => item.instructions.trim());
+      if (questions.length === 0) {
+        toast.info("Formuliere zuerst eine Frage");
+        return;
+      }
+      const context = collectContext(id);
+      if (!context.trim()) {
+        toast.info("Verbinde zuerst Inhalte mit diesem Modul");
+        return;
+      }
+      updateNode(id, { metadata: { ...(record.metadata ?? {}), decideRunning: true } });
+      void runDecision({ data: { context, questions } })
+        .then((result) => {
+          const current = recordsRef.current[id];
+          updateNode(id, {
+            metadata: {
+              ...(current?.metadata ?? {}),
+              decideRunning: false,
+              answers: result.answers,
+              decidedAt: result.at,
+            },
+          });
+        })
+        .catch((error: unknown) => {
+          const current = recordsRef.current[id];
+          updateNode(id, { metadata: { ...(current?.metadata ?? {}), decideRunning: false } });
+          toast.error(error instanceof Error ? error.message : "Entscheidung fehlgeschlagen");
+        });
+    },
+    [updateNode, collectContext],
+  );
+
   /** Open the calculation belonging to a connection, or create it. */
   const calcForEdge = useCallback(
     (edgeId: string) => {
@@ -1412,6 +1501,8 @@ function BoardPage() {
       runAgent,
       agentStale,
       calcForEdge,
+      runApi,
+      runDecide,
     }),
     [
       updateNode,
@@ -1433,6 +1524,8 @@ function BoardPage() {
       runAgent,
       agentStale,
       calcForEdge,
+      runApi,
+      runDecide,
     ],
   );
 
@@ -2032,6 +2125,55 @@ function BoardPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="API-Modul anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "api",
+                        title: "API",
+                        content: "",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { url: "", method: "GET", params: [], headers: [], pick: "" },
+                      });
+                    }}
+                  >
+                    <Globe className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">API-Modul anlegen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Entscheidungs-Modul anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "decision",
+                        title: "Entscheidung",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { questions: [], answers: [] },
+                      });
+                    }}
+                  >
+                    <Scale className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Entscheidungs-Modul anlegen</TooltipContent>
+              </Tooltip>
             </div>
           </div>
           </div>
