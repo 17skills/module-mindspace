@@ -1769,7 +1769,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
         className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Rechenblatt" })}
       />
-      <div className="nodrag nowheel flex-1 overflow-auto px-2 py-1.5">
+      <div className="nowheel flex-1 overflow-auto px-2 py-1.5">
         {inputs.length > 0 && (
           <p className="mb-1 text-[10px] text-muted-foreground">
             Eingänge: {inputs.map((input) => `${input.letter} = ${input.title}`).join(", ")}
