@@ -8,7 +8,6 @@ import { DataTab } from "./DataTab";
 import { AssignTab } from "./AssignTab";
 import { AgentTab } from "./AgentTab";
 import { FetchTab } from "./FetchTab";
-import { OverviewTab } from "./OverviewTab";
 import { GuideTab } from "./GuideTab";
 import { RefreshTab } from "./RefreshTab";
 import { useSegments } from "./use-segments";
@@ -23,7 +22,7 @@ type Props = {
 };
 
 export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
-  const { sourcesFor, updateNode, openInspector } = useBoard();
+  const { sourcesFor, updateNode } = useBoard();
   const sources = sourcesFor(nodeId);
   const record = sources.find((item) => item.id === nodeId) ?? sources[0];
   const [activeSource, setActiveSource] = useState(sources[0]?.id ?? nodeId);
@@ -86,7 +85,6 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
     ...(isData ? [{ id: "data" as const, label: "Daten" }] : []),
     { id: "refresh", label: "Aktualisieren" },
     ...(isZone ? [] : [{ id: "assign" as const, label: "Zuordnung" }]),
-    { id: "overview", label: "Übersicht" },
     { id: "guide", label: "Leitfaden" },
   ];
   const activeTab = tabs.some((item) => item.id === tab) ? tab : "source";
@@ -163,9 +161,6 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
         {activeTab === "assign" && <AssignTab record={record} />}
         {activeTab === "agent" && <AgentTab record={record} />}
         {activeTab === "fetch" && <FetchTab record={record} />}
-        {activeTab === "overview" && (
-          <OverviewTab onOpen={(id) => openInspector(id, "assign")} />
-        )}
         {activeTab === "guide" && <GuideTab />}
         {activeTab === "refresh" && (
           <RefreshTab

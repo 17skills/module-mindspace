@@ -26,7 +26,6 @@ export type InspectorTab =
   | "data"
   | "refresh"
   | "assign"
-  | "overview"
   | "guide"
   | "agent"
   | "fetch";
