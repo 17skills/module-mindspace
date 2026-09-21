@@ -19,6 +19,7 @@ export default function LeafletMap({
   zoom,
   onSelect,
   selectedId,
+  highlightIds,
 }: {
   points: GeoPoint[];
   weather: Record<string, WeatherValue>;
@@ -26,7 +27,9 @@ export default function LeafletMap({
   zoom: number;
   onSelect?: (id: string) => void;
   selectedId?: string | null;
+  highlightIds?: string[];
 }) {
+  const focus = highlightIds && highlightIds.length ? new Set(highlightIds) : null;
   return (
     <MapContainer
       center={center}
@@ -39,30 +42,36 @@ export default function LeafletMap({
         attribution="&copy; OpenStreetMap"
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {points.map((point) => (
-        <CircleMarker
-          key={point.id}
-          center={[point.lat, point.lon]}
-          radius={point.id === selectedId ? 10 : 7}
-          pathOptions={{
-            color: ringColor(weather[point.id]),
-            weight: point.id === selectedId ? 4 : 2,
-            fillColor: ringColor(weather[point.id]),
-            fillOpacity: 0.45,
-          }}
-          eventHandlers={{ click: () => onSelect?.(point.id) }}
-        >
-          <Tooltip>
-            <span style={{ fontSize: 11 }}>
-              <strong>{point.label}</strong>
-              {point.klass ? ` · ${point.klass}` : ""}
-              {weather[point.id]
-                ? ` · Regen ${weather[point.id]!.rain ?? "?"} mm/h · Wind ${weather[point.id]!.wind ?? "?"} km/h`
-                : ""}
-            </span>
-          </Tooltip>
-        </CircleMarker>
-      ))}
+      {points.map((point) => {
+        const marked = focus ? focus.has(point.id) : false;
+        const dimmed = focus ? !marked : false;
+        return (
+          <CircleMarker
+            key={point.id}
+            center={[point.lat, point.lon]}
+            radius={point.id === selectedId ? 10 : marked ? 9 : 7}
+            pathOptions={{
+              color: marked ? "#111827" : ringColor(weather[point.id]),
+              weight: point.id === selectedId ? 4 : marked ? 3 : 2,
+              fillColor: ringColor(weather[point.id]),
+              fillOpacity: dimmed ? 0.12 : 0.55,
+              opacity: dimmed ? 0.25 : 1,
+            }}
+            eventHandlers={{ click: () => onSelect?.(point.id) }}
+          >
+            <Tooltip>
+              <span style={{ fontSize: 11 }}>
+                <strong>{point.label}</strong>
+                {point.klass ? ` · ${point.klass}` : ""}
+                {weather[point.id]
+                  ? ` · Regen ${weather[point.id]!.rain ?? "?"} mm/h · Wind ${weather[point.id]!.wind ?? "?"} km/h`
+                  : ""}
+              </span>
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
     </MapContainer>
   );
 }
+
