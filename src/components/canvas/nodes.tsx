@@ -14,6 +14,7 @@ import {
   ageChance,
   evaluate,
   isoText,
+  measureOf,
   readIsoRisk,
   scoreColor,
   weatherChance,
