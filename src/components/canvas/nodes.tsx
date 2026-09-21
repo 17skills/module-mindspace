@@ -41,6 +41,7 @@ import {
 import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent, readAssignment } from "@/lib/zones";
 import {
+  factorText,
   normalizeWeights,
   paramsFromText,
   readFactor,
