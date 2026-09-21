@@ -210,11 +210,29 @@ function tokenize(expr: string): (number | string)[] | null {
   return tokens.length ? tokens : null;
 }
 
-/** German number formatting for results. */
-export function formatValue(value: number | null): string {
+/** Per-module number formatting (metadata.numFormat). */
+export type ValueFormat = { decimals: number | null; prefix: string; suffix: string };
+
+/** Read the format settings of a module from its metadata. */
+export function readFormat(meta: Record<string, unknown> | null | undefined): ValueFormat {
+  const raw = (meta?.["numFormat"] ?? {}) as Record<string, unknown>;
+  const decimalsRaw = raw["decimals"];
+  return {
+    decimals: typeof decimalsRaw === "number" && Number.isFinite(decimalsRaw) ? decimalsRaw : null,
+    prefix: typeof raw["prefix"] === "string" ? raw["prefix"] : "",
+    suffix: typeof raw["suffix"] === "string" ? raw["suffix"] : "",
+  };
+}
+
+/** German number formatting for results, with optional decimals/prefix/suffix. */
+export function formatValue(value: number | null, fmt?: ValueFormat): string {
   if (value == null) return "–";
-  const rounded = Math.round(value * 100) / 100;
-  return rounded.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+  const decimals = fmt?.decimals ?? null;
+  const body =
+    decimals != null
+      ? value.toLocaleString("de-DE", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+      : (Math.round(value * 100) / 100).toLocaleString("de-DE", { maximumFractionDigits: 2 });
+  return `${fmt?.prefix ?? ""}${body}${fmt?.suffix ?? ""}`;
 }
 
 export type SheetRow = { name: string; value: string; formula: string };
