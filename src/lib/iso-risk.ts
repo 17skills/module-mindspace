@@ -392,6 +392,49 @@ function baseMeasure(field: RiskField, ctx: RiskContext): RiskMeasure {
   };
 }
 
+/** Step by step explanation of one score, shown when a score is clicked. */
+export type ScoreExplain = {
+  formula: string;
+  inputs: { label: string; value: string; hint: string }[];
+  reason: string;
+  next: string;
+};
+
+export function explainScore(
+  field: RiskField & { score: number; klass: RiskClass },
+  measure: RiskMeasure,
+): ScoreExplain {
+  const source =
+    field.auto === "weather"
+      ? "aus dem Wetter der Karte berechnet"
+      : field.auto === "age"
+        ? "aus dem Baujahr der Anlagentabelle berechnet"
+        : "von Hand gesetzt";
+  return {
+    formula: `Score = Eintritt × Auswirkung = ${field.chance} × ${field.impact} = ${field.score}`,
+    inputs: [
+      {
+        label: "Eintritt (E)",
+        value: `${field.chance} – ${LIKELIHOOD_LABEL[field.chance]}`,
+        hint: source,
+      },
+      {
+        label: "Auswirkung (A)",
+        value: `${field.impact} – ${IMPACT_LABEL[field.impact]}`,
+        hint: "von Hand gesetzt",
+      },
+      { label: "Messwert", value: measure.text ?? "kein Messwert", hint: measure.source },
+      {
+        label: "Grenzwert",
+        value: measure.limit ?? "kein Grenzwert",
+        hint: measure.breach ? "Messwert erreicht oder überschreitet den Grenzwert" : "Messwert liegt darunter",
+      },
+    ],
+    reason: `${field.score} liegt im Bereich ${field.klass.range}. Deshalb gilt Klasse ${field.klass.key}: ${field.klass.label}.`,
+    next: field.klass.action,
+  };
+}
+
 /** Readable summary handed to the decision module and chat. */
 export function isoText(result: IsoResult): string {
   if (!result.fields.length) return "";
