@@ -1612,8 +1612,8 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
   const warn = num("warn", 60);
   const danger = num("danger", 85);
   const inputs = useIncoming(id);
-  const linked = inputs.find((input) => input.value != null);
-  const value = linked?.value ?? num("value", min);
+  const linked = pickLinked(inputs, meta["sourceEdge"]);
+  const value = (linked ? linked.value : null) ?? (linked ? min : num("value", min));
   const fmt = readFormat(meta);
 
   function patchFmt(next: Record<string, unknown>) {
