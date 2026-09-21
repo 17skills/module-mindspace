@@ -78,6 +78,10 @@ export type BoardApi = {
   agentStale: (id: string) => boolean;
   /** Open (or create) the calculation module belonging to a connection. */
   calcForEdge: (edgeId: string) => void;
+  /** Fetch the web API of an API module and store the answer. */
+  runApi: (id: string) => void;
+  /** Let a decision module judge its connected context. */
+  runDecide: (id: string) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
