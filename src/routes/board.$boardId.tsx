@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils";
 import { trackSave, useSaveStatus, clearSaveError } from "@/lib/save-status";
 import {
   BoardContext,
+  type ContextReport,
   type InspectorTab,
   type NodeRecord,
   type StructureItem,
@@ -76,6 +77,7 @@ import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
+import { isProfileLink, profileProvider } from "@/lib/profiles";
 import { segmentsFromFile } from "@/lib/segments";
 import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
@@ -160,28 +162,6 @@ function toolBtn(active = false) {
 }
 
 /** Fields of a template group, with positions relative to the group. */
-/** Social networks whose profiles need a login — never scrape them for context. */
-const PROFILE_HOSTS: Record<string, string> = {
-  "linkedin.com": "LinkedIn",
-  "xing.com": "Xing",
-  "x.com": "X",
-  "twitter.com": "X",
-  "instagram.com": "Instagram",
-  "facebook.com": "Facebook",
-  "fb.com": "Facebook",
-  "threads.net": "Threads",
-  "tiktok.com": "TikTok",
-  "mastodon.social": "Mastodon",
-};
-
-function profileProvider(hostname: string): string | null {
-  const host = hostname.toLowerCase();
-  for (const [domain, label] of Object.entries(PROFILE_HOSTS)) {
-    if (host === domain || host.endsWith(`.${domain}`)) return label;
-  }
-  return null;
-}
-
 function groupFields(container: NodeRecord, all: NodeRecord[]): NodeRecord[] {
   return all.filter((item) => item.type === "zone" && item.parent_id === container.id);
 }
@@ -556,6 +536,59 @@ function BoardPage() {
       );
     }
     return parts.join("\n\n---\n\n");
+  }, []);
+
+  /**
+   * Transparent breakdown for the chat module: which connected modules
+   * actually feed the chat, and which are deliberately left out (and why).
+   * Mirrors collectContext exactly — profile links never carry content.
+   */
+  const contextReport = useCallback((id: string): ContextReport => {
+    const connected = new Set<string>();
+    for (const edge of edgesRef.current) {
+      if (edge.source === id) connected.add(edge.target);
+      if (edge.target === id) connected.add(edge.source);
+    }
+    for (const nodeId of [...connected]) {
+      const record = recordsRef.current[nodeId];
+      if (record?.type === "frame") {
+        for (const candidate of Object.values(recordsRef.current)) {
+          if (candidate.parent_id === nodeId) connected.add(candidate.id);
+        }
+      }
+    }
+    const own = readAssignment(recordsRef.current[id]);
+    if (own) {
+      for (const candidate of Object.values(recordsRef.current)) {
+        if (candidate.id !== id && readAssignment(candidate)?.zoneId === own.zoneId) {
+          connected.add(candidate.id);
+        }
+      }
+    }
+    const report: ContextReport = { used: [], excluded: [] };
+    for (const nodeId of connected) {
+      const record = recordsRef.current[nodeId];
+      if (!record || record.type === "chat" || record.type === "frame" || record.type === "zone")
+        continue;
+      const title = record.title ?? "Modul";
+      if (isProfileLink(record)) {
+        report.excluded.push({ id: record.id, title, reason: "Profil-Link — kontextfrei" });
+      } else if (!record.content) {
+        report.excluded.push({
+          id: record.id,
+          title,
+          reason: record.status === "processing" ? "Wird noch eingelesen" : "Kein Inhalt",
+        });
+      } else {
+        report.used.push({
+          id: record.id,
+          title,
+          type: record.type,
+          chars: Math.min(record.content.length, 60_000),
+        });
+      }
+    }
+    return report;
   }, []);
 
   /** Assign a card to the background field it now sits on. */
@@ -1205,6 +1238,7 @@ function BoardPage() {
       updateNode,
       deleteNode,
       collectContext,
+      contextReport,
       addNoteFrom,
       extractStructure,
       openInspector,
@@ -1221,6 +1255,7 @@ function BoardPage() {
       updateNode,
       deleteNode,
       collectContext,
+      contextReport,
       addNoteFrom,
       extractStructure,
       openInspector,

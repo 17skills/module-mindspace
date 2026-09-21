@@ -150,6 +150,7 @@ function SharedBoardPage() {
       updateNode: noop,
       deleteNode: noop,
       collectContext: () => "",
+      contextReport: () => ({ used: [], excluded: [] }),
       addNoteFrom: noop,
       extractStructure: noop,
       openInspector: noop,
