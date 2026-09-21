@@ -1509,6 +1509,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
   const base = readFormat(meta);
   // a unit typed before the format bar existed keeps working as a suffix
   const fmt = base.suffix || !unit ? base : { ...base, suffix: unit };
+  const compare = typeof meta["compare"] === "string" ? meta["compare"] : "";
   const inputs = useIncoming(id);
   const linked = pickLinked(inputs, meta["sourceEdge"]);
   const value = linked?.value ?? manual;
