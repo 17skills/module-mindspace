@@ -2003,9 +2003,44 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
             ? `Kontext aus ${inputs.length} Verbindung${inputs.length === 1 ? "" : "en"}`
             : "Verbinde Inhalte, Felder oder API-Module mit diesem Modul."}
         </p>
+        <textarea
+          key={record.id + "policy"}
+          defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
+          placeholder="Regel, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
+          aria-label="Regel für die Entscheidung"
+          className="nodrag min-h-12 w-full resize-none rounded-md border border-border/70 bg-background px-2 py-1 text-xs outline-none"
+          onBlur={(e) =>
+            updateNode(record.id, {
+              metadata: { ...(record.metadata ?? {}), policy: e.target.value },
+            })
+          }
+        />
+        <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          Mindest-Sicherheit
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={5}
+            key={record.id + "minconf"}
+            defaultValue={threshold}
+            aria-label="Mindest-Sicherheit in Prozent"
+            className="nodrag w-16 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+            onBlur={(e) => {
+              const value = Number(e.target.value);
+              updateNode(record.id, {
+                metadata: {
+                  ...(record.metadata ?? {}),
+                  minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80,
+                },
+              });
+            }}
+          />
+          % – darunter keine Empfehlung
+        </label>
         {questions.map((question, index) => {
           const answer = answers.find((item) => item.id === question.id);
-          const low = typeof answer?.confidence === "number" && answer.confidence < 0.6;
+          const low = typeof answer?.confidence === "number" && answer.confidence * 100 < threshold;
           return (
             <div key={question.id} className="rounded-lg border border-border/70 p-2">
               <div className="flex items-start gap-1">
