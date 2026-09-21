@@ -703,7 +703,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                 </button>
               </div>
             </div>
-          )}
+          </>
         </div>
       ) : (
         <div className="nowheel flex-1 overflow-auto">
