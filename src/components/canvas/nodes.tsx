@@ -591,19 +591,12 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
   return (
     <Shell type={type} selected={selected} locked={Boolean(record.parent_id)} minHeight={200}>
       <Header record={record} />
-      <div className="flex items-center justify-end gap-2 border-b px-3 py-1 text-[11px] text-muted-foreground">
-        <button
-          className="nodrag hover:text-foreground hover:underline"
-          onClick={() => openInspector(record.id, "data")}
-        >
-          Bearbeiten
-        </button>
-        <button
-          className="nodrag hover:text-foreground hover:underline"
-          onClick={() => openInspector(record.id, "refresh")}
-        >
-          Aktualisieren
-        </button>
+      <div className="flex items-center justify-between gap-2 border-b bg-secondary/20 px-3 py-1.5 text-[10px] text-muted-foreground">
+        <span className="font-mono font-semibold">{rows.length} Zeilen · {columns.length} Felder</span>
+        <div className="flex gap-2">
+          <button className="nodrag font-semibold hover:text-foreground" onClick={() => openInspector(record.id, "data")}>Bearbeiten</button>
+          {selected && <button className="nodrag font-semibold hover:text-foreground" onClick={() => openInspector(record.id, "refresh")}>Aktualisieren</button>}
+        </div>
       </div>
 
       {type === "chart" && (
@@ -3130,7 +3123,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
 
       <div className="nowheel flex-1 overflow-auto p-2">
         {/* 5 x 5 matrix, likelihood over impact */}
-        <details className="group" open={selected}>
+        <details className="group" defaultOpen={Boolean(selected)}>
           <summary className="nodrag mb-1 flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
             5 × 5 Risikomatrix <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
           </summary>
