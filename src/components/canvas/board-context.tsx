@@ -108,6 +108,8 @@ export const NODE_ACCENT: Record<string, string> = {
   metric: "var(--primary)",
   gauge: "var(--primary)",
   sheet: "var(--primary)",
+  api: "var(--doc)",
+  decision: "var(--chat)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -127,4 +129,6 @@ export const NODE_LABEL: Record<string, string> = {
   gauge: "Tacho",
   sheet: "Rechenblatt",
   zone: "Feld",
+  api: "API",
+  decision: "Entscheidung",
 };
