@@ -287,9 +287,17 @@ export function sheetValues(
   return values;
 }
 
-/** Result of a sheet: the last row that resolves to a number. */
+/** Index of the row a sheet passes on (metadata.outputRow), if set. */
+export function sheetOutputRow(record: NodeRecord | undefined | null): number | null {
+  const raw = record?.metadata?.["outputRow"];
+  return typeof raw === "number" && Number.isInteger(raw) && raw >= 0 ? raw : null;
+}
+
+/** Result of a sheet: the chosen row, otherwise the last row that resolves. */
 export function sheetResult(record: NodeRecord | undefined | null): number | null {
   const values = sheetValues(record);
+  const chosen = sheetOutputRow(record);
+  if (chosen != null) return values[chosen] ?? null;
   for (let i = values.length - 1; i >= 0; i--) {
     const value = values[i];
     if (value != null) return value;

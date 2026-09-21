@@ -12,7 +12,7 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { calcInputs, evalFormula, formatValue, readFormat, sheetRows, sheetValues } from "@/lib/calc";
+import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent } from "@/lib/zones";
 import {
   Bar,
@@ -1465,16 +1465,53 @@ function FormatRow({ meta, onPatch }: { meta: Record<string, unknown>; onPatch: 
   );
 }
 
+/** Pick which incoming connection a metric/gauge displays. */
+function SourcePicker({
+  inputs,
+  value,
+  onChange,
+}: {
+  inputs: ReturnType<typeof useIncoming>;
+  value: string;
+  onChange: (edgeId: string) => void;
+}) {
+  if (inputs.length === 0) return null;
+  return (
+    <select
+      value={value}
+      aria-label="Quelle"
+      className="nodrag mt-1 w-full cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px] text-muted-foreground outline-none"
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {inputs.map((input) => (
+        <option key={input.edgeId} value={input.edgeId}>
+          {input.title}
+          {input.label ? ` (${input.label})` : ""}
+          {input.value == null ? " – kein Wert" : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** The incoming connection a module shows: the chosen one, else the first with a value. */
+function pickLinked(inputs: ReturnType<typeof useIncoming>, chosen: unknown) {
+  const byId = typeof chosen === "string" ? inputs.find((input) => input.edgeId === chosen) : undefined;
+  return byId ?? inputs.find((input) => input.value != null);
+}
+
 export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const manual = typeof meta["value"] === "number" ? meta["value"] : Number(meta["value"] ?? NaN);
   const unit = typeof meta["unit"] === "string" ? meta["unit"] : "";
+  const base = readFormat(meta);
+  // a unit typed before the format bar existed keeps working as a suffix
+  const fmt = base.suffix || !unit ? base : { ...base, suffix: unit };
   const compare = typeof meta["compare"] === "string" ? meta["compare"] : "";
-  const fmt = readFormat(meta);
   const inputs = useIncoming(id);
-  const linked = inputs.find((input) => input.value != null);
+  const linked = pickLinked(inputs, meta["sourceEdge"]);
   const value = linked?.value ?? manual;
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
@@ -1499,7 +1536,8 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
       <div className="nodrag flex flex-1 flex-col justify-center px-3 py-2">
         <div className="flex items-baseline gap-1">
           {(() => {
-            const text = formatValue(value ?? null, fmt);
+            const shown = linked ? linked.value : Number.isFinite(value) ? value : null;
+            const text = formatValue(shown ?? null, fmt);
             const size = text.length > 12 ? "text-lg" : text.length > 8 ? "text-2xl" : "text-3xl";
             return linked ? (
               <span className={`min-w-0 flex-1 truncate font-display font-semibold tracking-tight ${size}`}>
@@ -1521,24 +1559,19 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
               }}
             />
           )}
-          <input
-            key={record.id + unit}
-            defaultValue={unit}
-            placeholder="Einheit"
-            aria-label="Einheit"
-            className="w-16 bg-transparent text-sm text-muted-foreground outline-none"
-            onBlur={(e) => patch({ unit: e.target.value.trim() })}
-          />
         </div>
         {linked ? (
           <p className="mt-1 truncate text-[10px] text-muted-foreground">
-            Wert aus Verbindung: {linked.title}
+            {linked.value == null ? "Verbunden mit" : "Wert aus"} {linked.title}
             {linked.label ? ` (${linked.label})` : ""}
           </p>
-        ) : inputs.length > 0 ? (
-          <p className="mt-1 truncate text-[10px] text-muted-foreground">
-            Verbunden mit {inputs[0]?.title} – noch kein Zahlenwert
-          </p>
+        ) : null}
+        {selected ? (
+          <SourcePicker
+            inputs={inputs}
+            value={typeof meta["sourceEdge"] === "string" ? (meta["sourceEdge"] as string) : (linked?.edgeId ?? "")}
+            onChange={(edgeId) => patch({ sourceEdge: edgeId })}
+          />
         ) : null}
         <input
           key={record.id + compare}
@@ -1580,18 +1613,28 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
   const warn = num("warn", 60);
   const danger = num("danger", 85);
   const inputs = useIncoming(id);
-  const linked = inputs.find((input) => input.value != null);
-  const value = linked?.value ?? num("value", min);
+  const linked = pickLinked(inputs, meta["sourceEdge"]);
+  const value = (linked ? linked.value : null) ?? (linked ? min : num("value", min));
   const fmt = readFormat(meta);
 
   function patchFmt(next: Record<string, unknown>) {
-    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), numFormat: next } });
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
 
   const span = max - min || 1;
   const ratio = Math.min(1, Math.max(0, (value - min) / span));
   const angle = 180 + ratio * 180;
-  const colour = value >= danger ? "var(--destructive)" : value >= warn ? "var(--note)" : "var(--frame)";
+  const GREEN = "oklch(0.62 0.15 150)";
+  const ORANGE = "oklch(0.72 0.17 65)";
+  const RED = "oklch(0.58 0.2 27)";
+  const colour = value >= danger ? RED : value >= warn ? ORANGE : GREEN;
+  // the track shows the three ranges green → orange → red
+  const angleOf = (v: number) => 180 + Math.min(1, Math.max(0, (v - min) / (max - min || 1))) * 180;
+  const zones = [
+    { from: 180, to: angleOf(warn), colour: GREEN },
+    { from: angleOf(warn), to: angleOf(danger), colour: ORANGE },
+    { from: angleOf(danger), to: 360, colour: RED },
+  ].filter((zone) => zone.to - zone.from > 0.2);
   function patch(key: string, raw: string) {
     const text = raw.trim().replace(",", ".");
     updateNode(record.id, {
@@ -1619,6 +1662,16 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
       <div className="nodrag flex flex-1 flex-col items-center justify-center px-3 py-2">
         <svg viewBox="0 0 200 110" className="w-full max-w-56">
           <path d={arc(100, 100, 80, 180, 360)} fill="none" stroke="var(--border)" strokeWidth={14} strokeLinecap="round" />
+          {zones.map((zone) => (
+            <path
+              key={zone.colour}
+              d={arc(100, 100, 80, zone.from, zone.to)}
+              fill="none"
+              stroke={zone.colour}
+              strokeWidth={14}
+              strokeOpacity={0.22}
+            />
+          ))}
           <path
             d={arc(100, 100, 80, 180, Math.max(180.1, angle))}
             fill="none"
@@ -1646,28 +1699,35 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
           ))}
         </div>
         {linked ? (
-          selected ? (
-            <FormatRow meta={meta} onPatch={patchFmt} />
-          ) : (
-            <p className="mt-1 w-full truncate text-center text-[10px] text-muted-foreground">
-              Wert aus Verbindung: {linked.title}
-              {linked.label ? ` (${linked.label})` : ""}
-            </p>
-          )
+          <p className="mt-1 w-full truncate text-center text-[10px] text-muted-foreground">
+            {linked.value == null ? "Verbunden mit" : "Wert aus"} {linked.title}
+            {linked.label ? ` (${linked.label})` : ""}
+          </p>
         ) : (
-          <>
-            <input
-              key={record.id + "value" + String(meta["value"] ?? "")}
-              defaultValue={String(value)}
-              inputMode="decimal"
-              aria-label="Wert"
-              placeholder="Wert"
-              className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
-              onBlur={(e) => patch("value", e.target.value)}
-            />
-            {selected ? <FormatRow meta={meta} onPatch={patchFmt} /> : null}
-          </>
+          <input
+            key={record.id + "value" + String(meta["value"] ?? "")}
+            defaultValue={String(value)}
+            inputMode="decimal"
+            aria-label="Wert"
+            placeholder="Wert"
+            className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
+            onBlur={(e) => patch("value", e.target.value)}
+          />
         )}
+        {selected ? (
+          <>
+            <SourcePicker
+              inputs={inputs}
+              value={typeof meta["sourceEdge"] === "string" ? (meta["sourceEdge"] as string) : (linked?.edgeId ?? "")}
+              onChange={(edgeId) =>
+                updateNode(record.id, { metadata: { ...(record.metadata ?? {}), sourceEdge: edgeId } })
+              }
+            />
+            <div className="w-full">
+              <FormatRow meta={meta} onPatch={patchFmt} />
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -1688,6 +1748,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
   for (const input of inputs) if (input.value != null) extra[input.letter] = input.value;
   const rows = sheetRows(record);
   const values = sheetValues(record, extra);
+  const output = sheetOutputRow(record);
 
   function writeRows(next: { name: string; value: string; formula: string }[]) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), rows: next } });
@@ -1721,7 +1782,22 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
         )}
         {rows.map((row, index) => (
           <div key={index} className="flex items-center gap-1 py-0.5 text-xs">
-            <span className="w-6 shrink-0 font-mono text-[10px] text-muted-foreground">R{index + 1}</span>
+            <button
+              title={output === index ? "Wird weitergegeben" : "Diese Zeile weitergeben"}
+              aria-label={`Zeile ${index + 1} weitergeben`}
+              className={`w-6 shrink-0 rounded-md font-mono text-[10px] ${
+                output === index
+                  ? "bg-accent font-semibold text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent"
+              }`}
+              onClick={() =>
+                updateNode(record.id, {
+                  metadata: { ...(record.metadata ?? {}), outputRow: output === index ? null : index },
+                })
+              }
+            >
+              R{index + 1}
+            </button>
             <input
               defaultValue={row.name}
               key={`n${index}${row.name}`}
