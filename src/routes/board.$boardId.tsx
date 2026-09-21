@@ -187,6 +187,7 @@ const DASHBOARD_MODULES = [
   { id: "metric", label: "Kennzahl", title: "Kennzahl", metadata: { value: null, unit: "", compare: "" } },
   { id: "gauge", label: "Tacho", title: "Tacho", metadata: { min: 0, max: 100, warn: 60, danger: 85, value: 0 } },
   { id: "sheet", label: "Rechenblatt", title: "Rechenblatt", metadata: { rows: [] } },
+  { id: "signal", label: "Signal (Ampel)", title: "Signal", metadata: { question: "" } },
 ] as const;
 
 /** Space a template group leaves around its fields. */
