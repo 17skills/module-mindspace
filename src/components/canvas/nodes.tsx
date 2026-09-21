@@ -411,11 +411,14 @@ export const ZONE_COLORS: readonly ZoneColor[] = [
 
 export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode, resizeZone } = useBoard();
+  const { updateNode, resizeZone, runAgent, agentStale, openInspector } = useBoard();
   const color = record.color ?? ZONE_WHITE;
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const isGroup = meta["templateGroup"] === true;
   const locked = meta["locked"] === true;
+  const agent = readAgent(record);
+  const running = meta["agentRunning"] === true;
+  const stale = agent ? agentStale(record.id) : false;
   return (
     <>
       <NodeResizer
@@ -425,6 +428,7 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
         color="var(--primary)"
         onResizeEnd={(_, params) => resizeZone(record.id, params.width, params.height)}
       />
+      {agent && <Handle type="source" position={Position.Right} />}
       <div
         className={`relative h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
         style={{
@@ -447,6 +451,56 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
         />
         {locked && (
           <Lock className="pointer-events-none absolute top-3.5 right-3.5 size-3.5 text-muted-foreground/70" />
+        )}
+        {agent && (
+          <div className="nodrag absolute inset-x-2 bottom-2 rounded-xl border border-border/70 bg-card/95 px-3 py-2 shadow-[var(--shadow-card)]">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-3.5 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 truncate font-display text-base font-semibold tracking-tight">
+                {running
+                  ? "Analysiert …"
+                  : agent.result
+                    ? `${agent.result}${agent.unit ? ` ${agent.unit}` : ""}`
+                    : "Noch kein Ergebnis"}
+              </span>
+              {stale && !running && (
+                <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] text-destructive">
+                  veraltet
+                </span>
+              )}
+              <UiTooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    aria-label="Feld neu analysieren"
+                    disabled={running}
+                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
+                    onClick={() => runAgent(record.id)}
+                  >
+                    <RefreshCw className={`size-3.5${running ? " animate-spin" : ""}`} />
+                  </button>
+                </TooltipTrigger>
+                <UiTooltipContent>Neu analysieren</UiTooltipContent>
+              </UiTooltip>
+            </div>
+            {agent.reason && (
+              <details className="mt-1">
+                <summary className="cursor-pointer text-[11px] text-muted-foreground">
+                  Begründung
+                </summary>
+                <p className="mt-1 max-h-24 overflow-auto text-[11px] leading-snug text-muted-foreground">
+                  {agent.reason}
+                </p>
+              </details>
+            )}
+            <button
+              className="mt-1 text-[10px] text-muted-foreground hover:underline"
+              onClick={() => openInspector(record.id, "agent")}
+            >
+              {agent.at
+                ? `Zuletzt: ${new Date(agent.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} · Auftrag bearbeiten`
+                : "Auftrag bearbeiten"}
+            </button>
+          </div>
         )}
       </div>
     </>
