@@ -18,7 +18,13 @@ Nimmt die Punkte der Karte entgegen und ordnet sie in ein Raster aus **Eintritts
 - 5×5-Raster mit Farbverlauf grün → gelb → rot, jeder Punkt als Kügelchen im passenden Feld, Klick zeigt den Namen.
 - Regeln in eigenen Worten pro Stufe: Schwellen für Regenmenge und Wind sind einstellbar (z. B. „ab 25 mm/h = hoch"), Auswirkung wahlweise aus einer Spalte oder je Klasse gesetzt.
 - Kopfzeile: Anzahl Objekte je Stufe und die höchste erreichte Stufe.
-- Ausgang: höchste Risikostufe als Zahl (1–5) — damit lässt sich die vorhandene Ampel oder das Entscheidungsmodul direkt anschließen.
+- Ausgang: höchste Risikostufe als Zahl (1–5) — damit lässt sich die vorhandene Ampel direkt anschließen.
+
+## 3. JEV als Entscheider (bereits vorhanden, wird mitgenutzt)
+
+Das bestehende Entscheidungsmodul bleibt der Entscheider: Karte und Risikokarte liefern ihm den Kontext (Objekte, Wetterwerte, Risikostufen), und JEV beantwortet daraus Fragen wie „Maßnahme auslösen: ja/nein?" je Objekt oder Standort — mit Sicherheitswert, eigener Regel je Frage und Mindest-Sicherheit wie gehabt. Die Ampel daneben zeigt das Ergebnis.
+
+Dafür nötig: Karte und Risikokarte schreiben ihre Lage als lesbaren Text in den Kontext (`collectContext`), damit das Entscheidungsmodul sie ohne Umweg auswerten kann.
 
 Beides erscheint in der unteren Leiste, ist verbindbar, in Gruppen und Feldern nutzbar, in der Bibliothek speicherbar und in der geteilten Nur-Lesen-Ansicht sichtbar.
 
