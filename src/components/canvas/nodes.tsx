@@ -3203,6 +3203,55 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     );
   }
 
+  /** Write one cell and keep the old value in the change log. */
+  function commit(
+    fieldId: string,
+    key: RiskChange["key"],
+    value: string | number | undefined,
+    extra?: Partial<RiskField>,
+  ) {
+    const current = config.fields.find((field) => field.id === fieldId);
+    if (!current) return;
+    const from = current[key];
+    if ((from ?? "") === (value ?? "")) return;
+    const entry: RiskChange = {
+      id: `${Date.now()}-${key}-${fieldId}`,
+      at: Date.now(),
+      fieldId,
+      code: current.code,
+      label: current.name,
+      key,
+      from,
+      to: value,
+    };
+    patch({
+      fields: config.fields.map((field) =>
+        field.id === fieldId ? { ...field, ...extra, [key]: value } : field,
+      ),
+      history: [entry, ...config.history].slice(0, 40),
+    });
+  }
+
+  /** Take back the latest edit and restore the previous cell value. */
+  function undoLast() {
+    const [last, ...rest] = config.history;
+    if (!last) return;
+    patch({
+      fields: config.fields.map((field) =>
+        field.id === last.fieldId ? { ...field, [last.key]: last.from } : field,
+      ),
+      history: rest,
+    });
+  }
+
+  function changeText(value: string | number | undefined): string {
+    if (value === undefined || value === "") return "leer";
+    if (value === "none") return "eigener Wert";
+    if (value === "weather") return "Wetter der Karte";
+    if (value === "age") return "Alter der Anlagen";
+    return String(value);
+  }
+
   function addField() {
     const next = config.fields.length + 1;
     setFields([
