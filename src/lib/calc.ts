@@ -1,15 +1,22 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
 
-/** Numeric value a module contributes to calculations (metadata.value). */
-export function nodeValue(record: NodeRecord | undefined): number | null {
-  const raw = record?.metadata?.["value"];
+function toNumber(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string") {
-    const parsed = Number(raw.replace(",", "."));
-    if (Number.isFinite(parsed)) return parsed;
+    const parsed = Number(raw.replace(/\s/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+    if (Number.isFinite(parsed) && raw.trim() !== "") return parsed;
   }
   return null;
+}
+
+/** Numeric value a module contributes to calculations (metadata.value). */
+export function nodeValue(record: NodeRecord | undefined): number | null {
+  if (!record) return null;
+  // a background field contributes the result of its agent
+  if (record.type === "zone") return toNumber(record.metadata?.["agentResult"]);
+  if (record.type === "sheet") return sheetResult(record);
+  return toNumber(record.metadata?.["value"]);
 }
 
 /**
