@@ -8,7 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** Only same-origin relative paths are accepted as a return target. */
+function safeNext(raw: unknown): string | null {
+  return typeof raw === "string" && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+}
+
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>): { next?: string } => {
+    const next = safeNext(s["next"]);
+    return next ? { next } : {};
+  },
   head: () => ({
     meta: [
       { title: "Anmelden – Canvas Spark" },
@@ -30,15 +39,26 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const { user, loading } = useAuth();
+  const target = safeNext(next);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  function done() {
+    if (target) {
+      window.location.href = target;
+      return;
+    }
+    void navigate({ to: "/" });
+  }
+
   useEffect(() => {
-    if (!loading && user) void navigate({ to: "/" });
-  }, [loading, user, navigate]);
+    if (!loading && user) done();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -48,7 +68,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: target ? window.location.origin + target : window.location.origin },
         });
         if (error) throw error;
         toast.success("Fast fertig", {
@@ -57,7 +77,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        void navigate({ to: "/" });
+        done();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Anmeldung fehlgeschlagen");
@@ -68,14 +88,14 @@ function AuthPage() {
 
   async function google() {
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: target ? window.location.origin + target : window.location.origin,
     });
     if (result.error) {
       toast.error("Google-Anmeldung fehlgeschlagen");
       return;
     }
     if (result.redirected) return;
-    void navigate({ to: "/" });
+    done();
   }
 
   return (
