@@ -536,7 +536,7 @@ type Msg = { id?: string; role: "user" | "assistant"; content: string };
 
 export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { collectContext, addNoteFrom } = useBoard();
+  const { collectContext, contextReport, addNoteFrom, focusNode } = useBoard();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -652,6 +652,8 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
           </SelectContent>
         </Select>
       </div>
+
+      <ContextBar report={contextReport(record.id)} onFocus={focusNode} />
 
       <div ref={scrollRef} className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
         {messages.length === 0 && (
