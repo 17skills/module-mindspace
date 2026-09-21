@@ -67,3 +67,61 @@ export function zoneLabel(
     color: zone.color,
   };
 }
+
+export type ZoneAgent = {
+  task: string;
+  kind: "number" | "text";
+  unit: string;
+  result: string;
+  reason: string;
+  at: string;
+  fingerprint: string;
+};
+
+/** Agent settings and last result of a background field. */
+export function readAgent(record: NodeRecord | undefined | null): ZoneAgent | null {
+  const meta = (record?.metadata ?? {}) as Record<string, unknown>;
+  const task = typeof meta["agentTask"] === "string" ? (meta["agentTask"] as string) : "";
+  if (!task.trim()) return null;
+  const str = (key: string) => (typeof meta[key] === "string" ? (meta[key] as string) : "");
+  return {
+    task,
+    kind: meta["agentKind"] === "text" ? "text" : "number",
+    unit: str("agentUnit"),
+    result: str("agentResult"),
+    reason: str("agentReason"),
+    at: str("agentAt"),
+    fingerprint: str("agentFingerprint"),
+  };
+}
+
+/** Cards assigned to a field — the agent's context. */
+export function zoneMembers(zoneId: string, all: NodeRecord[]): NodeRecord[] {
+  return all
+    .filter(
+      (item) =>
+        readAssignment(item)?.zoneId === zoneId &&
+        item.type !== "zone" &&
+        item.type !== "chat" &&
+        item.type !== "frame",
+    )
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Changes on the field: ids plus content length of every card lying on it. */
+export function zoneFingerprint(members: NodeRecord[]): string {
+  return members
+    .map((item) => `${item.id}:${(item.content ?? "").length}:${item.title ?? ""}`)
+    .join("|");
+}
+
+/** Text handed to the agent as its context. */
+export function zoneContext(zone: NodeRecord, members: NodeRecord[]): string {
+  return members
+    .map((item) => {
+      const assignment = readAssignment(item);
+      const note = assignment?.note ? ` — Begründung: ${assignment.note}` : "";
+      return `### [${zone.title ?? "Feld"} · ${assignment?.role ?? "Beispiel"}]${note} ${item.title ?? "Modul"}\n${(item.content ?? "").slice(0, 60_000)}`;
+    })
+    .join("\n\n---\n\n");
+}
