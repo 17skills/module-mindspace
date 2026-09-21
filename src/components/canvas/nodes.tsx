@@ -2124,6 +2124,45 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                   ⇢
                 </button>
               </div>
+              <div className="mt-1 flex items-center gap-1">
+                <input
+                  key={question.id + "rule"}
+                  defaultValue={question.rule ?? ""}
+                  placeholder="Eigene Regel für diese Frage (optional)"
+                  aria-label={`Regel der Frage ${index + 1}`}
+                  className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border"
+                  onBlur={(e) => {
+                    const next = [...questions];
+                    next[index] = { ...question, rule: e.target.value };
+                    writeQuestions(next);
+                  }}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={5}
+                  key={question.id + "minconf"}
+                  defaultValue={own ?? ""}
+                  placeholder={`${Math.round(threshold)}`}
+                  title="Eigene Mindest-Sicherheit in Prozent"
+                  aria-label={`Mindest-Sicherheit der Frage ${index + 1}`}
+                  className="nodrag w-14 shrink-0 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+                  onBlur={(e) => {
+                    const value = Number(e.target.value);
+                    const next = [...questions];
+                    next[index] = {
+                      ...question,
+                      minConfidence:
+                        e.target.value.trim() === "" || !Number.isFinite(value)
+                          ? null
+                          : Math.min(100, Math.max(0, value)),
+                    };
+                    writeQuestions(next);
+                  }}
+                />
+                <span className="shrink-0 text-[10px] text-muted-foreground">%</span>
+              </div>
               {answer && (
                 <p className="mt-1 text-xs">
                   <span className="font-medium">{answerLabel(answer)}</span>
