@@ -1,6 +1,7 @@
 # Roadmap
 
-- [x] Untere, schwebende Symbolleiste für die Arbeitsfläche umsetzen
-- [x] Text-Hinweise in der Kopfzeile durch zugängliche Tooltips ersetzen
-- [x] Darstellung und Bedienung auf der laufenden Arbeitsfläche prüfen
-- [x] Startseite an Markenangaben anpassen (Logo Navy)
+- [x] Entscheidung statusorientiert und kompakt gestalten
+- [x] Risikomatrix auf Kernaussagen reduzieren
+- [x] Karte mit Wetterstatus und Objektzahl priorisieren
+- [x] Signale, Kennzahlen, Notizen und Tabellen verdichten
+- [x] Vollständiges Board visuell und technisch prüfen

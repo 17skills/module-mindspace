@@ -21,7 +21,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { BookOpen, Calculator, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, ChevronRight, CloudSun, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -401,13 +401,22 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   return (
     <Shell type="note" selected={selected} locked={Boolean(record.parent_id)}>
       <Header record={record} />
-      <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
-        placeholder="Notiz schreiben …"
-        className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
-      />
+      {selected ? (
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text !== record.content && updateNode(record.id, { content: text })}
+          placeholder="Notiz schreiben …"
+          className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
+        />
+      ) : (
+        <div className="flex flex-1 flex-col justify-between gap-2 px-3 py-2.5">
+          <p className="line-clamp-4 whitespace-pre-line text-xs leading-relaxed text-foreground/80">
+            {text || "Leere Notiz"}
+          </p>
+          <span className="text-[9px] font-semibold uppercase text-muted-foreground">Auswählen zum Bearbeiten</span>
+        </div>
+      )}
     </Shell>
   );
 });
@@ -582,19 +591,12 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
   return (
     <Shell type={type} selected={selected} locked={Boolean(record.parent_id)} minHeight={200}>
       <Header record={record} />
-      <div className="flex items-center justify-end gap-2 border-b px-3 py-1 text-[11px] text-muted-foreground">
-        <button
-          className="nodrag hover:text-foreground hover:underline"
-          onClick={() => openInspector(record.id, "data")}
-        >
-          Bearbeiten
-        </button>
-        <button
-          className="nodrag hover:text-foreground hover:underline"
-          onClick={() => openInspector(record.id, "refresh")}
-        >
-          Aktualisieren
-        </button>
+      <div className="flex items-center justify-between gap-2 border-b bg-secondary/20 px-3 py-1.5 text-[10px] text-muted-foreground">
+        <span className="font-mono font-semibold">{rows.length} Zeilen · {columns.length} Felder</span>
+        <div className="flex gap-2">
+          <button className="nodrag font-semibold hover:text-foreground" onClick={() => openInspector(record.id, "data")}>Bearbeiten</button>
+          {selected && <button className="nodrag font-semibold hover:text-foreground" onClick={() => openInspector(record.id, "refresh")}>Aktualisieren</button>}
+        </div>
       </div>
 
       {type === "chart" && (
@@ -1998,6 +2000,21 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
   const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
+  const confidenceOf = (answer: (typeof answers)[number] | undefined) => {
+    const value = Number(answer?.confidence);
+    return Number.isFinite(value) ? value : null;
+  };
+  const answered = answers.filter((answer) => answerLabel(answer) !== "–");
+  const ratedAnswers = answers.filter((answer) => confidenceOf(answer) !== null);
+  const confidence = ratedAnswers.length
+    ? Math.round(ratedAnswers.reduce((sum, answer) => sum + (confidenceOf(answer) ?? 0), 0) / ratedAnswers.length * 100)
+    : null;
+  const reviewCount = questions.filter((question) => {
+    const answer = answers.find((item) => item.id === question.id);
+    const limit = typeof question.minConfidence === "number" ? question.minConfidence : threshold;
+    const answerConfidence = confidenceOf(answer);
+    return answerConfidence === null || answerConfidence * 100 < limit;
+  }).length;
 
   function writeQuestions(next: DecisionQuestion[]) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), questions: next } });
@@ -2022,67 +2039,45 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
           onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Entscheidung" })}
         />
-        <Button
-          size="sm"
-          variant="secondary"
-          className="nodrag h-7 rounded-full text-xs"
-          disabled={running || questions.length === 0}
-          onClick={() => runDecide(record.id)}
-        >
-          <Sparkles className={`mr-1 size-3 ${running ? "animate-pulse" : ""}`} />
-          {running ? "Prüft …" : "Entscheiden"}
-        </Button>
+        <span className="rounded-full border bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+          {inputs.length} Quellen
+        </span>
       </div>
 
-      <div className="nowheel flex-1 space-y-2 overflow-auto px-3 py-2">
-        <p className="text-[10px] text-muted-foreground">
-          {inputs.length > 0
-            ? `Kontext aus ${inputs.length} Verbindung${inputs.length === 1 ? "" : "en"}`
-            : "Verbinde Inhalte, Felder oder API-Module mit diesem Modul."}
-        </p>
-        <textarea
-          key={record.id + "policy"}
-          defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
-          placeholder="Regel für alle Fragen, z. B. Nur kaufen, wenn der 24h-Trend positiv ist."
-          aria-label="Regel für alle Fragen"
-          className="nodrag min-h-12 w-full resize-none rounded-md border border-border/70 bg-background px-2 py-1 text-xs outline-none"
-          onBlur={(e) =>
-            updateNode(record.id, {
-              metadata: { ...(record.metadata ?? {}), policy: e.target.value },
-            })
-          }
-        />
-        <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          Mindest-Sicherheit
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={5}
-            key={record.id + "minconf"}
-            defaultValue={threshold}
-            aria-label="Mindest-Sicherheit in Prozent"
-            className="nodrag w-16 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
-            onBlur={(e) => {
-              const value = Number(e.target.value);
-              updateNode(record.id, {
-                metadata: {
-                  ...(record.metadata ?? {}),
-                  minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80,
-                },
-              });
-            }}
-          />
-          % – darunter keine Empfehlung (gilt für alle Fragen ohne eigene Angabe)
-        </label>
+      <div className={`border-b px-3 py-3 ${reviewCount ? "bg-destructive/10" : "bg-support/10"}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <span className="text-[9px] font-bold uppercase text-muted-foreground">Aktuelle Lage</span>
+            <p className="font-display text-xl font-bold leading-tight">
+              {answered.length === 0 ? "Noch nicht bewertet" : reviewCount ? `${reviewCount} Prüfungen offen` : "Entscheidung belastbar"}
+            </p>
+          </div>
+          <span className="rounded-full border bg-card px-2 py-1 font-mono text-[10px] font-semibold">
+            {confidence === null ? "–" : `${confidence} % sicher`}
+          </span>
+        </div>
+      </div>
+
+      <div className="nowheel flex-1 overflow-auto px-3 py-2">
         {questions.map((question, index) => {
           const answer = answers.find((item) => item.id === question.id);
           const own = typeof question.minConfidence === "number" ? question.minConfidence : null;
           const limit = own ?? threshold;
           const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
-            <div key={question.id} className="rounded-md border border-border/70 bg-secondary/20 p-2 transition-colors hover:bg-secondary/35">
-              <div className="flex items-start gap-1">
+            <details key={question.id} className="group border-b border-border/60 py-1.5 last:border-0">
+              <summary className="nodrag flex cursor-pointer list-none items-center gap-2 py-1">
+                <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${low ? "bg-destructive/10 text-destructive" : answer ? "bg-support/10 text-support" : "bg-secondary text-muted-foreground"}`}>
+                  {low ? <AlertTriangle className="size-3.5" /> : <span className="font-mono text-[10px]">{index + 1}</span>}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">{question.instructions || `Frage ${index + 1}`}</span>
+                <span className={`shrink-0 text-[10px] font-semibold ${low ? "text-destructive" : "text-muted-foreground"}`}>
+                  {answer ? answerLabel(answer) : "Offen"}
+                </span>
+                <ChevronRight className="size-3 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+              </summary>
+              <div className="mt-1 rounded-md bg-secondary/30 p-2">
+                <div className="flex items-start gap-1">
                 <textarea
                   key={question.id + question.instructions}
                   defaultValue={question.instructions}
@@ -2210,20 +2205,38 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                   )}
                 </p>
               )}
-            </div>
+              </div>
+            </details>
           );
         })}
-        <button
-          className="nodrag flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
-          onClick={() =>
-            writeQuestions([
-              ...questions,
-              { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] },
-            ])
-          }
-        >
-          <Plus className="size-3" /> Frage
-        </button>
+      </div>
+      <details className="group border-t bg-secondary/20 px-3 py-1.5">
+        <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
+          Konfiguration <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="space-y-2 py-2">
+          <textarea
+            key={record.id + "policy"}
+            defaultValue={typeof meta["policy"] === "string" ? (meta["policy"] as string) : ""}
+            placeholder="Gemeinsame Regel"
+            aria-label="Regel für alle Fragen"
+            className="nodrag min-h-12 w-full resize-none rounded-md border bg-background px-2 py-1 text-xs outline-none"
+            onBlur={(e) => updateNode(record.id, { metadata: { ...(record.metadata ?? {}), policy: e.target.value } })}
+          />
+          <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            Mindest-Sicherheit
+            <span><input type="number" min={0} max={100} step={5} key={record.id + "minconf"} defaultValue={threshold} aria-label="Mindest-Sicherheit in Prozent" className="nodrag w-14 rounded-md border bg-background px-1 py-0.5 text-right" onBlur={(e) => { const value = Number(e.target.value); updateNode(record.id, { metadata: { ...(record.metadata ?? {}), minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80 } }); }} /> %</span>
+          </label>
+          <button className="nodrag flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground" onClick={() => writeQuestions([...questions, { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] }])}>
+            <Plus className="size-3" /> Frage hinzufügen
+          </button>
+        </div>
+      </details>
+      <div className="border-t p-2.5">
+        <Button className="nodrag w-full font-semibold" disabled={running || questions.length === 0} onClick={() => runDecide(record.id)}>
+          <Sparkles className={`mr-1.5 size-3.5 ${running ? "animate-pulse" : ""}`} />
+          {running ? "Prüft …" : "Entscheidung aktualisieren"}
+        </Button>
       </div>
     </div>
   );
@@ -2295,20 +2308,14 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
         className="flex flex-1 flex-col items-center justify-center gap-1 px-3 py-3 text-center"
         style={{ background: tone.bg, color: tone.fg }}
       >
+        <span className="text-[9px] font-bold uppercase opacity-80">Aktueller Status</span>
         <span className="font-display text-4xl font-semibold leading-none tracking-tight">
           {confidence === null ? "–" : `${Math.round(confidence)} %`}
         </span>
         <span className="font-display text-base font-semibold tracking-tight">{tone.text}</span>
         {confidence !== null && (
-          <span className="text-[10px] opacity-90">
-            Sicherheit · Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : ""}
-          </span>
+          <span className="text-[10px] opacity-90">Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : " erreicht"}</span>
         )}
-        <span className="text-[10px] opacity-80">
-          {typeof meta["hint"] === "string" && meta["hint"]
-            ? (meta["hint"] as string)
-            : "Simulation – kein echter Kauf"}
-        </span>
       </div>
       {selected && (
         <div className="border-t px-2 py-1.5">
@@ -2866,6 +2873,19 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
         </Button>
       </div>
 
+      <div className="flex items-center justify-between gap-3 border-b bg-secondary/25 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${risky ? "bg-destructive/10 text-destructive" : "bg-support/10 text-support"}`}>
+            <CloudSun className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-bold">{risky ? `${risky} Wetterwarnungen` : `${points.length} Anlagen stabil`}</p>
+            <p className="truncate text-[9px] text-muted-foreground">{config.lastAt ? `Stand ${new Date(config.lastAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "Wetter noch nicht abgerufen"}</p>
+          </div>
+        </div>
+        <span className="shrink-0 font-mono text-xs font-semibold">{points.length} Objekte</span>
+      </div>
+
       <div className="relative flex-1">
         <ClientOnly
           fallback={
@@ -2914,14 +2934,6 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
           </button>
         </div>
       )}
-
-      <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[10px] text-muted-foreground">
-        <span>
-          {points.length} Objekte · {risky} mit starkem Regen
-        </span>
-        <span>{config.lastAt ? new Date(config.lastAt).toLocaleString("de-DE") : "kein Abruf"}</span>
-      </div>
-
 
       {picked && (
         <div className="border-t px-3 py-1.5 text-[11px]">
@@ -3101,8 +3113,26 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         </span>
       </div>
 
+      <div className="border-b px-3 py-3" style={{ background: `color-mix(in oklab, ${result.portfolio.color} 20%, var(--card))` }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold uppercase text-muted-foreground">Aktuelle Risikostufe</span>
+            <p className="truncate font-display text-2xl font-bold leading-none">{result.portfolio.label}</p>
+            <p className="mt-1 truncate text-[10px] text-muted-foreground">Höchstes Risiko: {result.fields.find((field) => field.score === result.highest)?.name ?? "–"}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="font-mono text-xl font-bold">{result.index}</span>
+            <p className="text-[9px] uppercase text-muted-foreground">Index / 100</p>
+          </div>
+        </div>
+      </div>
+
       <div className="nowheel flex-1 overflow-auto p-2">
         {/* 5 x 5 matrix, likelihood over impact */}
+        <details className="group">
+          <summary className="nodrag mb-1 flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
+            5 × 5 Risikomatrix <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          </summary>
         <div className="flex gap-1">
           <span className="w-4 shrink-0 rotate-180 self-center text-center text-[9px] text-muted-foreground [writing-mode:vertical-rl]">
             Eintrittswahrscheinlichkeit
@@ -3151,9 +3181,11 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
             <p className="pl-16 pt-0.5 text-center text-[9px] text-muted-foreground">Auswirkung</p>
           </div>
         </div>
+        </details>
 
         {/* risk fields, editable */}
         <div className="mt-2 space-y-1 border-t pt-2">
+          <p className="mb-1 text-[9px] font-bold uppercase text-muted-foreground">Priorisierte Risiken</p>
           {result.fields.map((field) => (
             <div key={field.id} className="rounded-md border border-border/60">
               <div className="flex items-center gap-1.5 px-1.5 py-1 text-[10px]">
@@ -3274,37 +3306,19 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
           </button>
         </div>
 
-        {/* legend */}
-        <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 border-t pt-1.5 text-[9px]">
-          {RISK_CLASSES.map((item) => (
-            <span key={item.key} className="flex items-center gap-1">
-              <span className="size-2 rounded-sm" style={{ background: item.color }} />
-              {item.label} · {item.range}
-            </span>
-          ))}
-        </div>
-
-        {/* portfolio result */}
-        <div
-          className="mt-2 rounded-md px-2 py-1.5 text-[10px] text-slate-900"
-          style={{ background: result.portfolio.color }}
-        >
-          <strong>Portfolio-Klasse {result.portfolio.label}</strong> · {result.portfolio.action}
-          <br />
-          Höchster Einzelscore {result.highest} · Index {result.index} / 100
-        </div>
-
-        <p className="mt-1.5 text-[9px] text-muted-foreground">
-          {focus.label
-            ? `Auf der Karte hervorgehoben: ${focus.label} (${focus.ids.length} Objekte)`
-            : "Auf ein Risiko tippen: betroffene Objekte werden auf der Karte hervorgehoben."}
-        </p>
-
-        <p className="mt-1.5 border-t pt-1.5 text-[10px] text-muted-foreground">
-          {decisions.length
-            ? `Lage geht an: ${decisions.map((item) => item.title ?? "Entscheidung").join(", ")} – dort auf „Entscheiden“ klicken.`
-            : "Noch mit keinem Entscheidungs-Modul verbunden – Verbindung vom rechten Punkt zum Entscheidungs-Modul ziehen."}
-        </p>
+        <details className="group mt-2 border-t pt-1.5">
+          <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[9px] font-bold uppercase text-muted-foreground">
+            Einordnung & Weitergabe <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          </summary>
+          <div className="mt-1.5 space-y-1.5 text-[9px] text-muted-foreground">
+            <div className="flex flex-wrap gap-x-2 gap-y-1">
+              {RISK_CLASSES.map((item) => <span key={item.key} className="flex items-center gap-1"><span className="size-2 rounded-sm" style={{ background: item.color }} />{item.label} · {item.range}</span>)}
+            </div>
+            <p>{result.portfolio.action}</p>
+            <p>{focus.label ? `Karte: ${focus.label} (${focus.ids.length} Objekte)` : "Risiko auswählen, um Objekte auf der Karte zu markieren."}</p>
+            <p>{decisions.length ? `Weitergabe an ${decisions.map((item) => item.title ?? "Entscheidung").join(", ")}` : "Noch keine Entscheidung verbunden"}</p>
+          </div>
+        </details>
 
         {selected && (
           <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2 text-[10px]">
