@@ -8,16 +8,19 @@ import {
   type WeatherValue,
 } from "@/lib/geo";
 import {
+  CHANGE_LABEL,
   IMPACT_LABEL,
   LIKELIHOOD_LABEL,
   RISK_CLASSES,
   ageChance,
   evaluate,
+  explainScore,
   isoText,
   measureOf,
   readIsoRisk,
   scoreColor,
   weatherChance,
+  type RiskChange,
   type RiskField,
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
@@ -3072,7 +3075,8 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
   const flowNodes = useStore((state) => state.nodes);
   const config = readIsoRisk(record);
   const [openField, setOpenField] = useState<string | null>(null);
-  const [view, setView] = useState<"tabelle" | "matrix" | "einordnung">("tabelle");
+  const [explainField, setExplainField] = useState<string | null>(null);
+  const [view, setView] = useState<"tabelle" | "matrix" | "einordnung" | "verlauf">("tabelle");
 
   const { mapRecords, tables, decisions } = useMemo(() => {
     const byId = Object.fromEntries(
@@ -3199,6 +3203,79 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     );
   }
 
+  /** Write one cell and keep the old value in the change log. */
+  function commit(
+    fieldId: string,
+    key: RiskChange["key"],
+    value: string | number | undefined,
+    extra?: Partial<RiskField>,
+  ) {
+    const current = config.fields.find((field) => field.id === fieldId);
+    if (!current) return;
+    const from = current[key];
+    if ((from ?? "") === (value ?? "")) return;
+    const entry: RiskChange = {
+      id: `${Date.now()}-${key}-${fieldId}`,
+      at: Date.now(),
+      fieldId,
+      code: current.code,
+      label: current.name,
+      key,
+      from,
+      to: value,
+    };
+    patch({
+      fields: config.fields.map((field) =>
+        field.id === fieldId ? { ...field, ...extra, [key]: value } : field,
+      ),
+      history: [entry, ...config.history].slice(0, 40),
+    });
+  }
+
+  /** Drop own measurement and threshold of one row in a single step. */
+  function resetOverrides(fieldId: string) {
+    const current = config.fields.find((field) => field.id === fieldId);
+    if (!current) return;
+    const entries: RiskChange[] = (["measureText", "limitText"] as const)
+      .filter((key) => current[key])
+      .map((key) => ({
+        id: `${Date.now()}-${key}-${fieldId}`,
+        at: Date.now(),
+        fieldId,
+        code: current.code,
+        label: current.name,
+        key,
+        from: current[key],
+        to: "",
+      }));
+    patch({
+      fields: config.fields.map((field) =>
+        field.id === fieldId ? { ...field, measureText: "", limitText: "" } : field,
+      ),
+      history: [...entries, ...config.history].slice(0, 40),
+    });
+  }
+
+  /** Take back the latest edit and restore the previous cell value. */
+  function undoLast() {
+    const [last, ...rest] = config.history;
+    if (!last) return;
+    patch({
+      fields: config.fields.map((field) =>
+        field.id === last.fieldId ? { ...field, [last.key]: last.from } : field,
+      ),
+      history: rest,
+    });
+  }
+
+  function changeText(value: string | number | undefined): string {
+    if (value === undefined || value === "") return "leer";
+    if (value === "none") return "eigener Wert";
+    if (value === "weather") return "Wetter der Karte";
+    if (value === "age") return "Alter der Anlagen";
+    return String(value);
+  }
+
   function addField() {
     const next = config.fields.length + 1;
     setFields([
@@ -3285,7 +3362,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
 
       {/* segmented switch: spreadsheet, matrix, classification */}
       <div className="flex gap-1 border-b px-2 py-1.5">
-        {(["tabelle", "matrix", "einordnung"] as const).map((item) => (
+        {(["tabelle", "matrix", "einordnung", "verlauf"] as const).map((item) => (
           <button
             key={item}
             type="button"
@@ -3328,6 +3405,12 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                     ageLevel: liveAge?.level ?? null,
                   });
                   const open = openField === field.id;
+                  const showExplain = explainField === field.id;
+                  const explain = explainScore(field, measure);
+                  /* every cell that feeds the score of the active row */
+                  const dep = open
+                    ? "bg-[color-mix(in_oklab,var(--ring)_16%,transparent)] outline outline-1 outline-[var(--ring)]"
+                    : "";
                   return (
                     <Fragment key={field.id}>
                       <tr
@@ -3338,38 +3421,111 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                           focusOnMap(field);
                           setOpenField(open ? null : field.id);
                         }}
-                        title="Zeile öffnen und Objekte auf der Karte zeigen"
+                        title="Zeile öffnen, abhängige Werte hervorheben und Objekte auf der Karte zeigen"
                       >
                         <td className="px-1 py-1 font-mono text-muted-foreground">{field.code}</td>
                         <td className="truncate px-1 py-1 font-medium" title={field.name}>
                           {field.name}
                         </td>
                         <td
-                          className={`px-1 py-1 font-mono tabular-nums ${
-                            measure.breach ? "text-destructive" : "text-foreground"
-                          }`}
+                          className={`px-1 py-1 ${dep}`}
+                          onClick={(event) => event.stopPropagation()}
                         >
-                          {measure.text ?? <span className="text-muted-foreground">–</span>}
+                          <input
+                            key={`m-${field.id}-${field.measureText ?? ""}`}
+                            defaultValue={field.measureText ?? measure.text ?? ""}
+                            placeholder="–"
+                            aria-label={`Messwert ${field.code}`}
+                            className={`nodrag h-5 w-full rounded border border-transparent bg-transparent px-0.5 font-mono tabular-nums outline-none hover:border-border focus:border-ring ${
+                              measure.breach ? "text-destructive" : "text-foreground"
+                            }`}
+                            onBlur={(e) => commit(field.id, "measureText", e.target.value.trim())}
+                          />
                         </td>
-                        <td className="truncate px-1 py-1 font-mono text-muted-foreground">
-                          {measure.limit ?? "–"}
+                        <td
+                          className={`px-1 py-1 ${dep}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            key={`l-${field.id}-${field.limitText ?? ""}`}
+                            defaultValue={field.limitText ?? measure.limit ?? ""}
+                            placeholder="–"
+                            aria-label={`Grenzwert ${field.code}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent px-0.5 font-mono tabular-nums text-muted-foreground outline-none hover:border-border focus:border-ring"
+                            onBlur={(e) => commit(field.id, "limitText", e.target.value.trim())}
+                          />
                         </td>
-                        <td className="px-1 py-1 text-right font-mono tabular-nums">
-                          {field.chance}
+                        <td className={`px-1 py-1 ${dep}`} onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={field.chance}
+                            aria-label={`Eintritt ${field.code}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
+                            onChange={(e) =>
+                              commit(field.id, "chance", Number(e.target.value), { auto: "none" })
+                            }
+                          >
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
                         </td>
-                        <td className="px-1 py-1 text-right font-mono tabular-nums">
-                          {field.impact}
+                        <td className={`px-1 py-1 ${dep}`} onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={field.impact}
+                            aria-label={`Auswirkung ${field.code}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
+                            onChange={(e) => commit(field.id, "impact", Number(e.target.value))}
+                          >
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
                         </td>
-                        <td className="px-1 py-1 text-right">
-                          <span
-                            className="rounded px-1 font-mono font-semibold tabular-nums text-slate-900"
+                        <td className={`px-1 py-1 text-right ${dep}`}>
+                          <button
+                            type="button"
+                            title="Formel und Eingabewerte zeigen"
+                            className="nodrag rounded px-1 font-mono font-semibold tabular-nums text-slate-900"
                             style={{ background: field.klass.color }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExplainField(showExplain ? null : field.id);
+                            }}
                           >
                             {field.score}
-                          </span>
+                          </button>
                         </td>
                         <td className="px-1 py-1 text-center font-semibold">{field.klass.key}</td>
                       </tr>
+                      {showExplain && (
+                        <tr className="border-t border-border/60 bg-primary/5">
+                          <td colSpan={8} className="px-1.5 py-1.5">
+                            <div className="space-y-1 text-[10px]">
+                              <p className="module-eyebrow text-muted-foreground">So entsteht der Wert</p>
+                              <p className="font-mono text-[10px] font-semibold">{explain.formula}</p>
+                              <ul className="space-y-0.5">
+                                {explain.inputs.map((input) => (
+                                  <li key={input.label} className="flex items-start gap-1">
+                                    <span className="w-20 shrink-0 text-muted-foreground">
+                                      {input.label}
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                      <span className="font-mono">{input.value}</span>
+                                      <span className="text-muted-foreground"> · {input.hint}</span>
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                              <p>{explain.reason}</p>
+                              <p className="text-muted-foreground">Empfehlung: {explain.next}</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {open && (
                         <tr className="border-t border-border/60 bg-secondary/10">
                           <td colSpan={8} className="px-1.5 py-1.5">
@@ -3381,14 +3537,14 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                 defaultValue={field.name}
                                 aria-label="Name des Risikos"
                                 className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
-                                onBlur={(e) => updateField(field.id, { name: e.target.value.trim() })}
+                                onBlur={(e) => commit(field.id, "name", e.target.value.trim())}
                               />
                               <input
                                 defaultValue={field.note}
                                 aria-label="Hinweis / Nachweis"
                                 placeholder="Nachweis, z. B. Störungsstatistik, DWD-Projektion"
                                 className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
-                                onBlur={(e) => updateField(field.id, { note: e.target.value })}
+                                onBlur={(e) => commit(field.id, "note", e.target.value)}
                               />
                               <label className="flex items-center gap-1">
                                 <span className="w-24 shrink-0">Eintritt (E)</span>
@@ -3398,11 +3554,12 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                   max={5}
                                   step={1}
                                   value={field.chance}
-                                  disabled={field.auto !== "none"}
                                   aria-label="Eintrittswahrscheinlichkeit"
                                   className="nodrag min-w-0 flex-1"
                                   onChange={(e) =>
-                                    updateField(field.id, { chance: Number(e.target.value) })
+                                    commit(field.id, "chance", Number(e.target.value), {
+                                      auto: "none",
+                                    })
                                   }
                                 />
                                 <span className="w-4 text-right font-mono">{field.chance}</span>
@@ -3418,7 +3575,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                   aria-label="Auswirkung"
                                   className="nodrag min-w-0 flex-1"
                                   onChange={(e) =>
-                                    updateField(field.id, { impact: Number(e.target.value) })
+                                    commit(field.id, "impact", Number(e.target.value))
                                   }
                                 />
                                 <span className="w-4 text-right font-mono">{field.impact}</span>
@@ -3430,9 +3587,11 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                   aria-label="Quelle der Eintrittswahrscheinlichkeit"
                                   className="nodrag h-6 min-w-0 flex-1 rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
                                   onChange={(e) =>
-                                    updateField(field.id, {
-                                      auto: e.target.value as RiskField["auto"],
-                                    })
+                                     commit(
+                                      field.id,
+                                      "auto",
+                                      e.target.value as RiskField["auto"],
+                                    )
                                   }
                                 >
                                   <option value="none">eigener Wert</option>
@@ -3442,15 +3601,26 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                               </label>
                               <div className="flex items-center justify-between pt-0.5">
                                 <span className="text-muted-foreground">{field.klass.action}</span>
-                                <button
-                                  type="button"
-                                  className="nodrag rounded-full px-2 py-0.5 text-destructive hover:bg-accent"
-                                  onClick={() =>
-                                    setFields(config.fields.filter((item) => item.id !== field.id))
-                                  }
-                                >
-                                  entfernen
-                                </button>
+                                <span className="flex items-center gap-1">
+                                  {(field.measureText || field.limitText) && (
+                                    <button
+                                      type="button"
+                                      className="nodrag rounded-full px-2 py-0.5 text-muted-foreground hover:bg-accent"
+                                      onClick={() => resetOverrides(field.id)}
+                                    >
+                                      eigene Werte zurücksetzen
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="nodrag rounded-full px-2 py-0.5 text-destructive hover:bg-accent"
+                                    onClick={() =>
+                                      setFields(config.fields.filter((item) => item.id !== field.id))
+                                    }
+                                  >
+                                    entfernen
+                                  </button>
+                                </span>
                               </div>
                             </div>
                           </td>
@@ -3588,6 +3758,50 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {view === "verlauf" && (
+          <div className="space-y-1.5 text-[10px]">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {config.history.length
+                  ? `${config.history.length} Änderungen aufgezeichnet`
+                  : "Noch keine Änderungen"}
+              </span>
+              <button
+                type="button"
+                disabled={!config.history.length}
+                className="nodrag rounded-full border border-border/70 px-2 py-0.5 hover:bg-accent disabled:opacity-40"
+                onClick={undoLast}
+              >
+                Letzte Änderung rückgängig
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {config.history.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-md border border-border/60 px-1.5 py-1"
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="truncate font-medium">
+                      <span className="font-mono text-muted-foreground">{entry.code}</span>{" "}
+                      {entry.label} · {CHANGE_LABEL[entry.key]}
+                    </span>
+                    <span className="shrink-0 font-mono text-[9px] text-muted-foreground">
+                      {new Date(entry.at).toLocaleTimeString("de-DE", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  <p className="font-mono text-[9px] text-muted-foreground">
+                    vorher {changeText(entry.from)} → jetzt {changeText(entry.to)}
+                  </p>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

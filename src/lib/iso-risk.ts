@@ -15,10 +15,28 @@ export type RiskField = {
   impact: number;
   /** Where the likelihood comes from: manual, live weather or asset age. */
   auto: "none" | "weather" | "age";
+  /** Own measured value, overrides the live measurement when set. */
+  measureText?: string;
+  /** Own threshold, overrides the automatic threshold when set. */
+  limitText?: string;
+};
+
+/** One tracked edit of the risk table, used for the change log and undo. */
+export type RiskChange = {
+  id: string;
+  at: number;
+  fieldId: string;
+  code: string;
+  label: string;
+  key: "name" | "note" | "chance" | "impact" | "auto" | "measureText" | "limitText";
+  from: string | number | undefined;
+  to: string | number | undefined;
 };
 
 export type IsoRiskConfig = {
   fields: RiskField[];
+  /** Newest first change log of the table. */
+  history: RiskChange[];
   rainWarn: number;
   rainDanger: number;
   windWarn: number;
@@ -106,17 +124,37 @@ export function readIsoRisk(record: NodeRecord | null | undefined): IsoRiskConfi
           chance: clamp(row["chance"], 3),
           impact: clamp(row["impact"], 3),
           auto: auto === "weather" || auto === "age" ? auto : "none",
+          ...(typeof row["measureText"] === "string" ? { measureText: row["measureText"] } : {}),
+          ...(typeof row["limitText"] === "string" ? { limitText: row["limitText"] } : {}),
         };
       })
     : DEFAULT_FIELDS.map((field) => ({ ...field }));
+  const rawHistory = meta["history"];
+  const history: RiskChange[] = Array.isArray(rawHistory)
+    ? (rawHistory.filter(
+        (item) => item && typeof item === "object" && typeof (item as RiskChange).key === "string",
+      ) as RiskChange[])
+    : [];
   return {
     fields,
+    history,
     rainWarn: numberOr(meta["rainWarn"], 5),
     rainDanger: numberOr(meta["rainDanger"], 25),
     windWarn: numberOr(meta["windWarn"], 40),
     windDanger: numberOr(meta["windDanger"], 75),
   };
 }
+
+/** Human readable name of an edited cell, used in the change log. */
+export const CHANGE_LABEL: Record<RiskChange["key"], string> = {
+  name: "Risiko",
+  note: "Nachweis",
+  chance: "Eintritt (E)",
+  impact: "Auswirkung (A)",
+  auto: "Datenquelle",
+  measureText: "Messwert",
+  limitText: "Grenzwert",
+};
 
 /** Colour of a matrix cell / score, following the ISO legend. */
 export function scoreColor(score: number): string {
@@ -302,8 +340,25 @@ function num(value: number | null, digits = 0): string | null {
   return value.toLocaleString("de-DE", { maximumFractionDigits: digits });
 }
 
+/** Measurement and threshold with the user's own values applied. */
+function withOverrides(field: RiskField, base: RiskMeasure): RiskMeasure {
+  const own = field.measureText?.trim();
+  const ownLimit = field.limitText?.trim();
+  if (!own && !ownLimit) return base;
+  return {
+    ...base,
+    text: own ? own : base.text,
+    limit: ownLimit ? ownLimit : base.limit,
+    source: own ? "eigener Eintrag" : base.source,
+  };
+}
+
 /** The evidence cell of a risk row: measured value, threshold and rule. */
 export function measureOf(field: RiskField, ctx: RiskContext): RiskMeasure {
+  return withOverrides(field, baseMeasure(field, ctx));
+}
+
+function baseMeasure(field: RiskField, ctx: RiskContext): RiskMeasure {
   if (field.auto === "weather") {
     const wind = num(ctx.peakWind);
     const rain = num(ctx.peakRain, 1);
@@ -334,6 +389,49 @@ export function measureOf(field: RiskField, ctx: RiskContext): RiskMeasure {
     breach: false,
     rule: "Eintritt von Hand gesetzt",
     source: field.note || "eigene Einschätzung",
+  };
+}
+
+/** Step by step explanation of one score, shown when a score is clicked. */
+export type ScoreExplain = {
+  formula: string;
+  inputs: { label: string; value: string; hint: string }[];
+  reason: string;
+  next: string;
+};
+
+export function explainScore(
+  field: RiskField & { score: number; klass: RiskClass },
+  measure: RiskMeasure,
+): ScoreExplain {
+  const source =
+    field.auto === "weather"
+      ? "aus dem Wetter der Karte berechnet"
+      : field.auto === "age"
+        ? "aus dem Baujahr der Anlagentabelle berechnet"
+        : "von Hand gesetzt";
+  return {
+    formula: `Score = Eintritt × Auswirkung = ${field.chance} × ${field.impact} = ${field.score}`,
+    inputs: [
+      {
+        label: "Eintritt (E)",
+        value: `${field.chance} – ${LIKELIHOOD_LABEL[field.chance]}`,
+        hint: source,
+      },
+      {
+        label: "Auswirkung (A)",
+        value: `${field.impact} – ${IMPACT_LABEL[field.impact]}`,
+        hint: "von Hand gesetzt",
+      },
+      { label: "Messwert", value: measure.text ?? "kein Messwert", hint: measure.source },
+      {
+        label: "Grenzwert",
+        value: measure.limit ?? "kein Grenzwert",
+        hint: measure.breach ? "Messwert erreicht oder überschreitet den Grenzwert" : "Messwert liegt darunter",
+      },
+    ],
+    reason: `${field.score} liegt im Bereich ${field.klass.range}. Deshalb gilt Klasse ${field.klass.key}: ${field.klass.label}.`,
+    next: field.klass.action,
   };
 }
 
