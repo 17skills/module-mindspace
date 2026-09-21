@@ -3381,6 +3381,12 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                     ageLevel: liveAge?.level ?? null,
                   });
                   const open = openField === field.id;
+                  const showExplain = explainField === field.id;
+                  const explain = explainScore(field, measure);
+                  /* every cell that feeds the score of the active row */
+                  const dep = open
+                    ? "bg-[color-mix(in_oklab,var(--ring)_16%,transparent)] outline outline-1 outline-[var(--ring)]"
+                    : "";
                   return (
                     <Fragment key={field.id}>
                       <tr
@@ -3391,38 +3397,111 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                           focusOnMap(field);
                           setOpenField(open ? null : field.id);
                         }}
-                        title="Zeile öffnen und Objekte auf der Karte zeigen"
+                        title="Zeile öffnen, abhängige Werte hervorheben und Objekte auf der Karte zeigen"
                       >
                         <td className="px-1 py-1 font-mono text-muted-foreground">{field.code}</td>
                         <td className="truncate px-1 py-1 font-medium" title={field.name}>
                           {field.name}
                         </td>
                         <td
-                          className={`px-1 py-1 font-mono tabular-nums ${
-                            measure.breach ? "text-destructive" : "text-foreground"
-                          }`}
+                          className={`px-1 py-1 ${dep}`}
+                          onClick={(event) => event.stopPropagation()}
                         >
-                          {measure.text ?? <span className="text-muted-foreground">–</span>}
+                          <input
+                            key={`m-${field.id}-${field.measureText ?? ""}`}
+                            defaultValue={field.measureText ?? measure.text ?? ""}
+                            placeholder="–"
+                            aria-label={`Messwert ${field.code}`}
+                            className={`nodrag h-5 w-full rounded border border-transparent bg-transparent px-0.5 font-mono tabular-nums outline-none hover:border-border focus:border-ring ${
+                              measure.breach ? "text-destructive" : "text-foreground"
+                            }`}
+                            onBlur={(e) => commit(field.id, "measureText", e.target.value.trim())}
+                          />
                         </td>
-                        <td className="truncate px-1 py-1 font-mono text-muted-foreground">
-                          {measure.limit ?? "–"}
+                        <td
+                          className={`px-1 py-1 ${dep}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            key={`l-${field.id}-${field.limitText ?? ""}`}
+                            defaultValue={field.limitText ?? measure.limit ?? ""}
+                            placeholder="–"
+                            aria-label={`Grenzwert ${field.code}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent px-0.5 font-mono tabular-nums text-muted-foreground outline-none hover:border-border focus:border-ring"
+                            onBlur={(e) => commit(field.id, "limitText", e.target.value.trim())}
+                          />
                         </td>
-                        <td className="px-1 py-1 text-right font-mono tabular-nums">
-                          {field.chance}
+                        <td className={`px-1 py-1 ${dep}`} onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={field.chance}
+                            aria-label={`Eintritt ${field.code}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
+                            onChange={(e) =>
+                              commit(field.id, "chance", Number(e.target.value), { auto: "none" })
+                            }
+                          >
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
                         </td>
-                        <td className="px-1 py-1 text-right font-mono tabular-nums">
-                          {field.impact}
+                        <td className={`px-1 py-1 ${dep}`} onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={field.impact}
+                            aria-label={`Auswirkung ${field.code}`}
+                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
+                            onChange={(e) => commit(field.id, "impact", Number(e.target.value))}
+                          >
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
+                          </select>
                         </td>
-                        <td className="px-1 py-1 text-right">
-                          <span
-                            className="rounded px-1 font-mono font-semibold tabular-nums text-slate-900"
+                        <td className={`px-1 py-1 text-right ${dep}`}>
+                          <button
+                            type="button"
+                            title="Formel und Eingabewerte zeigen"
+                            className="nodrag rounded px-1 font-mono font-semibold tabular-nums text-slate-900"
                             style={{ background: field.klass.color }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExplainField(showExplain ? null : field.id);
+                            }}
                           >
                             {field.score}
-                          </span>
+                          </button>
                         </td>
                         <td className="px-1 py-1 text-center font-semibold">{field.klass.key}</td>
                       </tr>
+                      {showExplain && (
+                        <tr className="border-t border-border/60 bg-primary/5">
+                          <td colSpan={8} className="px-1.5 py-1.5">
+                            <div className="space-y-1 text-[10px]">
+                              <p className="module-eyebrow text-muted-foreground">So entsteht der Wert</p>
+                              <p className="font-mono text-[10px] font-semibold">{explain.formula}</p>
+                              <ul className="space-y-0.5">
+                                {explain.inputs.map((input) => (
+                                  <li key={input.label} className="flex items-start gap-1">
+                                    <span className="w-20 shrink-0 text-muted-foreground">
+                                      {input.label}
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                      <span className="font-mono">{input.value}</span>
+                                      <span className="text-muted-foreground"> · {input.hint}</span>
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                              <p>{explain.reason}</p>
+                              <p className="text-muted-foreground">Empfehlung: {explain.next}</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {open && (
                         <tr className="border-t border-border/60 bg-secondary/10">
                           <td colSpan={8} className="px-1.5 py-1.5">
