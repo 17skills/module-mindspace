@@ -2443,7 +2443,11 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
       }
     }
     if (added.length === 0) {
-      toast.error("Keine passende Entscheidung gefunden – erst verbinden und entscheiden");
+      toast.error(
+        decisions.length === 0
+          ? "Kein Entscheidungs-Modul auf dem Board"
+          : "Noch kein Ergebnis – im Entscheidungs-Modul erst auf „Entscheiden“ klicken",
+      );
       return;
     }
     patch({ marks: [...config.marks, ...added].slice(-60) });
