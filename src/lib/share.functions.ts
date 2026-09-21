@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /** Board plus all modules for a read-only guest link. No auth required. */
 export const getSharedBoard = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ token: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ token: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: board, error } = await supabaseAdmin
@@ -46,7 +46,7 @@ async function assertOwner(
 /** Members of a board, with their e-mail address. Owner only. */
 export const listMembers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ boardId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ boardId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertOwner(context.supabase as never, data.boardId, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -76,7 +76,7 @@ export const listMembers = createServerFn({ method: "POST" })
 /** Invite an existing account to collaborate on this board only. Owner only. */
 export const addMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ boardId: z.string().uuid(), email: z.string().email() }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -103,7 +103,7 @@ export const addMember = createServerFn({ method: "POST" })
 /** Remove a member. Owner only. */
 export const removeMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ boardId: z.string().uuid(), memberId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
