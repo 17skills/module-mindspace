@@ -2739,6 +2739,8 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
   const [busy, setBusy] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const config = readMapConfig(record);
+  const focus = useMapFocus();
+
 
   const sources = useMemo(() => {
     const byId = Object.fromEntries(
