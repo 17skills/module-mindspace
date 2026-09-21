@@ -1258,9 +1258,11 @@ export function LabeledEdge(props: EdgeProps) {
                 key={label}
                 autoFocus
                 defaultValue={label}
-                placeholder="z. B. 25 %"
+                placeholder="z. B. 25 % oder x * 0,75"
+                title="Leer = Wert unverändert · „25 %“ = Anteil · Zahl = fester Wert · „x * 0,75“ = Rechnung mit x als eingehendem Wert"
                 aria-label="Wert der Verbindung"
-                className="h-6 w-20 rounded-md border border-border bg-card text-center text-[11px] outline-none focus:ring-2 focus:ring-ring/50"
+                className="h-6 w-36 rounded-md border border-border bg-card px-1 text-center text-[11px] outline-none focus:ring-2 focus:ring-ring/50"
+
                 onKeyDown={(e) => {
                   if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                   if (e.key === "Escape") {
