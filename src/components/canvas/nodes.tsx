@@ -12,7 +12,7 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { calcInputs, evalFormula, formatValue, readFormat, sheetRows, sheetValues } from "@/lib/calc";
+import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent } from "@/lib/zones";
 import {
   Bar,
