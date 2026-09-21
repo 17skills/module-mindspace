@@ -8,16 +8,19 @@ import {
   type WeatherValue,
 } from "@/lib/geo";
 import {
+  CHANGE_LABEL,
   IMPACT_LABEL,
   LIKELIHOOD_LABEL,
   RISK_CLASSES,
   ageChance,
   evaluate,
+  explainScore,
   isoText,
   measureOf,
   readIsoRisk,
   scoreColor,
   weatherChance,
+  type RiskChange,
   type RiskField,
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
