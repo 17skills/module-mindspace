@@ -1623,7 +1623,17 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
   const span = max - min || 1;
   const ratio = Math.min(1, Math.max(0, (value - min) / span));
   const angle = 180 + ratio * 180;
-  const colour = value >= danger ? "var(--destructive)" : value >= warn ? "var(--note)" : "var(--frame)";
+  const GREEN = "oklch(0.62 0.15 150)";
+  const ORANGE = "oklch(0.72 0.17 65)";
+  const RED = "oklch(0.58 0.2 27)";
+  const colour = value >= danger ? RED : value >= warn ? ORANGE : GREEN;
+  // the track shows the three ranges green → orange → red
+  const angleOf = (v: number) => 180 + Math.min(1, Math.max(0, (v - min) / (max - min || 1))) * 180;
+  const zones = [
+    { from: 180, to: angleOf(warn), colour: GREEN },
+    { from: angleOf(warn), to: angleOf(danger), colour: ORANGE },
+    { from: angleOf(danger), to: 360, colour: RED },
+  ].filter((zone) => zone.to - zone.from > 0.2);
   function patch(key: string, raw: string) {
     const text = raw.trim().replace(",", ".");
     updateNode(record.id, {
