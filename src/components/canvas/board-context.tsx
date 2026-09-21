@@ -72,6 +72,8 @@ export type BoardApi = {
   focusNode: (id: string) => void;
   /** Persist a field size; template groups scale their fields along. */
   resizeZone: (id: string, width: number, height: number) => void;
+  /** Create a new background field in the middle of the view. */
+  createZone: (title?: string) => Promise<string | null>;
   /** Run the agent of a background field over the cards lying on it. */
   runAgent: (id: string) => void;
   /** True when cards on the field changed since the last analysis. */
