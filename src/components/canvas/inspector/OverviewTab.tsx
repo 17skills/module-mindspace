@@ -47,6 +47,21 @@ export function OverviewTab({ onOpen }: { onOpen: (id: string) => void }) {
         {assigned ? (
           <>
             <select
+              value={assignment?.zoneId ?? ""}
+              onChange={(event) =>
+                event.target.value &&
+                patch(card, { zoneId: event.target.value, zoneAuto: false })
+              }
+              className="max-w-24 truncate rounded border bg-background px-1 py-0.5 text-[11px]"
+              title="Feld"
+            >
+              {zones.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.title ?? "Feld"}
+                </option>
+              ))}
+            </select>
+            <select
               value={assignment?.role ?? ZONE_ROLES[0]}
               onChange={(event) => patch(card, { zoneRole: event.target.value, zoneAuto: false })}
               className="rounded border bg-background px-1 py-0.5 text-[11px]"
