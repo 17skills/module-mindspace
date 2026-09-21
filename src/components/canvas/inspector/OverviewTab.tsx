@@ -5,7 +5,7 @@ import { ZONE_ROLES, readAssignment } from "@/lib/zones";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function OverviewTab({ onOpen }: { onOpen: (id: string) => void }) {
-  const { allNodes, updateNode, focusNode } = useBoard();
+  const { allNodes, updateNode, focusNode, createZone } = useBoard();
   const nodes = allNodes();
 
   const { zones, byZone, unassigned } = useMemo(() => {
