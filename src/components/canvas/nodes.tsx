@@ -569,7 +569,7 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
               </button>
             ))}
           </div>
-          <div className="nodrag nowheel min-h-0 flex-1 p-2">
+          <div className="nowheel min-h-0 flex-1 p-2">
             <ResponsiveContainer width="100%" height="100%">
               {(chartType ?? "bar") === "pie" ? (
                 <PieChart>
@@ -603,7 +603,7 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
       )}
 
       {type === "list" && (
-        <ul className="nowheel nodrag flex-1 space-y-1 overflow-auto px-4 py-2 text-xs">
+        <ul className="nowheel flex-1 space-y-1 overflow-auto px-4 py-2 text-xs">
           {rows.map((row, index) => (
             <li key={index} className="flex gap-2">
               <span className="text-muted-foreground">•</span>
@@ -616,7 +616,7 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
                     content: next.map((r) => `- ${r[0] ?? ""}`).join("\n"),
                   });
                 }}
-                className="flex-1 bg-transparent outline-none"
+                className="nodrag flex-1 bg-transparent outline-none"
               />
             </li>
           ))}
@@ -625,7 +625,7 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
       )}
 
       {type === "table" && (
-        <div className="nowheel nodrag flex-1 overflow-auto">
+        <div className="nowheel flex-1 overflow-auto">
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 bg-secondary/80">
               <tr>
@@ -654,7 +654,7 @@ export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
                             content: toTableText(columns, next),
                           });
                         }}
-                        className="w-full bg-transparent outline-none"
+                        className="nodrag w-full bg-transparent outline-none"
                       />
                     </td>
                   ))}
@@ -795,7 +795,7 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
 
       <ContextBar report={contextReport(record.id)} onFocus={focusNode} />
 
-      <div ref={scrollRef} className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
+      <div ref={scrollRef} className="nowheel flex-1 space-y-2 overflow-auto px-3 py-2">
         {messages.length === 0 && (
           <p className="text-xs text-muted-foreground">
             Verbinde Module mit diesem Chat und stelle deine Frage.
@@ -1324,7 +1324,7 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
           }}
         />
       </div>
-      <div className="nodrag nowheel flex-1 space-y-1 overflow-auto px-3 py-2">
+      <div className="nowheel flex-1 space-y-1 overflow-auto px-3 py-2">
         {inputs.length === 0 && (
           <p className="text-xs text-muted-foreground">
             Verbinde Module mit diesem Modul — jede Verbindung wird ein Wert (A, B, C …).
@@ -1337,7 +1337,7 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
               {input.letter}
             </span>
             <button
-              className="min-w-0 flex-1 truncate text-left hover:underline"
+              className="nodrag min-w-0 flex-1 truncate text-left hover:underline"
               onClick={() => focusNode(input.sourceId)}
               title={input.title}
             >
@@ -1357,7 +1357,7 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
                 placeholder="Wert"
                 inputMode="decimal"
                 aria-label={`Wert von ${input.title}`}
-                className="w-16 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border focus:bg-background"
+                className="nodrag w-16 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border focus:bg-background"
                 onBlur={(e) => {
                   const text = e.target.value.trim().replace(",", ".");
                   const next = text === "" ? null : Number(text);
@@ -1533,7 +1533,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
         className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Kennzahl" })}
       />
-      <div className="nodrag flex flex-1 flex-col justify-center px-3 py-2">
+      <div className="flex flex-1 flex-col justify-center px-3 py-2">
         <div className="flex items-baseline gap-1">
           {(() => {
             const shown = linked ? linked.value : Number.isFinite(value) ? value : null;
@@ -1552,7 +1552,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
               inputMode="decimal"
               placeholder="0"
               aria-label="Wert"
-              className="min-w-0 flex-1 bg-transparent font-display text-3xl font-semibold tracking-tight outline-none"
+              className="nodrag min-w-0 flex-1 bg-transparent font-display text-3xl font-semibold tracking-tight outline-none"
               onBlur={(e) => {
                 const text = e.target.value.trim().replace(",", ".");
                 patch({ value: text === "" ? null : Number(text) });
@@ -1578,7 +1578,7 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
           defaultValue={compare}
           placeholder="Vergleich, z. B. +12 % zum Vormonat"
           aria-label="Vergleich"
-          className="mt-1 bg-transparent text-xs text-muted-foreground outline-none"
+          className="nodrag mt-1 bg-transparent text-xs text-muted-foreground outline-none"
           onBlur={(e) => patch({ compare: e.target.value.trim() })}
         />
         {selected ? <FormatRow meta={meta} onPatch={patch} /> : null}
@@ -1659,7 +1659,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
         className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Tacho" })}
       />
-      <div className="nodrag flex flex-1 flex-col items-center justify-center px-3 py-2">
+      <div className="flex flex-1 flex-col items-center justify-center px-3 py-2">
         <svg viewBox="0 0 200 110" className="w-full max-w-56">
           <path d={arc(100, 100, 80, 180, 360)} fill="none" stroke="var(--border)" strokeWidth={14} strokeLinecap="round" />
           {zones.map((zone) => (
@@ -1692,7 +1692,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
                 defaultValue={String(num(key, key === "max" ? 100 : key === "warn" ? 60 : key === "danger" ? 85 : 0))}
                 inputMode="decimal"
                 aria-label={key}
-                className="w-full rounded-md border border-transparent bg-transparent text-center font-mono outline-none hover:border-border focus:border-border"
+                className="nodrag w-full rounded-md border border-transparent bg-transparent text-center font-mono outline-none hover:border-border focus:border-border"
                 onBlur={(e) => patch(key, e.target.value)}
               />
             </label>
@@ -1710,7 +1710,7 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
             inputMode="decimal"
             aria-label="Wert"
             placeholder="Wert"
-            className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
+            className="nodrag mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
             onBlur={(e) => patch("value", e.target.value)}
           />
         )}
@@ -1769,7 +1769,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
         className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
         onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Rechenblatt" })}
       />
-      <div className="nodrag nowheel flex-1 overflow-auto px-2 py-1.5">
+      <div className="nowheel flex-1 overflow-auto px-2 py-1.5">
         {inputs.length > 0 && (
           <p className="mb-1 text-[10px] text-muted-foreground">
             Eingänge: {inputs.map((input) => `${input.letter} = ${input.title}`).join(", ")}
@@ -1785,7 +1785,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
             <button
               title={output === index ? "Wird weitergegeben" : "Diese Zeile weitergeben"}
               aria-label={`Zeile ${index + 1} weitergeben`}
-              className={`w-6 shrink-0 rounded-md font-mono text-[10px] ${
+              className={`nodrag w-6 shrink-0 rounded-md font-mono text-[10px] ${
                 output === index
                   ? "bg-accent font-semibold text-accent-foreground"
                   : "text-muted-foreground hover:bg-accent"
@@ -1803,7 +1803,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
               key={`n${index}${row.name}`}
               placeholder="Name"
               aria-label={`Name Zeile ${index + 1}`}
-              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 outline-none hover:border-border focus:border-border"
+              className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 outline-none hover:border-border focus:border-border"
               onBlur={(e) => {
                 const next = [...rows];
                 next[index] = { ...row, name: e.target.value };
@@ -1815,7 +1815,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
               key={`v${index}${row.formula}${row.value}`}
               placeholder="Wert oder =R1*A"
               aria-label={`Wert Zeile ${index + 1}`}
-              className="w-28 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border"
+              className="nodrag w-28 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border"
               onBlur={(e) => {
                 const text = e.target.value.trim();
                 const formula = text.startsWith("=") ? text.slice(1).trim() : /[A-Za-z(]/.test(text) ? text : "";
@@ -1829,7 +1829,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
             </span>
             <button
               aria-label={`Zeile ${index + 1} löschen`}
-              className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
+              className="nodrag shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
               onClick={() => writeRows(rows.filter((_, other) => other !== index))}
             >
               <Trash2 className="size-3" />
@@ -1837,7 +1837,7 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
           </div>
         ))}
         <button
-          className="mt-1 flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+          className="nodrag mt-1 flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
           onClick={() => writeRows([...rows, { name: "", value: "", formula: "" }])}
         >
           <Plus className="size-3" /> Zeile
