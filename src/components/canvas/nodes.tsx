@@ -1208,7 +1208,7 @@ export function LabeledEdge(props: EdgeProps) {
 /** Calculation module: resolves values from incoming connections and a formula. */
 export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps) {
   const record = (data as { record: NodeRecord }).record;
-  const { updateNode, allNodes, focusNode } = useBoard();
+  const { updateNode, focusNode } = useBoard();
   const edges = useEdges();
   // subscribe to the live canvas so changes in other modules re-run the formula
   const flowNodes = useStore((state) => state.nodes);
@@ -1219,7 +1219,6 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
       ),
     [flowNodes],
   );
-  void allNodes;
   const inputs = calcInputs(id, records, edges);
   const formula =
     typeof record.metadata?.["formula"] === "string" ? record.metadata["formula"] : "";
