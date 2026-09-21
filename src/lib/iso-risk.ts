@@ -426,7 +426,9 @@ export function explainScore(
       ? "aus dem Wetter der Karte berechnet"
       : field.auto === "age"
         ? "aus dem Baujahr der Anlagentabelle berechnet"
-        : "von Hand gesetzt";
+        : field.auto === "factor"
+          ? "aus der gewichteten Faktorkarte berechnet"
+          : "von Hand gesetzt";
   return {
     formula: `Score = Eintritt × Auswirkung = ${field.chance} × ${field.impact} = ${field.score}`,
     inputs: [
