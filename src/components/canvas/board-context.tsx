@@ -125,7 +125,7 @@ export const NODE_LABEL: Record<string, string> = {
   audio: "Audio",
   document: "Dokument",
   link: "Link",
-  note: "Notiz",
+  note: "Faktor",
   chat: "Chat",
   frame: "Gruppe",
   table: "Tabelle",
