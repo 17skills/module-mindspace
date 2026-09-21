@@ -1,4 +1,17 @@
-import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { ClientOnly } from "@tanstack/react-router";
+import {
+  RISK_LABEL,
+  mapText,
+  maxRisk,
+  pointsFromSources,
+  readMapConfig,
+  readRiskConfig,
+  riskColor,
+  riskEntries,
+  riskText,
+  type RiskEntry,
+} from "@/lib/geo";
 import { BookOpen, Calculator, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
