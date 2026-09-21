@@ -39,7 +39,17 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
-import { readAgent } from "@/lib/zones";
+import { readAgent, readAssignment } from "@/lib/zones";
+import {
+  normalizeWeights,
+  paramsFromText,
+  readFactor,
+  readThemeWeight,
+  themeIndex,
+  type FactorParam,
+  type ThemeScore,
+} from "@/lib/factor-score";
+import { suggestFactorWeights } from "@/lib/factor.functions";
 import { runApiModule } from "@/lib/api-module.functions";
 import {
   QUOTE_COLORS,
