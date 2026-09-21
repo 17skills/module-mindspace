@@ -2074,6 +2074,26 @@ function BoardPage() {
                 <TooltipContent side="top">Vorlagen</TooltipContent>
               </Tooltip>
 
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn(libraryOpen)}
+                    aria-label="Bibliothek"
+                    aria-pressed={libraryOpen}
+                    onClick={() => {
+                      librarySelection.current = null;
+                      setLibraryOpen(true);
+                    }}
+                  >
+                    <Library className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Bibliothek</TooltipContent>
+              </Tooltip>
+
+
               <div className="mx-1 h-6 w-px shrink-0 bg-border/70" />
 
               <Tooltip>
