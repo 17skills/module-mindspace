@@ -158,6 +158,7 @@ export const CHANGE_LABEL: Record<RiskChange["key"], string> = {
   auto: "Datenquelle",
   measureText: "Messwert",
   limitText: "Grenzwert",
+  factorId: "Faktor-Quelle",
 };
 
 /** Colour of a matrix cell / score, following the ISO legend. */
