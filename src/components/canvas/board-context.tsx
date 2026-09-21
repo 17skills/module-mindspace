@@ -112,6 +112,8 @@ export const NODE_ACCENT: Record<string, string> = {
   decision: "var(--chat)",
   signal: "var(--primary)",
   quotes: "var(--primary)",
+  map: "var(--doc)",
+  risk: "var(--primary)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -135,4 +137,6 @@ export const NODE_LABEL: Record<string, string> = {
   decision: "Entscheidung",
   signal: "Signal",
   quotes: "Kursverlauf",
+  map: "Karte",
+  risk: "Risiko",
 };

@@ -61,6 +61,8 @@ const RESULT_KEYS = [
   "thumbnail",
   "subtitle",
   "rowsData",
+  "points",
+  "weather",
 ];
 
 export function readPayload(value: unknown): LibraryPayload {
