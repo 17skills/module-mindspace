@@ -122,17 +122,37 @@ export function readIsoRisk(record: NodeRecord | null | undefined): IsoRiskConfi
           chance: clamp(row["chance"], 3),
           impact: clamp(row["impact"], 3),
           auto: auto === "weather" || auto === "age" ? auto : "none",
+          ...(typeof row["measureText"] === "string" ? { measureText: row["measureText"] } : {}),
+          ...(typeof row["limitText"] === "string" ? { limitText: row["limitText"] } : {}),
         };
       })
     : DEFAULT_FIELDS.map((field) => ({ ...field }));
+  const rawHistory = meta["history"];
+  const history: RiskChange[] = Array.isArray(rawHistory)
+    ? (rawHistory.filter(
+        (item) => item && typeof item === "object" && typeof (item as RiskChange).key === "string",
+      ) as RiskChange[])
+    : [];
   return {
     fields,
+    history,
     rainWarn: numberOr(meta["rainWarn"], 5),
     rainDanger: numberOr(meta["rainDanger"], 25),
     windWarn: numberOr(meta["windWarn"], 40),
     windDanger: numberOr(meta["windDanger"], 75),
   };
 }
+
+/** Human readable name of an edited cell, used in the change log. */
+export const CHANGE_LABEL: Record<RiskChange["key"], string> = {
+  name: "Risiko",
+  note: "Nachweis",
+  chance: "Eintritt (E)",
+  impact: "Auswirkung (A)",
+  auto: "Datenquelle",
+  measureText: "Messwert",
+  limitText: "Grenzwert",
+};
 
 /** Colour of a matrix cell / score, following the ISO legend. */
 export function scoreColor(score: number): string {
