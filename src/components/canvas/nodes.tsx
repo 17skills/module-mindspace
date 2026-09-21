@@ -2310,19 +2310,57 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
   const flowNodes = useStore((state) => state.nodes);
   const [busy, setBusy] = useState(false);
   const config = readQuotes(record);
+  const mode = readMode(record);
   const results = useMemo(() => evaluateMarks(config), [config]);
   const rate = hitRate(results);
-  const rows = useMemo(() => chartRows(config), [config]);
 
-  const decisions = useMemo(() => {
-    const byId = Object.fromEntries(
-      flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
-    ) as Record<string, NodeRecord>;
-    return edges
-      .filter((edge) => edge.target === id)
-      .map((edge) => byId[edge.source])
-      .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision");
-  }, [edges, flowNodes, id]);
+  const records = useMemo(
+    () =>
+      Object.fromEntries(
+        flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+      ) as Record<string, NodeRecord>,
+    [flowNodes],
+  );
+
+  const decisions = useMemo(
+    () =>
+      edges
+        .filter((edge) => edge.target === id)
+        .map((edge) => records[edge.source])
+        .filter((item): item is NodeRecord => Boolean(item) && item?.type === "decision"),
+    [edges, records, id],
+  );
+
+  /** Amounts held per asset: manual entry wins, otherwise matched incoming values. */
+  const manual = readHoldings(record);
+  const inputs = useMemo(() => calcInputs(id, records, edges), [id, records, edges]);
+  const linked = useMemo(() => {
+    const map: Record<string, { amount: number; title: string }> = {};
+    for (const asset of config.assets) {
+      const match = inputs.find(
+        (input) =>
+          input.value != null &&
+          (input.title.toLowerCase().includes(asset.label.toLowerCase()) ||
+            input.title.toLowerCase().includes(asset.id.toLowerCase())),
+      );
+      if (match?.value != null) map[asset.id] = { amount: match.value, title: match.title };
+    }
+    return map;
+  }, [inputs, config.assets]);
+
+  const holdings = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const asset of config.assets) {
+      const amount = manual[asset.id] ?? linked[asset.id]?.amount;
+      if (typeof amount === "number" && amount !== 0) map[asset.id] = amount;
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(manual), linked, config.assets]);
+
+  const rows = useMemo(() => chartRows(config, mode, holdings), [config, mode, holdings]);
+  const total = mode === "value" ? totalValue(config, holdings) : null;
+
 
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
