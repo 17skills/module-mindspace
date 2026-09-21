@@ -1661,6 +1661,16 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
       <div className="nodrag flex flex-1 flex-col items-center justify-center px-3 py-2">
         <svg viewBox="0 0 200 110" className="w-full max-w-56">
           <path d={arc(100, 100, 80, 180, 360)} fill="none" stroke="var(--border)" strokeWidth={14} strokeLinecap="round" />
+          {zones.map((zone) => (
+            <path
+              key={zone.colour}
+              d={arc(100, 100, 80, zone.from, zone.to)}
+              fill="none"
+              stroke={zone.colour}
+              strokeWidth={14}
+              strokeOpacity={0.22}
+            />
+          ))}
           <path
             d={arc(100, 100, 80, 180, Math.max(180.1, angle))}
             fill="none"
