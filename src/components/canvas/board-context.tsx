@@ -110,6 +110,7 @@ export const NODE_ACCENT: Record<string, string> = {
   sheet: "var(--primary)",
   api: "var(--doc)",
   decision: "var(--chat)",
+  signal: "var(--primary)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -131,4 +132,5 @@ export const NODE_LABEL: Record<string, string> = {
   zone: "Feld",
   api: "API",
   decision: "Entscheidung",
+  signal: "Signal",
 };
