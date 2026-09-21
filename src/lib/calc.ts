@@ -111,7 +111,7 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
     if (typeof token === "number") {
       output.push(token);
       prev = "num";
-    } else if (/^[A-Z]$/.test(token)) {
+    } else if (/^[A-Z][A-Z0-9]*$/.test(token)) {
       const value = vars[token];
       if (value == null) return null;
       output.push(value);
@@ -186,11 +186,10 @@ function tokenize(expr: string): (number | string)[] | null {
       i += num[0].length;
       continue;
     }
-    if (/[A-Za-z]/.test(ch)) {
-      const upper = ch.toUpperCase();
-      if (!/^[A-Z]$/.test(upper)) return null;
-      tokens.push(upper);
-      i++;
+    const name = text.slice(i).match(/^[A-Za-z][A-Za-z0-9]*/);
+    if (name) {
+      tokens.push(name[0].toUpperCase());
+      i += name[0].length;
       continue;
     }
     if ("+-*/%()".includes(ch)) {
