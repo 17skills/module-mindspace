@@ -8,6 +8,7 @@ import {
   readMapConfig,
   readRiskConfig,
   riskColor,
+  levelColor,
   riskEntries,
   riskText,
   type RiskEntry,
@@ -2901,8 +2902,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     return { maps: Object.values(byId).filter((item) => item?.type === "map"), records: byId };
   }, [edges, flowNodes, id]);
 
-  const entries = useMemo(() => {
+  const { entries, weather } = useMemo(() => {
     const all: RiskEntry[] = [];
+    const seen: Record<string, { rain: number | null; wind: number | null; temp: number | null }> =
+      {};
     for (const mapRecord of maps.maps) {
       const mapConfig = readMapConfig(mapRecord);
       const sources = edges
@@ -2912,10 +2915,21 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         )
         .filter((item): item is NodeRecord => Boolean(item));
       const points = pointsFromSources(sources, mapConfig);
+      Object.assign(seen, mapConfig.weather);
       all.push(...riskEntries(points, mapConfig.weather, config));
     }
-    return all;
+    return { entries: all, weather: seen };
   }, [maps, edges, config]);
+
+  /** Decision modules this risk map feeds. */
+  const feeds = useMemo(
+    () =>
+      edges
+        .filter((edge) => edge.source === id)
+        .map((edge) => maps.records[edge.target])
+        .filter((item): item is NodeRecord => item?.type === "decision"),
+    [edges, maps, id],
+  );
 
   const summary = useMemo(() => riskText(entries), [entries]);
   useEffect(() => {
@@ -2959,57 +2973,121 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
 
       <div className="nowheel flex-1 overflow-auto p-2">
         <div className="flex gap-1">
-          <div className="flex w-4 items-center justify-center">
+          <div className="flex w-5 shrink-0 items-center justify-center">
             <span className="rotate-180 text-[9px] text-muted-foreground [writing-mode:vertical-rl]">
-              Auswirkung
+              Bedeutung des Objekts →
             </span>
           </div>
-          <div className="grid flex-1 grid-cols-5 gap-1">
-            {[5, 4, 3, 2, 1].map((impact) =>
-              [1, 2, 3, 4, 5].map((chance) => {
-                const cell = entries.filter(
-                  (entry) => entry.impact === impact && entry.likelihood === chance,
-                );
-                return (
-                  <div
-                    key={`${impact}-${chance}`}
-                    title={cell.map((entry) => entry.point.label).join(", ")}
-                    className="flex min-h-9 flex-wrap items-center justify-center gap-0.5 rounded-md p-1"
-                    style={{ background: riskColor(chance, impact), opacity: cell.length ? 1 : 0.35 }}
-                  >
-                    {cell.slice(0, 6).map((entry) => (
-                      <span
-                        key={entry.point.id}
-                        className="size-2 rounded-full bg-white/90"
-                        aria-label={entry.point.label}
-                      />
-                    ))}
-                    {cell.length > 6 && (
-                      <span className="text-[9px] font-medium text-white">+{cell.length - 6}</span>
-                    )}
-                  </div>
-                );
-              }),
-            )}
+          <div className="min-w-0 flex-1">
+            {[5, 4, 3, 2, 1].map((impact) => (
+              <div key={impact} className="mb-1 flex items-stretch gap-1">
+                <span className="w-3 shrink-0 self-center text-right font-mono text-[9px] text-muted-foreground">
+                  {impact}
+                </span>
+                <div className="grid min-w-0 flex-1 grid-cols-5 gap-1">
+                  {[1, 2, 3, 4, 5].map((chance) => {
+                    const cell = entries.filter(
+                      (entry) => entry.impact === impact && entry.likelihood === chance,
+                    );
+                    return (
+                      <div
+                        key={`${impact}-${chance}`}
+                        title={cell.map((entry) => entry.point.label).join(", ")}
+                        className="flex min-h-9 flex-wrap items-center justify-center gap-0.5 rounded-md p-1"
+                        style={{
+                          background: riskColor(chance, impact),
+                          opacity: cell.length ? 1 : 0.3,
+                        }}
+                      >
+                        {cell.length > 0 && (
+                          <span className="font-display text-[11px] font-semibold text-white drop-shadow">
+                            {cell.length}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-1 pl-4">
+              {[1, 2, 3, 4, 5].map((chance) => (
+                <span
+                  key={chance}
+                  className="flex-1 text-center font-mono text-[9px] text-muted-foreground"
+                >
+                  {chance}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-        <p className="mt-1 pl-5 text-center text-[9px] text-muted-foreground">
-          Eintrittswahrscheinlichkeit (Wetterlage) →
+        <p className="mt-0.5 pl-5 text-center text-[9px] text-muted-foreground">
+          Wetterlage (1 = ruhig … 5 = Unwetter) →
         </p>
 
-        <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-1.5 text-[10px] text-muted-foreground">
           {counts.map((count, index) => (
-            <span key={index}>
-              Stufe {index + 1}: {count}
+            <span key={index} className="flex items-center gap-1">
+              <span
+                className="size-2 rounded-full"
+                style={{ background: levelColor(index + 1) }}
+              />
+              {RISK_LABEL[index + 1]}: {count}
             </span>
           ))}
         </div>
+
+        {entries.length > 0 && (
+          <div className="mt-2 border-t pt-1.5">
+            <p className="mb-1 text-[10px] font-medium">Objekte nach Risiko</p>
+            <ul className="space-y-0.5">
+              {[...entries]
+                .sort((a, b) => b.level - a.level || b.likelihood - a.likelihood)
+                .slice(0, 12)
+                .map((entry) => {
+                  const w = weather[entry.point.id];
+                  return (
+                    <li
+                      key={entry.point.id}
+                      className="flex items-center gap-1.5 text-[10px] leading-tight"
+                    >
+                      <span
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ background: levelColor(entry.level) }}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{entry.point.label}</span>
+                      <span className="shrink-0 font-mono text-muted-foreground">
+                        {w?.rain != null ? `${w.rain} mm/h` : "– mm/h"} ·{" "}
+                        {w?.wind != null ? `${Math.round(w.wind)} km/h` : "– km/h"}
+                      </span>
+                      <span className="w-20 shrink-0 text-right font-medium">
+                        {RISK_LABEL[entry.level]}
+                      </span>
+                    </li>
+                  );
+                })}
+            </ul>
+            {entries.length > 12 && (
+              <p className="mt-0.5 text-[9px] text-muted-foreground">
+                … und {entries.length - 12} weitere
+              </p>
+            )}
+          </div>
+        )}
+
+        <p className="mt-2 border-t pt-1.5 text-[10px] text-muted-foreground">
+          {feeds.length
+            ? `Lage geht an: ${feeds.map((item) => item.title ?? "Entscheidung").join(", ")} – dort auf „Entscheiden“ klicken.`
+            : "Noch mit keinem Entscheidungs-Modul verbunden – Verbindung vom rechten Punkt zum Entscheidungs-Modul ziehen."}
+        </p>
 
         {!entries.length && (
           <p className="mt-2 text-[11px] text-muted-foreground">
             Keine Objekte – mit einem Karten-Modul verbinden und dort „Wetter holen“ klicken.
           </p>
         )}
+
 
         {selected && (
           <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2 text-[10px]">

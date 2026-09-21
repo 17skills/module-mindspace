@@ -255,3 +255,15 @@ export function riskText(entries: RiskEntry[]): string {
     );
   return `Risikolage (${entries.length} Objekte, höchste Stufe ${maxRisk(entries)}):\n${lines.join("\n")}`;
 }
+
+/** Colour for a finished risk level 1..5 (legend and lists). */
+export function levelColor(level: number): string {
+  const map: Record<number, string> = {
+    1: "#16a34a",
+    2: "#84cc16",
+    3: "#eab308",
+    4: "#ea580c",
+    5: "#dc2626",
+  };
+  return map[Math.min(5, Math.max(1, Math.round(level)))] ?? "#16a34a";
+}
