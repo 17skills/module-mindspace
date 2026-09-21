@@ -3520,7 +3520,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                 aria-label="Hinweis / Nachweis"
                                 placeholder="Nachweis, z. B. Störungsstatistik, DWD-Projektion"
                                 className="nodrag h-6 w-full rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
-                                onBlur={(e) => updateField(field.id, { note: e.target.value })}
+                                onBlur={(e) => commit(field.id, "note", e.target.value)}
                               />
                               <label className="flex items-center gap-1">
                                 <span className="w-24 shrink-0">Eintritt (E)</span>
