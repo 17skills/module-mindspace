@@ -566,23 +566,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
 
       {selected ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex gap-1 border-b px-2 py-1.5">
-            {(["text", "gewichtung"] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setTab(item)}
-                className={`nodrag module-eyebrow flex-1 rounded-md px-2 py-1 transition-colors ${
-                  tab === item
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/40 text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-          {tab === "text" ? (
+          <>
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -590,7 +574,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
               placeholder="Faktor schreiben …"
               className="nodrag nowheel h-full flex-1 resize-none rounded-none border-0 bg-transparent text-xs focus-visible:ring-0"
             />
-          ) : (
+            <div className="module-eyebrow border-t px-2 pt-1.5">Gewichtung</div>
             <div className="nowheel min-h-0 flex-1 overflow-auto p-2">
               {factor.params.length === 0 ? (
                 <p className="px-1 py-2 text-[11px] text-muted-foreground">
