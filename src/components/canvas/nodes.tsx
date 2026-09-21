@@ -2214,10 +2214,13 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
         className="flex flex-1 flex-col items-center justify-center gap-1 px-3 py-3 text-center"
         style={{ background: tone.bg, color: tone.fg }}
       >
-        <span className="font-display text-xl font-semibold tracking-tight">{tone.text}</span>
-        {typeof answer?.confidence === "number" && (
-          <span className="text-[11px] opacity-90">
-            {Math.round(answer.confidence * 100)} % sicher
+        <span className="font-display text-4xl font-semibold leading-none tracking-tight">
+          {confidence === null ? "–" : `${Math.round(confidence)} %`}
+        </span>
+        <span className="font-display text-base font-semibold tracking-tight">{tone.text}</span>
+        {confidence !== null && (
+          <span className="text-[10px] opacity-90">
+            Sicherheit · Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : ""}
           </span>
         )}
         <span className="text-[10px] opacity-80">Simulation – kein echter Kauf</span>
