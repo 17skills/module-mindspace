@@ -22,6 +22,7 @@ import {
   formatPrice,
   hitRate,
   latestPrice,
+  latestStamp,
   readQuotes,
   type QuoteMark,
 } from "@/lib/quotes";
