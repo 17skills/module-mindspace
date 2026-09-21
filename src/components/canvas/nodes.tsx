@@ -3123,7 +3123,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
 
       <div className="nowheel flex-1 overflow-auto p-2">
         {/* 5 x 5 matrix, likelihood over impact */}
-        <details className="group" defaultOpen={Boolean(selected)}>
+        <details className="group">
           <summary className="nodrag mb-1 flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
             5 × 5 Risikomatrix <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
           </summary>
