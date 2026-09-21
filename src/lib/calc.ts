@@ -1,15 +1,22 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
 
-/** Numeric value a module contributes to calculations (metadata.value). */
-export function nodeValue(record: NodeRecord | undefined): number | null {
-  const raw = record?.metadata?.["value"];
+function toNumber(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string") {
-    const parsed = Number(raw.replace(",", "."));
-    if (Number.isFinite(parsed)) return parsed;
+    const parsed = Number(raw.replace(/\s/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+    if (Number.isFinite(parsed) && raw.trim() !== "") return parsed;
   }
   return null;
+}
+
+/** Numeric value a module contributes to calculations (metadata.value). */
+export function nodeValue(record: NodeRecord | undefined): number | null {
+  if (!record) return null;
+  // a background field contributes the result of its agent
+  if (record.type === "zone") return toNumber(record.metadata?.["agentResult"]);
+  if (record.type === "sheet") return sheetResult(record);
+  return toNumber(record.metadata?.["value"]);
 }
 
 /**
@@ -104,7 +111,7 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
     if (typeof token === "number") {
       output.push(token);
       prev = "num";
-    } else if (/^[A-Z]$/.test(token)) {
+    } else if (/^[A-Z][A-Z0-9]*$/.test(token)) {
       const value = vars[token];
       if (value == null) return null;
       output.push(value);
@@ -179,11 +186,10 @@ function tokenize(expr: string): (number | string)[] | null {
       i += num[0].length;
       continue;
     }
-    if (/[A-Za-z]/.test(ch)) {
-      const upper = ch.toUpperCase();
-      if (!/^[A-Z]$/.test(upper)) return null;
-      tokens.push(upper);
-      i++;
+    const name = text.slice(i).match(/^[A-Za-z][A-Za-z0-9]*/);
+    if (name) {
+      tokens.push(name[0].toUpperCase());
+      i += name[0].length;
       continue;
     }
     if ("+-*/%()".includes(ch)) {
@@ -201,4 +207,61 @@ export function formatValue(value: number | null): string {
   if (value == null) return "–";
   const rounded = Math.round(value * 100) / 100;
   return rounded.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+}
+
+export type SheetRow = { name: string; value: string; formula: string };
+
+/** Rows of a sheet module (metadata.rows). */
+export function sheetRows(record: NodeRecord | undefined | null): SheetRow[] {
+  const raw = record?.metadata?.["rows"];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => {
+    const row = (item ?? {}) as Record<string, unknown>;
+    return {
+      name: typeof row["name"] === "string" ? row["name"] : "",
+      value: typeof row["value"] === "string" ? row["value"] : "",
+      formula: typeof row["formula"] === "string" ? row["formula"] : "",
+    };
+  });
+}
+
+/**
+ * Resolve every row of a sheet. Rows reference each other as R1, R2 …
+ * and incoming modules by their letter (A, B …) through `extra`.
+ */
+export function sheetValues(
+  record: NodeRecord | undefined | null,
+  extra: Record<string, number> = {},
+): (number | null)[] {
+  const rows = sheetRows(record);
+  const values: (number | null)[] = rows.map((row) =>
+    row.formula.trim() ? null : Number(row.value.replace(",", ".")) || (row.value.trim() ? null : null),
+  );
+  rows.forEach((row, index) => {
+    if (row.formula.trim()) return;
+    const parsed = Number(row.value.replace(",", "."));
+    values[index] = row.value.trim() && Number.isFinite(parsed) ? parsed : null;
+  });
+  // repeated passes resolve chains; the loop count caps cycles
+  for (let pass = 0; pass < rows.length + 1; pass++) {
+    rows.forEach((row, index) => {
+      if (!row.formula.trim() || values[index] != null) return;
+      const vars: Record<string, number> = { ...extra };
+      values.forEach((value, other) => {
+        if (value != null) vars[`R${other + 1}`] = value;
+      });
+      values[index] = evalFormula(row.formula, vars);
+    });
+  }
+  return values;
+}
+
+/** Result of a sheet: the last row that resolves to a number. */
+export function sheetResult(record: NodeRecord | undefined | null): number | null {
+  const values = sheetValues(record);
+  for (let i = values.length - 1; i >= 0; i--) {
+    const value = values[i];
+    if (value != null) return value;
+  }
+  return null;
 }

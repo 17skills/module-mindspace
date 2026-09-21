@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
-  Calculator,
+  Gauge,
   Check,
   CloudCheck,
   CloudOff,
@@ -65,11 +65,14 @@ import {
   ContentNode,
   DataNode,
   FrameNode,
+  GaugeNode,
   LabeledEdge,
+  MetricNode,
   NoteNode,
   SHAPES,
   ShapeNode,
   shapeKind,
+  SheetNode,
   TEXT_SIZES,
   TextNode,
   textSize,
@@ -82,7 +85,18 @@ import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
 import { isProfileLink, profileProvider } from "@/lib/profiles";
 import { segmentsFromFile } from "@/lib/segments";
-import { ZONE_ROLES, isAuto, readAssignment, zoneAt, zoneLabel } from "@/lib/zones";
+import {
+  ZONE_ROLES,
+  isAuto,
+  readAgent,
+  readAssignment,
+  zoneAt,
+  zoneContext,
+  zoneFingerprint,
+  zoneLabel,
+  zoneMembers,
+} from "@/lib/zones";
+import { runZoneAgent } from "@/lib/agent.functions";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
@@ -131,6 +145,9 @@ const nodeTypes = {
   shape: ShapeNode,
   text: TextNode,
   calc: CalcNode,
+  metric: MetricNode,
+  gauge: GaugeNode,
+  sheet: SheetNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -145,11 +162,21 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   shape: { width: 200, height: 140 },
   text: { width: 260, height: 48 },
   calc: { width: 320, height: 240 },
+  metric: { width: 240, height: 170 },
+  gauge: { width: 260, height: 240 },
+  sheet: { width: 360, height: 240 },
   table: { width: 400, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
   default: { width: 320, height: 340 },
 };
+
+/** Modules of the dashboard family, added through one toolbar menu. */
+const DASHBOARD_MODULES = [
+  { id: "metric", label: "Kennzahl", title: "Kennzahl", metadata: { value: null, unit: "", compare: "" } },
+  { id: "gauge", label: "Tacho", title: "Tacho", metadata: { min: 0, max: 100, warn: 60, danger: 85, value: 0 } },
+  { id: "sheet", label: "Rechenblatt", title: "Rechenblatt", metadata: { rows: [] } },
+] as const;
 
 /** Space a template group leaves around its fields. */
 const GROUP_PAD = { x: 16, top: 52, bottom: 16 };
@@ -200,6 +227,9 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "zone" ||
     record.type === "shape" ||
     record.type === "calc" ||
+    record.type === "metric" ||
+    record.type === "gauge" ||
+    record.type === "sheet" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -208,6 +238,8 @@ function toFlowNode(record: NodeRecord): Node {
   const zoneLocked =
     kind === "zone" &&
     (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
+  // a field with an agent task can hand its result on through a connection
+  const zoneAgent = kind === "zone" && Boolean(readAgent(record));
   return {
     id: record.id,
     type: kind,
@@ -218,7 +250,7 @@ function toFlowNode(record: NodeRecord): Node {
     ...(record.parent_id ? { parentId: record.parent_id, extent: "parent" as const } : {}),
     ...(kind === "frame" ? { zIndex: -1 } : {}),
     ...(kind === "zone"
-      ? { zIndex: -2, connectable: false, deletable: true, draggable: !zoneLocked }
+      ? { zIndex: -2, connectable: zoneAgent, deletable: true, draggable: !zoneLocked }
       : {}),
     ...(kind === "text" ? { connectable: false } : {}),
   };
@@ -1110,6 +1142,106 @@ function BoardPage() {
     [createRecord],
   );
 
+  /** True when the cards on a field changed since its last analysis. */
+  const agentStale = useCallback(
+    (id: string) => {
+      const zone = records[id];
+      const agent = readAgent(zone);
+      if (!zone || !agent || !agent.at) return false;
+      return zoneFingerprint(zoneMembers(id, Object.values(records))) !== agent.fingerprint;
+    },
+    [records],
+  );
+
+  /** Let a background field interpret everything lying on it. */
+  const runAgent = useCallback(
+    (id: string) => {
+      const zone = recordsRef.current[id];
+      const agent = readAgent(zone);
+      if (!zone || !agent?.task.trim()) {
+        toast.info("Gib dem Feld zuerst einen Auftrag");
+        return;
+      }
+      const members = zoneMembers(id, Object.values(recordsRef.current)).filter(
+        (item) => item.content,
+      );
+      if (members.length === 0) {
+        toast.info("Auf diesem Feld liegt noch kein auswertbarer Inhalt");
+        return;
+      }
+      const fingerprint = zoneFingerprint(zoneMembers(id, Object.values(recordsRef.current)));
+      updateNode(id, { metadata: { ...(zone.metadata ?? {}), agentRunning: true } });
+      void runZoneAgent({
+        data: {
+          field: zone.title ?? "Feld",
+          task: agent.task,
+          kind: agent.kind,
+          unit: agent.unit || undefined,
+          context: zoneContext(zone, members),
+        },
+      })
+        .then((result) => {
+          const current = recordsRef.current[id];
+          updateNode(id, {
+            metadata: {
+              ...(current?.metadata ?? {}),
+              agentRunning: false,
+              agentResult: result.value,
+              agentUnit: result.unit || agent.unit,
+              agentReason: result.reason,
+              agentAt: new Date().toISOString(),
+              agentFingerprint: fingerprint,
+            },
+          });
+        })
+        .catch((error: unknown) => {
+          const current = recordsRef.current[id];
+          updateNode(id, {
+            metadata: { ...(current?.metadata ?? {}), agentRunning: false },
+          });
+          toast.error(error instanceof Error ? error.message : "Analyse fehlgeschlagen");
+        });
+    },
+    [updateNode],
+  );
+
+  /** Open the calculation belonging to a connection, or create it. */
+  const calcForEdge = useCallback(
+    (edgeId: string) => {
+      const edge = edgesRef.current.find((item) => item.id === edgeId);
+      if (!edge) return;
+      const existing = Object.values(recordsRef.current).find(
+        (item) =>
+          item.type === "calc" &&
+          (item.metadata as Record<string, unknown> | null)?.["fromEdge"] === edgeId,
+      );
+      if (existing) {
+        focusNode(existing.id);
+        return;
+      }
+      const source = recordsRef.current[edge.source];
+      const target = recordsRef.current[edge.target];
+      const x = ((source?.position_x ?? 0) + (target?.position_x ?? 0)) / 2;
+      const y = ((source?.position_y ?? 0) + (target?.position_y ?? 0)) / 2 + 260;
+      void createRecord({
+        type: "calc",
+        title: "Rechnung",
+        position_x: x,
+        position_y: y,
+        metadata: { formula: "", fromEdge: edgeId, zoneAuto: false },
+      })
+        .then((created) => {
+          if (source) createEdge(source.id, created.id);
+          if (target) createEdge(created.id, target.id);
+        })
+        .catch((error: unknown) =>
+          toast.error(error instanceof Error ? error.message : "Rechnung fehlgeschlagen"),
+        );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [createRecord, createEdge],
+  );
+
   const zoneOf = useCallback(
     (id: string) => {
       const record = records[id];
@@ -1279,6 +1411,9 @@ function BoardPage() {
       allNodes,
       focusNode,
       resizeZone,
+      runAgent,
+      agentStale,
+      calcForEdge,
     }),
     [
       updateNode,
@@ -1297,6 +1432,9 @@ function BoardPage() {
       allNodes,
       focusNode,
       resizeZone,
+      runAgent,
+      agentStale,
+      calcForEdge,
     ],
   );
 
@@ -1375,6 +1513,20 @@ function BoardPage() {
       ]
     : menuRecord?.type === "zone"
     ? [
+        {
+          label: readAgent(menuRecord) ? "Agent bearbeiten" : "Als Agent einrichten",
+          icon: Workflow,
+          run: () => openInspector(menuRecord.id, "agent"),
+        },
+        ...(readAgent(menuRecord)
+          ? [
+              {
+                label: "Feld jetzt analysieren",
+                icon: Workflow,
+                run: () => runAgent(menuRecord.id),
+              },
+            ]
+          : []),
         {
           label: "Chat zu diesem Feld",
           icon: MessageSquare,
@@ -1644,6 +1796,7 @@ function BoardPage() {
             onEdgesDelete={(deleted) => {
               deleted.forEach((e) => trackSave(supabase.from("edges").delete().eq("id", e.id)));
             }}
+            onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
             onPaneContextMenu={(event) => {
@@ -1842,28 +1995,45 @@ function BoardPage() {
                 <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    className={toolBtn()}
-                    aria-label="Rechen-Modul anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({
-                        type: "calc",
-                        title: "Rechnung",
-                        position_x: at.x,
-                        position_y: at.y,
-                        metadata: { formula: "" },
-                      });
-                    }}
-                  >
-                    <Calculator className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Rechen-Modul anlegen</TooltipContent>
-              </Tooltip>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={toolBtn()}
+                        aria-label="Kennzahlen"
+                      >
+                        <Gauge className="size-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Kennzahlen</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent side="top" align="center">
+                  {DASHBOARD_MODULES.map((module) => (
+                    <DropdownMenuItem
+                      key={module.id}
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: module.id,
+                          title: module.title,
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { ...module.metadata },
+                        });
+                      }}
+                    >
+                      {module.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           </div>

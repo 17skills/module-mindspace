@@ -21,7 +21,7 @@ export type NodeRecord = {
   metadata: Record<string, unknown> | null;
 };
 
-export type InspectorTab = "source" | "data" | "refresh" | "assign" | "overview";
+export type InspectorTab = "source" | "data" | "refresh" | "assign" | "overview" | "agent";
 
 export type StructureItem = {
   kind: "table" | "list" | "chart";
@@ -65,6 +65,12 @@ export type BoardApi = {
   focusNode: (id: string) => void;
   /** Persist a field size; template groups scale their fields along. */
   resizeZone: (id: string, width: number, height: number) => void;
+  /** Run the agent of a background field over the cards lying on it. */
+  runAgent: (id: string) => void;
+  /** True when cards on the field changed since the last analysis. */
+  agentStale: (id: string) => boolean;
+  /** Open (or create) the calculation module belonging to a connection. */
+  calcForEdge: (edgeId: string) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
@@ -88,6 +94,9 @@ export const NODE_ACCENT: Record<string, string> = {
   list: "var(--primary)",
   chart: "var(--primary)",
   calc: "var(--primary)",
+  metric: "var(--primary)",
+  gauge: "var(--primary)",
+  sheet: "var(--primary)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -103,4 +112,8 @@ export const NODE_LABEL: Record<string, string> = {
   list: "Liste",
   chart: "Diagramm",
   calc: "Rechnung",
+  metric: "Kennzahl",
+  gauge: "Tacho",
+  sheet: "Rechenblatt",
+  zone: "Feld",
 };

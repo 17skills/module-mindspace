@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { BookOpen, Lock, RotateCw, ShieldOff } from "lucide-react";
+import { BookOpen, Calculator, Lock, Plus, RefreshCw, RotateCw, ShieldOff, Sparkles, Trash2 } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -12,7 +12,8 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { calcInputs, evalFormula, formatValue } from "@/lib/calc";
+import { calcInputs, evalFormula, formatValue, sheetRows, sheetValues } from "@/lib/calc";
+import { readAgent } from "@/lib/zones";
 import {
   Bar,
   BarChart,
@@ -411,11 +412,14 @@ export const ZONE_COLORS: readonly ZoneColor[] = [
 
 export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode, resizeZone } = useBoard();
+  const { updateNode, resizeZone, runAgent, agentStale, openInspector } = useBoard();
   const color = record.color ?? ZONE_WHITE;
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const isGroup = meta["templateGroup"] === true;
   const locked = meta["locked"] === true;
+  const agent = readAgent(record);
+  const running = meta["agentRunning"] === true;
+  const stale = agent ? agentStale(record.id) : false;
   return (
     <>
       <NodeResizer
@@ -425,6 +429,7 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
         color="var(--primary)"
         onResizeEnd={(_, params) => resizeZone(record.id, params.width, params.height)}
       />
+      {agent && <Handle type="source" position={Position.Right} />}
       <div
         className={`relative h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
         style={{
@@ -447,6 +452,56 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
         />
         {locked && (
           <Lock className="pointer-events-none absolute top-3.5 right-3.5 size-3.5 text-muted-foreground/70" />
+        )}
+        {agent && (
+          <div className="nodrag absolute inset-x-2 bottom-2 rounded-xl border border-border/70 bg-card/95 px-3 py-2 shadow-[var(--shadow-card)]">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-3.5 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 truncate font-display text-base font-semibold tracking-tight">
+                {running
+                  ? "Analysiert …"
+                  : agent.result
+                    ? `${agent.result}${agent.unit ? ` ${agent.unit}` : ""}`
+                    : "Noch kein Ergebnis"}
+              </span>
+              {stale && !running && (
+                <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] text-destructive">
+                  veraltet
+                </span>
+              )}
+              <UiTooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    aria-label="Feld neu analysieren"
+                    disabled={running}
+                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
+                    onClick={() => runAgent(record.id)}
+                  >
+                    <RefreshCw className={`size-3.5${running ? " animate-spin" : ""}`} />
+                  </button>
+                </TooltipTrigger>
+                <UiTooltipContent>Neu analysieren</UiTooltipContent>
+              </UiTooltip>
+            </div>
+            {agent.reason && (
+              <details className="mt-1">
+                <summary className="cursor-pointer text-[11px] text-muted-foreground">
+                  Begründung
+                </summary>
+                <p className="mt-1 max-h-24 overflow-auto text-[11px] leading-snug text-muted-foreground">
+                  {agent.reason}
+                </p>
+              </details>
+            )}
+            <button
+              className="mt-1 text-[10px] text-muted-foreground hover:underline"
+              onClick={() => openInspector(record.id, "agent")}
+            >
+              {agent.at
+                ? `Zuletzt: ${new Date(agent.at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} · Auftrag bearbeiten`
+                : "Auftrag bearbeiten"}
+            </button>
+          </div>
         )}
       </div>
     </>
@@ -1143,7 +1198,7 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
 
 /** Connection with an editable value label ("25 %", "2500") at its midpoint. */
 export function LabeledEdge(props: EdgeProps) {
-  const { updateEdge } = useBoard();
+  const { updateEdge, calcForEdge } = useBoard();
   const [path, labelX, labelY] = getBezierPath({
     sourceX: props.sourceX,
     sourceY: props.sourceY,
@@ -1173,25 +1228,39 @@ export function LabeledEdge(props: EdgeProps) {
           }}
         >
           {props.selected ? (
-            <input
-              key={label}
-              autoFocus
-              defaultValue={label}
-              placeholder="z. B. 25 %"
-              aria-label="Wert der Verbindung"
-              className="h-6 w-20 rounded-md border border-border bg-card text-center text-[11px] shadow-sm outline-none focus:ring-2 focus:ring-ring/50"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                if (e.key === "Escape") {
-                  (e.target as HTMLInputElement).value = label;
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              onBlur={(e) => {
-                const next = e.target.value.trim();
-                if (next !== label) updateEdge(props.id, next);
-              }}
-            />
+            <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-card p-1 shadow-[var(--shadow-float)]">
+              <input
+                key={label}
+                autoFocus
+                defaultValue={label}
+                placeholder="z. B. 25 %"
+                aria-label="Wert der Verbindung"
+                className="h-6 w-20 rounded-md border border-border bg-card text-center text-[11px] outline-none focus:ring-2 focus:ring-ring/50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") {
+                    (e.target as HTMLInputElement).value = label;
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onBlur={(e) => {
+                  const next = e.target.value.trim();
+                  if (next !== label) updateEdge(props.id, next);
+                }}
+              />
+              <UiTooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    aria-label="Rechnung zu dieser Verbindung"
+                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => calcForEdge(props.id)}
+                  >
+                    <Calculator className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <UiTooltipContent>Rechnung anlegen</UiTooltipContent>
+              </UiTooltip>
+            </div>
           ) : label ? (
             <span className="rounded-full border border-border/70 bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground shadow-sm">
               {label}
@@ -1333,6 +1402,259 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
             {invalid ? "Formel unvollständig" : formatValue(result)}
           </span>
         </div>
+      </div>
+    </div>
+  );
+});
+
+/** Big single number with unit and an optional comparison line. */
+export const MetricNode = memo(function MetricNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const value = typeof meta["value"] === "number" ? meta["value"] : Number(meta["value"] ?? NaN);
+  const unit = typeof meta["unit"] === "string" ? meta["unit"] : "";
+  const compare = typeof meta["compare"] === "string" ? meta["compare"] : "";
+  function patch(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
+  }
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={180} minHeight={130} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <input
+        key={record.id + (record.title ?? "")}
+        defaultValue={record.title ?? "Kennzahl"}
+        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Kennzahl" })}
+      />
+      <div className="nodrag flex flex-1 flex-col justify-center px-3 py-2">
+        <div className="flex items-baseline gap-1">
+          <input
+            key={record.id + String(meta["value"] ?? "")}
+            defaultValue={Number.isFinite(value) ? String(value) : ""}
+            inputMode="decimal"
+            placeholder="0"
+            aria-label="Wert"
+            className="min-w-0 flex-1 bg-transparent font-display text-3xl font-semibold tracking-tight outline-none"
+            onBlur={(e) => {
+              const text = e.target.value.trim().replace(",", ".");
+              patch({ value: text === "" ? null : Number(text) });
+            }}
+          />
+          <input
+            key={record.id + unit}
+            defaultValue={unit}
+            placeholder="Einheit"
+            aria-label="Einheit"
+            className="w-16 bg-transparent text-sm text-muted-foreground outline-none"
+            onBlur={(e) => patch({ unit: e.target.value.trim() })}
+          />
+        </div>
+        <input
+          key={record.id + compare}
+          defaultValue={compare}
+          placeholder="Vergleich, z. B. +12 % zum Vormonat"
+          aria-label="Vergleich"
+          className="mt-1 bg-transparent text-xs text-muted-foreground outline-none"
+          onBlur={(e) => patch({ compare: e.target.value.trim() })}
+        />
+      </div>
+    </div>
+  );
+});
+
+function arc(cx: number, cy: number, r: number, from: number, to: number) {
+  const point = (angle: number) => {
+    const rad = (Math.PI * angle) / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+  };
+  const [x1, y1] = point(from);
+  const [x2, y2] = point(to);
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2} ${y2}`;
+}
+
+/** Gauge with free min/max and two thresholds (green → orange → red). */
+export const GaugeNode = memo(function GaugeNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const num = (key: string, fallback: number) => {
+    const raw = meta[key];
+    const parsed = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  const min = num("min", 0);
+  const max = num("max", 100);
+  const warn = num("warn", 60);
+  const danger = num("danger", 85);
+  const value = num("value", min);
+  const span = max - min || 1;
+  const ratio = Math.min(1, Math.max(0, (value - min) / span));
+  const angle = 180 + ratio * 180;
+  const colour = value >= danger ? "var(--destructive)" : value >= warn ? "var(--note)" : "var(--frame)";
+  function patch(key: string, raw: string) {
+    const text = raw.trim().replace(",", ".");
+    updateNode(record.id, {
+      metadata: { ...(record.metadata ?? {}), [key]: text === "" ? null : Number(text) },
+    });
+  }
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={220} minHeight={200} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <input
+        key={record.id + (record.title ?? "")}
+        defaultValue={record.title ?? "Tacho"}
+        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Tacho" })}
+      />
+      <div className="nodrag flex flex-1 flex-col items-center justify-center px-3 py-2">
+        <svg viewBox="0 0 200 110" className="w-full max-w-56">
+          <path d={arc(100, 100, 80, 180, 360)} fill="none" stroke="var(--border)" strokeWidth={14} strokeLinecap="round" />
+          <path
+            d={arc(100, 100, 80, 180, Math.max(180.1, angle))}
+            fill="none"
+            stroke={colour}
+            strokeWidth={14}
+            strokeLinecap="round"
+          />
+          <text x="100" y="94" textAnchor="middle" className="fill-foreground" style={{ fontSize: 26, fontWeight: 600 }}>
+            {formatValue(value)}
+          </text>
+        </svg>
+        <div className="mt-1 grid w-full grid-cols-4 gap-1 text-[10px] text-muted-foreground">
+          {(["min", "warn", "danger", "max"] as const).map((key) => (
+            <label key={key} className="flex flex-col items-center">
+              <span className="uppercase">{key}</span>
+              <input
+                key={record.id + key + String(meta[key] ?? "")}
+                defaultValue={String(num(key, key === "max" ? 100 : key === "warn" ? 60 : key === "danger" ? 85 : 0))}
+                inputMode="decimal"
+                aria-label={key}
+                className="w-full rounded-md border border-transparent bg-transparent text-center font-mono outline-none hover:border-border focus:border-border"
+                onBlur={(e) => patch(key, e.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+        <input
+          key={record.id + "value" + String(meta["value"] ?? "")}
+          defaultValue={String(value)}
+          inputMode="decimal"
+          aria-label="Wert"
+          placeholder="Wert"
+          className="mt-1 w-full rounded-md border border-border/70 bg-background px-2 py-1 text-center font-mono text-xs outline-none focus:ring-2 focus:ring-ring/50"
+          onBlur={(e) => patch("value", e.target.value)}
+        />
+      </div>
+    </div>
+  );
+});
+
+/** Small spreadsheet: rows with name, value or formula (R1, R2 … and inputs A, B …). */
+export const SheetNode = memo(function SheetNode({ id, data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
+  const records = useMemo(
+    () => Object.fromEntries(flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record])),
+    [flowNodes],
+  );
+  const inputs = calcInputs(id, records, edges);
+  const extra: Record<string, number> = {};
+  for (const input of inputs) if (input.value != null) extra[input.letter] = input.value;
+  const rows = sheetRows(record);
+  const values = sheetValues(record, extra);
+
+  function writeRows(next: { name: string; value: string; formula: string }[]) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), rows: next } });
+  }
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border bg-card shadow-[var(--shadow-card)] ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={280} minHeight={180} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <input
+        key={record.id + (record.title ?? "")}
+        defaultValue={record.title ?? "Rechenblatt"}
+        className="nodrag border-b bg-transparent px-3 py-2 text-sm font-medium outline-none"
+        onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Rechenblatt" })}
+      />
+      <div className="nodrag nowheel flex-1 overflow-auto px-2 py-1.5">
+        {inputs.length > 0 && (
+          <p className="mb-1 text-[10px] text-muted-foreground">
+            Eingänge: {inputs.map((input) => `${input.letter} = ${input.title}`).join(", ")}
+          </p>
+        )}
+        {rows.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Noch keine Zeilen. Zeilen verweisen aufeinander mit R1, R2 … und auf Eingänge mit A, B …
+          </p>
+        )}
+        {rows.map((row, index) => (
+          <div key={index} className="flex items-center gap-1 py-0.5 text-xs">
+            <span className="w-6 shrink-0 font-mono text-[10px] text-muted-foreground">R{index + 1}</span>
+            <input
+              defaultValue={row.name}
+              key={`n${index}${row.name}`}
+              placeholder="Name"
+              aria-label={`Name Zeile ${index + 1}`}
+              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 outline-none hover:border-border focus:border-border"
+              onBlur={(e) => {
+                const next = [...rows];
+                next[index] = { ...row, name: e.target.value };
+                writeRows(next);
+              }}
+            />
+            <input
+              defaultValue={row.formula || row.value}
+              key={`v${index}${row.formula}${row.value}`}
+              placeholder="Wert oder =R1*A"
+              aria-label={`Wert Zeile ${index + 1}`}
+              className="w-28 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border"
+              onBlur={(e) => {
+                const text = e.target.value.trim();
+                const formula = text.startsWith("=") ? text.slice(1).trim() : /[A-Za-z(]/.test(text) ? text : "";
+                const next = [...rows];
+                next[index] = { name: row.name, value: formula ? "" : text, formula };
+                writeRows(next);
+              }}
+            />
+            <span className="w-16 shrink-0 text-right font-mono text-[11px] text-muted-foreground">
+              {formatValue(values[index] ?? null)}
+            </span>
+            <button
+              aria-label={`Zeile ${index + 1} löschen`}
+              className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
+              onClick={() => writeRows(rows.filter((_, other) => other !== index))}
+            >
+              <Trash2 className="size-3" />
+            </button>
+          </div>
+        ))}
+        <button
+          className="mt-1 flex items-center gap-1 rounded-md px-1 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+          onClick={() => writeRows([...rows, { name: "", value: "", formula: "" }])}
+        >
+          <Plus className="size-3" /> Zeile
+        </button>
       </div>
     </div>
   );
