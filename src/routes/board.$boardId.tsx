@@ -202,7 +202,7 @@ const DASHBOARD_MODULES = [
   { id: "signal", label: "Signal (Ampel)", title: "Signal", metadata: { question: "" } },
   { id: "quotes", label: "Kursverlauf", title: "Kurse", metadata: { days: 7, currency: "eur" } },
   { id: "map", label: "Karte (GIS)", title: "Karte", metadata: { columns: {}, weather: {}, zoom: 5 } },
-  { id: "risk", label: "Risikokarte", title: "Risikokarte", metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75, defaultImpact: 3 } },
+  { id: "risk", label: "Risikomatrix (ISO 55001)", title: "Risikomatrix", metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 } },
 ] as const;
 
 /** Space a template group leaves around its fields. */
