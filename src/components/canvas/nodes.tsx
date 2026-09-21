@@ -2309,20 +2309,14 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
         className="flex flex-1 flex-col items-center justify-center gap-1 px-3 py-3 text-center"
         style={{ background: tone.bg, color: tone.fg }}
       >
+        <span className="text-[9px] font-bold uppercase opacity-80">Aktueller Status</span>
         <span className="font-display text-4xl font-semibold leading-none tracking-tight">
           {confidence === null ? "–" : `${Math.round(confidence)} %`}
         </span>
         <span className="font-display text-base font-semibold tracking-tight">{tone.text}</span>
         {confidence !== null && (
-          <span className="text-[10px] opacity-90">
-            Sicherheit · Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : ""}
-          </span>
+          <span className="text-[10px] opacity-90">Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : " erreicht"}</span>
         )}
-        <span className="text-[10px] opacity-80">
-          {typeof meta["hint"] === "string" && meta["hint"]
-            ? (meta["hint"] as string)
-            : "Simulation – kein echter Kauf"}
-        </span>
       </div>
       {selected && (
         <div className="border-t px-2 py-1.5">
@@ -2880,6 +2874,19 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
         </Button>
       </div>
 
+      <div className="flex items-center justify-between gap-3 border-b bg-secondary/25 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${risky ? "bg-destructive/10 text-destructive" : "bg-support/10 text-support"}`}>
+            <CloudSun className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-bold">{risky ? `${risky} Wetterwarnungen` : `${points.length} Anlagen stabil`}</p>
+            <p className="truncate text-[9px] text-muted-foreground">{config.lastAt ? `Stand ${new Date(config.lastAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "Wetter noch nicht abgerufen"}</p>
+          </div>
+        </div>
+        <span className="shrink-0 font-mono text-xs font-semibold">{points.length} Objekte</span>
+      </div>
+
       <div className="relative flex-1">
         <ClientOnly
           fallback={
@@ -2928,14 +2935,6 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
           </button>
         </div>
       )}
-
-      <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[10px] text-muted-foreground">
-        <span>
-          {points.length} Objekte · {risky} mit starkem Regen
-        </span>
-        <span>{config.lastAt ? new Date(config.lastAt).toLocaleString("de-DE") : "kein Abruf"}</span>
-      </div>
-
 
       {picked && (
         <div className="border-t px-3 py-1.5 text-[11px]">
