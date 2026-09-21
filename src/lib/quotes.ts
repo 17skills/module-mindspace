@@ -11,6 +11,8 @@ export type QuoteMark = {
   confidence: number | null;
   /** Price at the moment the decision was recorded. */
   price: number | null;
+  /** Timestamp of the newest price point known when the decision was recorded. */
+  seriesAt?: number | null;
 };
 
 export type QuotesConfig = {
