@@ -121,7 +121,7 @@ const STATUSES = ["offen", "beauftragt", "in arbeit", "erledigt"] as const;
 export async function changeFinding(
   appId: string,
   findingId: string,
-  patch: { status?: string; owner?: string; due?: string },
+  patch: { status?: string | undefined; owner?: string | undefined; due?: string | undefined },
   nodeId?: string,
 ) {
   const { db, target, meta, findings } = await appFindingStore(appId, nodeId);
