@@ -33,10 +33,10 @@ export function nodeValue(record: NodeRecord | undefined): number | null {
     const factor = readFactor(record);
     if (factor.stored && factor.params.length) return factor.score;
   }
-  // an inspection module sends the count of immediate findings (priority 1..3)
+  // an inspection module sends the count of open immediate findings (priority 1..3)
   if (record.type === "inspect") {
     return readInspection(record).findings.filter(
-      (finding) => finding.priority <= 3,
+      (finding) => finding.priority <= 3 && finding.status !== "erledigt",
     ).length;
   }
   return toNumber(record.metadata?.["value"]);
