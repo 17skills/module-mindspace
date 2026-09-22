@@ -1,10 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ScopePreview } from "@/components/ScopePreview";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,17 +23,17 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Canvas Spark – deine Wissens-Boards" },
+      { title: "scopebuilder – deine Scopes und Apps" },
       {
         name: "description",
         content:
-          "Sammle YouTube-Videos, Podcasts, PDFs und Notizen auf einem Canvas, verbinde sie und arbeite per Chat mit ihnen.",
+          "Baue Scopes aus Daten, Karten, Kennzahlen und Befunden – und liefere daraus Apps für Team und KI-Assistenten aus.",
       },
-      { property: "og:title", content: "Canvas Spark – deine Wissens-Boards" },
+      { property: "og:title", content: "scopebuilder – deine Scopes und Apps" },
       {
         property: "og:description",
         content:
-          "Ein Canvas für Videos, Podcasts, Dokumente und KI-Chat – alles verbunden an einem Ort.",
+          "Das Studio für Scopes: Module verbinden, rechnen lassen und als App oder KI-Anschluss ausliefern.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -43,6 +46,8 @@ function LibraryPage() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<{ kind: "scope" | "app"; id: string } | null>(null);
+  const [draft, setDraft] = useState("");
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
@@ -61,13 +66,28 @@ function LibraryPage() {
     },
   });
 
+  const moduleTypes = useQuery({
+    queryKey: ["board-module-types", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("nodes").select("board_id,type");
+      if (error) throw error;
+      const map: Record<string, string[]> = {};
+      for (const row of data ?? []) {
+        const list = (map[row.board_id] ??= []);
+        if (list.length < 6) list.push(row.type);
+      }
+      return map;
+    },
+  });
+
   const apps = useQuery({
     queryKey: ["apps", user?.id],
     enabled: Boolean(user),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("apps")
-        .select("id,title,kind,node_ids,updated_at")
+        .select("id,title,description,kind,node_ids,mcp_scope,updated_at")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -78,7 +98,7 @@ function LibraryPage() {
     mutationFn: async () => {
       const { data, error } = await supabase
         .from("boards")
-        .insert({ user_id: user!.id, title: "Neues Board" })
+        .insert({ user_id: user!.id, title: "Neuer Scope" })
         .select("id")
         .single();
       if (error) throw error;
@@ -97,6 +117,25 @@ function LibraryPage() {
     onError: (error) => toast.error(error.message),
   });
 
+  const saveDescription = useMutation({
+    mutationFn: async (target: { kind: "scope" | "app"; id: string; text: string }) => {
+      const table = target.kind === "scope" ? "boards" : "apps";
+      const { error } = await supabase
+        .from(table)
+        .update({ description: target.text })
+        .eq("id", target.id);
+      if (error) throw error;
+      return target;
+    },
+    onSuccess: (target) => {
+      setEditing(null);
+      void queryClient.invalidateQueries({
+        queryKey: [target.kind === "scope" ? "boards" : "apps"],
+      });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   if (loading || !user) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>;
   }
@@ -110,7 +149,7 @@ function LibraryPage() {
               ✦
             </span>
             <span className="font-display text-lg font-semibold tracking-tight text-brand-navy">
-              Canvas Spark
+              scopebuilder
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -126,14 +165,15 @@ function LibraryPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold tracking-tight text-brand-navy">
-              Deine Boards
+              Deine Scopes
             </h1>
             <p className="mt-1 text-muted-foreground">
-              Ein Board pro Thema: Videos, Podcasts, Dokumente, Notizen und Chat.
+              Ein Scope pro Thema: Daten, Karten, Kennzahlen, Befunde und Chat – das Studio für
+              deine Apps.
             </p>
           </div>
           <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
-            Neues Board
+            Neuer Scope
           </Button>
         </div>
 
@@ -141,13 +181,15 @@ function LibraryPage() {
           {boards.data?.map((board) => (
             <div
               key={board.id}
-              className="group rounded-2xl border bg-card p-5 shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]"
+              className="group rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]"
             >
-              <Link
-                to="/board/$boardId"
-                params={{ boardId: board.id }}
-                className="block"
-              >
+              <Link to="/board/$boardId" params={{ boardId: board.id }} className="block">
+                <ScopePreview
+                  seed={board.id}
+                  types={moduleTypes.data?.[board.id] ?? []}
+                  label="Scope"
+                  className="mb-3 h-24"
+                />
                 <div className="flex items-center gap-2">
                   <h2 className="font-display text-lg font-semibold">{board.title}</h2>
                   {board.user_id !== user.id && (
@@ -156,13 +198,53 @@ function LibraryPage() {
                     </span>
                   )}
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                  {board.description || "Ohne Beschreibung"}
-                </p>
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Zuletzt geändert {new Date(board.updated_at).toLocaleDateString("de-DE")}
-                </p>
               </Link>
+
+              {editing?.kind === "scope" && editing.id === board.id ? (
+                <div className="mt-2 space-y-2">
+                  <Textarea
+                    autoFocus
+                    rows={3}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder="Worum geht es in diesem Scope?"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        saveDescription.mutate({ kind: "scope", id: board.id, text: draft })
+                      }
+                    >
+                      Speichern
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                      Abbrechen
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-1 flex items-start gap-2">
+                  <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">
+                    {board.description || "Ohne Beschreibung"}
+                  </p>
+                  <button
+                    title="Beschreibung bearbeiten"
+                    className="text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-foreground"
+                    onClick={() => {
+                      setEditing({ kind: "scope", id: board.id });
+                      setDraft(board.description ?? "");
+                    }}
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
+                </div>
+              )}
+
+              <p className="mt-3 text-xs text-muted-foreground">
+                Zuletzt geändert {new Date(board.updated_at).toLocaleDateString("de-DE")}
+              </p>
+
               {board.user_id === user.id && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -172,9 +254,9 @@ function LibraryPage() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Board löschen?</AlertDialogTitle>
+                      <AlertDialogTitle>Scope löschen?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Alle Module, Verbindungen und Chats dieses Boards werden entfernt.
+                        Alle Module, Verbindungen und Chats dieses Scopes werden entfernt.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -191,7 +273,7 @@ function LibraryPage() {
 
           {boards.data?.length === 0 && (
             <div className="col-span-full rounded-2xl border border-dashed p-12 text-center text-muted-foreground">
-              Noch kein Board. Lege dein erstes an und ziehe Inhalte darauf.
+              Noch kein Scope. Lege deinen ersten an und ziehe Inhalte hinein.
             </div>
           )}
         </div>
@@ -205,18 +287,69 @@ function LibraryPage() {
           </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {apps.data?.map((app) => (
-              <div key={app.id} className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-card)]">
+              <div
+                key={app.id}
+                className="group rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]"
+              >
+                <ScopePreview
+                  seed={app.id}
+                  types={app.kind === "capture" ? ["inspect", "map", "note"] : ["map", "metric", "risk"]}
+                  label={app.kind === "capture" ? "Erfassung" : "Cockpit"}
+                  className="mb-3 h-24"
+                />
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-base font-semibold">{app.title}</h3>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                    {app.kind === "capture" ? "Erfassung" : "Cockpit"}
+                    {app.mcp_scope === "write" ? "KI schreibt" : "KI liest"}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+
+                {editing?.kind === "app" && editing.id === app.id ? (
+                  <div className="mt-2 space-y-2">
+                    <Textarea
+                      autoFocus
+                      rows={3}
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      placeholder="Wofür ist diese App gedacht?"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          saveDescription.mutate({ kind: "app", id: app.id, text: draft })
+                        }
+                      >
+                        Speichern
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-1 flex items-start gap-2">
+                    <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">
+                      {app.description || "Ohne Beschreibung"}
+                    </p>
+                    <button
+                      title="Beschreibung bearbeiten"
+                      className="text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-foreground"
+                      onClick={() => {
+                        setEditing({ kind: "app", id: app.id });
+                        setDraft(app.description ?? "");
+                      }}
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <p className="mt-2 text-xs text-muted-foreground">
                   {Array.isArray(app.node_ids) ? app.node_ids.length : 0} Module ·{" "}
                   {new Date(app.updated_at).toLocaleDateString("de-DE")}
                 </p>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-3 flex gap-2">
                   <Button size="sm" variant="outline" asChild>
                     <a href={`/app/${app.id}`} target="_blank" rel="noreferrer">
                       Öffnen
@@ -237,7 +370,7 @@ function LibraryPage() {
             ))}
             {apps.data?.length === 0 && (
               <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                Noch keine App. Wähle im Board Module aus und klicke unten auf „App-Ansicht“.
+                Noch keine App. Wähle in einem Scope Module aus und klicke unten auf „App-Ansicht“.
               </div>
             )}
           </div>
