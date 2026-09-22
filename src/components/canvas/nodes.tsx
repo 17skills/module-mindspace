@@ -25,7 +25,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { AlertTriangle, BookOpen, Calculator, Camera, ChevronRight, CloudSun, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, Camera, ChevronRight, CloudSun, ExternalLink, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
