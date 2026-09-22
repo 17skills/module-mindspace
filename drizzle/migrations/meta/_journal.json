@@ -57,6 +57,13 @@
       "when": 1790018318521,
       "tag": "0007_harden_chat_messages_and_private_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790084597294,
+      "tag": "0008_create_apps",
+      "breakpoints": true
     }
   ]
 }
