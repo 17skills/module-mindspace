@@ -8,8 +8,10 @@ import {
   Key,
   Maximize2,
   Minimize2,
+  Monitor,
   Pencil,
   PlugZap,
+  Smartphone,
   Trash2,
 } from "lucide-react";
 import {
@@ -24,7 +26,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { APP_KINDS, MAX_APP_MODULES, brandingFrom, moduleLabel, suggestKind, type AppKind } from "@/lib/apps";
+import type { NodeRecord } from "@/components/canvas/board-context";
+import { AppEngine } from "@/components/app/AppEngine";
+import { APP_LAYOUTS, resolveLayout } from "@/lib/app-layout";
+import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
 import {
   APP_DESIGN_PRESETS,
   DEFAULT_APP_BRANDING,
@@ -33,7 +38,7 @@ import {
   type AppBranding,
 } from "@/lib/zones";
 
-type Candidate = { id: string; title: string; type: string };
+type Candidate = NodeRecord;
 
 type Row = {
   id: string;
@@ -46,6 +51,7 @@ type Row = {
   mcp_scope: string;
   updated_at: string;
 };
+
 
 const ACCENTS: { id: AppAccent; label: string; color: string }[] = [
   { id: "forest", label: "Tiefgrün", color: "#132B25" },
@@ -86,7 +92,7 @@ export function AppDialog({
   const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [kind, setKind] = useState<AppKind>("cockpit");
+  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [scope, setScope] = useState<"read" | "write">("read");
   const [picked, setPicked] = useState<string[]>([]);
   const [branding, setBranding] = useState<AppBranding>(DEFAULT_APP_BRANDING);
@@ -99,13 +105,17 @@ export function AppDialog({
   const [tab, setTab] = useState("module");
   const logoInput = useRef<HTMLInputElement>(null);
 
-  const chosenTypes = useMemo(
+  const pickedNodes = useMemo(
     () =>
       picked
-        .map((id) => candidates.find((item) => item.id === id)?.type ?? "")
-        .filter(Boolean),
+        .map((id) => candidates.find((item) => item.id === id))
+        .filter((item): item is Candidate => Boolean(item)),
     [picked, candidates],
   );
+  const chosenTypes = useMemo(() => pickedNodes.map((node) => node.type), [pickedNodes]);
+  const kind: "capture" | "cockpit" =
+    resolveLayout(branding.layout, chosenTypes) === "capture" ? "capture" : "cockpit";
+
 
   const reload = async () => {
     const { data, error } = await supabase
@@ -127,10 +137,8 @@ export function AppDialog({
     setBranding(DEFAULT_APP_BRANDING);
     setScope("read");
     setPicked(start);
-    setKind(
-      suggestKind(start.map((id) => candidates.find((item) => item.id === id)?.type ?? "")),
-    );
   };
+
 
   useEffect(() => {
     if (!open) return;
@@ -151,6 +159,19 @@ export function AppDialog({
       return [...list, id];
     });
   };
+
+  /** Reihenfolge der Module in der App verschieben. */
+  const move = (index: number, delta: number) => {
+    setPicked((list) => {
+      const next = [...list];
+      const target = index + delta;
+      if (target < 0 || target >= next.length) return list;
+      const [item] = next.splice(index, 1);
+      next.splice(target, 0, item!);
+      return next;
+    });
+  };
+
 
   const uploadLogo = async (file: File | undefined) => {
     if (!file) return;
@@ -213,7 +234,7 @@ export function AppDialog({
     setEditing(app.id);
     setTitle(app.title);
     setDescription(app.description ?? "");
-    setKind(app.kind === "capture" ? "capture" : "cockpit");
+    setDevice("desktop");
     setScope(app.mcp_scope === "write" ? "write" : "read");
     setPicked(Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : []);
     setBranding(brandingFrom(app.branding));
@@ -306,24 +327,32 @@ export function AppDialog({
       <DialogContent
         className={
           wide
-            ? "h-[94vh] w-[96vw] max-w-none overflow-auto"
-            : "max-h-[88vh] max-w-2xl overflow-auto"
+            ? "flex h-[96vh] w-[97vw] max-w-none flex-col gap-0 overflow-hidden p-0"
+            : "flex h-[88vh] w-[95vw] max-w-6xl flex-col gap-0 overflow-hidden p-0"
         }
       >
-        <DialogHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div>
+        <DialogHeader className="px-6 pt-6">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+            <div className="min-w-0">
               <DialogTitle>App-Ansicht</DialogTitle>
               <DialogDescription>
                 Bis zu {MAX_APP_MODULES} Module dieses Scopes werden zu einer eigenständigen App –
                 als Link für Menschen und als Datenzugang für KI-Assistenten.
               </DialogDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setWide((value) => !value)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={() => setWide((value) => !value)}
+            >
               {wide ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
             </Button>
           </div>
         </DialogHeader>
+
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+          <div className="min-h-0 overflow-auto border-border/70 px-6 py-4 lg:border-r">
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full justify-start">
@@ -331,8 +360,9 @@ export function AppDialog({
             <TabsTrigger value="design">2 · Gestaltung</TabsTrigger>
             <TabsTrigger value="access">3 · Zugriff</TabsTrigger>
             <TabsTrigger value="deliver">4 · Ausliefern</TabsTrigger>
-            <TabsTrigger value="docs">5 · KI-Anleitung</TabsTrigger>
+            <TabsTrigger value="docs">5 · KI</TabsTrigger>
           </TabsList>
+
 
           {/* 1 – Module */}
           <TabsContent value="module" className="space-y-3">
@@ -344,7 +374,7 @@ export function AppDialog({
                 </button>
               </p>
             )}
-            <div className="grid max-h-72 gap-1 overflow-auto rounded-lg border border-border/70 p-2">
+            <div className="grid max-h-60 gap-1 overflow-auto rounded-lg border border-border/70 p-2">
               {candidates.map((item) => (
                 <label key={item.id} className="flex items-center gap-2 text-sm">
                   <input
@@ -352,7 +382,7 @@ export function AppDialog({
                     checked={picked.includes(item.id)}
                     onChange={() => toggle(item.id)}
                   />
-                  <span className="truncate">{moduleLabel(item.type, item.title)}</span>
+                  <span className="truncate">{moduleLabel(item.type, item.title ?? "")}</span>
                 </label>
               ))}
               {candidates.length === 0 && (
@@ -363,20 +393,56 @@ export function AppDialog({
               {picked.length} / {MAX_APP_MODULES} gewählt
               {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
             </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {APP_KINDS.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => setKind(option.id)}
-                  className={`rounded-lg border p-3 text-left transition-colors ${
-                    kind === option.id ? "border-ring bg-accent/40" : "border-border/70 hover:bg-accent/20"
-                  }`}
-                >
-                  <p className="text-sm font-medium">{option.label}</p>
-                  <p className="text-xs text-muted-foreground">{option.hint}</p>
-                </button>
-              ))}
+            {pickedNodes.length > 0 && (
+              <ul className="space-y-1 rounded-lg border border-border/70 p-2">
+                {pickedNodes.map((node, index) => (
+                  <li
+                    key={node.id}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-sm"
+                  >
+                    <span className="truncate">{moduleLabel(node.type, node.title ?? "")}</span>
+                    <span className="flex shrink-0 gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={index === 0}
+                        onClick={() => move(index, -1)}
+                      >
+                        ↑
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={index === pickedNodes.length - 1}
+                        onClick={() => move(index, 1)}
+                      >
+                        ↓
+                      </Button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div>
+              <span className="module-eyebrow text-muted-foreground">Aufbau</span>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {APP_LAYOUTS.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => setBranding((b) => ({ ...b, layout: option.id }))}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      branding.layout === option.id
+                        ? "border-ring bg-accent/40"
+                        : "border-border/70 hover:bg-accent/20"
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{option.label}</p>
+                    <p className="text-xs text-muted-foreground">{option.hint}</p>
+                  </button>
+                ))}
+              </div>
             </div>
+
           </TabsContent>
 
           {/* 2 – Gestaltung */}
@@ -691,7 +757,82 @@ export function AppDialog({
             })()}
           </TabsContent>
         </Tabs>
+          </div>
+
+          <div className="hidden min-h-0 flex-col bg-muted/40 lg:flex">
+            <div className="flex items-center gap-2 border-b border-border/70 px-4 py-2">
+              <span className="module-eyebrow text-muted-foreground">Live-Vorschau</span>
+              <div className="ml-auto flex gap-1">
+                <Button
+                  size="sm"
+                  variant={device === "desktop" ? "secondary" : "ghost"}
+                  onClick={() => setDevice("desktop")}
+                >
+                  <Monitor className="size-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant={device === "mobile" ? "secondary" : "ghost"}
+                  onClick={() => setDevice("mobile")}
+                >
+                  <Smartphone className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-4">
+              <div
+                className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${
+                  device === "mobile" ? "w-[390px]" : "w-full"
+                }`}
+              >
+                <div
+                  className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}
+                >
+                  <header className="app-header grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-2.5">
+                    <div className="flex min-w-0 items-center gap-3">
+                      {branding.logo ? (
+                        <img
+                          src={branding.logo}
+                          alt=""
+                          className="app-brand-logo shrink-0 rounded-md bg-card object-contain p-1"
+                          style={{ width: branding.logoSize, height: branding.logoSize }}
+                        />
+                      ) : (
+                        <div className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
+                      )}
+                      <div className="min-w-0">
+                        <span className="module-eyebrow block text-muted-foreground">
+                          {kind === "capture" ? "Vor-Ort-Erfassung" : "Scope-App"}
+                        </span>
+                        <span className="block truncate font-display text-base font-semibold">
+                          {title.trim() || "Titel der App"}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {APP_LAYOUTS.find((item) => item.id === branding.layout)?.label}
+                    </span>
+                  </header>
+                  {kind === "capture" ? (
+                    <div className="flex-1 space-y-3 p-4">
+                      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+                        Kamera-Fläche
+                      </div>
+                      <div className="h-12 rounded-lg bg-primary/90" />
+                      <p className="text-xs text-muted-foreground">
+                        Foto, Standort und KI-Bewertung – so sieht die Erfassung auf dem Handy aus.
+                      </p>
+                    </div>
+                  ) : (
+                    <AppEngine nodes={pickedNodes} layout={branding.layout} />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </DialogContent>
+
     </Dialog>
   );
 }

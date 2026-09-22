@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, CloudOff, Crosshair, Loader2, MapPin, RefreshCw, UploadCloud } from "lucide-react";
+import { Camera, CloudOff, Crosshair, Loader2, RefreshCw, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { NodeRecord } from "@/components/canvas/board-context";
@@ -13,23 +12,19 @@ import {
   getPublicApp,
 } from "@/lib/apps.functions";
 import { brandingFrom } from "@/lib/apps";
+import { AppEngine } from "@/components/app/AppEngine";
+import { resolveLayout } from "@/lib/app-layout";
 import {
-  clusterOf,
   downscale,
   euro,
   exifLocation,
   labelFromFile,
   priorityColor,
   readInspection,
-  STATUS_COLOR,
-  STATUS_VALUES,
-  totalCost,
-  type Finding,
 } from "@/lib/inspection";
-import { pointsFromSources, readMapConfig } from "@/lib/geo";
 import { dequeueFinding, enqueueFinding, queuedFor, type QueuedFinding } from "@/lib/offline-queue";
 
-const LeafletMap = lazy(() => import("@/components/canvas/LeafletMap"));
+
 
 export const Route = createFileRoute("/app/$appId")({
   head: () => ({
@@ -107,8 +102,11 @@ function AppStage() {
           )}
           <div className="min-w-0">
             <span className="module-eyebrow block text-muted-foreground">
-              {data.app.kind === "capture" ? "Vor-Ort-Erfassung" : "Lagebild"}
+              {resolveLayout(branding.layout, nodes.map((node) => node.type)) === "capture"
+                ? "Vor-Ort-Erfassung"
+                : "Scope-App"}
             </span>
+
             <span className="block truncate font-display text-base font-semibold">{title}</span>
           </div>
         </div>
@@ -118,11 +116,28 @@ function AppStage() {
         </Button>
       </header>
 
-      {data.app.kind === "capture" ? (
+      {resolveLayout(branding.layout, nodes.map((node) => node.type)) === "capture" ? (
         <CaptureApp appId={appId} nodes={nodes} onSaved={() => void load()} />
       ) : (
-        <CockpitApp appId={appId} nodes={nodes} onChanged={() => void load()} />
+        <AppEngine
+          nodes={nodes}
+          layout={branding.layout}
+          actions={{
+            setStatus: (nodeId, finding, status) => {
+              void appSetFindingStatus({
+                data: { appId, nodeId, findingId: finding.id, status },
+              })
+                .then(() => load())
+                .catch((err: unknown) =>
+                  toast.error(
+                    err instanceof Error ? err.message : "Status konnte nicht geändert werden",
+                  ),
+                );
+            },
+          }}
+        />
       )}
+
     </div>
   );
 }
@@ -486,209 +501,3 @@ function CaptureApp({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Lagebild-Cockpit                                                    */
-/* ------------------------------------------------------------------ */
-
-function CockpitApp({
-  appId,
-  nodes,
-  onChanged,
-}: {
-  appId: string;
-  nodes: NodeRecord[];
-  onChanged: () => void;
-}) {
-  const inspect = nodes.find((node) => node.type === "inspect") ?? null;
-  const mapNode = nodes.find((node) => node.type === "map") ?? null;
-  const findings = useMemo(() => (inspect ? readInspection(inspect).findings : []), [inspect]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"alle" | "offen" | "sofort">("alle");
-
-  const mapConfig = readMapConfig(mapNode);
-  const points = useMemo(
-    () => pointsFromSources(inspect ? [inspect] : [], mapConfig),
-    [inspect, mapConfig],
-  );
-  const center: [number, number] = points.length
-    ? [points[0]!.lat, points[0]!.lon]
-    : mapConfig.center;
-
-  const urgent = findings.filter((f) => f.priority <= 3 && f.status !== "erledigt");
-  const open = findings.filter((f) => f.status !== "erledigt");
-  const shown = findings
-    .filter((f) =>
-      filter === "alle" ? true : filter === "offen" ? f.status !== "erledigt" : f.priority <= 3,
-    )
-    .sort((a, b) => a.priority - b.priority);
-
-  const setStatus = async (finding: Finding, status: Finding["status"]) => {
-    if (!inspect) return;
-    try {
-      await appSetFindingStatus({
-        data: { appId, nodeId: inspect.id, findingId: finding.id, status },
-      });
-      onChanged();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Status konnte nicht geändert werden");
-    }
-  };
-
-  return (
-    <main className="flex-1 space-y-4 p-4">
-      <section className="grid gap-3 sm:grid-cols-3">
-        <Kpi
-          label="Sofortmaßnahmen (Prio 1–3)"
-          value={String(urgent.length)}
-          tone={urgent.length > 2 ? "#dc2626" : urgent.length > 0 ? "#ea580c" : "#16a34a"}
-        />
-        <Kpi label="Offene Befunde" value={String(open.length)} tone="#598381" />
-        <Kpi label="Offene Kosten" value={euro(totalCost(open))} tone="#1C2321" />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <div className="h-[420px] overflow-hidden rounded-xl border border-border/70 bg-card shadow-[var(--shadow-card)]">
-          <ClientOnly
-            fallback={
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Karte lädt …
-              </div>
-            }
-          >
-            <Suspense
-              fallback={
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  Karte lädt …
-                </div>
-              }
-            >
-              <LeafletMap
-                points={points}
-                weather={mapConfig.weather}
-                center={center}
-                zoom={points.length ? 11 : mapConfig.zoom}
-                selectedId={selected}
-                onSelect={setSelected}
-              />
-            </Suspense>
-          </ClientOnly>
-        </div>
-
-        <div className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
-          <div className="flex items-center justify-between gap-2">
-            <span className="module-eyebrow text-muted-foreground">Befunde</span>
-            <div className="flex gap-1">
-              {(["alle", "offen", "sofort"] as const).map((value) => (
-                <button
-                  key={value}
-                  onClick={() => setFilter(value)}
-                  className={`rounded-full border px-2 py-0.5 text-[11px] capitalize transition-colors ${
-                    filter === value
-                      ? "border-transparent bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:bg-accent"
-                  }`}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
-          </div>
-          <ul className="mt-3 max-h-[330px] space-y-2 overflow-auto pr-1">
-            {shown.map((finding) => (
-              <li
-                key={finding.id}
-                onClick={() => setSelected(finding.id)}
-                className={`cursor-pointer rounded-lg border p-2 transition-colors ${
-                  selected === finding.id ? "border-ring bg-accent/40" : "border-border/70"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {finding.thumb ? (
-                    <img src={finding.thumb} alt="" className="size-12 rounded-md object-cover" />
-                  ) : (
-                    <div className="size-12 rounded-md bg-secondary" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{finding.label}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {finding.category} · {euro(finding.cost)} · {clusterOf(finding.priority)?.label}
-                    </p>
-                  </div>
-                  <span
-                    className="rounded-full px-2 py-0.5 font-mono text-[11px] text-white"
-                    style={{ background: priorityColor(finding.priority) }}
-                  >
-                    {finding.priority}
-                  </span>
-                </div>
-                {selected === finding.id && (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      {finding.finding} → {finding.action}
-                    </p>
-                    {finding.lat != null && finding.lon != null && (
-                      <p className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
-                        <MapPin className="size-3" />
-                        {finding.lat.toFixed(4)}, {finding.lon.toFixed(4)}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-1">
-                      {STATUS_VALUES.map((status) => (
-                        <button
-                          key={status}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void setStatus(finding, status);
-                          }}
-                          className="rounded-full border px-2 py-0.5 text-[11px] transition-colors hover:bg-accent"
-                          style={
-                            finding.status === status
-                              ? { background: STATUS_COLOR[status], color: "#fff", borderColor: "transparent" }
-                              : undefined
-                          }
-                        >
-                          {status}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
-            {shown.length === 0 && (
-              <li className="text-sm text-muted-foreground">Keine Befunde in dieser Ansicht.</li>
-            )}
-          </ul>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
-        <span className="module-eyebrow text-muted-foreground">Maßnahmenplan</span>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {["Sofortmaßnahme", "Mittelfristig", "Beobachtung"].map((name) => {
-            const group = open.filter((f) => clusterOf(f.priority)?.label === name);
-            return (
-              <div key={name} className="rounded-lg border border-border/70 p-3">
-                <p className="text-sm font-medium">{name}</p>
-                <p className="font-mono text-2xl">{group.length}</p>
-                <p className="text-xs text-muted-foreground">{euro(totalCost(group))}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function Kpi({ label, value, tone }: { label: string; value: string; tone: string }) {
-  return (
-    <div className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
-      <span className="module-eyebrow text-muted-foreground">{label}</span>
-      <p className="mt-1 font-mono text-3xl" style={{ color: tone }}>
-        {value}
-      </p>
-      <div className="mt-2 h-1 rounded-full" style={{ background: tone }} />
-    </div>
-  );
-}
