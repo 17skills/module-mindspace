@@ -32,7 +32,7 @@ import {
   Handle,
   NodeResizer,
   Position,
-  getBezierPath,
+  getSmoothStepPath,
   useEdges,
   useStore,
   type EdgeProps,
@@ -1620,24 +1620,33 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
 /** Connection with an editable value label ("25 %", "2500") at its midpoint. */
 export function LabeledEdge(props: EdgeProps) {
   const { updateEdge, calcForEdge } = useBoard();
-  const [path, labelX, labelY] = getBezierPath({
+  const [path, labelX, labelY] = getSmoothStepPath({
     sourceX: props.sourceX,
     sourceY: props.sourceY,
     sourcePosition: props.sourcePosition,
     targetX: props.targetX,
     targetY: props.targetY,
     targetPosition: props.targetPosition,
+    borderRadius: 4,
   });
   const label = typeof props.label === "string" ? props.label : "";
+  const stroke = props.selected ? "var(--ring)" : "var(--edge)";
   return (
     <>
+      <BaseEdge
+        id={`${props.id}-casing`}
+        path={path}
+        interactionWidth={0}
+        style={{ stroke: "var(--card)", strokeWidth: props.selected ? 7 : 5.5 }}
+      />
       <BaseEdge
         id={props.id}
         path={path}
         interactionWidth={24}
+        {...(props.markerEnd ? { markerEnd: props.markerEnd } : {})}
         style={{
-          stroke: props.selected ? "var(--ring)" : "var(--border)",
-          strokeWidth: props.selected ? 2 : 1.5,
+          stroke,
+          strokeWidth: props.selected ? 3 : 2.25,
         }}
       />
       <EdgeLabelRenderer>

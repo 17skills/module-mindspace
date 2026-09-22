@@ -4,6 +4,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  MarkerType,
   ReactFlow,
   ReactFlowProvider,
   type Edge,
@@ -158,7 +159,6 @@ function SharedBoardPage() {
             id: edge.id as string,
             source: edge.source_id as string,
             target: edge.target_id as string,
-            animated: true,
             type: "labeled",
             label: (edge.label as string | null) ?? undefined,
           })),
@@ -239,6 +239,14 @@ function SharedBoardPage() {
             edges={edges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            defaultEdgeOptions={{
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                width: 14,
+                height: 14,
+                color: "var(--edge)",
+              },
+            }}
             nodesDraggable={false}
             nodesConnectable={false}
             elementsSelectable={false}

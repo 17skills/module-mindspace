@@ -98,6 +98,7 @@
   --destructive: var(--brand-orange);
   --destructive-foreground: oklch(0.99 0.004 85);
   --border: oklch(0.892 0.009 85);
+  --edge: oklch(0.48 0.03 170);
   --input: oklch(0.892 0.009 85);
   --ring: var(--brand-green-deep);
   --canvas: oklch(0.928 0.008 85);
