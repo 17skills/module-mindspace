@@ -4,7 +4,22 @@
  */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ClientOnly } from "@tanstack/react-router";
-import { Grip, MapPin, MoveDiagonal2 } from "lucide-react";
+import {
+  AlignHorizontalJustifyCenter,
+  AlignHorizontalJustifyEnd,
+  AlignHorizontalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  AlignVerticalJustifyStart,
+  Grid2X2,
+  Grip,
+  Magnet,
+  MapPin,
+  MoveDiagonal2,
+  Redo2,
+  Undo2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { MODULE_TYPE_LABEL } from "@/lib/apps";
 import { formatValue, readFormat, valueOfNode } from "@/lib/calc";
@@ -24,8 +39,12 @@ import {
 import {
   APP_GRID_COLUMNS,
   APP_GRID_ROW_HEIGHT,
+  alignFreeLayout,
   buildFreeLayout,
+  type FreeLayoutAlignment,
+  type FreeLayoutGuides,
   resolveLayout,
+  snapFreeLayout,
   TILE_TYPES,
   updateFreeLayout,
   WIDE_TYPES,
@@ -452,7 +471,17 @@ type Gesture = {
   startX: number;
   startY: number;
   initial: AppGridItem;
+  initialLayout: AppGridItem[];
 };
+
+const ALIGNMENTS: { id: FreeLayoutAlignment; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "left", label: "Links ausrichten", icon: AlignHorizontalJustifyStart },
+  { id: "center-x", label: "Horizontal zentrieren", icon: AlignHorizontalJustifyCenter },
+  { id: "right", label: "Rechts ausrichten", icon: AlignHorizontalJustifyEnd },
+  { id: "top", label: "Oben ausrichten", icon: AlignVerticalJustifyStart },
+  { id: "center-y", label: "Vertikal zentrieren", icon: AlignVerticalJustifyCenter },
+  { id: "bottom", label: "Unten ausrichten", icon: AlignVerticalJustifyEnd },
+];
 
 function FreeAppLayout({
   nodes,
@@ -472,50 +501,173 @@ function FreeAppLayout({
   const gridRef = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState(() => buildFreeLayout(nodes, saved));
   const [gesture, setGesture] = useState<Gesture | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [showGrid, setShowGrid] = useState(true);
+  const [magnetic, setMagnetic] = useState(true);
+  const [guides, setGuides] = useState<FreeLayoutGuides>({});
+  const [past, setPast] = useState<AppGridItem[][]>([]);
+  const [future, setFuture] = useState<AppGridItem[][]>([]);
+  const emittedRef = useRef("");
+  const savedKey = JSON.stringify(saved);
 
   useEffect(() => {
-    setLayout(buildFreeLayout(nodes, saved));
-  }, [nodes, saved]);
+    const next = buildFreeLayout(nodes, saved);
+    const nextKey = JSON.stringify(next);
+    if (nextKey === emittedRef.current) return;
+    setLayout(next);
+    setPast([]);
+    setFuture([]);
+    setSelected((current) => current.filter((id) => nodes.some((node) => node.id === id)));
+  }, [nodes, savedKey]);
+
+  const emit = (next: AppGridItem[]) => {
+    emittedRef.current = JSON.stringify(next);
+    onChange?.(next);
+  };
+
+  const commit = (before: AppGridItem[], next: AppGridItem[]) => {
+    if (JSON.stringify(before) === JSON.stringify(next)) {
+      setLayout(before);
+      return;
+    }
+    setPast((items) => [...items.slice(-49), before]);
+    setFuture([]);
+    setLayout(next);
+    emit(next);
+  };
+
+  const undo = () => {
+    const previous = past.at(-1);
+    if (!previous) return;
+    setPast((items) => items.slice(0, -1));
+    setFuture((items) => [layout, ...items].slice(0, 50));
+    setLayout(previous);
+    emit(previous);
+  };
+
+  const redo = () => {
+    const next = future[0];
+    if (!next) return;
+    setFuture((items) => items.slice(1));
+    setPast((items) => [...items.slice(-49), layout]);
+    setLayout(next);
+    emit(next);
+  };
+
+  useEffect(() => {
+    if (!editable || compact) return;
+    const keydown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+      event.preventDefault();
+      if (event.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [editable, compact, layout, past, future]);
 
   useEffect(() => {
     if (!gesture) return;
-    const finish = (event: PointerEvent) => {
+    const place = (event: PointerEvent) => {
       const gridWidth = gridRef.current?.getBoundingClientRect().width ?? 0;
-      if (!gridWidth) {
-        setGesture(null);
-        return;
-      }
-      const columnWidth = gridWidth / APP_GRID_COLUMNS;
-      const dx = Math.round((event.clientX - gesture.startX) / columnWidth);
-      const dy = Math.round((event.clientY - gesture.startY) / APP_GRID_ROW_HEIGHT);
+      if (!gridWidth) return { layout: gesture.initialLayout, guides: {} };
+      const columnStep = (gridWidth - 32 - 11 * 12) / APP_GRID_COLUMNS + 12;
+      const dx = Math.round((event.clientX - gesture.startX) / columnStep);
+      const dy = Math.round((event.clientY - gesture.startY) / (APP_GRID_ROW_HEIGHT + 12));
       const patch = gesture.kind === "move"
         ? { col: gesture.initial.col + dx, row: gesture.initial.row + dy }
         : { width: gesture.initial.width + dx, height: gesture.initial.height + dy };
-      setLayout((current) => {
-        const next = updateFreeLayout(current, gesture.id, patch);
-        onChange?.(next);
-        return next;
-      });
+      return snapFreeLayout(gesture.initialLayout, gesture.id, patch, gesture.kind, magnetic);
+    };
+    const move = (event: PointerEvent) => {
+      const preview = place(event);
+      setLayout(preview.layout);
+      setGuides(preview.guides);
+    };
+    const finish = (event: PointerEvent) => {
+      const result = place(event);
+      commit(gesture.initialLayout, result.layout);
+      setGuides({});
       setGesture(null);
     };
+    window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", finish, { once: true });
-    return () => window.removeEventListener("pointerup", finish);
-  }, [gesture, onChange]);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+    };
+  }, [gesture, magnetic]);
 
   const start = (event: React.PointerEvent, item: AppGridItem, kind: Gesture["kind"]) => {
     event.preventDefault();
     event.stopPropagation();
-    setGesture({ id: item.id, kind, startX: event.clientX, startY: event.clientY, initial: item });
+    if (!selected.includes(item.id)) setSelected([item.id]);
+    setGesture({
+      id: item.id,
+      kind,
+      startX: event.clientX,
+      startY: event.clientY,
+      initial: item,
+      initialLayout: layout,
+    });
+  };
+
+  const select = (event: React.MouseEvent, id: string) => {
+    event.stopPropagation();
+    if (event.shiftKey || event.metaKey || event.ctrlKey) {
+      setSelected((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]);
+    } else {
+      setSelected([id]);
+    }
+  };
+
+  const align = (alignment: FreeLayoutAlignment) => {
+    const next = alignFreeLayout(layout, selected, alignment);
+    commit(layout, next);
   };
 
   const mobile = compact;
   return (
-    <main
-      ref={gridRef}
-      data-layout="free"
-      className={`relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : "max-md:!block max-md:space-y-3"}`}
-      style={mobile ? undefined : { gridAutoRows: `${APP_GRID_ROW_HEIGHT}px` }}
-    >
+    <main className="relative flex flex-1 flex-col" data-layout="free">
+      {editable && !mobile ? (
+        <div className="sticky top-0 z-30 flex flex-wrap items-center gap-1 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur">
+          <Button size="icon" variant={showGrid ? "secondary" : "ghost"} aria-label="Raster anzeigen" title="Raster anzeigen" onClick={() => setShowGrid((value) => !value)}>
+            <Grid2X2 className="size-3.5" />
+          </Button>
+          <Button size="icon" variant={magnetic ? "secondary" : "ghost"} aria-label="Magnetisches Einrasten" title="Magnetisches Einrasten" onClick={() => setMagnetic((value) => !value)}>
+            <Magnet className="size-3.5" />
+          </Button>
+          <span className="mx-1 h-5 w-px bg-border" />
+          <Button size="icon" variant="ghost" disabled={!past.length} aria-label="Rückgängig" title="Rückgängig (⌘Z)" onClick={undo}>
+            <Undo2 className="size-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" disabled={!future.length} aria-label="Wiederherstellen" title="Wiederherstellen (⌘⇧Z)" onClick={redo}>
+            <Redo2 className="size-3.5" />
+          </Button>
+          <span className="mx-1 h-5 w-px bg-border" />
+          {ALIGNMENTS.map(({ id, label, icon: Icon }) => (
+            <Button key={id} size="icon" variant="ghost" disabled={selected.length < 2} aria-label={label} title={label} onClick={() => align(id)}>
+              <Icon className="size-3.5" />
+            </Button>
+          ))}
+          <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+            {selected.length ? `${selected.length} gewählt` : "Module wählen"}
+          </span>
+        </div>
+      ) : null}
+      <section
+        ref={gridRef}
+        data-grid-visible={showGrid && editable && !mobile}
+        className={`free-layout-grid relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : "max-md:!block max-md:space-y-3"}`}
+        style={mobile ? undefined : { gridAutoRows: `${APP_GRID_ROW_HEIGHT}px` }}
+        onClick={() => setSelected([])}
+      >
+        {guides.vertical != null ? (
+          <span className="pointer-events-none absolute inset-y-0 z-20 w-px bg-ring" style={{ left: `calc(1rem + (100% - 2rem) * ${guides.vertical - 1} / 12)` }} />
+        ) : null}
+        {guides.horizontal != null ? (
+          <span className="pointer-events-none absolute inset-x-0 z-20 h-px bg-ring" style={{ top: `${16 + (guides.horizontal - 1) * (APP_GRID_ROW_HEIGHT + 12)}px` }} />
+        ) : null}
       {nodes.map((node) => {
         const item = layout.find((entry) => entry.id === node.id);
         if (!item) return null;
@@ -523,11 +675,12 @@ function FreeAppLayout({
           <div
             key={node.id}
             data-grid-id={node.id}
-            className={`relative min-h-0 ${mobile ? "mb-3" : "max-md:mb-3"}`}
+            className={`relative min-h-0 ${selected.includes(node.id) ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""} ${mobile ? "mb-3" : "max-md:mb-3"}`}
             style={mobile ? undefined : {
               gridColumn: `${item.col} / span ${item.width}`,
               gridRow: `${item.row} / span ${item.height}`,
             }}
+            onClick={(event) => select(event, node.id)}
           >
             <AppModule node={node} nodes={nodes} actions={actions} className="h-full" />
             {editable && !mobile ? (
@@ -555,6 +708,7 @@ function FreeAppLayout({
           </div>
         );
       })}
+      </section>
     </main>
   );
 }

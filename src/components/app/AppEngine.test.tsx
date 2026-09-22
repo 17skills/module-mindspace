@@ -104,6 +104,17 @@ describe("Aufbauten", () => {
     render(<AppEngine nodes={[metricNode, riskNode]} layout="free" editable />);
     expect(screen.getByRole("button", { name: /Sofort-Maßnahmen verschieben/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Netzrisiko Größe ändern/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Raster anzeigen" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Magnetisches Einrasten" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rückgängig" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Wiederherstellen" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Links ausrichten" })).toBeDisabled();
+  });
+
+  it("blendet Editorwerkzeuge in der Handy-Vorschau aus", () => {
+    render(<AppEngine nodes={[metricNode, riskNode]} layout="free" editable compactPreview />);
+    expect(screen.queryByRole("button", { name: "Raster anzeigen" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /verschieben/ })).not.toBeInTheDocument();
   });
 });
 

@@ -73,6 +73,21 @@ function overlaps(a: AppGridItem, b: AppGridItem) {
   );
 }
 
+export type FreeLayoutAlignment = "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
+export type FreeLayoutGuides = { vertical?: number; horizontal?: number };
+
+function validLayout(layout: AppGridItem[]) {
+  return layout.every(
+    (item, index) =>
+      item.col >= 1 &&
+      item.row >= 1 &&
+      item.width >= 2 &&
+      item.height >= 2 &&
+      item.col + item.width <= APP_GRID_COLUMNS + 1 &&
+      !layout.some((other, otherIndex) => index !== otherIndex && overlaps(item, other)),
+  );
+}
+
 /** Füllt fehlende Positionen kollisionsfrei auf; gespeicherte Positionen bleiben erhalten. */
 export function buildFreeLayout(nodes: NodeRecord[], saved: AppGridItem[]): AppGridItem[] {
   const result: AppGridItem[] = [];
@@ -126,4 +141,98 @@ export function updateFreeLayout(
   };
   if (layout.some((item) => item.id !== id && overlaps(next, item))) return layout;
   return layout.map((item) => (item.id === id ? next : item));
+}
+
+/** Richtet mehrere Module an ihrem gemeinsamen äußeren Rahmen aus. */
+export function alignFreeLayout(
+  layout: AppGridItem[],
+  ids: string[],
+  alignment: FreeLayoutAlignment,
+): AppGridItem[] {
+  const selected = layout.filter((item) => ids.includes(item.id));
+  if (selected.length < 2) return layout;
+  const left = Math.min(...selected.map((item) => item.col));
+  const right = Math.max(...selected.map((item) => item.col + item.width));
+  const top = Math.min(...selected.map((item) => item.row));
+  const bottom = Math.max(...selected.map((item) => item.row + item.height));
+  const next = layout.map((item) => {
+    if (!ids.includes(item.id)) return item;
+    if (alignment === "left") return { ...item, col: left };
+    if (alignment === "right") return { ...item, col: right - item.width };
+    if (alignment === "center-x") {
+      return { ...item, col: Math.round((left + right - item.width) / 2) };
+    }
+    if (alignment === "top") return { ...item, row: top };
+    if (alignment === "bottom") return { ...item, row: bottom - item.height };
+    return { ...item, row: Math.round((top + bottom - item.height) / 2) };
+  });
+  return validLayout(next) ? next : layout;
+}
+
+function nearestDelta(own: number[], targets: number[], threshold: number) {
+  let best: { delta: number; target: number } | null = null;
+  for (const source of own) {
+    for (const target of targets) {
+      const delta = target - source;
+      if (!Number.isInteger(delta) || Math.abs(delta) > threshold) continue;
+      if (!best || Math.abs(delta) < Math.abs(best.delta)) best = { delta, target };
+    }
+  }
+  return best;
+}
+
+/** Lässt ein bewegtes Modul magnetisch an Kanten und Mittellinien seiner Nachbarn einrasten. */
+export function snapFreeLayout(
+  layout: AppGridItem[],
+  id: string,
+  patch: Partial<Pick<AppGridItem, "col" | "row" | "width" | "height">>,
+  kind: "move" | "resize",
+  enabled: boolean,
+): { layout: AppGridItem[]; guides: FreeLayoutGuides } {
+  const current = layout.find((item) => item.id === id);
+  if (!current) return { layout, guides: {} };
+  if (!enabled) return { layout: updateFreeLayout(layout, id, patch), guides: {} };
+
+  const width = Math.min(APP_GRID_COLUMNS, Math.max(2, patch.width ?? current.width));
+  const candidate = {
+    ...current,
+    ...patch,
+    width,
+    height: Math.min(10, Math.max(2, patch.height ?? current.height)),
+    col: Math.min(APP_GRID_COLUMNS - width + 1, Math.max(1, patch.col ?? current.col)),
+    row: Math.max(1, patch.row ?? current.row),
+  };
+  const others = layout.filter((item) => item.id !== id);
+  const xTargets = others.flatMap((item) => [item.col, item.col + item.width / 2, item.col + item.width]);
+  const yTargets = others.flatMap((item) => [item.row, item.row + item.height / 2, item.row + item.height]);
+  const ownX = kind === "resize"
+    ? [candidate.col + candidate.width]
+    : [candidate.col, candidate.col + candidate.width / 2, candidate.col + candidate.width];
+  const ownY = kind === "resize"
+    ? [candidate.row + candidate.height]
+    : [candidate.row, candidate.row + candidate.height / 2, candidate.row + candidate.height];
+  const xSnap = nearestDelta(ownX, xTargets, 1);
+  const ySnap = nearestDelta(ownY, yTargets, 1);
+  const snappedPatch = kind === "resize"
+    ? {
+        ...patch,
+        width: candidate.width + (xSnap?.delta ?? 0),
+        height: candidate.height + (ySnap?.delta ?? 0),
+      }
+    : {
+        ...patch,
+        col: candidate.col + (xSnap?.delta ?? 0),
+        row: candidate.row + (ySnap?.delta ?? 0),
+      };
+  const snapped = updateFreeLayout(layout, id, snappedPatch);
+  if (snapped === layout) {
+    return { layout: updateFreeLayout(layout, id, patch), guides: {} };
+  }
+  return {
+    layout: snapped,
+    guides: {
+      vertical: xSnap?.target,
+      horizontal: ySnap?.target,
+    },
+  };
 }

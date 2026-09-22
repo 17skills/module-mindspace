@@ -19,3 +19,4 @@
 - [x] Startseite: Beschreibungen für Scopes und Apps, Vorschaubilder auf den Karten
 - [x] Scope-Freigabe mit Rollen (Lesen / Bearbeiten) inkl. RLS-Trennung
 - [x] App-Module auf einer freien Rasterfläche positionieren, skalieren und dauerhaft speichern
+- [x] Freie App-Layouts mit Raster, Magnet, Hilfslinien, Ausrichtung sowie Rückgängig/Wiederherstellen ergänzen
