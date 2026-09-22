@@ -102,6 +102,11 @@ export function readInspection(
       thumb: typeof row["thumb"] === "string" ? (row["thumb"] as string) : null,
       createdAt: typeof row["createdAt"] === "string" ? (row["createdAt"] as string) : "",
       prevPriority: nullableNum(row["prevPriority"]),
+      status: STATUS_VALUES.includes(String(row["status"]) as Finding["status"])
+        ? (String(row["status"]) as Finding["status"])
+        : "offen",
+      owner: typeof row["owner"] === "string" ? (row["owner"] as string) : "",
+      due: typeof row["due"] === "string" ? (row["due"] as string) : "",
       source:
         row["source"] === "exif" || row["source"] === "manuell" ? (row["source"] as "exif" | "manuell") : "unbekannt",
     };
