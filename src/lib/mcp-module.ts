@@ -16,6 +16,8 @@ export type McpConfig = {
   bindings: Record<string, string>;
   /** "form" = geführte Felder, "json" = freies JSON. */
   mode: "form" | "json";
+  /** Auswahl je verbundener Textkarte: "" = ganz, "off" = aus, sonst Abschnittstitel mit "|" getrennt. */
+  context: Record<string, string>;
   lastAt: string | null;
   lastError: string | null;
 };
@@ -44,6 +46,7 @@ export function readMcp(record: NodeRecord | undefined | null): McpConfig {
     inputs: textMap(meta["mcpInputs"]),
     bindings: textMap(meta["mcpBindings"]),
     mode: meta["mcpMode"] === "json" ? "json" : "form",
+    context: textMap(meta["mcpContext"]),
     lastAt: typeof meta["lastAt"] === "string" ? meta["lastAt"] : null,
     lastError: typeof meta["lastError"] === "string" ? meta["lastError"] : null,
   };
@@ -71,4 +74,55 @@ export function mcpPreview(record: NodeRecord | undefined | null): string {
   } catch {
     return content.slice(0, 4000);
   }
+}
+
+/** Ein Eintrag der Ausführungshistorie einer MCP-Werkzeugkarte. */
+export type McpRun = {
+  at: string;
+  tool: string;
+  /** Verwendete Eingaben als JSON-Text. */
+  args: string;
+  ok: boolean;
+  error: string | null;
+  /** Kurzfassung der Antwort. */
+  preview: string;
+};
+
+/** Liest die gespeicherte Ausführungshistorie (neueste zuerst). */
+export function readMcpHistory(record: NodeRecord | undefined | null): McpRun[] {
+  const raw = (record?.metadata as Record<string, unknown> | null | undefined)?.["mcpHistory"];
+  if (!Array.isArray(raw)) return [];
+  const out: McpRun[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as Record<string, unknown>;
+    if (typeof entry["at"] !== "string") continue;
+    out.push({
+      at: entry["at"],
+      tool: text(entry["tool"]),
+      args: text(entry["args"]),
+      ok: entry["ok"] !== false,
+      error: typeof entry["error"] === "string" ? entry["error"] : null,
+      preview: text(entry["preview"]),
+    });
+  }
+  return out;
+}
+
+/** Hängt einen Lauf vorne an und begrenzt die Historie. */
+export function appendMcpRun(history: McpRun[], entry: McpRun, max = 10): McpRun[] {
+  return [entry, ...history].slice(0, max);
+}
+
+/**
+ * Welche Teile einer verbundenen Textkarte als Kontext gelten.
+ * "" bzw. fehlend = ganze Karte, "off" = ausgeschlossen,
+ * sonst eine Liste von Abschnittstiteln, getrennt durch "|".
+ */
+export function contextChoice(config: McpConfig, nodeId: string): string {
+  return config.context[nodeId] ?? "";
+}
+
+export function readMcpContext(record: NodeRecord | undefined | null): Record<string, string> {
+  return textMap((record?.metadata as Record<string, unknown> | null | undefined)?.["mcpContext"]);
 }

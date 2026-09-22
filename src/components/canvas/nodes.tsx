@@ -43,7 +43,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, nodeValue, readFormat, sheetOutputRow, sheetRows, sheetValues, valueOfNode } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
-import { Markdown } from "@/lib/markdown";
+import { Markdown, markdownSections } from "@/lib/markdown";
 import { edgeProblem, isReference, type PortStatus as SignalPortStatus } from "@/lib/signal-status";
 import { APP_DESIGN_PRESETS, readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppDesignProfile, type AppLayoutEntry } from "@/lib/zones";
 import {
@@ -60,7 +60,7 @@ import {
 import { suggestFactorWeights } from "@/lib/factor.functions";
 import { runApiModule } from "@/lib/api-module.functions";
 import { listMcpServers, refreshMcpServer } from "@/lib/mcp-client.functions";
-import { mcpPreview, mcpValue, readMcp } from "@/lib/mcp-module";
+import { mcpPreview, mcpValue, readMcp, readMcpHistory } from "@/lib/mcp-module";
 import { argsFromInputs, missingRequired, schemaFields, suggestPaths } from "@/lib/mcp-schema";
 import { McpConnectDialog } from "./mcp-connect-dialog";
 
@@ -364,6 +364,21 @@ function useConnectedRecords(nodeId: string): NodeRecord[] {
 /** Verbundene Textkarten mit Inhalt – sie dienen als Kontext für MCP-Karten. */
 function contextCards(linked: NodeRecord[]): NodeRecord[] {
   return linked.filter((item) => item.type === "text" && (item.content ?? "").trim());
+}
+
+/**
+ * Der Teil einer Textkarte, der als Kontext gilt.
+ * "" = ganze Karte, "off" = nichts, sonst die gewählten Abschnitte.
+ */
+function contextTextFor(note: NodeRecord, choice: string): string {
+  const content = note.content ?? "";
+  if (choice === "off") return "";
+  if (!choice) return content;
+  const wanted = new Set(choice.split("|"));
+  return markdownSections(content)
+    .filter((part) => wanted.has(part.title))
+    .map((part) => part.text)
+    .join("\n\n");
 }
 
 
@@ -2059,9 +2074,17 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
   useEffect(() => {
     if (editing) areaRef.current?.focus();
   }, [editing]);
+  const stateRef = useRef({ text, editing });
+  stateRef.current = { text, editing };
   useEffect(() => {
-    if (!selected) setEditing(false);
-  }, [selected]);
+    if (selected) return;
+    const { text: latest, editing: wasEditing } = stateRef.current;
+    setEditing(false);
+    // Beim Verlassen der Karte den zuletzt getippten Text sichern.
+    if (wasEditing && latest !== (record.content ?? "")) {
+      updateNode(record.id, { content: latest, title: latest.slice(0, 60) || "Text" });
+    }
+  }, [selected, record.id, record.content, updateNode]);
 
   function save() {
     setEditing(false);
@@ -2096,23 +2119,58 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
       <SignalHandle type="target" position={Position.Left} />
       <SignalHandle type="source" position={Position.Right} />
       {selected && !editing ? <TextToolbar record={record} /> : null}
+      {selected ? (
+        <div className="absolute -top-7 right-0 z-10 flex items-center gap-0.5 rounded-full border border-border/70 bg-card p-0.5 shadow-sm">
+          <button
+            type="button"
+            aria-pressed={editing}
+            className={`nodrag rounded-full px-2 py-0.5 text-[10px] ${
+              editing ? "bg-secondary text-foreground" : "text-muted-foreground"
+            }`}
+            onClick={() => setEditing(true)}
+          >
+            Markdown
+          </button>
+          <button
+            type="button"
+            aria-pressed={!editing}
+            className={`nodrag rounded-full px-2 py-0.5 text-[10px] ${
+              editing ? "text-muted-foreground" : "bg-secondary text-foreground"
+            }`}
+            onClick={() => save()}
+          >
+            Ansicht
+          </button>
+        </div>
+      ) : null}
       {editing ? (
-        <textarea
-          ref={areaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setText(record.content ?? "");
-              setEditing(false);
-            }
-          }}
-          placeholder="Text – Überschriften mit #, Listen mit - oder 1."
-          rows={1}
-          style={boxStyle}
-          className={`nodrag nowheel h-full w-full resize-none rounded-md px-1 outline-none ring-1 ring-ring/40 placeholder:text-muted-foreground/60 ${size.className}`}
-        />
+        <div className="flex h-full w-full flex-col gap-1">
+          <textarea
+            ref={areaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setText(record.content ?? "");
+                setEditing(false);
+              }
+            }}
+            placeholder="Text – Überschriften mit #, Listen mit - oder 1."
+            rows={1}
+            style={boxStyle}
+            className={`nodrag nowheel min-h-[40%] flex-1 w-full resize-none rounded-md px-1 outline-none ring-1 ring-ring/40 placeholder:text-muted-foreground/60 ${size.className}`}
+          />
+          <div className="nowheel nodrag flex-1 overflow-auto rounded-md border border-dashed border-border/70 px-1">
+            <div className="sticky top-0 bg-card/80 text-[9px] uppercase tracking-wide text-muted-foreground">
+              Vorschau
+            </div>
+            <div style={boxStyle} className={`${size.className} ${formatted ? "" : "whitespace-pre-wrap"}`}>
+              {text ? formatted ? <Markdown source={text} /> : text : (
+                <span className="text-muted-foreground/60">Noch kein Text</span>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
         <div
           onDoubleClick={() => setEditing(true)}
@@ -5270,7 +5328,10 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const running = meta["mcpRunning"] === true;
   const value = mcpValue(record);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [section, setSection] = useState<"input" | "context" | "output" | "result">("input");
+  const [section, setSection] = useState<"input" | "context" | "output" | "result" | "history">(
+    "input",
+  );
+  const history = readMcpHistory(record);
   const servers = useQuery({
     queryKey: ["mcp-servers"],
     queryFn: () => listMcpServers(),
@@ -5301,6 +5362,14 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
     if (nodeId) bindings[name] = nodeId;
     else delete bindings[name];
     patch({ mcpBindings: bindings });
+  }
+
+  /** Legt fest, welcher Teil einer verbundenen Textkarte als Kontext dient. */
+  function setContext(nodeId: string, choice: string) {
+    const next = { ...config.context };
+    if (choice) next[nodeId] = choice;
+    else delete next[nodeId];
+    patch({ mcpContext: next });
   }
 
 
@@ -5425,6 +5494,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
             ["context", notes.length ? `Kontext (${notes.length})` : "Kontext"],
             ["output", "Ausgabe"],
             ["result", "Antwort"],
+            ["history", history.length ? `Verlauf (${history.length})` : "Verlauf"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -5554,30 +5624,127 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
               bereit und kann in jedes Eingabefeld übernommen werden.
             </p>
           ) : (
-            notes.map((note) => (
-              <div key={note.id} className="rounded-md border border-border/70 px-2 py-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[10px] font-medium">{note.title || "Text"}</span>
-                  <button
-                    type="button"
-                    className="nodrag ml-auto rounded-full bg-secondary px-2 py-0.5 text-[9px]"
-                    onClick={() => {
-                      const target = fields.find((field) => !config.bindings[field.name]);
-                      if (!target) {
-                        toast.info("Wähle zuerst ein Werkzeug mit Eingabefeldern");
-                        return;
-                      }
-                      setInput(target.name, note.content ?? "");
-                      setSection("input");
-                      toast.success(`Text in „${target.title}“ übernommen`);
-                    }}
-                  >
-                    In Eingabe übernehmen
-                  </button>
+            notes.map((note) => {
+              const choice = config.context[note.id] ?? "";
+              const active = choice !== "off";
+              const sections = markdownSections(note.content ?? "");
+              const chosen = choice && choice !== "off" ? new Set(choice.split("|")) : null;
+              const selectedText = contextTextFor(note, choice);
+              return (
+                <div key={note.id} className="rounded-md border border-border/70 px-2 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={active}
+                      className={`nodrag rounded-full px-2 py-0.5 text-[9px] ${
+                        active ? "bg-secondary text-foreground" : "text-muted-foreground"
+                      }`}
+                      onClick={() => setContext(note.id, active ? "off" : "")}
+                    >
+                      {active ? "verwendet" : "aus"}
+                    </button>
+                    <span className="truncate text-[10px] font-medium">{note.title || "Text"}</span>
+                    <button
+                      type="button"
+                      className="nodrag ml-auto rounded-full bg-secondary px-2 py-0.5 text-[9px]"
+                      disabled={!selectedText}
+                      onClick={() => {
+                        const target = fields.find((field) => !config.bindings[field.name]);
+                        if (!target) {
+                          toast.info("Wähle zuerst ein Werkzeug mit Eingabefeldern");
+                          return;
+                        }
+                        setInput(target.name, selectedText);
+                        setSection("input");
+                        toast.success(`Text in „${target.title}“ übernommen`);
+                      }}
+                    >
+                      In Eingabe übernehmen
+                    </button>
+                  </div>
+                  {active && sections.length > 1 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        className={`nodrag rounded-full px-2 py-0.5 text-[9px] ${
+                          chosen ? "text-muted-foreground" : "bg-secondary text-foreground"
+                        }`}
+                        onClick={() => setContext(note.id, "")}
+                      >
+                        ganzer Text
+                      </button>
+                      {sections.map((part) => {
+                        const on = chosen?.has(part.title) ?? false;
+                        return (
+                          <button
+                            key={part.title}
+                            type="button"
+                            className={`nodrag rounded-full px-2 py-0.5 text-[9px] ${
+                              on ? "bg-secondary text-foreground" : "text-muted-foreground"
+                            }`}
+                            onClick={() => {
+                              const next = new Set(chosen ?? []);
+                              if (on) next.delete(part.title);
+                              else next.add(part.title);
+                              setContext(note.id, next.size ? [...next].join("|") : "");
+                            }}
+                          >
+                            {part.title}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {active ? (
+                    <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[10px] text-muted-foreground">
+                      {selectedText || "Keine Abschnitte gewählt."}
+                    </p>
+                  ) : null}
                 </div>
-                <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[10px] text-muted-foreground">
-                  {note.content}
+              );
+            })
+          )}
+        </div>
+      ) : section === "history" ? (
+        <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
+          {history.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground">
+              Noch keine Ausführung. Nach jedem Lauf stehen hier Zeitpunkt, Eingaben und Antwort.
+            </p>
+          ) : (
+            history.map((run, index) => (
+              <div
+                key={`${run.at}-${index}`}
+                className="rounded-md border px-2 py-1.5"
+                style={{ borderColor: run.ok ? "var(--border)" : "var(--signal-error, #de5a3a)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-medium">
+                    {new Date(run.at).toLocaleString("de-DE")}
+                  </span>
+                  <span className="truncate font-mono text-[9px] text-muted-foreground">
+                    {run.tool}
+                  </span>
+                  <span
+                    className="ml-auto text-[9px]"
+                    style={{ color: run.ok ? "var(--signal-ok, #4f8a5b)" : "var(--signal-error, #de5a3a)" }}
+                  >
+                    {run.ok ? "erfolgreich" : "Fehler"}
+                  </span>
+                </div>
+                {run.error ? (
+                  <p className="mt-1 text-[10px]" style={{ color: "var(--signal-error, #de5a3a)" }}>
+                    {run.error}
+                  </p>
+                ) : null}
+                <p className="mt-1 break-all font-mono text-[9px] text-muted-foreground">
+                  Eingaben: {run.args || "{}"}
                 </p>
+                {run.preview ? (
+                  <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-words font-mono text-[9px] text-muted-foreground">
+                    {run.preview}
+                  </pre>
+                ) : null}
               </div>
             ))
           )}

@@ -22,7 +22,7 @@ import { Globe, LayoutGrid, Plug, Scale, Server, Shapes, Tag } from "lucide-reac
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { runMcpTool } from "@/lib/mcp-client.functions";
-import { readMcp } from "@/lib/mcp-module";
+import { appendMcpRun, readMcp, readMcpHistory } from "@/lib/mcp-module";
 import { valueOfNode } from "@/lib/calc";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
@@ -1614,6 +1614,7 @@ function BoardPage() {
       void runMcpTool({ data: { serverId: config.serverId, tool: config.tool, args } })
         .then((result) => {
           const current = recordsRef.current[id];
+          const error = result.isError ? "Das Werkzeug meldet einen Fehler" : null;
           updateNode(id, {
             content: result.text,
             status: result.isError ? "error" : "ready",
@@ -1621,7 +1622,15 @@ function BoardPage() {
               ...(current?.metadata ?? {}),
               mcpRunning: false,
               lastAt: result.at,
-              lastError: result.isError ? "Das Werkzeug meldet einen Fehler" : null,
+              lastError: error,
+              mcpHistory: appendMcpRun(readMcpHistory(current), {
+                at: result.at,
+                tool: config.tool,
+                args,
+                ok: !result.isError,
+                error,
+                preview: (result.text ?? "").slice(0, 600),
+              }),
             },
           });
         })
@@ -1629,7 +1638,19 @@ function BoardPage() {
           const current = recordsRef.current[id];
           const message = error instanceof Error ? error.message : "Aufruf fehlgeschlagen";
           updateNode(id, {
-            metadata: { ...(current?.metadata ?? {}), mcpRunning: false, lastError: message },
+            metadata: {
+              ...(current?.metadata ?? {}),
+              mcpRunning: false,
+              lastError: message,
+              mcpHistory: appendMcpRun(readMcpHistory(current), {
+                at: new Date().toISOString(),
+                tool: config.tool,
+                args,
+                ok: false,
+                error: message,
+                preview: "",
+              }),
+            },
           });
           toast.error(message);
         });

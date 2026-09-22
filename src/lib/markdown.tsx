@@ -167,3 +167,34 @@ export function Markdown({ source }: { source: string }) {
     </div>
   );
 }
+
+/** Ein Abschnitt eines Markdown-Textes (Überschrift plus Inhalt darunter). */
+export type MarkdownSection = { title: string; text: string };
+
+/**
+ * Teilt einen Text an seinen Überschriften in Abschnitte.
+ * Text ohne Überschrift ergibt genau einen Abschnitt.
+ */
+export function markdownSections(source: string): MarkdownSection[] {
+  const lines = (source ?? "").split("\n");
+  const out: MarkdownSection[] = [];
+  let title = "";
+  let buffer: string[] = [];
+  const flush = () => {
+    const text = buffer.join("\n").trim();
+    if (!title && !text) return;
+    out.push({ title: title || "Anfang", text: (title ? `${title}\n` : "") + text });
+  };
+  for (const line of lines) {
+    const heading = /^\s*#{1,3}\s+(.*)$/.exec(line);
+    if (heading) {
+      flush();
+      title = (heading[1] ?? "").trim();
+      buffer = [];
+      continue;
+    }
+    buffer.push(line);
+  }
+  flush();
+  return out;
+}
