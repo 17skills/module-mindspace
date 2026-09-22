@@ -410,6 +410,20 @@ function LibraryPage() {
           </div>
         </div>
       </section>
+
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-6 text-sm text-muted-foreground">
+          <Link to="/datenschutz" className="underline-offset-4 hover:underline">
+            Datenschutz
+          </Link>
+          <Link to="/impressum" className="underline-offset-4 hover:underline">
+            Impressum
+          </Link>
+          <Link to="/agb" className="underline-offset-4 hover:underline">
+            Nutzungsbedingungen
+          </Link>
+        </div>
+      </footer>
     </main>
   );
 }
