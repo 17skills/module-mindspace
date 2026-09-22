@@ -2486,6 +2486,23 @@ function BoardPage() {
             }),
         },
         {
+          label: "Modul kopieren",
+          icon: Copy,
+          run: () => copyModules([menu.nodeId!]),
+        },
+        ...(selectedModuleCount >= 2
+          ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
+          : []),
+        {
+          label: "Modul duplizieren",
+          icon: CopyPlus,
+          run: () => void duplicateModules([menu.nodeId!]),
+        },
+        ...(selectedModuleCount >= 2
+          ? [{ label: "Auswahl duplizieren", icon: CopyPlus, run: () => void duplicateModules() }]
+          : []),
+        {
+
           label: "In Bibliothek speichern",
           icon: Library,
           run: () => {
