@@ -276,7 +276,8 @@ function SignalHandle(props: React.ComponentProps<typeof Handle>) {
   const kind = props.type;
   const state = useStore(
     (store) => {
-      if (!nodeId) return { status: "idle" as PortStatus, hint: "" };
+      const empty = { status: "idle" as PortStatus, hint: "", text: "" };
+      if (!nodeId) return empty;
       const records: Record<string, NodeRecord> = {};
       for (const [id, item] of store.nodeLookup) {
         const record = (item.data as Data | undefined)?.record;
@@ -290,17 +291,18 @@ function SignalHandle(props: React.ComponentProps<typeof Handle>) {
       const own = records[nodeId];
       if (kind === "source") {
         const linked = edges.some((edge) => edge.source === nodeId);
-        if (!linked) return { status: "idle" as PortStatus, hint: "" };
+        if (!linked) return empty;
         const value = valueOf(nodeId);
         if (value == null) {
           if (isReference(own))
-            return { status: "idle" as PortStatus, hint: "Ausgang: Inhalt (ohne Zahlenwert)" };
-          return { status: "warn" as PortStatus, hint: "Ausgang: noch kein Wert" };
+            return { status: "idle" as PortStatus, hint: "Ausgang: Inhalt (ohne Zahlenwert)", text: "" };
+          return { status: "warn" as PortStatus, hint: "Ausgang: noch kein Wert", text: "" };
         }
-        return { status: "ok" as PortStatus, hint: `Ausgang: ${NUM.format(value)}` };
+        const text = formatValue(value, readFormat(own?.metadata));
+        return { status: "ok" as PortStatus, hint: `Ausgang: ${text}`, text };
       }
       const incoming = edges.filter((edge) => edge.target === nodeId);
-      if (!incoming.length) return { status: "idle" as PortStatus, hint: "" };
+      if (!incoming.length) return empty;
       let status: PortStatus = "idle";
       const parts: string[] = [];
       for (const edge of incoming) {
@@ -323,16 +325,28 @@ function SignalHandle(props: React.ComponentProps<typeof Handle>) {
           parts.push(`${source?.title ?? "Quelle"}: ${NUM.format(result!)}`);
         }
       }
-      return { status, hint: `Eingang · ${parts.join(" · ")}` };
+      return { status, hint: `Eingang · ${parts.join(" · ")}`, text: "" };
     },
-    (a, b) => a.status === b.status && a.hint === b.hint,
+    (a, b) => a.status === b.status && a.hint === b.hint && a.text === b.text,
   );
+  const showValue =
+    kind === "source" && state.status === "ok" && state.text && props.position === Position.Right;
   return (
-    <Handle
-      {...props}
-      data-status={state.status}
-      {...(state.hint ? { title: state.hint } : {})}
-    />
+    <>
+      <Handle
+        {...props}
+        data-status={state.status}
+        {...(state.hint ? { title: state.hint } : {})}
+      />
+      {showValue ? (
+        <span
+          className="port-value pointer-events-none absolute font-mono"
+          style={{ right: -12, top: "50%", transform: "translate(100%, -50%)" }}
+        >
+          {state.text}
+        </span>
+      ) : null}
+    </>
   );
 }
 
