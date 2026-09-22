@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { settingsFrom } from "@/lib/settings";
 import {
@@ -37,7 +38,7 @@ export type AiKeyInfo = {
   updatedAt: string;
 };
 
-async function listKeys(db: { from: ReturnType<typeof Object> } & Json, userId: string) {
+async function listKeys(db: SupabaseClient, userId: string) {
   const [keysResult, profileResult] = await Promise.all([
     db
       .from("user_ai_keys")
@@ -86,9 +87,6 @@ export const saveAiKey = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { encrypted_key: _enc, ..._rest } = {} as Json;
-    void _enc;
-    void _rest;
     const encrypted = encryptKey(data.key.trim());
     const base =
       data.provider === "openrouter"
