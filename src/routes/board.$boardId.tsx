@@ -112,7 +112,9 @@ import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
-import { Library } from "lucide-react";
+import { Library, AppWindow } from "lucide-react";
+import { AppDialog } from "@/components/canvas/AppDialog";
+import { MAX_APP_MODULES } from "@/lib/apps";
 import { capture, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
 import {
@@ -425,6 +427,8 @@ function BoardPage() {
   /** Module ids chosen through the context menu; empty means "use the canvas selection". */
   const librarySelection = useRef<string[] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [appOpen, setAppOpen] = useState(false);
+  const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
