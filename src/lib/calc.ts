@@ -2,6 +2,7 @@ import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { apiValue, decisionValue } from "@/lib/api-module";
 import { readFactor } from "@/lib/factor-score";
+import { readInspection } from "@/lib/inspection";
 import {
   maxRisk,
   pointsFromSources,
@@ -31,6 +32,12 @@ export function nodeValue(record: NodeRecord | undefined): number | null {
   if (record.type === "note") {
     const factor = readFactor(record);
     if (factor.stored && factor.params.length) return factor.score;
+  }
+  // an inspection module sends the count of immediate findings (priority 1..3)
+  if (record.type === "inspect") {
+    return readInspection(record).findings.filter(
+      (finding) => finding.priority <= 3,
+    ).length;
   }
   return toNumber(record.metadata?.["value"]);
 }
