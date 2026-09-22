@@ -259,7 +259,9 @@ function getKpisTool(appId: string) {
         target: String(row.target_id),
         label: (row.label as string | null) ?? undefined,
       }));
-      const records = new Map(nodes.map((row) => [row.id, asRecord(row)]));
+      const records: Record<string, NodeRecord> = Object.fromEntries(
+        nodes.map((row) => [row.id, asRecord(row)]),
+      );
 
       const moduleValues = nodes
         .filter((row) =>
