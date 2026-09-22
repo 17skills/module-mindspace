@@ -112,10 +112,10 @@ import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
-import { Library, AppWindow } from "lucide-react";
+import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste } from "lucide-react";
 import { AppDialog } from "@/components/canvas/AppDialog";
 import { MAX_APP_MODULES } from "@/lib/apps";
-import { capture, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
+import { capture, readPayload, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
 import {
   extractStructured,
@@ -654,7 +654,7 @@ function BoardPage() {
   );
 
   const createEdge = useCallback(
-    (sourceId: string, targetId: string) => {
+    (sourceId: string, targetId: string, label?: string | null) => {
       if (!user || sourceId === targetId) return;
       const exists = edgesRef.current.some(
         (e) =>
@@ -663,9 +663,16 @@ function BoardPage() {
       );
       if (exists) return;
       const id = crypto.randomUUID();
+      const text = label?.trim() || "";
       setEdges((current) => [
         ...current,
-        { id, source: sourceId, target: targetId, type: "labeled" },
+        {
+          id,
+          source: sourceId,
+          target: targetId,
+          type: "labeled",
+          ...(text ? { label: text } : {}),
+        },
       ]);
       trackSave(
         supabase
@@ -676,6 +683,7 @@ function BoardPage() {
             user_id: user.id,
             source_id: sourceId,
             target_id: targetId,
+            label: text || null,
           } as never)
           .then(({ error }) => {
             if (error) {
@@ -687,6 +695,7 @@ function BoardPage() {
     },
     [boardId, setEdges, user],
   );
+
 
   const updateEdge = useCallback(
     (id: string, label: string) => {
@@ -1959,18 +1968,9 @@ function BoardPage() {
     };
   }, [nodes]);
 
-  /** Place a library entry on the canvas, optionally without any stored content. */
-  const insertLibraryEntry = useCallback(
-    async (entry: LibraryEntry, mode: "empty" | "full") => {
-      const payload: LibraryPayload = mode === "empty" ? stripContent(entry.payload) : entry.payload;
-      if (!payload.nodes.length) {
-        toast.error("Dieser Eintrag enthält keine Module");
-        return;
-      }
-      const at = screenToFlowPosition({
-        x: window.innerWidth / 2 - payload.bounds.width / 2,
-        y: window.innerHeight / 2 - payload.bounds.height / 2,
-      });
+  /** Recreate a captured payload on the canvas at a flow position; returns the new ids. */
+  const insertPayload = useCallback(
+    async (payload: LibraryPayload, at: { x: number; y: number }) => {
       const idMap = new Map<string, string>();
       // parents first, so children can reference them
       const ordered = [...payload.nodes].sort(
@@ -1996,8 +1996,26 @@ function BoardPage() {
       for (const edge of payload.edges) {
         const source = idMap.get(edge.source);
         const target = idMap.get(edge.target);
-        if (source && target) createEdge(source, target);
+        if (source && target) createEdge(source, target, edge.label);
       }
+      return [...idMap.values()];
+    },
+    [createRecord, createEdge],
+  );
+
+  /** Place a library entry on the canvas, optionally without any stored content. */
+  const insertLibraryEntry = useCallback(
+    async (entry: LibraryEntry, mode: "empty" | "full") => {
+      const payload: LibraryPayload = mode === "empty" ? stripContent(entry.payload) : entry.payload;
+      if (!payload.nodes.length) {
+        toast.error("Dieser Eintrag enthält keine Module");
+        return;
+      }
+      const at = screenToFlowPosition({
+        x: window.innerWidth / 2 - payload.bounds.width / 2,
+        y: window.innerHeight / 2 - payload.bounds.height / 2,
+      });
+      await insertPayload(payload, at);
       setCenter(at.x + payload.bounds.width / 2, at.y + payload.bounds.height / 2, {
         zoom: Math.min(1, Math.max(0.25, 900 / Math.max(payload.bounds.width, 1))),
         duration: 500,
@@ -2006,8 +2024,107 @@ function BoardPage() {
         mode === "empty" ? `${entry.title} leer eingefügt` : `${entry.title} eingefügt`,
       );
     },
-    [createRecord, createEdge, screenToFlowPosition, setCenter],
+    [insertPayload, screenToFlowPosition, setCenter],
   );
+
+  /** Modules copied with Cmd/Ctrl+C, kept for pasting and duplicating. */
+  const clipboard = useRef<LibraryPayload | null>(null);
+
+  /** Copy the chosen modules (or the current selection) with size, position and links. */
+  const copyModules = useCallback(
+    (ids?: string[]) => {
+      const list =
+        ids && ids.length
+          ? ids
+          : nodesRef.current.filter((node) => node.selected && !node.parentId).map((n) => n.id);
+      if (!list.length) {
+        toast.info("Kein Modul ausgewählt");
+        return null;
+      }
+      const payload = capture(
+        list,
+        Object.values(recordsRef.current),
+        edgesRef.current.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          label: typeof edge.label === "string" ? edge.label : null,
+        })),
+      );
+      if (!payload.nodes.length) return null;
+      clipboard.current = payload;
+      void navigator.clipboard
+        ?.writeText(JSON.stringify({ scopebuilder: payload }))
+        .catch(() => undefined);
+      toast.success(
+        payload.nodes.length > 1 ? `${payload.nodes.length} Module kopiert` : "Modul kopiert",
+      );
+      return payload;
+    },
+    [],
+  );
+
+  /** Select freshly created modules so they can be moved right away. */
+  const selectOnly = useCallback(
+    (ids: string[]) => {
+      const set = new Set(ids);
+      setNodes((current) => current.map((node) => ({ ...node, selected: set.has(node.id) })));
+    },
+    [setNodes],
+  );
+
+  /** Paste the copied modules, offset so the copy stays visible. */
+  const pasteModules = useCallback(
+    async (at?: { x: number; y: number }) => {
+      const payload = clipboard.current;
+      if (!payload?.nodes.length) {
+        toast.info("Nichts zum Einfügen");
+        return;
+      }
+      const target =
+        at ??
+        screenToFlowPosition({
+          x: window.innerWidth / 2 - payload.bounds.width / 2,
+          y: window.innerHeight / 2 - payload.bounds.height / 2,
+        });
+      const created = await insertPayload(payload, target);
+      selectOnly(created);
+      toast.success(created.length > 1 ? `${created.length} Module eingefügt` : "Modul eingefügt");
+    },
+    [insertPayload, screenToFlowPosition, selectOnly],
+  );
+
+  /** Duplicate modules next to the originals, including their inner connections. */
+  const duplicateModules = useCallback(
+    async (ids?: string[]) => {
+      const list =
+        ids && ids.length
+          ? ids
+          : nodesRef.current.filter((node) => node.selected && !node.parentId).map((n) => n.id);
+      if (!list.length) {
+        toast.info("Kein Modul ausgewählt");
+        return;
+      }
+      const payload = capture(
+        list,
+        Object.values(recordsRef.current),
+        edgesRef.current.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          label: typeof edge.label === "string" ? edge.label : null,
+        })),
+      );
+      if (!payload.nodes.length) return;
+      const roots = payload.nodes.filter((node) => !node.parentLocalId);
+      const base = roots.length
+        ? { x: Math.min(...list.map((id) => recordsRef.current[id]?.position_x ?? 0)), y: Math.min(...list.map((id) => recordsRef.current[id]?.position_y ?? 0)) }
+        : { x: 0, y: 0 };
+      const created = await insertPayload(payload, { x: base.x + 48, y: base.y + 48 });
+      selectOnly(created);
+      toast.success(created.length > 1 ? `${created.length} Module dupliziert` : "Modul dupliziert");
+    },
+    [insertPayload, selectOnly],
+  );
+
 
 
   /** Fields of the selected template group, otherwise every field on the board. */
@@ -2145,24 +2262,64 @@ function BoardPage() {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
       const text = event.clipboardData?.getData("text")?.trim();
-      if (text && /^https?:\/\//i.test(text)) void addUrl(text);
+      if (!text) return;
+      if (text.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(text) as { scopebuilder?: LibraryPayload };
+          if (parsed.scopebuilder?.nodes?.length) {
+            event.preventDefault();
+            clipboard.current = readPayload(parsed.scopebuilder);
+            void pasteModules();
+            return;
+          }
+        } catch {
+          // no module payload in the clipboard
+        }
+      }
+      if (/^https?:\/\//i.test(text)) {
+        void addUrl(text);
+        return;
+      }
+      if (clipboard.current?.nodes.length) {
+        event.preventDefault();
+        void pasteModules();
+      }
     }
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [addUrl]);
+  }, [addUrl, pasteModules]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "g") {
+      if (target?.isContentEditable) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "g") {
         event.preventDefault();
         void groupSelection();
+        return;
       }
+      if (key === "c") {
+        const selected = nodesRef.current.some((node) => node.selected && !node.parentId);
+        if (!selected) return;
+        event.preventDefault();
+        copyModules();
+        return;
+      }
+      if (key === "d") {
+        event.preventDefault();
+        void duplicateModules();
+        return;
+      }
+      // Cmd/Ctrl+V is handled by the paste listener above
+
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [groupSelection]);
+  }, [groupSelection, copyModules, duplicateModules, pasteModules]);
+
 
   if (loading || !user) {
     return (
@@ -2329,6 +2486,23 @@ function BoardPage() {
             }),
         },
         {
+          label: "Modul kopieren",
+          icon: Copy,
+          run: () => copyModules([menu.nodeId!]),
+        },
+        ...(selectedModuleCount >= 2
+          ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
+          : []),
+        {
+          label: "Modul duplizieren",
+          icon: CopyPlus,
+          run: () => void duplicateModules([menu.nodeId!]),
+        },
+        ...(selectedModuleCount >= 2
+          ? [{ label: "Auswahl duplizieren", icon: CopyPlus, run: () => void duplicateModules() }]
+          : []),
+        {
+
           label: "In Bibliothek speichern",
           icon: Library,
           run: () => {
@@ -2418,10 +2592,27 @@ function BoardPage() {
             setTemplateOpen(true);
           },
         },
+        ...(clipboard.current?.nodes.length
+          ? [
+              {
+                label: "Hier einfügen",
+                icon: ClipboardPaste,
+                run: () =>
+                  void pasteModules({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
+              },
+            ]
+          : []),
+        ...(selectedModuleCount >= 1
+          ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
+          : []),
+        ...(selectedModuleCount >= 1
+          ? [{ label: "Auswahl duplizieren", icon: CopyPlus, run: () => void duplicateModules() }]
+          : []),
         ...(selectedModuleCount >= 2
           ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
           : []),
         { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
+
         {
           label: "Bibliothek öffnen …",
           icon: Library,
