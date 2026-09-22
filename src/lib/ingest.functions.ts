@@ -356,7 +356,7 @@ export const extractStructured = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const limit = data.max ?? 6;
     const kindRule =
       data.kind && data.kind !== "auto"
