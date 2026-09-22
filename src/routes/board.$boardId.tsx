@@ -2086,6 +2086,7 @@ function BoardPage() {
     () => ({
       updateNode,
       updateEdge,
+      deleteEdge,
       deleteNode,
       collectContext,
       contextReport,
@@ -2111,6 +2112,7 @@ function BoardPage() {
     [
       updateNode,
       updateEdge,
+      deleteEdge,
       deleteNode,
       collectContext,
       contextReport,
@@ -2578,6 +2580,7 @@ function BoardPage() {
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
+            deleteKeyCode={["Backspace", "Delete"]}
             onPaneContextMenu={(event) => {
               event.preventDefault();
               const mouse = event as unknown as MouseEvent;
