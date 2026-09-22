@@ -30,7 +30,7 @@ export function makeNode(
 }
 
 export const metricNode = makeNode("metric", "Sofort-Maßnahmen", {
-  metadata: { value: 3, format: { kind: "number" } },
+  metadata: { value: 3 },
 });
 
 export const gaugeNode = makeNode("gauge", "Auslastung", {
@@ -39,24 +39,19 @@ export const gaugeNode = makeNode("gauge", "Auslastung", {
 
 export const factorNode = makeNode("note", "Alter & Korrosion", {
   metadata: {
-    factor: {
-      score: 7,
-      params: [
-        { id: "p1", label: "Alter", weight: 60, score: 8 },
-        { id: "p2", label: "Korrosion", weight: 40, score: 6 },
-      ],
-    },
+    params: [
+      { id: "p1", label: "Alter", weight: 60, score: 8 },
+      { id: "p2", label: "Korrosion", weight: 40, score: 6 },
+    ],
   },
 });
 
 export const riskNode = makeNode("risk", "Netzrisiko", {
   metadata: {
-    isoRisk: {
-      fields: [
-        { id: "r1", code: "R1", name: "Sturm", probability: 4, impact: 4 },
-        { id: "r2", code: "R2", name: "Alterung", probability: 2, impact: 3 },
-      ],
-    },
+    fields: [
+      { id: "r1", code: "R1", name: "Sturm", chance: 4, impact: 4 },
+      { id: "r2", code: "R2", name: "Alterung", chance: 2, impact: 3 },
+    ],
   },
 });
 
