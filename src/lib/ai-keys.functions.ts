@@ -10,6 +10,7 @@ import {
   isAiProvider,
   type AiProvider,
 } from "@/lib/ai-providers";
+import { AI_FUNCTIONS, type AiFunctionId } from "@/lib/ai-functions";
 import { decryptKey, encryptKey, testProviderKey } from "@/lib/ai-keys.server";
 
 async function admin() {
