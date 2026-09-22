@@ -35,7 +35,9 @@ export async function loadPublicApp(appId: string) {
   const db = await admin();
   const { data: app, error } = await db
     .from("apps")
-    .select("id,board_id,title,kind,node_ids,branding,is_public,updated_at")
+    .select(
+      "id,board_id,title,description,kind,node_ids,branding,is_public,mcp_token,mcp_scope,updated_at",
+    )
     .eq("id", appId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -44,6 +46,31 @@ export async function loadPublicApp(appId: string) {
   const ids = Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : [];
   return { db, app: app as AppRow, ids };
 }
+
+export type McpScope = "read" | "write";
+
+/**
+ * Prüft den Schlüssel eines KI-Assistenten: entweder als `Authorization: Bearer …`
+ * oder als `?token=` an der Verbindungsadresse. Ohne gültigen Schlüssel: kein Zugriff.
+ */
+export async function authorizeAppMcp(
+  appId: string,
+  request: Request,
+): Promise<{ ok: true; scope: McpScope } | { ok: false; status: number }> {
+  let app: AppRow;
+  try {
+    app = (await loadPublicApp(appId)).app;
+  } catch {
+    return { ok: false, status: 404 };
+  }
+  const header = request.headers.get("authorization") ?? "";
+  const bearer = /^bearer\s+(.+)$/i.exec(header.trim())?.[1]?.trim() ?? "";
+  const query = new URL(request.url).searchParams.get("token")?.trim() ?? "";
+  const presented = bearer || query;
+  if (!presented || presented !== String(app.mcp_token)) return { ok: false, status: 401 };
+  return { ok: true, scope: app.mcp_scope === "write" ? "write" : "read" };
+}
+
 
 /** App-Module in App-Reihenfolge plus Board-Titel. */
 export async function loadAppNodes(appId: string) {
