@@ -58,10 +58,13 @@ import { runApiModule } from "@/lib/api-module.functions";
 import { analyzeInspection } from "@/lib/inspection.functions";
 import {
   CLUSTERS,
+  STATUS_COLOR,
+  STATUS_VALUES,
   downscale,
   euro,
   exifLocation,
   inspectionText,
+  isOverdue,
   labelFromFile,
   priorityColor,
   rateFor,
@@ -2072,6 +2075,26 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
           className="nodrag mt-1 bg-transparent text-xs text-muted-foreground outline-none"
           onBlur={(e) => patch({ compare: e.target.value.trim() })}
         />
+        {warnAbove != null || dangerAbove != null ? (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-1.5 font-mono text-[9px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full" style={{ background: "var(--support)" }} />
+              unter {formatValue(warnAbove ?? dangerAbove ?? 0, fmt)}
+            </span>
+            {warnAbove != null ? (
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-full" style={{ background: "var(--brand-orange)" }} />
+                ab {formatValue(warnAbove, fmt)}
+              </span>
+            ) : null}
+            {dangerAbove != null ? (
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-full" style={{ background: "var(--destructive)" }} />
+                ab {formatValue(dangerAbove, fmt)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {selected ? <FormatRow meta={meta} onPatch={patch} /> : null}
         {selected ? (
           <div className="nodrag mt-2 flex items-center gap-2 border-t pt-2 text-[10px] text-muted-foreground">
@@ -4355,6 +4378,9 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
           thumb,
           createdAt: new Date().toISOString(),
           prevPriority: previous ? previous.priority : null,
+          status: "offen",
+          owner: previous?.owner ?? "",
+          due: previous?.due ?? "",
           source: gps ? "exif" : "unbekannt",
         });
       } catch (error) {
@@ -4379,7 +4405,8 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
   }
 
   const total = totalCost(findings);
-  const urgent = findings.filter((item) => item.priority <= 3);
+  const urgent = findings.filter((item) => item.priority <= 3 && item.status !== "erledigt");
+  const overdue = findings.filter(isOverdue).length;
   const located = findings.filter((item) => item.lat != null && item.lon != null).length;
 
   return (
@@ -4427,11 +4454,14 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
 
       <div className="grid grid-cols-3 gap-2 border-b bg-secondary/25 px-3 py-2">
         <div>
-          <p className="module-eyebrow">Sofort</p>
+          <p className="module-eyebrow">Sofort offen</p>
           <p className="kpi-value" style={{ color: urgent.length ? "#dc2626" : undefined }}>
             {urgent.length}
           </p>
           <div className="kpi-bar" style={{ background: urgent.length ? "#dc2626" : "#16a34a" }} />
+          <p className="font-mono text-[9px] text-muted-foreground">
+            {overdue ? `${overdue} überfällig` : "kein Termin überschritten"}
+          </p>
         </div>
         <div>
           <p className="module-eyebrow">Befunde</p>
@@ -4543,6 +4573,57 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                             {shift !== 0 && (
                               <span style={{ color: shift > 0 ? "#dc2626" : "#16a34a" }}>
                                 {shift > 0 ? "▲" : "▼"} vorher Prio {finding.prevPriority}
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            className="mt-1 flex flex-wrap items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <select
+                              value={finding.status}
+                              aria-label="Status"
+                              className="nodrag rounded-full border px-1.5 py-0.5 font-mono text-[9px] font-bold text-white outline-none"
+                              style={{
+                                background: STATUS_COLOR[finding.status],
+                                borderColor: STATUS_COLOR[finding.status],
+                              }}
+                              onChange={(e) =>
+                                patchFinding(finding.id, {
+                                  status: e.target.value as Finding["status"],
+                                })
+                              }
+                            >
+                              {STATUS_VALUES.map((value) => (
+                                <option key={value} value={value} className="text-foreground">
+                                  {value}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              key={finding.id + "owner" + finding.owner}
+                              defaultValue={finding.owner}
+                              placeholder="verantwortlich"
+                              aria-label="Verantwortliche Person"
+                              className="nodrag w-24 rounded border border-border/70 px-1 py-0.5 text-[9px]"
+                              onBlur={(e) => patchFinding(finding.id, { owner: e.target.value.trim() })}
+                            />
+                            <input
+                              key={finding.id + "due" + finding.due}
+                              type="date"
+                              defaultValue={finding.due}
+                              aria-label="Fällig am"
+                              className="nodrag rounded border px-1 py-0.5 font-mono text-[9px]"
+                              style={
+                                isOverdue(finding)
+                                  ? { borderColor: "#dc2626", color: "#dc2626" }
+                                  : { borderColor: "var(--border)" }
+                              }
+                              onBlur={(e) => patchFinding(finding.id, { due: e.target.value })}
+                            />
+                            {isOverdue(finding) && (
+                              <span className="font-mono text-[9px]" style={{ color: "#dc2626" }}>
+                                überfällig
                               </span>
                             )}
                           </div>

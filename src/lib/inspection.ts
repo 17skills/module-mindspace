@@ -23,6 +23,12 @@ export type Finding = {
   createdAt: string;
   /** Priority of the previous assessment of the same station, if any. */
   prevPriority: number | null;
+  /** Work status of the measure. */
+  status: "offen" | "beauftragt" | "in arbeit" | "erledigt";
+  /** Person responsible for the measure. */
+  owner: string;
+  /** Due date as ISO day (YYYY-MM-DD), empty when not set. */
+  due: string;
   /** How the position was determined. */
   source: "exif" | "manuell" | "unbekannt";
 };
@@ -49,6 +55,21 @@ export const CLUSTERS = [
   { id: "mittel", label: "Mittelfristig", from: 4, to: 6, color: "#ea580c" },
   { id: "beobachtung", label: "Beobachtung", from: 7, to: 10, color: "#16a34a" },
 ] as const;
+
+export const STATUS_VALUES: Finding["status"][] = ["offen", "beauftragt", "in arbeit", "erledigt"];
+
+export const STATUS_COLOR: Record<Finding["status"], string> = {
+  offen: "#dc2626",
+  beauftragt: "#ea580c",
+  "in arbeit": "#eab308",
+  erledigt: "#16a34a",
+};
+
+/** True when the due date has passed and the measure is not done. */
+export function isOverdue(finding: Finding): boolean {
+  if (!finding.due || finding.status === "erledigt") return false;
+  return finding.due < new Date().toISOString().slice(0, 10);
+}
 
 export function clusterOf(priority: number) {
   return CLUSTERS.find((cluster) => priority >= cluster.from && priority <= cluster.to) ?? CLUSTERS[2];
@@ -96,6 +117,11 @@ export function readInspection(
       thumb: typeof row["thumb"] === "string" ? (row["thumb"] as string) : null,
       createdAt: typeof row["createdAt"] === "string" ? (row["createdAt"] as string) : "",
       prevPriority: nullableNum(row["prevPriority"]),
+      status: STATUS_VALUES.includes(String(row["status"]) as Finding["status"])
+        ? (String(row["status"]) as Finding["status"])
+        : "offen",
+      owner: typeof row["owner"] === "string" ? (row["owner"] as string) : "",
+      due: typeof row["due"] === "string" ? (row["due"] as string) : "",
       source:
         row["source"] === "exif" || row["source"] === "manuell" ? (row["source"] as "exif" | "manuell") : "unbekannt",
     };
@@ -137,10 +163,13 @@ export function inspectionText(findings: Finding[]): string {
       finding.prevPriority != null && finding.prevPriority !== finding.priority
         ? ` (vorher Prio ${finding.prevPriority})`
         : "";
-    return `- Prio ${finding.priority}/10${shift} · ${finding.label} · ${finding.category}: ${finding.finding} → ${finding.action}, ${euro(finding.cost)} · ${place} · Sicherheit ${Math.round(finding.confidence)} %`;
+    const owner = finding.owner ? ` · zuständig ${finding.owner}` : " · noch niemand zuständig";
+    const due = finding.due ? ` · fällig ${finding.due}${isOverdue(finding) ? " (überfällig)" : ""}` : " · ohne Termin";
+    return `- Prio ${finding.priority}/10${shift} · ${finding.label} · ${finding.category}: ${finding.finding} → ${finding.action}, ${euro(finding.cost)} · Status ${finding.status}${owner}${due} · ${place} · Sicherheit ${Math.round(finding.confidence)} %`;
   });
-  const urgent = sorted.filter((finding) => finding.priority <= 3).length;
-  return `Maßnahmenplan aus Vor-Ort-Fotos (${findings.length} Befunde, davon ${urgent} sofort, Gesamtkosten ${euro(totalCost(findings))}):\n${lines.join("\n")}`;
+  const urgent = sorted.filter((finding) => finding.priority <= 3 && finding.status !== "erledigt").length;
+  const overdue = sorted.filter(isOverdue).length;
+  return `Maßnahmenplan aus Vor-Ort-Fotos (${findings.length} Befunde, davon ${urgent} sofort offen, ${overdue} überfällig, Gesamtkosten ${euro(totalCost(findings))}):\n${lines.join("\n")}`;
 }
 
 /* ------------------------------------------------------------------ */
