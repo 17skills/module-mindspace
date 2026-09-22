@@ -1,5 +1,6 @@
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { readStructure } from "@/lib/structure";
+import { readInspection } from "@/lib/inspection";
 
 export type GeoPoint = {
   id: string;
