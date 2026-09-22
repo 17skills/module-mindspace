@@ -857,20 +857,20 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
       <Handle type="source" position={Position.Right} className="!size-3" />
       <Handle type="source" position={Position.Bottom} className="!size-3" />
       <div
-        className={`relative h-full w-full rounded-2xl border${isGroup ? " border-dashed" : ""}`}
+        className={`relative h-full w-full overflow-hidden rounded-2xl border-2 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--card)_70%,transparent)] transition-colors${isGroup ? " border-dashed" : ""}${selected ? " ring-2 ring-primary/35" : ""}`}
         style={{
           background: isGroup
             ? "transparent"
             : color === ZONE_WHITE
-              ? "var(--card)"
-              : `color-mix(in oklab, ${color} 8%, transparent)`,
+              ? "color-mix(in oklab, var(--brand-green) 5%, var(--card))"
+              : `color-mix(in oklab, ${color} 12%, var(--card))`,
           borderColor:
             color === ZONE_WHITE
-              ? "var(--border)"
-              : `color-mix(in oklab, ${color} 35%, transparent)`,
+              ? "color-mix(in oklab, var(--brand-green-deep) 45%, var(--border))"
+              : `color-mix(in oklab, ${color} 55%, var(--border))`,
         }}
       >
-        <div className="flex items-center gap-2 pr-9">
+        <div className="flex min-h-11 items-center gap-2 border-b border-border/80 bg-card/90 pr-9 shadow-sm">
           <input
             defaultValue={record.title ?? "Feld"}
             readOnly={locked}
