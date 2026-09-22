@@ -69,7 +69,7 @@ describe("Modularten", () => {
 
 describe("Aufbauten", () => {
   it("zeigt in jedem Aufbau alle gewählten Module", () => {
-    for (const layout of ["auto", "split", "dashboard", "feed", "report"] as const) {
+    for (const layout of ["auto", "free", "split", "dashboard", "feed", "report"] as const) {
       const { unmount } = render(<AppEngine nodes={all} layout={layout} />);
       for (const node of all) {
         expect(screen.getByText(node.title!)).toBeInTheDocument();
@@ -99,6 +99,12 @@ describe("Aufbauten", () => {
     render(<AppEngine nodes={[]} layout="auto" />);
     expect(screen.getByText(/noch kein Modul/)).toBeInTheDocument();
   });
+
+  it("bietet in der freien Fläche Griffe zum Verschieben und Vergrößern", () => {
+    render(<AppEngine nodes={[metricNode, riskNode]} layout="free" editable />);
+    expect(screen.getByRole("button", { name: /Sofort-Maßnahmen verschieben/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Netzrisiko Größe ändern/ })).toBeInTheDocument();
+  });
 });
 
 describe("Vorschau auf Desktop und Handy", () => {
@@ -109,7 +115,7 @@ describe("Vorschau auf Desktop und Handy", () => {
 
   it("rendert jeden Aufbau in beiden Vorschaubreiten", () => {
     for (const { device, width } of widths) {
-      for (const layout of ["auto", "split", "dashboard", "feed", "report"] as const) {
+      for (const layout of ["auto", "free", "split", "dashboard", "feed", "report"] as const) {
         const { container, unmount } = render(
           <div style={{ width }} data-device={device}>
             <AppEngine nodes={all} layout={layout} />

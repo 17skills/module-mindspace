@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { AppEngine } from "@/components/app/AppEngine";
-import { APP_LAYOUTS, resolveLayout } from "@/lib/app-layout";
+import { APP_LAYOUTS, buildFreeLayout, resolveLayout } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
 import {
   APP_DESIGN_PRESETS,
@@ -118,6 +118,13 @@ export function AppDialog({
   const chosenTypes = useMemo(() => pickedNodes.map((node) => node.type), [pickedNodes]);
   const kind: "capture" | "cockpit" =
     resolveLayout(branding.layout, chosenTypes) === "capture" ? "capture" : "cockpit";
+
+  useEffect(() => {
+    if (branding.layout !== "free") return;
+    const next = buildFreeLayout(pickedNodes, branding.moduleLayout);
+    const before = JSON.stringify(branding.moduleLayout);
+    if (JSON.stringify(next) !== before) setBranding((value) => ({ ...value, moduleLayout: next }));
+  }, [branding.layout, branding.moduleLayout, pickedNodes]);
 
 
   const reload = async () => {
@@ -459,6 +466,11 @@ export function AppDialog({
                   </button>
                 ))}
               </div>
+              {branding.layout === "free" ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Module rechts am Griff verschieben und an der unteren Ecke vergrößern.
+                </p>
+              ) : null}
             </div>
 
           </TabsContent>
@@ -480,7 +492,15 @@ export function AppDialog({
               {APP_DESIGN_PRESETS.map((profile) => (
                 <button
                   key={profile.id}
-                  onClick={() => setBranding((b) => ({ ...b, ...profile.branding, logo: b.logo }))}
+                  onClick={() =>
+                    setBranding((b) => ({
+                      ...b,
+                      ...profile.branding,
+                      logo: b.logo,
+                      layout: b.layout,
+                      moduleLayout: b.moduleLayout,
+                    }))
+                  }
                   className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
                 >
                   {profile.name}
@@ -863,7 +883,16 @@ export function AppDialog({
                       </p>
                     </div>
                   ) : (
-                    <AppEngine nodes={pickedNodes} layout={branding.layout} />
+                    <AppEngine
+                      nodes={pickedNodes}
+                      layout={branding.layout}
+                      moduleLayout={branding.moduleLayout}
+                      editable={branding.layout === "free"}
+                      compactPreview={device === "mobile"}
+                      onModuleLayoutChange={(moduleLayout) =>
+                        setBranding((value) => ({ ...value, moduleLayout }))
+                      }
+                    />
                   )}
                 </div>
               </div>
