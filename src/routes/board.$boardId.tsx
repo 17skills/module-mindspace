@@ -129,13 +129,13 @@ import {
 export const Route = createFileRoute("/board/$boardId")({
   head: () => ({
     meta: [
-      { title: "Board – Canvas Spark" },
+      { title: "Scope – scopebuilder" },
       {
         name: "description",
         content:
           "Arbeitsfläche mit Videos, Podcasts, Dokumenten, Notizen und KI-Chat – alles miteinander verbunden.",
       },
-      { property: "og:title", content: "Board – Canvas Spark" },
+      { property: "og:title", content: "Scope – scopebuilder" },
       {
         property: "og:description",
         content: "Inhalte verbinden, gruppieren und per Chat auswerten.",
@@ -473,7 +473,7 @@ function BoardPage() {
       ]);
       if (!active) return;
       if (boardRes.error) {
-        toast.error("Board nicht gefunden");
+        toast.error("Scope nicht gefunden");
         void navigate({ to: "/" });
         return;
       }
@@ -2438,19 +2438,19 @@ function BoardPage() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button asChild size="icon" variant="ghost" className="size-9 rounded-lg">
-              <Link to="/" aria-label="Zur Board-Übersicht">
+              <Link to="/" aria-label="Zur Scope-Übersicht">
                 <ArrowLeft className="size-4" />
               </Link>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Zur Board-Übersicht</TooltipContent>
+          <TooltipContent>Zur Scope-Übersicht</TooltipContent>
         </Tooltip>
         <div className="h-5 w-px bg-border/70" />
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => trackSave(supabase.from("boards").update({ title }).eq("id", boardId))}
-          aria-label="Board-Titel"
+          aria-label="Scope-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
         <SaveIndicator />
@@ -2462,17 +2462,17 @@ function BoardPage() {
                   size="icon"
                   variant="ghost"
                   className="size-9 rounded-lg"
-                  aria-label="Board teilen"
+                  aria-label="Scope teilen"
                   onClick={() => setShareOpen(true)}
                 >
                   <Share2 className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Board teilen</TooltipContent>
+              <TooltipContent>Scope teilen</TooltipContent>
             </Tooltip>
           ) : (
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              Geteiltes Board
+              Geteilter Scope
             </span>
           )}
         </div>

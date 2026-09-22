@@ -30,6 +30,35 @@ export const APP_KINDS: { id: AppKind; label: string; hint: string }[] = [
 
 export const MAX_APP_MODULES = 5;
 
+/** Deutsche Klarnamen der Modularten – damit „Rechnung“ nicht dreimal gleich heißt. */
+export const MODULE_TYPE_LABEL: Record<string, string> = {
+  note: "Faktor",
+  text: "Text",
+  metric: "Kennzahl",
+  gauge: "Tacho",
+  sheet: "Rechnung",
+  risk: "Risikomatrix",
+  map: "Karte",
+  inspect: "Inspektion",
+  decision: "Entscheidung (JEV)",
+  api: "API-Modul",
+  zone: "Feld",
+  chat: "Chat",
+  link: "Link",
+  file: "Datei",
+  video: "Video",
+  image: "Bild",
+  shape: "Form",
+};
+
+/** Beschriftung eines Moduls in Auswahllisten: Art plus eigener Titel. */
+export function moduleLabel(type: string, title: string): string {
+  const kind = MODULE_TYPE_LABEL[type] ?? type;
+  const name = title.trim();
+  return name ? `${kind}: ${name}` : kind;
+}
+
+
 /** Branding aus der Datenbankspalte lesen, mit denselben Regeln wie im Studio. */
 export function brandingFrom(raw: unknown): AppBranding {
   return readAppBranding({ metadata: { appBranding: raw } } as unknown as NodeRecord);

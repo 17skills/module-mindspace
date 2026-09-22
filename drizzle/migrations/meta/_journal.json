@@ -64,6 +64,13 @@
       "when": 1790084597294,
       "tag": "0008_create_apps",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790092356192,
+      "tag": "0009_scope_roles_and_app_access",
+      "breakpoints": true
     }
   ]
 }

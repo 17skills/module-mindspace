@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { addMember, listMembers, removeMember } from "@/lib/share.functions";
+import { addMember, listMembers, removeMember, setMemberRole } from "@/lib/share.functions";
 import { shareLink } from "@/lib/share-link";
 
 type Member = { id: string; userId: string; role: string; email: string };
@@ -31,6 +31,7 @@ export function ShareDialog({
   const [isPublic, setIsPublic] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"viewer" | "editor">("editor");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -71,14 +72,26 @@ export function ShareDialog({
     if (!email.trim()) return;
     setBusy(true);
     try {
-      await addMember({ data: { boardId, email: email.trim() } });
+      await addMember({ data: { boardId, email: email.trim(), role } });
       setMembers(await listMembers({ data: { boardId } }));
       setEmail("");
-      toast.success("Mitglied hinzugefügt");
+      toast.success(role === "viewer" ? "Leser hinzugefügt" : "Bearbeiter hinzugefügt");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Einladen fehlgeschlagen");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function changeRole(memberId: string, next: "viewer" | "editor") {
+    setMembers((current) =>
+      current.map((m) => (m.id === memberId ? { ...m, role: next } : m)),
+    );
+    try {
+      await setMemberRole({ data: { boardId, memberId, role: next } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Rechte konnten nicht geändert werden");
+      setMembers(await listMembers({ data: { boardId } }));
     }
   }
 
@@ -95,10 +108,10 @@ export function ShareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Board teilen</DialogTitle>
+          <DialogTitle>Scope teilen</DialogTitle>
           <DialogDescription>
-            Gäste lesen das Board nur über den Link. Mitglieder arbeiten mit – aber nur auf diesem
-            Board.
+            Gäste lesen den Scope nur über den Link. Eingeladene Personen lesen mit oder arbeiten
+            mit – je nach Recht, und immer nur in diesem Scope.
           </DialogDescription>
         </DialogHeader>
 
@@ -139,7 +152,7 @@ export function ShareDialog({
         <section className="rounded-lg border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
           <p className="text-sm font-medium">Mitglieder</p>
           <p className="text-xs text-muted-foreground">
-            Zugriff gilt ausschließlich für dieses Board.
+            Zugriff gilt ausschließlich für diesen Scope.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <Input
@@ -151,6 +164,14 @@ export function ShareDialog({
                 if (event.key === "Enter") void invite();
               }}
             />
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value as "viewer" | "editor")}
+              className="h-9 rounded-xl border border-border bg-background px-2 text-sm"
+            >
+              <option value="viewer">Lesen</option>
+              <option value="editor">Bearbeiten</option>
+            </select>
             <Button
               className="rounded-full"
               disabled={busy || !email.trim()}
@@ -166,7 +187,17 @@ export function ShareDialog({
                 key={member.id}
                 className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent"
               >
-                <span>{member.email}</span>
+                <span className="truncate">{member.email}</span>
+                <select
+                  value={member.role === "viewer" ? "viewer" : "editor"}
+                  onChange={(event) =>
+                    void changeRole(member.id, event.target.value as "viewer" | "editor")
+                  }
+                  className="ml-auto mr-1 h-8 rounded-lg border border-border bg-background px-2 text-xs"
+                >
+                  <option value="viewer">Lesen</option>
+                  <option value="editor">Bearbeiten</option>
+                </select>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

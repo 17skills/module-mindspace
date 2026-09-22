@@ -304,20 +304,17 @@ function getKpisTool(appId: string) {
 
 /* ---------------- Server ---------------- */
 
-/** Baut den MCP-Server für eine App; die Tools sind an die App gebunden. */
-export function buildAppMcp(appId: string) {
+/** Baut den MCP-Server für eine App; die Tools sind an die App und den Rechteumfang gebunden. */
+export function buildAppMcp(appId: string, scope: "read" | "write" = "write") {
+  const readTools = [getAppTool(appId), getFindingsTool(appId), getKpisTool(appId)];
+  const writeTools = [reportFindingTool(appId), updateFindingStatusTool(appId)];
   return defineMcp({
-    name: `canvas-spark-app-${appId.slice(0, 8)}`,
-    title: "Canvas Spark App",
+    name: `scopebuilder-app-${appId.slice(0, 8)}`,
+    title: "scopebuilder App",
     version: "0.1.0",
     instructions:
-      "Tools of a delivered Canvas Spark app (link-shared). Typical flow: `get_app` for context, `get_findings` / `get_kpis` to read state, `report_finding` to add an assessed inspection result, `update_finding_status` to move work along. Priorities run 1 (act now) to 10 (cosmetic); costs are EUR.",
-    tools: [
-      getAppTool(appId),
-      getFindingsTool(appId),
-      reportFindingTool(appId),
-      updateFindingStatusTool(appId),
-      getKpisTool(appId),
-    ],
+      "Tools of a delivered scopebuilder app. Typical flow: `get_app` for context, `get_findings` / `get_kpis` to read state, `report_finding` to add an assessed inspection result, `update_finding_status` to move work along. Priorities run 1 (act now) to 10 (cosmetic); costs are EUR. Write tools are only present when the access key allows writing.",
+    tools: scope === "write" ? [...readTools, ...writeTools] : readTools,
   });
 }
+

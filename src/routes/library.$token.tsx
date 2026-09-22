@@ -12,12 +12,12 @@ import { useAuth } from "@/hooks/useAuth";
 export const Route = createFileRoute("/library/$token")({
   head: () => ({
     meta: [
-      { title: "Geteiltes Modul – Canvas Spark" },
+      { title: "Geteiltes Modul – scopebuilder" },
       {
         name: "description",
         content: "Ein geteiltes Modul aus der Bibliothek ansehen und in die eigene Sammlung übernehmen.",
       },
-      { property: "og:title", content: "Geteiltes Modul – Canvas Spark" },
+      { property: "og:title", content: "Geteiltes Modul – scopebuilder" },
       {
         property: "og:description",
         content: "Ein geteiltes Modul aus der Bibliothek ansehen und in die eigene Sammlung übernehmen.",

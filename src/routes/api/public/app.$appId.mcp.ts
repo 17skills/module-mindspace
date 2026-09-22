@@ -1,23 +1,24 @@
 // Public MCP endpoint for one delivered app: /api/public/app/<appId>/mcp
-// External AI clients (Claude Desktop, Copilot, …) connect here with the app
-// link; the handler verifies that the app exists and is link-shared.
+// External AI clients (Claude Desktop, Copilot, …) connect here. Access needs
+// the app's key, either as `Authorization: Bearer <key>` or as `?token=<key>`.
 import { createFileRoute } from "@tanstack/react-router";
 import { createTanStackMcpHandler } from "@lovable.dev/mcp-js/stacks/tanstack";
-import { loadPublicApp } from "@/lib/app-data.server";
+import { authorizeAppMcp, type McpScope } from "@/lib/app-data.server";
 import { buildAppMcp } from "@/lib/app-mcp";
 
-/** One MCP handler per app per runtime instance, so sessions stay stable. */
+/** One MCP handler per app and scope per runtime instance, so sessions stay stable. */
 const handlers = new Map<string, ReturnType<typeof createTanStackMcpHandler>>();
 
-function handlerFor(appId: string) {
-  let handler = handlers.get(appId);
+function handlerFor(appId: string, scope: McpScope) {
+  const key = `${appId}:${scope}`;
+  let handler = handlers.get(key);
   if (!handler) {
-    handler = createTanStackMcpHandler(buildAppMcp(appId), {
+    handler = createTanStackMcpHandler(buildAppMcp(appId, scope), {
       resourcePath: `/api/public/app/${appId}/mcp`,
       trustForwardedHost: true,
       trustForwardedProto: true,
     });
-    handlers.set(appId, handler);
+    handlers.set(key, handler);
   }
   return handler;
 }
@@ -33,12 +34,25 @@ function appIdFromRequest(request: Request): string | null {
 async function handle(ctx: { request: Request }) {
   const appId = appIdFromRequest(ctx.request);
   if (!appId) return new Response("Not found", { status: 404 });
-  try {
-    await loadPublicApp(appId);
-  } catch {
-    return new Response("Not found", { status: 404 });
+  const access = await authorizeAppMcp(appId, ctx.request);
+  if (!access.ok) {
+    if (access.status === 404) return new Response("Not found", { status: 404 });
+    return new Response(
+      JSON.stringify({
+        error: "unauthorized",
+        message:
+          "Missing or invalid access key. Send it as 'Authorization: Bearer <key>' or append '?token=<key>'.",
+      }),
+      {
+        status: 401,
+        headers: {
+          "content-type": "application/json",
+          "www-authenticate": 'Bearer realm="scopebuilder-app"',
+        },
+      },
+    );
   }
-  return handlerFor(appId)({ request: ctx.request });
+  return handlerFor(appId, access.scope)({ request: ctx.request });
 }
 
 export const Route = createFileRoute("/api/public/app/$appId/mcp")({

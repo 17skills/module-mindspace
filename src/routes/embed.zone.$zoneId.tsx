@@ -46,13 +46,13 @@ import { readAppBranding, readAppLayout, type AppLayoutEntry } from "@/lib/zones
 export const Route = createFileRoute("/embed/zone/$zoneId")({
   head: () => ({
     meta: [
-      { title: "Feld-Ansicht – Canvas Spark" },
+      { title: "Feld-Ansicht – scopebuilder" },
       {
         name: "description",
         content:
           "Eingebettete Ansicht eines Hintergrundfelds mit seinen Modulen – für Microsoft Teams oder andere Portale.",
       },
-      { property: "og:title", content: "Feld-Ansicht – Canvas Spark" },
+      { property: "og:title", content: "Feld-Ansicht – scopebuilder" },
       {
         property: "og:description",
         content: "Ein Modulbündel als eigenständige Mini-Anwendung ansehen.",
@@ -122,15 +122,15 @@ function teamsManifest(zoneTitle: string, zoneId: string, url: string) {
     id: zoneId,
     packageName: `dev.lovable.canvas.${zoneId.slice(0, 8)}`,
     developer: {
-      name: "Canvas Spark",
+      name: "scopebuilder",
       websiteUrl: new URL(url).origin,
       privacyUrl: `${new URL(url).origin}/`,
       termsOfUseUrl: `${new URL(url).origin}/`,
     },
-    name: { short: zoneTitle.slice(0, 30) || "Feld", full: `Canvas Spark – ${zoneTitle}` },
+    name: { short: zoneTitle.slice(0, 30) || "Feld", full: `scopebuilder – ${zoneTitle}` },
     description: {
       short: `Modulbündel „${zoneTitle}“`.slice(0, 80),
-      full: `Eingebettete Ansicht des Felds „${zoneTitle}“ aus Canvas Spark mit allen zugeordneten Modulen.`,
+      full: `Eingebettete Ansicht des Felds „${zoneTitle}“ aus scopebuilder mit allen zugeordneten Modulen.`,
     },
     icons: { color: "color.png", outline: "outline.png" },
     accentColor: "#1C2321",

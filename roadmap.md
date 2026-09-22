@@ -12,3 +12,9 @@
 
 - [x] Studio-zu-App: Modulauswahl (max. 5), App-Ansicht-Dialog, /app/$appId (mobile Erfassung + Lagebild-Cockpit), App-Übersicht auf der Startseite
 - [x] MCP-Werkzeuge je App (report_finding, get_findings, update_finding_status, get_kpis, get_app) an den App-Endpunkt binden
+- [x] Umbenennung in scopebuilder; Boards heißen Scopes
+- [x] MCP-Endpunkt mit App-Schlüssel (Bearer/?token=) und Rechten Lesen / Lesen+Schreiben
+- [x] Integrierte KI-Anleitung: Claude-Desktop-Konfiguration, Copilot/Cursor-Schritte, Verbindungstest, Beispielanfragen
+- [x] Offline-Modus der mobilen Erfassung (Warteschlange im Gerät, Auto-Sync bei Netz)
+- [x] Startseite: Beschreibungen für Scopes und Apps, Vorschaubilder auf den Karten
+- [x] Scope-Freigabe mit Rollen (Lesen / Bearbeiten) inkl. RLS-Trennung

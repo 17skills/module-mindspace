@@ -3376,7 +3376,7 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
     if (added.length === 0) {
       toast.error(
         decisions.length === 0
-          ? "Kein Entscheidungs-Modul auf dem Board"
+          ? "Kein Entscheidungs-Modul in diesem Scope"
           : "Noch kein Ergebnis – im Entscheidungs-Modul erst auf „Entscheiden“ klicken",
       );
       return;
