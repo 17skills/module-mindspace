@@ -20,7 +20,9 @@ export const analyzeInspection = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { assessPhoto } = await import("@/lib/inspection-vision.server");
-    return assessPhoto(data);
+    const { loadAiKeyConfig } = await import("@/lib/ai-keys.server");
+    const cfg = await loadAiKeyConfig(context.supabase, context.userId);
+    return assessPhoto(data, cfg);
   });

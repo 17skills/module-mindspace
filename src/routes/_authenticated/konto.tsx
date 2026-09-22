@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/konto")({
 const TABS = [
   { to: "/konto", label: "Profil", exact: true },
   { to: "/konto/einstellungen", label: "Einstellungen" },
+  { to: "/konto/ki-schluessel", label: "KI-Schlüssel" },
   { to: "/konto/mitglieder", label: "Mitglieder" },
   { to: "/konto/apps", label: "App-Zugänge" },
   { to: "/konto/datenschutz", label: "Datenschutz" },

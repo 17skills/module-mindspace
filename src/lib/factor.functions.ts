@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
+import { loadAiKeyConfig, runStructured } from "@/lib/ai-keys.server";
 
 const WeightResult = z.object({
   params: z.array(
@@ -18,9 +17,33 @@ const WeightResult = z.object({
 
 export type FactorWeightResult = z.infer<typeof WeightResult>;
 
+const RESULT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    params: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          label: { type: "string" },
+          weight: { type: "number" },
+          score: { type: "number" },
+          reason: { type: "string" },
+        },
+        required: ["label", "weight", "score", "reason"],
+      },
+    },
+    reason: { type: "string" },
+  },
+  required: ["params", "reason"],
+} as const;
+
 /**
  * The decision engine proposes a weighting: every parameter of a factor card
  * gets a share of 100 % and a condition score on the 1..10 scale.
+ * Nutzt den eigenen KI-Schlüssel des Nutzers (BYOK), sonst Lovable AI.
  */
 export const suggestFactorWeights = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -35,10 +58,7 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
-    const key = process.env["LOVABLE_API_KEY"];
-    if (!key) throw new Error("LOVABLE_API_KEY fehlt");
-
+  .handler(async ({ data, context }) => {
     const list = data.params
       .map((param, index) => `${index + 1}. ${param.label} (aktuell ${param.weight} %, Zustand ${param.score}/10)`)
       .join("\n");
@@ -58,63 +78,12 @@ Aufgabe:
 Weiterer Kontext:
 ${data.context.slice(0, 40_000)}`;
 
-    const response = await fetch(`${GATEWAY}/responses`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Lovable-API-Key": key,
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-6-astra",
-        input: prompt,
-        store: false,
-        reasoning: { effort: "low" },
-        text: {
-          format: {
-            type: "json_schema",
-            name: "factor_weights",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                params: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      label: { type: "string" },
-                      weight: { type: "number" },
-                      score: { type: "number" },
-                      reason: { type: "string" },
-                    },
-                    required: ["label", "weight", "score", "reason"],
-                  },
-                },
-                reason: { type: "string" },
-              },
-              required: ["params", "reason"],
-            },
-          },
-        },
-      }),
+    const cfg = await loadAiKeyConfig(context.supabase, context.userId);
+    const text = await runStructured(cfg, {
+      prompt,
+      schemaName: "factor_weights",
+      schema: RESULT_SCHEMA,
     });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Gewichtung fehlgeschlagen [${response.status}]: ${detail.slice(0, 300)}`);
-    }
-
-    const payload = (await response.json()) as {
-      output_text?: string;
-      output?: { content?: { text?: string }[] }[];
-    };
-    const text =
-      payload.output_text ??
-      payload.output?.flatMap((item) => item.content ?? []).find((part) => part.text)?.text ??
-      "";
 
     try {
       return WeightResult.parse(JSON.parse(text));

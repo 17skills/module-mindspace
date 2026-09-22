@@ -1,14 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
-
-function apiKey() {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("LOVABLE_API_KEY fehlt");
-  return key;
-}
+import { loadAiKeyConfig, runStructured, runTranscription } from "@/lib/ai-keys.server";
 
 function decodeEntities(value: string) {
   return value
@@ -159,7 +152,7 @@ export const transcribeAudio = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     let bytes: ArrayBuffer;
     let mime = data.mimeType;
 
@@ -181,30 +174,11 @@ export const transcribeAudio = createServerFn({ method: "POST" })
       throw new Error("Audiodatei ist zu groß (max. 80 MB)");
     }
 
-    const form = new FormData();
-    form.append("file", new Blob([bytes], { type: mime }), "audio");
-    form.append("model", "google/gemini-3.5-transcribe");
-    form.append("response_format", "verbose_json");
-
-    const response = await fetch(`${GATEWAY}/audio/transcriptions`, {
-      method: "POST",
-      headers: { "Lovable-API-Key": apiKey(), "X-Lovable-AIG-SDK": "fetch" },
-      body: form,
-    });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Transkription fehlgeschlagen [${response.status}]: ${detail.slice(0, 400)}`);
-    }
-
-    const payload = (await response.json()) as {
-      text?: string;
-      segments?: { start?: number; text?: string }[];
-    };
-    const lines = (payload.segments ?? [])
-      .map((s) => ({ start: Number(s.start ?? 0), text: (s.text ?? "").trim() }))
-      .filter((line) => line.text);
-    return { text: payload.text ?? "", segments: lines.length ? chunkByTime(lines) : [] };
+    // Eigener OpenAI-/Google-Schlüssel (BYOK), sonst Lovable AI.
+    const cfg = await loadAiKeyConfig(context.supabase, context.userId);
+    const result = await runTranscription(cfg, { bytes, mime });
+    const lines = result.segments.filter((line) => line.text);
+    return { text: result.text, segments: lines.length ? chunkByTime(lines) : [] };
   });
 
 function ogImage(html: string): string | null {
@@ -382,7 +356,7 @@ export const extractStructured = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const limit = data.max ?? 6;
     const kindRule =
       data.kind && data.kind !== "auto"
@@ -405,88 +379,36 @@ Titel: ${data.title ?? "Unbenannt"}
 Inhalt:
 ${data.text.slice(0, 120_000)}`;
 
-    const response = await fetch(`${GATEWAY}/responses`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Lovable-API-Key": apiKey(),
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-6-astra",
-        input: prompt,
-        stream: true,
-        store: false,
-        reasoning: { effort: "low" },
-        text: {
-          format: {
-            type: "json_schema",
-            name: "structures",
-            strict: true,
-            schema: {
+    const cfg = await loadAiKeyConfig(context.supabase, context.userId);
+    const text = await runStructured(cfg, {
+      prompt,
+      schemaName: "structures",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          items: {
+            type: "array",
+            items: {
               type: "object",
               additionalProperties: false,
               properties: {
-                items: {
+                kind: { type: "string", enum: ["table", "list", "chart"] },
+                title: { type: "string" },
+                chartType: { type: "string", enum: ["bar", "line", "pie", "none"] },
+                columns: { type: "array", items: { type: "string" } },
+                rows: {
                   type: "array",
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      kind: { type: "string", enum: ["table", "list", "chart"] },
-                      title: { type: "string" },
-                      chartType: { type: "string", enum: ["bar", "line", "pie", "none"] },
-                      columns: { type: "array", items: { type: "string" } },
-                      rows: {
-                        type: "array",
-                        items: { type: "array", items: { type: "string" } },
-                      },
-                    },
-                    required: ["kind", "title", "chartType", "columns", "rows"],
-                  },
+                  items: { type: "array", items: { type: "string" } },
                 },
               },
-              required: ["items"],
+              required: ["kind", "title", "chartType", "columns", "rows"],
             },
           },
         },
-      }),
+        required: ["items"],
+      },
     });
-
-    if (!response.ok || !response.body) {
-      const detail = await response.text();
-      throw new Error(`Analyse fehlgeschlagen [${response.status}]: ${detail.slice(0, 300)}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let text = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.startsWith("data:")) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === "[DONE]") continue;
-        try {
-          const event = JSON.parse(payload) as {
-            type?: string;
-            delta?: string;
-            response?: { output_text?: string };
-          };
-          if (event.type === "response.output_text.delta" && event.delta) text += event.delta;
-          if (event.type === "response.completed" && !text && event.response?.output_text) {
-            text = event.response.output_text;
-          }
-        } catch {
-          /* Teil-Event ignorieren */
-        }
-      }
-    }
 
     try {
       return StructureSchema.parse(JSON.parse(text));

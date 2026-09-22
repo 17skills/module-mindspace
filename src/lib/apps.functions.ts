@@ -43,14 +43,20 @@ export const appAssessPhoto = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    await loadPublicApp(data.appId);
+    const { app } = await loadPublicApp(data.appId);
     const { assessPhoto } = await import("@/lib/inspection-vision.server");
-    return assessPhoto({
-      image: data.image,
-      label: data.label,
-      report: data.report,
-      rates: data.rates,
-    });
+    const { loadAiKeyConfigForOwner } = await import("@/lib/ai-keys.server");
+    // BYOK des App-Inhabers: die App läuft ohne Login, die KI-Kosten aber beim Inhaber.
+    const cfg = await loadAiKeyConfigForOwner(app.user_id);
+    return assessPhoto(
+      {
+        image: data.image,
+        label: data.label,
+        report: data.report,
+        rates: data.rates,
+      },
+      cfg,
+    );
   });
 
 const FindingInput = z.object({
