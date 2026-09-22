@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { saveMcpServer, type McpServerInfoRow } from "@/lib/mcp-client.functions";
+import { MCP_TEMPLATES, type McpTemplate } from "@/lib/mcp-templates";
 
 type AuthKind = "none" | "bearer" | "header";
 
@@ -39,6 +40,16 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
   const [headerName, setHeaderName] = useState("");
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
+  const [template, setTemplate] = useState<McpTemplate | null>(null);
+
+  function applyTemplate(entry: McpTemplate) {
+    setTemplate(entry);
+    setName(entry.name);
+    setUrl(entry.url);
+    setAuthKind(entry.authKind);
+    setHeaderName(entry.headerName ?? "");
+    setToken("");
+  }
 
   function reset() {
     setName("");
@@ -86,6 +97,33 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
             und nie im Scope angezeigt.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid gap-2">
+          <Label>Vorlagen</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {MCP_TEMPLATES.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                title={`${entry.summary} · ${entry.tools.join(", ")}`}
+                onClick={() => applyTemplate(entry)}
+                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                  template?.id === entry.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "hover:bg-muted"
+                }`}
+              >
+                {entry.name}
+              </button>
+            ))}
+          </div>
+          {template ? (
+            <p className="text-xs text-muted-foreground">
+              {template.summary} Werkzeuge: {template.tools.join(", ")}.
+              {template.urlHint ? ` ${template.urlHint}` : ""}
+            </p>
+          ) : null}
+        </div>
 
         <div className="grid gap-3">
           <div className="grid gap-1.5">
@@ -138,6 +176,7 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
                 type="password"
                 value={token}
                 autoComplete="off"
+                placeholder={template?.tokenHint ?? ""}
                 onChange={(e) => setToken(e.target.value)}
               />
             </div>

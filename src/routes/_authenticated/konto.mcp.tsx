@@ -10,6 +10,7 @@ import {
   saveMcpServer,
   type McpServerInfoRow,
 } from "@/lib/mcp-client.functions";
+import { MCP_TEMPLATES } from "@/lib/mcp-templates";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -120,7 +121,31 @@ function McpPage() {
           Browser.
         </p>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-xs font-medium text-muted-foreground">Vorlagen:</span>
+          {MCP_TEMPLATES.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              title={`${entry.summary} · ${entry.tools.join(", ")}`}
+              onClick={() =>
+                setForm({
+                  id: "",
+                  name: entry.name,
+                  url: entry.url,
+                  authKind: entry.authKind,
+                  headerName: entry.headerName ?? "",
+                  token: "",
+                })
+              }
+              className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-muted"
+            >
+              {entry.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Input
             value={form.name}
             placeholder="Name, z. B. methocards"
