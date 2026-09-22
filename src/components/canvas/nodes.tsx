@@ -4417,9 +4417,12 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                     <li
                       key={finding.id}
                       className="rounded-md border border-border/60 p-1.5"
-                      onClick={() =>
-                        finding.lat != null && setMapFocus([finding.id], finding.label)
-                      }
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest("input,button,textarea")) return;
+                        if (finding.lat != null && finding.lon != null) {
+                          setMapFocus([finding.id], finding.label);
+                        }
+                      }}
                     >
                       <div className="flex items-start gap-2">
                         {finding.thumb ? (
