@@ -1821,6 +1821,36 @@ function BoardPage() {
     };
   }, [ready, scheduleAutoHeight]);
 
+  /** Keep manual resizes: persist the new size and stop auto-height for that module. */
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      onNodesChange(changes);
+      for (const change of changes) {
+        if (change.type !== "dimensions" || !change.dimensions) continue;
+        const record = recordsRef.current[change.id];
+        if (!record) continue;
+        if (change.resizing) {
+          interacting.current = true;
+          suppressMeasure.current = Date.now() + 800;
+          continue;
+        }
+        if (!manualSize.current.has(change.id) && change.resizing !== false) continue;
+        interacting.current = false;
+        const width = Math.round(change.dimensions.width);
+        const height = Math.round(change.dimensions.height);
+        if (width < 40 || height < 40) continue;
+        manualSize.current.add(change.id);
+        appliedHeights.current.set(change.id, height);
+        suppressMeasure.current = Date.now() + 800;
+        if (record.type === "zone" || record.type === "frame") continue;
+        if (record.width === width && record.height === height) continue;
+        updateNode(change.id, { width, height });
+      }
+    },
+    [onNodesChange, updateNode],
+  );
+
+
   /** Persist a field size; a template group scales its fields along. */
   const resizeZone = useCallback(
     (id: string, width: number, height: number) => {
