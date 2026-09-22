@@ -2217,21 +2217,43 @@ export function LabeledEdge(props: EdgeProps) {
                 <UiTooltipContent>Schließen</UiTooltipContent>
               </UiTooltip>
             </div>
-          ) : labelsVisible && (label || flow.text || flow.bad) ? (
+          ) : problem ? (
+            <div className="edge-problem w-[236px] rounded-lg border border-[#de5a3a]/60 bg-card p-2 text-left shadow-[var(--shadow-float)]">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-[1px] size-3.5 shrink-0 text-[#de5a3a]" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold leading-tight text-[#de5a3a]">
+                    {problem.title}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                    {problem.cause}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug text-foreground">
+                    <span className="font-medium">So lösen: </span>
+                    {problem.fix}
+                  </p>
+                  <button
+                    className="mt-1.5 rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    onClick={() =>
+                      setEdges((list) =>
+                        list.map((item) =>
+                          item.id === props.id ? { ...item, selected: true } : item,
+                        ),
+                      )
+                    }
+                  >
+                    Rechnung bearbeiten
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : labelsVisible && (label || flow.text) ? (
             <span
-              title={
-                flow.bad
-                  ? "Rechnung dieser Verbindung ist ungültig"
-                  : "Aktueller Wert auf dieser Verbindung"
-              }
-              className={`flex items-center gap-1 rounded-full border bg-card px-2 py-0.5 font-mono text-[11px] leading-tight shadow-[var(--shadow-card)] ${
-                flow.bad ? "border-[#de5a3a]/50 text-[#de5a3a]" : "border-border text-foreground"
-              }`}
+              title="Aktueller Wert auf dieser Verbindung"
+              className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[11px] leading-tight text-foreground shadow-[var(--shadow-card)]"
             >
               {label ? <span className="font-medium">{label}</span> : null}
-              {flow.bad ? (
-                <span>ungültig</span>
-              ) : flow.text ? (
+              {flow.text ? (
                 <>
                   {label ? <span className="text-muted-foreground">=</span> : null}
                   <span className="font-semibold">{flow.text}</span>
