@@ -1800,7 +1800,7 @@ function BoardPage() {
     const root = flowWrapRef.current;
     if (!root) return;
     const observer = new MutationObserver((mutations) => {
-      if (Date.now() < suppressMeasure.current) return;
+      if (interacting.current || Date.now() < suppressMeasure.current) return;
       const ids = new Set<string>();
       for (const mutation of mutations) {
         const element =
@@ -1808,7 +1808,8 @@ function BoardPage() {
             ? mutation.target.closest<HTMLElement>(".react-flow__node")
             : null;
         const id = element?.dataset["id"];
-        if (id && AUTO_HEIGHT_TYPES.has(recordsRef.current[id]?.type ?? "")) ids.add(id);
+        if (!id || manualSize.current.has(id)) continue;
+        if (AUTO_HEIGHT_TYPES.has(recordsRef.current[id]?.type ?? "")) ids.add(id);
       }
       for (const id of ids) scheduleAutoHeight(id);
     });
