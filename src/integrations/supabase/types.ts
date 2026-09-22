@@ -520,6 +520,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ai_keys: {
+        Row: {
+          base_url: string | null
+          created_at: string
+          encrypted_key: string
+          id: string
+          last4: string
+          model_hint: string | null
+          provider: Database["public"]["Enums"]["ai_provider"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_url?: string | null
+          created_at?: string
+          encrypted_key: string
+          id?: string
+          last4?: string
+          model_hint?: string | null
+          provider: Database["public"]["Enums"]["ai_provider"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_url?: string | null
+          created_at?: string
+          encrypted_key?: string
+          id?: string
+          last4?: string
+          model_hint?: string | null
+          provider?: Database["public"]["Enums"]["ai_provider"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_consents: {
         Row: {
           granted: boolean
@@ -583,6 +619,7 @@ export type Database = {
       purge_audit_log: { Args: never; Returns: undefined }
     }
     Enums: {
+      ai_provider: "openai" | "anthropic" | "google" | "openrouter"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -711,6 +748,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_provider: ["openai", "anthropic", "google", "openrouter"],
       app_role: ["admin", "user"],
     },
   },
