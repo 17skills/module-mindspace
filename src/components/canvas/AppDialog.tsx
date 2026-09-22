@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
-import { Copy, ExternalLink, Trash2 } from "lucide-react";
+import { Bot, Copy, ExternalLink, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -166,6 +166,11 @@ export function AppDialog({
   };
 
   const urlFor = (id: string) => `${window.location.origin}/app/${id}`;
+  const mcpFor = (id: string) => `${window.location.origin}/api/public/app/${id}/mcp`;
+  const copy = (text: string, note: string) => {
+    void navigator.clipboard.writeText(text);
+    toast.success(note);
+  };
 
   const showQr = async (id: string) => {
     try {
@@ -320,12 +325,18 @@ export function AppDialog({
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          void navigator.clipboard.writeText(urlFor(app.id));
-                          toast.success("Link kopiert");
-                        }}
+                        title="App-Link kopieren"
+                        onClick={() => copy(urlFor(app.id), "App-Link kopiert")}
                       >
                         <Copy className="size-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title="KI-Anschluss (MCP) kopieren"
+                        onClick={() => copy(mcpFor(app.id), "KI-Anschluss (MCP) kopiert")}
+                      >
+                        <Bot className="size-3.5" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => void showQr(app.id)}>
                         QR
@@ -340,6 +351,9 @@ export function AppDialog({
                       </Button>
                     </div>
                   </div>
+                  <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
+                    KI-Anschluss: {mcpFor(app.id).replace(/^https?:\/\//, "")}
+                  </p>
                   {qr?.id === app.id && (
                     <div className="mt-2 flex items-center gap-3">
                       <img src={qr.src} alt="QR-Code" className="size-28 rounded bg-white p-1" />
