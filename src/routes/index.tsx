@@ -87,7 +87,7 @@ function LibraryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("apps")
-        .select("id,title,description,kind,node_ids,mcp_scope,updated_at")
+        .select("id,title,description,kind,node_ids,mcp_scope,is_public,updated_at")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -114,6 +114,22 @@ function LibraryPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["boards"] }),
+    onError: (error) => toast.error(error.message),
+  });
+
+  const togglePublic = useMutation({
+    mutationFn: async (app: { id: string; is_public: boolean }) => {
+      const { error } = await supabase
+        .from("apps")
+        .update({ is_public: !app.is_public, updated_at: new Date().toISOString() })
+        .eq("id", app.id);
+      if (error) throw error;
+      return !app.is_public;
+    },
+    onSuccess: (next) => {
+      toast.success(next ? "App ist öffentlich erreichbar" : "App ist abgeschaltet");
+      void queryClient.invalidateQueries({ queryKey: ["apps"] });
+    },
     onError: (error) => toast.error(error.message),
   });
 
@@ -299,6 +315,15 @@ function LibraryPage() {
                 />
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-base font-semibold">{app.title}</h3>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] ${
+                      app.is_public
+                        ? "bg-brand-sage/20 text-brand-navy"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {app.is_public ? "Aktiv" : "Inaktiv"}
+                  </span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
                     {app.mcp_scope === "write" ? "KI schreibt" : "KI liest"}
                   </span>
@@ -364,6 +389,16 @@ function LibraryPage() {
                     }}
                   >
                     Link kopieren
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={togglePublic.isPending}
+                    onClick={() =>
+                      togglePublic.mutate({ id: app.id, is_public: app.is_public })
+                    }
+                  >
+                    {app.is_public ? "Abschalten" : "Aktivieren"}
                   </Button>
                 </div>
               </div>
