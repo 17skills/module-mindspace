@@ -249,27 +249,7 @@ const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
  * Connection point with a discreet status light:
  * green = value flows, amber = waiting for a value, red = invalid calculation.
  */
-/** Modules that carry content, not numbers — their links stay neutral. */
-const REFERENCE_TYPES = new Set([
-  "youtube",
-  "podcast",
-  "audio",
-  "document",
-  "link",
-  "chat",
-  "frame",
-  "image",
-]);
 
-function isReference(record: NodeRecord | undefined): boolean {
-  if (!record) return true;
-  if (REFERENCE_TYPES.has(record.type)) return true;
-  if (record.type === "note") {
-    const factor = readFactor(record);
-    return !(factor.stored && factor.params.length) && nodeValue(record) == null;
-  }
-  return false;
-}
 
 function SignalHandle(props: React.ComponentProps<typeof Handle>) {
   const nodeId = useNodeId();
