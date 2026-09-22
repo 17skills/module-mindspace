@@ -1766,17 +1766,19 @@ function BoardPage() {
 
   const scheduleAutoHeight = useCallback(
     (id?: string) => {
-      const ids = id
-        ? [id]
-        : Object.values(recordsRef.current)
-            .filter((record) => AUTO_HEIGHT_TYPES.has(record.type) && !record.parent_id)
-            .map((record) => record.id);
+      const ids = (
+        id
+          ? [id]
+          : Object.values(recordsRef.current)
+              .filter((record) => AUTO_HEIGHT_TYPES.has(record.type) && !record.parent_id)
+              .map((record) => record.id)
+      ).filter((nodeId) => !manualSize.current.has(nodeId));
       for (const nodeId of ids) {
         const previous = heightTimers.current.get(nodeId);
         if (previous) clearTimeout(previous);
         const timer = setTimeout(() => {
           heightTimers.current.delete(nodeId);
-          if (Date.now() < suppressMeasure.current) return;
+          if (interacting.current || Date.now() < suppressMeasure.current) return;
           const root = flowWrapRef.current;
           const nodeElement = root?.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`);
           if (!nodeElement) return;
