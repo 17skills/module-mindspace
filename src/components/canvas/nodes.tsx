@@ -249,39 +249,77 @@ const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
  * Connection point with a discreet status light:
  * green = value flows, amber = waiting for a value, red = invalid calculation.
  */
+/** Modules that carry content, not numbers — their links stay neutral. */
+const REFERENCE_TYPES = new Set([
+  "youtube",
+  "podcast",
+  "audio",
+  "document",
+  "link",
+  "chat",
+  "frame",
+  "image",
+]);
+
+function isReference(record: NodeRecord | undefined): boolean {
+  if (!record) return true;
+  if (REFERENCE_TYPES.has(record.type)) return true;
+  if (record.type === "note") {
+    const factor = readFactor(record);
+    return !(factor.stored && factor.params.length) && nodeValue(record) == null;
+  }
+  return false;
+}
+
 function SignalHandle(props: React.ComponentProps<typeof Handle>) {
   const nodeId = useNodeId();
   const kind = props.type;
   const state = useStore(
     (store) => {
       if (!nodeId) return { status: "idle" as PortStatus, hint: "" };
-      const recordOf = (id: string) =>
-        (store.nodeLookup.get(id)?.data as Data | undefined)?.record;
-      const own = recordOf(nodeId);
+      const records: Record<string, NodeRecord> = {};
+      for (const [id, item] of store.nodeLookup) {
+        const record = (item.data as Data | undefined)?.record;
+        if (record) records[id] = record;
+      }
+      const edges = store.edges;
+      const valueOf = (id: string) => {
+        const record = records[id];
+        return record ? valueOfNode(record, records, edges) : null;
+      };
+      const own = records[nodeId];
       if (kind === "source") {
-        const linked = store.edges.some((edge) => edge.source === nodeId);
+        const linked = edges.some((edge) => edge.source === nodeId);
         if (!linked) return { status: "idle" as PortStatus, hint: "" };
-        const value = own ? nodeValue(own) : null;
-        if (value == null)
+        const value = valueOf(nodeId);
+        if (value == null) {
+          if (isReference(own))
+            return { status: "idle" as PortStatus, hint: "Ausgang: Inhalt (ohne Zahlenwert)" };
           return { status: "warn" as PortStatus, hint: "Ausgang: noch kein Wert" };
+        }
         return { status: "ok" as PortStatus, hint: `Ausgang: ${NUM.format(value)}` };
       }
-      const incoming = store.edges.filter((edge) => edge.target === nodeId);
+      const incoming = edges.filter((edge) => edge.target === nodeId);
       if (!incoming.length) return { status: "idle" as PortStatus, hint: "" };
-      let status: PortStatus = "ok";
+      let status: PortStatus = "idle";
       const parts: string[] = [];
       for (const edge of incoming) {
-        const source = recordOf(edge.source);
-        const raw = source ? nodeValue(source) : null;
+        const source = records[edge.source];
+        const raw = valueOf(edge.source);
         const label = typeof edge.label === "string" ? edge.label : "";
         const result = edgeValue(label, raw);
         if (raw != null && result == null) {
           status = "error";
           parts.push(`${source?.title ?? "Quelle"}: Rechnung ungültig`);
         } else if (raw == null) {
-          if (status !== "error") status = "warn";
-          parts.push(`${source?.title ?? "Quelle"}: kein Wert`);
+          if (isReference(source)) {
+            parts.push(`${source?.title ?? "Quelle"}: Inhalt`);
+          } else {
+            if (status !== "error") status = "warn";
+            parts.push(`${source?.title ?? "Quelle"}: kein Wert`);
+          }
         } else {
+          if (status === "idle") status = "ok";
           parts.push(`${source?.title ?? "Quelle"}: ${NUM.format(result!)}`);
         }
       }
