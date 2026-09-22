@@ -2052,6 +2052,8 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
           : `color-mix(in oklab, ${style.background.value} 22%, var(--card))`,
   };
 
+  const formatted = /(^|\n)\s*(#{1,3}\s|[-*+]\s|\d+[.)]\s|>)|\*\*|`/.test(text);
+
   return (
     <div className="relative flex h-full w-full items-center px-1">
       <NodeResizer
@@ -2061,6 +2063,8 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
         color="var(--primary)"
         keepAspectRatio={false}
       />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="source" position={Position.Right} />
       {selected && !editing ? <TextToolbar record={record} /> : null}
       {editing ? (
         <textarea
@@ -2074,7 +2078,7 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
               setEditing(false);
             }
           }}
-          placeholder="Beschriftung"
+          placeholder="Text – Überschriften mit #, Listen mit - oder 1."
           rows={1}
           style={boxStyle}
           className={`nodrag nowheel h-full w-full resize-none rounded-md px-1 outline-none ring-1 ring-ring/40 placeholder:text-muted-foreground/60 ${size.className}`}
@@ -2083,11 +2087,19 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
         <div
           onDoubleClick={() => setEditing(true)}
           style={boxStyle}
-          className={`h-full w-full cursor-text overflow-hidden whitespace-pre-wrap rounded-md px-1 ${size.className}${
-            selected ? " ring-1 ring-ring/40" : ""
-          }`}
+          className={`nowheel h-full w-full cursor-text overflow-auto rounded-md px-1 ${
+            formatted ? "" : "whitespace-pre-wrap "
+          }${size.className}${selected ? " ring-1 ring-ring/40" : ""}`}
         >
-          {text || <span className="text-muted-foreground/60">Beschriftung</span>}
+          {text ? (
+            formatted ? (
+              <Markdown source={text} />
+            ) : (
+              text
+            )
+          ) : (
+            <span className="text-muted-foreground/60">Beschriftung</span>
+          )}
         </div>
       )}
     </div>
