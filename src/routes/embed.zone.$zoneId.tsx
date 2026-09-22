@@ -41,6 +41,7 @@ import {
 } from "@/components/canvas/nodes";
 import { Button } from "@/components/ui/button";
 import { getEmbedZone } from "@/lib/embed.functions";
+import { readAppLayout, type AppLayoutEntry } from "@/lib/zones";
 
 export const Route = createFileRoute("/embed/zone/$zoneId")({
   head: () => ({
@@ -159,6 +160,7 @@ function EmbedZonePage() {
   const [title, setTitle] = useState("");
   const [records, setRecords] = useState<NodeRecord[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const [zoneMeta, setZoneMeta] = useState<Record<string, unknown>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -169,6 +171,7 @@ function EmbedZonePage() {
         if (!active) return;
         setTitle(result.zone.title);
         setRecords(result.nodes as unknown as NodeRecord[]);
+        setZoneMeta((result.zone.metadata ?? {}) as Record<string, unknown>);
         setEdges(
           result.edges.map((edge) => ({
             id: String(edge["id"]),
@@ -188,7 +191,40 @@ function EmbedZonePage() {
     };
   }, [zoneId]);
 
-  const nodes = useMemo(() => records.map(toFlowNode), [records]);
+  // Gestaltete App-Ansicht: Reihenfolge, Sichtbarkeit und Breite pro Modul.
+  const layoutById = useMemo(() => {
+    const layout = readAppLayout({ metadata: zoneMeta } as unknown as NodeRecord);
+    if (!layout) return null;
+    const visible = layout.filter((entry) => !entry.hidden);
+    return visible.length ? new Map(visible.map((entry) => [entry.id, entry])) : null;
+  }, [zoneMeta]);
+
+  const nodes = useMemo(() => {
+    if (!layoutById) return records.map(toFlowNode);
+    const byId = new Map(records.map((record) => [record.id, record]));
+    const out: Node[] = [];
+    let y = 0;
+    for (const [id, entry] of layoutById as Map<string, AppLayoutEntry>) {
+      const record = byId.get(id);
+      if (!record) continue;
+      const height = record.height ?? 300;
+      out.push({
+        ...toFlowNode(record),
+        position: { x: 0, y },
+        width: entry.view === "compact" ? 380 : 780,
+      });
+      y += height + 24;
+    }
+    return out;
+  }, [records, layoutById]);
+
+  const visibleEdges = useMemo(
+    () =>
+      layoutById
+        ? edges.filter((edge) => layoutById.has(edge.source) && layoutById.has(edge.target))
+        : edges,
+    [edges, layoutById],
+  );
 
   const api = useMemo<BoardApi>(() => {
     const noop = () => {};
