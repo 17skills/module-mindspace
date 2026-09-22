@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Crosshair, Loader2, MapPin, RefreshCw } from "lucide-react";
+import { Camera, CloudOff, Crosshair, Loader2, MapPin, RefreshCw, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { NodeRecord } from "@/components/canvas/board-context";
@@ -27,22 +27,23 @@ import {
   type Finding,
 } from "@/lib/inspection";
 import { pointsFromSources, readMapConfig } from "@/lib/geo";
+import { dequeueFinding, enqueueFinding, queuedFor, type QueuedFinding } from "@/lib/offline-queue";
 
 const LeafletMap = lazy(() => import("@/components/canvas/LeafletMap"));
 
 export const Route = createFileRoute("/app/$appId")({
   head: () => ({
     meta: [
-      { title: "Feld-App – Canvas Spark" },
+      { title: "Feld-App – scopebuilder" },
       {
         name: "description",
         content:
-          "Eigenständige App aus einem Canvas-Board: Fotos vor Ort erfassen oder das Lagebild mit Karte und Maßnahmenplan prüfen.",
+          "Eigenständige App aus einem Scope: Fotos vor Ort erfassen oder das Lagebild mit Karte und Maßnahmenplan prüfen.",
       },
-      { property: "og:title", content: "Feld-App – Canvas Spark" },
+      { property: "og:title", content: "Feld-App – scopebuilder" },
       {
         property: "og:description",
-        content: "Mobile Erfassung und Lagebild-Cockpit aus einem Canvas-Board.",
+        content: "Mobile Erfassung und Lagebild-Cockpit aus einem Scope.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -313,7 +314,7 @@ function CaptureApp({
       toast.success(`Befund gespeichert · Prio ${Math.round(assessment.priority)}/10`);
       clear();
       onSaved();
-    } catch (err: unknown) {
+    } catch {
       enqueueFinding({ appId, label, report, lat, lon, source, photo, assessment: null });
       setQueue(queuedFor(appId));
       toast.warning("Keine Verbindung – Befund liegt in der Warteschlange");
@@ -342,6 +343,35 @@ function CaptureApp({
         className="hidden"
         onChange={(event) => void pick(event.target.files?.[0])}
       />
+
+      <section
+        className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${
+          online ? "border-border/70 bg-card" : "border-[#E0682B]/50 bg-[#E0682B]/10"
+        }`}
+      >
+        {online ? (
+          <UploadCloud className="size-4 text-muted-foreground" />
+        ) : (
+          <CloudOff className="size-4 text-[#E0682B]" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">
+            {online ? "Verbunden" : "Ohne Netz"}
+            {queue.length ? ` · ${queue.length} in der Warteschlange` : ""}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {queue.length
+              ? "Fotos bleiben auf dem Gerät, bis sie übertragen sind."
+              : "Fotos gehen direkt an den Scope."}
+          </p>
+        </div>
+        {queue.length > 0 && (
+          <Button size="sm" variant="outline" disabled={!online || syncing} onClick={() => void sync()}>
+            {syncing ? <Loader2 className="size-4 animate-spin" /> : null}
+            Jetzt synchronisieren
+          </Button>
+        )}
+      </section>
 
       <section className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
         <span className="module-eyebrow text-muted-foreground">Neuer Befund</span>
@@ -410,7 +440,7 @@ function CaptureApp({
           disabled={busy === "assess" || !photo}
         >
           {busy === "assess" ? <Loader2 className="size-5 animate-spin" /> : null}
-          Bewerten und speichern
+          {online ? "Bewerten und speichern" : "Ohne Netz sichern"}
         </Button>
         <p className="mt-2 text-xs text-muted-foreground">
           Die Bewertung schätzt Schadensklasse, Dringlichkeit (1–10) und Kosten.
