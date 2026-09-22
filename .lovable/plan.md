@@ -67,8 +67,12 @@ Erreichbar über ein Nutzermenü mit Avatar oben rechts auf der Startseite und i
 - Neuer `useProfile`/`useSettings`-Hook über TanStack Query; Einstellungen werden im Scope-Editor für Raster, Hilfslinien und Kantenbeschriftungen gelesen.
 - App-Zugänge nutzen die bestehende `apps`-Tabelle (`mcp_token`, `mcp_scope`, `is_public`); Schlüsselerneuerung als Server-Funktion.
 - E-Mail-Benachrichtigungen: zunächst Einstellung speichern; Versand wird im Folgeschritt angebunden.
+- DSGVO-Technik: Tabellen `user_consents` (Zweck, Status, Zeitpunkt, Version) und `audit_log` (Akteur, Aktion, Objekt, Zeit) mit RLS — eigene Zeilen lesbar, Admin über `has_role`; Aufräum-Funktion löscht Protokolle älter als 90 Tage. Konto-Löschung als Server-Funktion mit Vormerkung (`deletion_requested_at`) und endgültiger Entfernung inkl. Storage-Dateien; Export als JSON-Download über eine geschützte Server-Funktion.
+- KI-Kennzeichnung: bestehende Ergebnisfelder der Agenten-, Entscheidungs- und Inspektionsmodule erhalten ein sichtbares Label plus Zeitstempel und Modellhinweis; Text zentral in einer Konstante.
+- Rechtstexte als eigene öffentliche Routen `/datenschutz`, `/impressum`, `/agb` mit eigenen Seitentiteln.
 
 ## Nicht in diesem Schritt
 
 - WorkOS-SSO (folgt als SAML-Anbindung, wenn gewünscht).
 - Tatsächlicher E-Mail-Versand für Einladungen und Agenten-Ergebnisse.
+- Rechtstexte inhaltlich: Gerüst und Platzhalter entstehen, die verbindlichen Angaben (Verantwortlicher, Kontakt, Auftragsverarbeiter) musst du liefern oder rechtlich prüfen lassen.
