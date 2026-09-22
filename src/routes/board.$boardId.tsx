@@ -2262,24 +2262,67 @@ function BoardPage() {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
       const text = event.clipboardData?.getData("text")?.trim();
-      if (text && /^https?:\/\//i.test(text)) void addUrl(text);
+      if (!text) return;
+      if (text.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(text) as { scopebuilder?: LibraryPayload };
+          if (parsed.scopebuilder?.nodes?.length) {
+            event.preventDefault();
+            clipboard.current = readPayload(parsed.scopebuilder);
+            void pasteModules();
+            return;
+          }
+        } catch {
+          // no module payload in the clipboard
+        }
+      }
+      if (/^https?:\/\//i.test(text)) {
+        void addUrl(text);
+        return;
+      }
+      if (clipboard.current?.nodes.length) {
+        event.preventDefault();
+        void pasteModules();
+      }
     }
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [addUrl]);
+  }, [addUrl, pasteModules]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "g") {
+      if (target?.isContentEditable) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "g") {
         event.preventDefault();
         void groupSelection();
+        return;
+      }
+      if (key === "c") {
+        const selected = nodesRef.current.some((node) => node.selected && !node.parentId);
+        if (!selected) return;
+        event.preventDefault();
+        copyModules();
+        return;
+      }
+      if (key === "d") {
+        event.preventDefault();
+        void duplicateModules();
+        return;
+      }
+      if (key === "v" && clipboard.current?.nodes.length) {
+        // the paste listener handles clipboard text; only act when it stays silent
+        event.preventDefault();
+        void pasteModules();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [groupSelection]);
+  }, [groupSelection, copyModules, duplicateModules, pasteModules]);
+
 
   if (loading || !user) {
     return (
