@@ -75,6 +75,74 @@
         "outputSchema": null
       },
       {
+        "name": "list_zones",
+        "title": "Felder auflisten",
+        "description": "List the background fields (zones) of one board. Each field bundles the modules lying on it and can be published as its own app.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "board_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Board id, as returned by list_boards."
+            }
+          },
+          "required": [
+            "board_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_zone",
+        "title": "Feld lesen",
+        "description": "Read one background field (zone) as a self-contained bundle: its modules with type, title and text, plus the connections between them.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "zone_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Field id, as returned by list_zones."
+            },
+            "max_content_chars": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Truncate each module's text to this many characters. Null means 2000."
+            }
+          },
+          "required": [
+            "zone_id",
+            "max_content_chars"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
         "name": "search_content",
         "title": "Inhalte durchsuchen",
         "description": "Search the signed-in user's modules across all boards by title and text, returning matching modules with their board id.",
