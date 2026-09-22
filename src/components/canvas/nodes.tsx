@@ -4378,6 +4378,9 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
           thumb,
           createdAt: new Date().toISOString(),
           prevPriority: previous ? previous.priority : null,
+          status: "offen",
+          owner: previous?.owner ?? "",
+          due: previous?.due ?? "",
           source: gps ? "exif" : "unbekannt",
         });
       } catch (error) {
