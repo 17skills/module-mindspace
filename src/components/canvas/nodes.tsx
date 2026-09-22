@@ -339,6 +339,35 @@ function SignalHandle(props: React.ComponentProps<typeof Handle>) {
   );
 }
 
+/** Alle direkt verbundenen Karten (beide Richtungen), stabil sortiert. */
+function useConnectedRecords(nodeId: string): NodeRecord[] {
+  return useStore(
+    (store) => {
+      const linked: NodeRecord[] = [];
+      const seen = new Set<string>();
+      for (const edge of store.edges) {
+        const otherId =
+          edge.source === nodeId ? edge.target : edge.target === nodeId ? edge.source : null;
+        if (!otherId || seen.has(otherId)) continue;
+        seen.add(otherId);
+        const record = (store.nodeLookup.get(otherId)?.data as Data | undefined)?.record;
+        if (record) linked.push(record);
+      }
+      return linked.sort((a, b) => (a.title ?? "").localeCompare(b.title ?? ""));
+    },
+    (a, b) =>
+      a.length === b.length &&
+      a.every((item, index) => item.id === b[index]?.id && item.content === b[index]?.content),
+  );
+}
+
+/** Verbundene Textkarten mit Inhalt – sie dienen als Kontext für MCP-Karten. */
+function contextCards(linked: NodeRecord[]): NodeRecord[] {
+  return linked.filter((item) => item.type === "text" && (item.content ?? "").trim());
+}
+
+
+
 function Shell({
   type,
   children,
