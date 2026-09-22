@@ -420,6 +420,10 @@ function BoardPage() {
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
   const flowWrapRef = useRef<HTMLDivElement>(null);
   const heightTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  /** Last height we applied per module — stops measure/apply feedback loops. */
+  const appliedHeights = useRef(new Map<string, number>());
+  /** Ignore DOM mutations caused by our own layout writes until this timestamp. */
+  const suppressMeasure = useRef(0);
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const nodesRef = useRef(nodes);
@@ -1286,6 +1290,7 @@ function BoardPage() {
       toast.info("Wähle mindestens zwei Module im selben Bereich aus");
       return;
     }
+    suppressMeasure.current = Date.now() + 1200;
     setNodes((current) =>
       current.map((node) => {
         const change = changes.get(node.id);
@@ -1660,16 +1665,19 @@ function BoardPage() {
       const placed: LayoutRect[] = [targetRect];
       const changes = new Map<string, { x: number; y: number; width?: number; height?: number }>();
 
-      if (width !== currentWidth || Math.abs(height - currentHeight) >= 8) {
+      const grewWidth = width > currentWidth;
+      const grewHeight = height - currentHeight >= 8;
+      if (grewWidth || Math.abs(height - currentHeight) >= 8) {
         changes.set(id, {
           x: target.position.x,
           y: target.position.y,
-          ...(width !== currentWidth ? { width } : {}),
+          ...(grewWidth ? { width } : {}),
           ...(Math.abs(height - currentHeight) >= 8 ? { height } : {}),
         });
+        appliedHeights.current.set(id, height);
       }
 
-      const peers = nodesRef.current
+      const peers = (grewWidth || grewHeight ? nodesRef.current : [])
         .filter((node) => {
           const item = recordsRef.current[node.id];
           return (
@@ -1684,6 +1692,8 @@ function BoardPage() {
           const db = Math.hypot(b.position.x - target.position.x, b.position.y - target.position.y);
           return da - db;
         });
+
+
 
       for (const peer of peers) {
         const item = recordsRef.current[peer.id];
@@ -1715,6 +1725,7 @@ function BoardPage() {
       }
 
       if (!changes.size) return;
+      suppressMeasure.current = Date.now() + 600;
       setNodes((current) =>
         current.map((node) => {
           const change = changes.get(node.id);
@@ -1751,12 +1762,16 @@ function BoardPage() {
         if (previous) clearTimeout(previous);
         const timer = setTimeout(() => {
           heightTimers.current.delete(nodeId);
+          if (Date.now() < suppressMeasure.current) return;
           const root = flowWrapRef.current;
           const nodeElement = root?.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`);
           if (!nodeElement) return;
           const height = measuredCardHeight(nodeElement);
-          if (height != null) ensureReadableLayout(nodeId, height);
-        }, 120);
+          if (height == null) return;
+          const last = appliedHeights.current.get(nodeId);
+          if (last != null && Math.abs(height - last) < 12) return;
+          ensureReadableLayout(nodeId, height);
+        }, 200);
         heightTimers.current.set(nodeId, timer);
       }
     },
@@ -1769,6 +1784,7 @@ function BoardPage() {
     const root = flowWrapRef.current;
     if (!root) return;
     const observer = new MutationObserver((mutations) => {
+      if (Date.now() < suppressMeasure.current) return;
       const ids = new Set<string>();
       for (const mutation of mutations) {
         const element =
