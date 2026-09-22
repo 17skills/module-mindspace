@@ -2235,9 +2235,26 @@ export function LabeledEdge(props: EdgeProps) {
                 <UiTooltipContent>Schließen</UiTooltipContent>
               </UiTooltip>
             </div>
-          ) : label && labelsVisible ? (
-            <span className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[11px] font-medium leading-tight text-foreground shadow-[var(--shadow-card)]">
-              {label}
+          ) : labelsVisible && (label || flow.text || flow.bad) ? (
+            <span
+              title={
+                flow.bad
+                  ? "Rechnung dieser Verbindung ist ungültig"
+                  : "Aktueller Wert auf dieser Verbindung"
+              }
+              className={`flex items-center gap-1 rounded-full border bg-card px-2 py-0.5 font-mono text-[11px] leading-tight shadow-[var(--shadow-card)] ${
+                flow.bad ? "border-[#de5a3a]/50 text-[#de5a3a]" : "border-border text-foreground"
+              }`}
+            >
+              {label ? <span className="font-medium">{label}</span> : null}
+              {flow.bad ? (
+                <span>ungültig</span>
+              ) : flow.text ? (
+                <>
+                  {label ? <span className="text-muted-foreground">=</span> : null}
+                  <span className="font-semibold">{flow.text}</span>
+                </>
+              ) : null}
             </span>
           ) : props.selected ? (
             <button
