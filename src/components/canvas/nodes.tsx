@@ -2072,6 +2072,26 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
           className="nodrag mt-1 bg-transparent text-xs text-muted-foreground outline-none"
           onBlur={(e) => patch({ compare: e.target.value.trim() })}
         />
+        {warnAbove != null || dangerAbove != null ? (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-1.5 font-mono text-[9px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full" style={{ background: "var(--support)" }} />
+              unter {formatValue(warnAbove ?? dangerAbove ?? 0, fmt)}
+            </span>
+            {warnAbove != null ? (
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-full" style={{ background: "var(--brand-orange)" }} />
+                ab {formatValue(warnAbove, fmt)}
+              </span>
+            ) : null}
+            {dangerAbove != null ? (
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-full" style={{ background: "var(--destructive)" }} />
+                ab {formatValue(dangerAbove, fmt)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {selected ? <FormatRow meta={meta} onPatch={patch} /> : null}
         {selected ? (
           <div className="nodrag mt-2 flex items-center gap-2 border-t pt-2 text-[10px] text-muted-foreground">
