@@ -70,6 +70,83 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          detail: string | null
+          id: string
+          object_id: string | null
+          object_type: string | null
+          subject_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          object_id?: string | null
+          object_type?: string | null
+          subject_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          object_id?: string | null
+          object_type?: string | null
+          subject_user_id?: string | null
+        }
+        Relationships: []
+      }
+      board_invites: {
+        Row: {
+          board_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          role: string
+          status: string
+          token: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          role?: string
+          status?: string
+          token?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          role?: string
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_invites_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_members: {
         Row: {
           board_id: string
@@ -382,22 +459,37 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          blocked_at: string | null
           created_at: string
+          deletion_requested_at: string | null
           display_name: string | null
           email: string | null
           id: string
+          settings: Json
+          updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
+          blocked_at?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
           display_name?: string | null
           email?: string | null
           id: string
+          settings?: Json
+          updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
+          blocked_at?: string | null
           created_at?: string
+          deletion_requested_at?: string | null
           display_name?: string | null
           email?: string | null
           id?: string
+          settings?: Json
+          updated_at?: string
         }
         Relationships: []
       }
@@ -428,15 +520,70 @@ export type Database = {
         }
         Relationships: []
       }
+      user_consents: {
+        Row: {
+          granted: boolean
+          id: string
+          purpose: string
+          updated_at: string
+          user_id: string
+          version: string
+        }
+        Insert: {
+          granted?: boolean
+          id?: string
+          purpose: string
+          updated_at?: string
+          user_id: string
+          version?: string
+        }
+        Update: {
+          granted?: boolean
+          id?: string
+          purpose?: string
+          updated_at?: string
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      purge_audit_log: { Args: never; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -563,6 +710,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScopePreview } from "@/components/ScopePreview";
+import { UserMenu } from "@/components/UserMenu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +44,7 @@ export const Route = createFileRoute("/")({
 });
 
 function LibraryPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<{ kind: "scope" | "app"; id: string } | null>(null);
@@ -170,9 +171,7 @@ function LibraryPage() {
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              Abmelden
-            </Button>
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -411,6 +410,20 @@ function LibraryPage() {
           </div>
         </div>
       </section>
+
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-6 text-sm text-muted-foreground">
+          <Link to="/datenschutz" className="underline-offset-4 hover:underline">
+            Datenschutz
+          </Link>
+          <Link to="/impressum" className="underline-offset-4 hover:underline">
+            Impressum
+          </Link>
+          <Link to="/agb" className="underline-offset-4 hover:underline">
+            Nutzungsbedingungen
+          </Link>
+        </div>
+      </footer>
     </main>
   );
 }
