@@ -835,7 +835,7 @@ export const ZONE_COLORS: readonly ZoneColor[] = [
 
 export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode, resizeZone, runAgent, agentStale, openInspector } = useBoard();
+  const { updateNode, resizeZone, runAgent, agentStale, openInspector, allNodes } = useBoard();
   const color = record.color ?? ZONE_WHITE;
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const isGroup = meta["templateGroup"] === true;
@@ -843,6 +843,29 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const agent = readAgent(record);
   const running = meta["agentRunning"] === true;
   const stale = agent ? agentStale(record.id) : false;
+  const [designOpen, setDesignOpen] = useState(false);
+  const members = useMemo(() => zoneMembers(record.id, allNodes()), [record.id, allNodes]);
+  const layout = useMemo<AppLayoutEntry[]>(() => {
+    const saved = readAppLayout(record) ?? [];
+    const kept = saved.filter((entry) => members.some((m) => m.id === entry.id));
+    const missing = members
+      .filter((m) => !saved.some((entry) => entry.id === m.id))
+      .map((m) => ({ id: m.id, view: "full" as const }));
+    return [...kept, ...missing];
+  }, [record, members]);
+  const saveLayout = (entries: AppLayoutEntry[]) =>
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), appLayout: entries } });
+  const moveEntry = (id: string, dir: -1 | 1) => {
+    const next = [...layout];
+    const from = next.findIndex((entry) => entry.id === id);
+    const to = from + dir;
+    if (from < 0 || to < 0 || to >= next.length) return;
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item!);
+    saveLayout(next);
+  };
+  const patchEntry = (id: string, patch: Partial<AppLayoutEntry>) =>
+    saveLayout(layout.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)));
   return (
     <>
       <NodeResizer
