@@ -23,6 +23,7 @@ import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { runMcpTool } from "@/lib/mcp-client.functions";
 import { readMcp } from "@/lib/mcp-module";
+import { valueOfNode } from "@/lib/calc";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
   DropdownMenu,
@@ -1591,8 +1592,27 @@ function BoardPage() {
         toast.info("Wähle zuerst Server und Werkzeug");
         return;
       }
+      // Parameter, die an ein Modul gebunden sind, holen ihren Wert frisch aus dem Canvas.
+      let args = config.args;
+      const bindings = Object.entries(config.bindings);
+      if (bindings.length > 0) {
+        let parsed: Record<string, unknown> = {};
+        try {
+          const raw: unknown = JSON.parse(config.args || "{}");
+          if (raw && typeof raw === "object" && !Array.isArray(raw)) parsed = raw as Record<string, unknown>;
+        } catch {
+          parsed = {};
+        }
+        for (const [param, nodeId] of bindings) {
+          const source = recordsRef.current[nodeId];
+          if (!source) continue;
+          const numeric = valueOfNode(source, recordsRef.current, edgesRef.current);
+          parsed[param] = numeric != null ? numeric : (source.content ?? "");
+        }
+        args = JSON.stringify(parsed);
+      }
       updateNode(id, { metadata: { ...(record.metadata ?? {}), mcpRunning: true } });
-      void runMcpTool({ data: { serverId: config.serverId, tool: config.tool, args: config.args } })
+      void runMcpTool({ data: { serverId: config.serverId, tool: config.tool, args } })
         .then((result) => {
           const current = recordsRef.current[id];
           updateNode(id, {

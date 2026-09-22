@@ -10,12 +10,27 @@ export type McpConfig = {
   args: string;
   /** Pfad in die Antwort, z. B. "items.0.value". */
   pick: string;
+  /** Formularwerte je Eingabeparameter. */
+  inputs: Record<string, string>;
+  /** Parameter, die ihren Wert aus einem verbundenen Modul beziehen (Parameter → Modul-ID). */
+  bindings: Record<string, string>;
+  /** "form" = geführte Felder, "json" = freies JSON. */
+  mode: "form" | "json";
   lastAt: string | null;
   lastError: string | null;
 };
 
 function text(raw: unknown): string {
   return typeof raw === "string" ? raw : "";
+}
+
+function textMap(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string") out[key] = value;
+  }
+  return out;
 }
 
 export function readMcp(record: NodeRecord | undefined | null): McpConfig {
@@ -26,6 +41,9 @@ export function readMcp(record: NodeRecord | undefined | null): McpConfig {
     tool: text(meta["mcpTool"]),
     args: text(meta["mcpArgs"]) || "{}",
     pick: text(meta["pick"]),
+    inputs: textMap(meta["mcpInputs"]),
+    bindings: textMap(meta["mcpBindings"]),
+    mode: meta["mcpMode"] === "json" ? "json" : "form",
     lastAt: typeof meta["lastAt"] === "string" ? meta["lastAt"] : null,
     lastError: typeof meta["lastError"] === "string" ? meta["lastError"] : null,
   };
