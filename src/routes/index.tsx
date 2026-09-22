@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScopePreview } from "@/components/ScopePreview";
+import { UserMenu } from "@/components/UserMenu";
 import {
   AlertDialog,
   AlertDialogAction,
