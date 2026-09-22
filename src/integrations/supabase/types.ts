@@ -19,9 +19,12 @@ export type Database = {
           board_id: string
           branding: Json
           created_at: string
+          description: string
           id: string
           is_public: boolean
           kind: string
+          mcp_scope: string
+          mcp_token: string
           node_ids: Json
           title: string
           updated_at: string
@@ -31,9 +34,12 @@ export type Database = {
           board_id: string
           branding?: Json
           created_at?: string
+          description?: string
           id?: string
           is_public?: boolean
           kind?: string
+          mcp_scope?: string
+          mcp_token?: string
           node_ids?: Json
           title?: string
           updated_at?: string
@@ -43,9 +49,12 @@ export type Database = {
           board_id?: string
           branding?: Json
           created_at?: string
+          description?: string
           id?: string
           is_public?: boolean
           kind?: string
+          mcp_scope?: string
+          mcp_token?: string
           node_ids?: Json
           title?: string
           updated_at?: string
