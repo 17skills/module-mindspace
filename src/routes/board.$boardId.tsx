@@ -2689,6 +2689,37 @@ function BoardPage() {
                   <Button
                     size="icon"
                     variant="ghost"
+                    className={toolBtn(appOpen)}
+                    aria-label="App-Ansicht"
+                    aria-pressed={appOpen}
+                    onClick={() => {
+                      setAppPreselect(
+                        nodes
+                          .filter((node) => node.selected)
+                          .map((node) => node.id)
+                          .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""))
+                          .slice(0, MAX_APP_MODULES),
+                      );
+                      setAppOpen(true);
+                    }}
+                  >
+                    <AppWindow className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  App-Ansicht
+                  {selectedModuleCount > 0
+                    ? ` · ${Math.min(selectedModuleCount, MAX_APP_MODULES)}/${MAX_APP_MODULES} gewählt`
+                    : ""}
+                </TooltipContent>
+              </Tooltip>
+
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     className={toolBtn()}
                     aria-label="Link einfügen"
                     onClick={() => {
