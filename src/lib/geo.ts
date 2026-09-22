@@ -119,6 +119,21 @@ function guess(columns: string[], names: string[], chosen: string): number {
 export function pointsFromSources(sources: NodeRecord[], config: MapConfig): GeoPoint[] {
   const points: GeoPoint[] = [];
   for (const source of sources) {
+    // Inspection findings carry their own position out of the photo metadata.
+    if (source.type === "inspect") {
+      for (const finding of readInspection(source).findings) {
+        if (finding.lat == null || finding.lon == null) continue;
+        points.push({
+          id: finding.id,
+          label: `${finding.label} · Prio ${finding.priority}`,
+          lat: finding.lat,
+          lon: finding.lon,
+          klass: finding.category,
+          impact: Math.min(5, Math.max(1, Math.round((11 - finding.priority) / 2))),
+        });
+      }
+      continue;
+    }
     if (source.type !== "table" && source.type !== "list") continue;
     const data = readStructure(source);
     if (!data.columns.length) continue;
