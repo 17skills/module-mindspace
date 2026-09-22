@@ -112,7 +112,7 @@ import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
-import { Library, AppWindow } from "lucide-react";
+import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste } from "lucide-react";
 import { AppDialog } from "@/components/canvas/AppDialog";
 import { MAX_APP_MODULES } from "@/lib/apps";
 import { capture, readPayload, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
