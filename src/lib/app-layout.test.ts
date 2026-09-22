@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   APP_LAYOUTS,
+  alignFreeLayout,
   buildFreeLayout,
   resolveLayout,
+  snapFreeLayout,
   TILE_TYPES,
   updateFreeLayout,
   WIDE_TYPES,
@@ -86,5 +88,32 @@ describe("freie Fläche", () => {
     const layout = [{ id: metricNode.id, col: 5, row: 1, width: 4, height: 3 }];
     const resized = updateFreeLayout(layout, metricNode.id, { width: 9, height: 6 });
     expect(resized[0]).toMatchObject({ col: 4, width: 9, height: 6 });
+  });
+
+  it("rastet an der Kante eines benachbarten Moduls ein", () => {
+    const layout = [
+      { id: metricNode.id, col: 1, row: 1, width: 3, height: 3 },
+      { id: mapNode.id, col: 7, row: 5, width: 4, height: 4 },
+    ];
+    const result = snapFreeLayout(layout, metricNode.id, { col: 5, row: 1 }, "move", true);
+    expect(result.layout[0]?.col).toBe(4);
+    expect(result.guides.vertical).toBe(7);
+  });
+
+  it("richtet ausgewählte Module links aus, sofern keine Kollision entsteht", () => {
+    const layout = [
+      { id: metricNode.id, col: 2, row: 1, width: 3, height: 2 },
+      { id: mapNode.id, col: 7, row: 5, width: 4, height: 4 },
+    ];
+    const aligned = alignFreeLayout(layout, [metricNode.id, mapNode.id], "left");
+    expect(aligned.map((item) => item.col)).toEqual([2, 2]);
+  });
+
+  it("verwirft eine Ausrichtung, die Module überlagern würde", () => {
+    const layout = [
+      { id: metricNode.id, col: 1, row: 1, width: 3, height: 3 },
+      { id: mapNode.id, col: 6, row: 1, width: 4, height: 3 },
+    ];
+    expect(alignFreeLayout(layout, [metricNode.id, mapNode.id], "left")).toEqual(layout);
   });
 });

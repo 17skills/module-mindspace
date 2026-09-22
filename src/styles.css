@@ -159,6 +159,14 @@
 }
 .app-shell .react-flow__edge-path { stroke: var(--app-accent); }
 
+.free-layout-grid[data-grid-visible="true"] {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--ring) 18%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--ring) 18%, transparent) 1px, transparent 1px);
+  background-size: calc(100% / 12) calc(72px + 0.75rem);
+  background-position: 1rem 1rem;
+}
+
 
 .dark {
   --background: oklch(0.2 0.015 258);
