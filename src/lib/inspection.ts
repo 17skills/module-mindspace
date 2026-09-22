@@ -56,6 +56,21 @@ export const CLUSTERS = [
   { id: "beobachtung", label: "Beobachtung", from: 7, to: 10, color: "#16a34a" },
 ] as const;
 
+export const STATUS_VALUES: Finding["status"][] = ["offen", "beauftragt", "in arbeit", "erledigt"];
+
+export const STATUS_COLOR: Record<Finding["status"], string> = {
+  offen: "#dc2626",
+  beauftragt: "#ea580c",
+  "in arbeit": "#eab308",
+  erledigt: "#16a34a",
+};
+
+/** True when the due date has passed and the measure is not done. */
+export function isOverdue(finding: Finding): boolean {
+  if (!finding.due || finding.status === "erledigt") return false;
+  return finding.due < new Date().toISOString().slice(0, 10);
+}
+
 export function clusterOf(priority: number) {
   return CLUSTERS.find((cluster) => priority >= cluster.from && priority <= cluster.to) ?? CLUSTERS[2];
 }
