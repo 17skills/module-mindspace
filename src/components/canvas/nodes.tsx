@@ -1631,6 +1631,7 @@ export function LabeledEdge(props: EdgeProps) {
     borderRadius: 4,
   });
   const label = typeof props.label === "string" ? props.label : "";
+  const labelsVisible = useEdgeLabelsVisible();
   const stroke = props.selected ? "var(--ring)" : "var(--edge)";
   return (
     <>
