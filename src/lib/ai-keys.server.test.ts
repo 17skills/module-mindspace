@@ -30,7 +30,7 @@ describe("BYOK-Schlüssel-Verschlüsselung", () => {
     process.env["AI_KEY_ENCRYPTION_SECRET"] = "test-secret-mit-mindestens-32-zeichen-länge!!";
     const packed = encryptKey("sk-manipulierter-key");
     const raw = Buffer.from(packed, "base64");
-    raw[raw.length - 1] ^= 0xff;
+    raw[raw.length - 1] = (raw[raw.length - 1] ?? 0) ^ 0xff;
     const manipulated = Buffer.from(raw).toString("base64");
     expect(() => decryptKey(manipulated)).toThrow();
   });
