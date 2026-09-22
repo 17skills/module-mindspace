@@ -124,6 +124,7 @@ export const NODE_ACCENT: Record<string, string> = {
   risk: "var(--primary)",
   inspect: "var(--doc)",
   mcp: "var(--chat)",
+  mcphub: "var(--chat)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -151,4 +152,5 @@ export const NODE_LABEL: Record<string, string> = {
   risk: "Risiko",
   inspect: "Inspektion",
   mcp: "MCP-Werkzeug",
+  mcphub: "MCP-Hub",
 };
