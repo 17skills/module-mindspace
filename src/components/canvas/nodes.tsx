@@ -1643,7 +1643,7 @@ export function LabeledEdge(props: EdgeProps) {
         id={props.id}
         path={path}
         interactionWidth={24}
-        markerEnd={props.markerEnd ?? undefined}
+        {...(props.markerEnd ? { markerEnd: props.markerEnd } : {})}
         style={{
           stroke,
           strokeWidth: props.selected ? 3 : 2.25,
