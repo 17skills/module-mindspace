@@ -2121,7 +2121,28 @@ export function LabeledEdge(props: EdgeProps) {
   const label = typeof props.label === "string" ? props.label : "";
   const labelsVisible = useEdgeLabelsVisible();
   const { setEdges } = useReactFlow();
-  const stroke = props.selected ? "var(--ring)" : "var(--edge)";
+  // live value travelling along this connection (source value after the label)
+  const flow = useStore(
+    (store) => {
+      const records: Record<string, NodeRecord> = {};
+      for (const [id, item] of store.nodeLookup) {
+        const record = (item.data as Data | undefined)?.record;
+        if (record) records[id] = record;
+      }
+      const source = records[props.source];
+      const raw = source ? valueOfNode(source, records, store.edges) : null;
+      const result = edgeValue(label, raw);
+      if (result == null) return { text: "", bad: raw != null };
+      return { text: formatValue(result, readFormat(source?.metadata)), bad: false };
+    },
+    (a, b) => a.text === b.text && a.bad === b.bad,
+  );
+  const stroke = props.selected
+    ? "var(--ring)"
+    : flow.bad
+      ? "#de5a3a"
+      : "var(--edge)";
+
   return (
     <>
       <BaseEdge
