@@ -83,6 +83,23 @@ export const getAccount = createServerFn({ method: "POST" })
       db.from("apps").select("id", { count: "exact", head: true }).eq("user_id", userId),
     ]);
 
+    // Erstes Konto der Installation wird Administrator, sonst wäre der Bereich für niemanden erreichbar.
+    let isAdmin = (roles.data ?? []).some((row) => row.role === "admin");
+    if (!isAdmin) {
+      const { count } = await db
+        .from("user_roles")
+        .select("user_id", { count: "exact", head: true })
+        .eq("role", "admin");
+      if ((count ?? 0) === 0) {
+        await db.from("user_roles").upsert(
+          { user_id: userId, role: "admin" },
+          { onConflict: "user_id,role" },
+        );
+        await audit({ actorId: userId, action: "role.admin_granted", objectType: "user", objectId: userId });
+        isAdmin = true;
+      }
+    }
+
     return {
       id: userId,
       email: profile?.email ?? "",
