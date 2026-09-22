@@ -60,6 +60,8 @@ import { suggestFactorWeights } from "@/lib/factor.functions";
 import { runApiModule } from "@/lib/api-module.functions";
 import { listMcpServers } from "@/lib/mcp-client.functions";
 import { mcpPreview, mcpValue, readMcp } from "@/lib/mcp-module";
+import { McpConnectDialog } from "./mcp-connect-dialog";
+
 import { useQuery } from "@tanstack/react-query";
 import { analyzeInspection } from "@/lib/inspection.functions";
 import {
@@ -5224,6 +5226,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["mcpRunning"] === true;
   const value = mcpValue(record);
+  const [connectOpen, setConnectOpen] = useState(false);
   const servers = useQuery({
     queryKey: ["mcp-servers"],
     queryFn: () => listMcpServers(),
@@ -5236,6 +5239,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
+
 
   return (
     <div
@@ -5263,6 +5267,10 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
         <Select
           value={config.serverId}
           onValueChange={(next) => {
+            if (next === "__new__") {
+              setConnectOpen(true);
+              return;
+            }
             const chosen = servers.data?.find((item) => item.id === next);
             patch({
               mcpServerId: next,
@@ -5281,8 +5289,23 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
                 {item.name}
               </SelectItem>
             ))}
+            <SelectItem value="__new__">+ Neuen Server verbinden …</SelectItem>
           </SelectContent>
         </Select>
+
+        <McpConnectDialog
+          open={connectOpen}
+          onOpenChange={setConnectOpen}
+          onConnected={(created) =>
+            patch({
+              mcpServerId: created.id,
+              mcpServerName: created.name,
+              mcpTool: created.tools[0]?.name ?? "",
+              lastError: null,
+            })
+          }
+        />
+
 
         <Select
           value={config.tool}
