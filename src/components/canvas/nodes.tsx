@@ -241,7 +241,7 @@ const TYPE_GLYPH: Record<string, string> = {
 
 type Data = { record: NodeRecord };
 
-type PortStatus = "idle" | "ok" | "warn" | "error";
+type PortStatus = SignalPortStatus;
 
 const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
 
