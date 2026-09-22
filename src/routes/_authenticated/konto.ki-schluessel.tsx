@@ -20,20 +20,11 @@ export const Route = createFileRoute("/_authenticated/konto/ki-schluessel")({
   component: AiKeysPage,
 });
 
-const PROVIDER_PLACEHOLDER: Record<AiProvider, string> = {
-  openai: "sk-…",
-  anthropic: "sk-ant-…",
-  google: "AIza…",
-  openrouter: "sk-or-…",
-  custom: "https://dein-endpunkt.example/v1",
-};
-
 const PROVIDER_KEY_URL: Record<AiProvider, string> = {
   openai: "https://platform.openai.com/api-keys",
   anthropic: "https://console.anthropic.com/settings/keys",
   google: "https://aistudio.google.com/app/apikey",
   openrouter: "https://openrouter.ai/keys",
-  custom: "",
 };
 
 function maskKey(value: string) {
@@ -70,7 +61,7 @@ function AiKeysPage() {
   });
 
   const toggle = useMutation({
-    mutationFn: (input: { useByok: boolean; provider?: AiProvider }) =>
+    mutationFn: (input: { enabled: boolean; provider: AiProvider }) =>
       setUseByok({ data: input }),
     onSuccess: () => refresh(),
     onError: (error: Error) => toast.error(error.message),
@@ -80,8 +71,8 @@ function AiKeysPage() {
     mutationFn: (provider: AiProvider) => testAiKey({ data: { provider } }),
     onSuccess: (result) => {
       setTesting(null);
-      if (result.ok) toast.success(`Verbindung ok${result.modelHint ? ` (${result.modelHint})` : ""}`);
-      else toast.error(result.error ?? "Verbindung fehlgeschlagen");
+      if (result.ok) toast.success(result.message);
+      else toast.error(result.message);
     },
     onError: (error: Error) => {
       setTesting(null);
@@ -106,7 +97,7 @@ function AiKeysPage() {
             checked={settings?.useByok ?? false}
             disabled={!settings?.keys.length}
             onCheckedChange={(next) =>
-              toggle.mutate({ useByok: next, provider: settings?.byokProvider ?? undefined })
+              toggle.mutate({ enabled: next, provider: settings?.byokProvider ?? "openai" })
             }
             aria-label="Eigenen KI-Schlüssel verwenden"
           />
@@ -159,7 +150,7 @@ function AiKeysPage() {
                         setDrafts((prev) => ({ ...prev, [provider]: event.target.value }))
                       }
                       placeholder={
-                        info ? "Neuen Schlüssel eintragen, um zu ersetzen" : PROVIDER_PLACEHOLDER[provider]
+                        info ? "Neuen Schlüssel eintragen, um zu ersetzen" : AI_PROVIDER_META[provider].keyPlaceholder
                       }
                       aria-label={`${meta.label} API-Schlüssel`}
                       autoComplete="off"
