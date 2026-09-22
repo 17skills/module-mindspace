@@ -2313,11 +2313,8 @@ function BoardPage() {
         void duplicateModules();
         return;
       }
-      if (key === "v" && clipboard.current?.nodes.length) {
-        // the paste listener handles clipboard text; only act when it stays silent
-        event.preventDefault();
-        void pasteModules();
-      }
+      // Cmd/Ctrl+V is handled by the paste listener above
+
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
