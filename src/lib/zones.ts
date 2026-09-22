@@ -130,12 +130,15 @@ export type AppView = "full" | "compact";
 export type AppLayoutEntry = { id: string; view: AppView; hidden?: boolean };
 export type AppAccent = "forest" | "sage" | "terracotta" | "cobalt";
 export type AppBackground = "stone" | "paper" | "grid";
+/** Aufbau der ausgelieferten App – bestimmt, wie die Module angeordnet werden. */
+export type AppLayout = "auto" | "split" | "dashboard" | "feed" | "report" | "capture";
 export type AppBranding = {
   title: string;
   logo: string;
   logoSize: number;
   accent: AppAccent;
   background: AppBackground;
+  layout: AppLayout;
 };
 export type AppDesignProfile = {
   id: string;
@@ -150,7 +153,9 @@ export const DEFAULT_APP_BRANDING: AppBranding = {
   logoSize: 40,
   accent: "forest",
   background: "stone",
+  layout: "auto",
 };
+
 
 export const APP_DESIGN_PRESETS: AppDesignProfile[] = [
   {
@@ -217,5 +222,14 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
         ? accent
         : "forest",
     background: background === "paper" || background === "grid" ? background : "stone",
+    layout:
+      value["layout"] === "split" ||
+      value["layout"] === "dashboard" ||
+      value["layout"] === "feed" ||
+      value["layout"] === "report" ||
+      value["layout"] === "capture"
+        ? value["layout"]
+        : "auto",
+
   };
 }

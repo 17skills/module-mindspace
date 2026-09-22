@@ -2491,12 +2491,8 @@ function BoardPage() {
           .filter(
             (record): record is NonNullable<typeof record> =>
               Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? ""),
-          )
-          .map((record) => ({
-            id: record.id,
-            title: record.title ?? "",
-            type: record.type,
-          }))}
+          )}
+
       />
 
       <LibraryDialog
