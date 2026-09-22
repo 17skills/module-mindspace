@@ -897,6 +897,22 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
             />
             <span className="font-mono text-[10px] text-muted-foreground">%</span>
           </label>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <button
+                aria-label="Feld als eigene App öffnen"
+                className="nodrag mr-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  const url = `${window.location.origin}/embed/zone/${record.id}`;
+                  void navigator.clipboard?.writeText(url);
+                  window.open(url, "_blank", "noopener");
+                }}
+              >
+                <ExternalLink className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Als App öffnen (Link kopiert)</TooltipContent>
+          </UiTooltip>
         </div>
         {locked && (
           <Lock className="pointer-events-none absolute top-3.5 right-3.5 size-3.5 text-muted-foreground/70" />
