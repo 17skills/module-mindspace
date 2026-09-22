@@ -170,7 +170,7 @@ function AiKeysPage() {
                       )}
                     </button>
                   </div>
-                  {provider === "custom" || provider === "openrouter" ? (
+                  {provider === "openrouter" ? (
                     <Input
                       className="w-56"
                       value={info?.baseUrl ?? ""}
