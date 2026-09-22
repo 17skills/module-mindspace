@@ -42,6 +42,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, nodeValue, readFormat, sheetOutputRow, sheetRows, sheetValues, valueOfNode } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
+import { isReference, type PortStatus as SignalPortStatus } from "@/lib/signal-status";
 import { APP_DESIGN_PRESETS, readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppDesignProfile, type AppLayoutEntry } from "@/lib/zones";
 import {
   factorText,
@@ -241,7 +242,7 @@ const TYPE_GLYPH: Record<string, string> = {
 
 type Data = { record: NodeRecord };
 
-type PortStatus = "idle" | "ok" | "warn" | "error";
+type PortStatus = SignalPortStatus;
 
 const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
 
@@ -249,34 +250,15 @@ const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
  * Connection point with a discreet status light:
  * green = value flows, amber = waiting for a value, red = invalid calculation.
  */
-/** Modules that carry content, not numbers — their links stay neutral. */
-const REFERENCE_TYPES = new Set([
-  "youtube",
-  "podcast",
-  "audio",
-  "document",
-  "link",
-  "chat",
-  "frame",
-  "image",
-]);
 
-function isReference(record: NodeRecord | undefined): boolean {
-  if (!record) return true;
-  if (REFERENCE_TYPES.has(record.type)) return true;
-  if (record.type === "note") {
-    const factor = readFactor(record);
-    return !(factor.stored && factor.params.length) && nodeValue(record) == null;
-  }
-  return false;
-}
 
 function SignalHandle(props: React.ComponentProps<typeof Handle>) {
   const nodeId = useNodeId();
   const kind = props.type;
   const state = useStore(
     (store) => {
-      if (!nodeId) return { status: "idle" as PortStatus, hint: "" };
+      const empty = { status: "idle" as PortStatus, hint: "", text: "" };
+      if (!nodeId) return empty;
       const records: Record<string, NodeRecord> = {};
       for (const [id, item] of store.nodeLookup) {
         const record = (item.data as Data | undefined)?.record;
@@ -290,17 +272,18 @@ function SignalHandle(props: React.ComponentProps<typeof Handle>) {
       const own = records[nodeId];
       if (kind === "source") {
         const linked = edges.some((edge) => edge.source === nodeId);
-        if (!linked) return { status: "idle" as PortStatus, hint: "" };
+        if (!linked) return empty;
         const value = valueOf(nodeId);
         if (value == null) {
           if (isReference(own))
-            return { status: "idle" as PortStatus, hint: "Ausgang: Inhalt (ohne Zahlenwert)" };
-          return { status: "warn" as PortStatus, hint: "Ausgang: noch kein Wert" };
+            return { status: "idle" as PortStatus, hint: "Ausgang: Inhalt (ohne Zahlenwert)", text: "" };
+          return { status: "warn" as PortStatus, hint: "Ausgang: noch kein Wert", text: "" };
         }
-        return { status: "ok" as PortStatus, hint: `Ausgang: ${NUM.format(value)}` };
+        const text = formatValue(value, readFormat(own?.metadata));
+        return { status: "ok" as PortStatus, hint: `Ausgang: ${text}`, text };
       }
       const incoming = edges.filter((edge) => edge.target === nodeId);
-      if (!incoming.length) return { status: "idle" as PortStatus, hint: "" };
+      if (!incoming.length) return empty;
       let status: PortStatus = "idle";
       const parts: string[] = [];
       for (const edge of incoming) {
@@ -323,16 +306,28 @@ function SignalHandle(props: React.ComponentProps<typeof Handle>) {
           parts.push(`${source?.title ?? "Quelle"}: ${NUM.format(result!)}`);
         }
       }
-      return { status, hint: `Eingang · ${parts.join(" · ")}` };
+      return { status, hint: `Eingang · ${parts.join(" · ")}`, text: "" };
     },
-    (a, b) => a.status === b.status && a.hint === b.hint,
+    (a, b) => a.status === b.status && a.hint === b.hint && a.text === b.text,
   );
+  const showValue =
+    kind === "source" && state.status === "ok" && state.text && props.position === Position.Right;
   return (
-    <Handle
-      {...props}
-      data-status={state.status}
-      {...(state.hint ? { title: state.hint } : {})}
-    />
+    <>
+      <Handle
+        {...props}
+        data-status={state.status}
+        {...(state.hint ? { title: state.hint } : {})}
+      />
+      {showValue ? (
+        <span
+          className="port-value pointer-events-none absolute font-mono"
+          style={{ right: -12, top: "50%", transform: "translate(100%, -50%)" }}
+        >
+          {state.text}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -2107,7 +2102,28 @@ export function LabeledEdge(props: EdgeProps) {
   const label = typeof props.label === "string" ? props.label : "";
   const labelsVisible = useEdgeLabelsVisible();
   const { setEdges } = useReactFlow();
-  const stroke = props.selected ? "var(--ring)" : "var(--edge)";
+  // live value travelling along this connection (source value after the label)
+  const flow = useStore(
+    (store) => {
+      const records: Record<string, NodeRecord> = {};
+      for (const [id, item] of store.nodeLookup) {
+        const record = (item.data as Data | undefined)?.record;
+        if (record) records[id] = record;
+      }
+      const source = records[props.source];
+      const raw = source ? valueOfNode(source, records, store.edges) : null;
+      const result = edgeValue(label, raw);
+      if (result == null) return { text: "", bad: raw != null };
+      return { text: formatValue(result, readFormat(source?.metadata)), bad: false };
+    },
+    (a, b) => a.text === b.text && a.bad === b.bad,
+  );
+  const stroke = props.selected
+    ? "var(--ring)"
+    : flow.bad
+      ? "#de5a3a"
+      : "var(--edge)";
+
   return (
     <>
       <BaseEdge
@@ -2200,9 +2216,26 @@ export function LabeledEdge(props: EdgeProps) {
                 <UiTooltipContent>Schließen</UiTooltipContent>
               </UiTooltip>
             </div>
-          ) : label && labelsVisible ? (
-            <span className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[11px] font-medium leading-tight text-foreground shadow-[var(--shadow-card)]">
-              {label}
+          ) : labelsVisible && (label || flow.text || flow.bad) ? (
+            <span
+              title={
+                flow.bad
+                  ? "Rechnung dieser Verbindung ist ungültig"
+                  : "Aktueller Wert auf dieser Verbindung"
+              }
+              className={`flex items-center gap-1 rounded-full border bg-card px-2 py-0.5 font-mono text-[11px] leading-tight shadow-[var(--shadow-card)] ${
+                flow.bad ? "border-[#de5a3a]/50 text-[#de5a3a]" : "border-border text-foreground"
+              }`}
+            >
+              {label ? <span className="font-medium">{label}</span> : null}
+              {flow.bad ? (
+                <span>ungültig</span>
+              ) : flow.text ? (
+                <>
+                  {label ? <span className="text-muted-foreground">=</span> : null}
+                  <span className="font-semibold">{flow.text}</span>
+                </>
+              ) : null}
             </span>
           ) : props.selected ? (
             <button
