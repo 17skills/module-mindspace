@@ -293,7 +293,7 @@ function EmbedZonePage() {
         <header className="app-header flex min-h-16 items-center justify-between gap-3 border-b px-5 py-2.5">
           <div className="flex min-w-0 items-center gap-3">
             {branding.logo ? (
-              <img src={branding.logo} alt="" className="size-10 shrink-0 rounded-md bg-card object-contain p-1" />
+              <img src={branding.logo} alt="" className="app-brand-logo shrink-0 rounded-md bg-card object-contain p-1" style={{ width: branding.logoSize, height: branding.logoSize }} />
             ) : (
               <div className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
             )}

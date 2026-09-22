@@ -133,16 +133,47 @@ export type AppBackground = "stone" | "paper" | "grid";
 export type AppBranding = {
   title: string;
   logo: string;
+  logoSize: number;
   accent: AppAccent;
   background: AppBackground;
+};
+export type AppDesignProfile = {
+  id: string;
+  name: string;
+  branding: AppBranding;
+  custom?: boolean;
 };
 
 export const DEFAULT_APP_BRANDING: AppBranding = {
   title: "",
   logo: "",
+  logoSize: 40,
   accent: "forest",
   background: "stone",
 };
+
+export const APP_DESIGN_PRESETS: AppDesignProfile[] = [
+  {
+    id: "cohere-operations",
+    name: "Operations",
+    branding: { ...DEFAULT_APP_BRANDING, accent: "forest", background: "stone" },
+  },
+  {
+    id: "cohere-evidence",
+    name: "Evidenz",
+    branding: { ...DEFAULT_APP_BRANDING, accent: "cobalt", background: "paper" },
+  },
+  {
+    id: "cohere-field",
+    name: "Feldeinsatz",
+    branding: { ...DEFAULT_APP_BRANDING, accent: "sage", background: "grid" },
+  },
+  {
+    id: "cohere-alert",
+    name: "Lagebild",
+    branding: { ...DEFAULT_APP_BRANDING, accent: "terracotta", background: "stone" },
+  },
+];
 
 /** Gestaltung der Feld-App: Reihenfolge, Darstellung und Sichtbarkeit der Module. */
 export function readAppLayout(record: NodeRecord | undefined | null): AppLayoutEntry[] | null {
@@ -177,6 +208,10 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
       typeof value["logo"] === "string" && value["logo"].startsWith("data:image/")
         ? value["logo"]
         : "",
+    logoSize:
+      typeof value["logoSize"] === "number"
+        ? Math.min(72, Math.max(24, Math.round(value["logoSize"])))
+        : 40,
     accent:
       accent === "sage" || accent === "terracotta" || accent === "cobalt"
         ? accent
