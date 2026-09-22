@@ -5633,6 +5633,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
 export const McpHubNode = memo(function McpHubNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode, spawnMcpTool } = useBoard();
+  const notes = contextCards(useConnectedRecords((data as unknown as Data).record.id));
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const serverId = typeof meta["mcpServerId"] === "string" ? (meta["mcpServerId"] as string) : "";
   const [connectOpen, setConnectOpen] = useState(false);
@@ -5701,6 +5702,7 @@ export const McpHubNode = memo(function McpHubNode({ data, selected }: NodeProps
       style={{ borderTop: `3px solid ${NODE_ACCENT["mcphub"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
+      <SignalHandle type="target" position={Position.Left} />
       <SignalHandle type="source" position={Position.Right} />
 
       <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
