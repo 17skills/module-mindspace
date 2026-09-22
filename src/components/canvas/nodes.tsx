@@ -2096,23 +2096,58 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
       <SignalHandle type="target" position={Position.Left} />
       <SignalHandle type="source" position={Position.Right} />
       {selected && !editing ? <TextToolbar record={record} /> : null}
+      {selected ? (
+        <div className="absolute -top-7 right-0 z-10 flex items-center gap-0.5 rounded-full border border-border/70 bg-card p-0.5 shadow-sm">
+          <button
+            type="button"
+            aria-pressed={editing}
+            className={`nodrag rounded-full px-2 py-0.5 text-[10px] ${
+              editing ? "bg-secondary text-foreground" : "text-muted-foreground"
+            }`}
+            onClick={() => setEditing(true)}
+          >
+            Markdown
+          </button>
+          <button
+            type="button"
+            aria-pressed={!editing}
+            className={`nodrag rounded-full px-2 py-0.5 text-[10px] ${
+              editing ? "text-muted-foreground" : "bg-secondary text-foreground"
+            }`}
+            onClick={() => save()}
+          >
+            Ansicht
+          </button>
+        </div>
+      ) : null}
       {editing ? (
-        <textarea
-          ref={areaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setText(record.content ?? "");
-              setEditing(false);
-            }
-          }}
-          placeholder="Text – Überschriften mit #, Listen mit - oder 1."
-          rows={1}
-          style={boxStyle}
-          className={`nodrag nowheel h-full w-full resize-none rounded-md px-1 outline-none ring-1 ring-ring/40 placeholder:text-muted-foreground/60 ${size.className}`}
-        />
+        <div className="flex h-full w-full flex-col gap-1">
+          <textarea
+            ref={areaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setText(record.content ?? "");
+                setEditing(false);
+              }
+            }}
+            placeholder="Text – Überschriften mit #, Listen mit - oder 1."
+            rows={1}
+            style={boxStyle}
+            className={`nodrag nowheel min-h-[40%] flex-1 w-full resize-none rounded-md px-1 outline-none ring-1 ring-ring/40 placeholder:text-muted-foreground/60 ${size.className}`}
+          />
+          <div className="nowheel nodrag flex-1 overflow-auto rounded-md border border-dashed border-border/70 px-1">
+            <div className="sticky top-0 bg-card/80 text-[9px] uppercase tracking-wide text-muted-foreground">
+              Vorschau
+            </div>
+            <div style={boxStyle} className={`${size.className} ${formatted ? "" : "whitespace-pre-wrap"}`}>
+              {text ? formatted ? <Markdown source={text} /> : text : (
+                <span className="text-muted-foreground/60">Noch kein Text</span>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
         <div
           onDoubleClick={() => setEditing(true)}
