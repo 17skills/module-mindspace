@@ -2532,16 +2532,36 @@ function BoardPage() {
                 color: "var(--edge)",
               },
             }}
-            onNodesChange={onNodesChange}
+            onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={(_, node) => {
+              if (manualSize.current.has(node.id)) return;
               ensureReadableLayout(node.id);
               scheduleAutoHeight(node.id);
             }}
+            onNodeDragStart={() => {
+              interacting.current = true;
+              suppressMeasure.current = Date.now() + 800;
+              setMenu(null);
+            }}
             onNodeDragStop={(_, node) => {
+              interacting.current = false;
+              suppressMeasure.current = Date.now() + 500;
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
               syncZone(node.id, node.position.x, node.position.y);
+            }}
+            onSelectionDragStart={() => {
+              interacting.current = true;
+              suppressMeasure.current = Date.now() + 800;
+            }}
+            onSelectionDragStop={(_, dragged) => {
+              interacting.current = false;
+              suppressMeasure.current = Date.now() + 500;
+              for (const node of dragged) {
+                updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
+                syncZone(node.id, node.position.x, node.position.y);
+              }
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
