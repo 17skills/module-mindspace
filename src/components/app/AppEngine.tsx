@@ -46,7 +46,6 @@ import {
   resolveLayout,
   snapFreeLayout,
   TILE_TYPES,
-  updateFreeLayout,
   WIDE_TYPES,
 } from "@/lib/app-layout";
 import type { AppGridItem, AppLayout } from "@/lib/zones";

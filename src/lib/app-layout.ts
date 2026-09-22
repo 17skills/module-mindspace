@@ -228,11 +228,8 @@ export function snapFreeLayout(
   if (snapped === layout) {
     return { layout: updateFreeLayout(layout, id, patch), guides: {} };
   }
-  return {
-    layout: snapped,
-    guides: {
-      vertical: xSnap?.target,
-      horizontal: ySnap?.target,
-    },
-  };
+  const guides: FreeLayoutGuides = {};
+  if (xSnap) guides.vertical = xSnap.target;
+  if (ySnap) guides.horizontal = ySnap.target;
+  return { layout: snapped, guides };
 }
