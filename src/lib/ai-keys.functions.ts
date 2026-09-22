@@ -64,7 +64,31 @@ async function listKeys(db: SupabaseClient, userId: string) {
       modelHint: row.model_hint,
       updatedAt: String(row.updated_at ?? ""),
     }));
-  return { keys, useByok: settings.useByok, byokProvider: settings.byokProvider };
+  return {
+    keys,
+    useByok: settings.useByok,
+    byokProvider: settings.byokProvider,
+    routing: settings.aiRouting,
+    budgets: settings.aiBudgets,
+  };
+}
+
+async function patchSettings(
+  db: SupabaseClient,
+  userId: string,
+  patch: (current: ReturnType<typeof settingsFrom>) => ReturnType<typeof settingsFrom>,
+) {
+  const { data: profile } = await db
+    .from("profiles")
+    .select("settings")
+    .eq("id", userId)
+    .maybeSingle();
+  const next = patch(settingsFrom((profile as { settings?: unknown } | null)?.settings));
+  const { error } = await db
+    .from("profiles")
+    .update({ settings: next as unknown as Json, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) throw new Error("Einstellung konnte nicht gespeichert werden");
 }
 
 /** Liste der eigenen Schlüssel (nur maskiert) plus BYOK-Schalter. */
