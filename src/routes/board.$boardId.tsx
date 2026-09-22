@@ -394,7 +394,6 @@ function toFlowNode(record: NodeRecord): Node {
     ...(kind === "zone"
       ? { zIndex: -2, connectable: true, deletable: true, draggable: !zoneLocked }
       : {}),
-    ...(kind === "text" ? { connectable: false } : {}),
   };
 }
 
