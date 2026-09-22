@@ -116,6 +116,7 @@ export const NODE_ACCENT: Record<string, string> = {
   quotes: "var(--primary)",
   map: "var(--doc)",
   risk: "var(--primary)",
+  inspect: "var(--doc)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -141,4 +142,5 @@ export const NODE_LABEL: Record<string, string> = {
   quotes: "Kursverlauf",
   map: "Karte",
   risk: "Risiko",
+  inspect: "Inspektion",
 };

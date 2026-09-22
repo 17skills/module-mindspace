@@ -81,6 +81,7 @@ import {
   DecisionNode,
   SignalNode,
   QuotesNode,
+  InspectNode,
   MapNode,
   RiskNode,
   TEXT_SIZES,
@@ -167,6 +168,7 @@ const nodeTypes = {
   quotes: QuotesNode,
   map: MapNode,
   risk: RiskNode,
+  inspect: InspectNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -190,6 +192,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   quotes: { width: 460, height: 420 },
   map: { width: 520, height: 420 },
   risk: { width: 760, height: 720 },
+  inspect: { width: 520, height: 560 },
   table: { width: 520, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -210,6 +213,7 @@ const READABLE_WIDTH: Record<string, number> = {
   quotes: 500,
   map: 560,
   risk: 760,
+  inspect: 520,
 };
 
 const MODULE_GAP = 32;
@@ -224,6 +228,7 @@ const AUTO_HEIGHT_TYPES = new Set([
   "decision",
   "signal",
   "risk",
+  "inspect",
 ]);
 const AUTO_MIN_HEIGHT: Record<string, number> = {
   note: 180,
@@ -289,6 +294,7 @@ const DASHBOARD_MODULES = [
   { id: "quotes", label: "Kursverlauf", title: "Kurse", metadata: { days: 7, currency: "eur" } },
   { id: "map", label: "Karte (GIS)", title: "Karte", metadata: { columns: {}, weather: {}, zoom: 5 } },
   { id: "risk", label: "Risikomatrix (ISO 55001)", title: "Risikomatrix", metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 } },
+  { id: "inspect", label: "Inspektion (Fotos)", title: "Trafostations-Inspektion", metadata: { findings: [], rates: {} } },
 ] as const;
 
 /** Space a template group leaves around its fields. */

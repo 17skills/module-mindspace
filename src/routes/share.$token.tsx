@@ -33,6 +33,7 @@ import {
   DecisionNode,
   SignalNode,
   QuotesNode,
+  InspectNode,
   MapNode,
   RiskNode,
   TextNode,
@@ -84,6 +85,7 @@ const nodeTypes = {
   quotes: QuotesNode,
   map: MapNode,
   risk: RiskNode,
+  inspect: InspectNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
