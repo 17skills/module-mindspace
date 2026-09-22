@@ -80,6 +80,7 @@ ${data.context.slice(0, 40_000)}`;
 
     const cfg = await loadAiKeyConfig(context.supabase, context.userId);
     const text = await runStructured(cfg, {
+      fn: "factor",
       prompt,
       schemaName: "factor_weights",
       schema: RESULT_SCHEMA,
