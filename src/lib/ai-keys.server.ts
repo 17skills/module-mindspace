@@ -625,10 +625,50 @@ export async function runTranscription(
   cfg: AiKeyConfig,
   audio: { bytes: ArrayBuffer; mime: string },
 ): Promise<TranscriptionResult> {
-  const entry = cfg.useByok ? cfg.keys[cfg.provider] : undefined;
-  if (entry && cfg.provider === "openai") return openAiTranscription(entry, audio.bytes, audio.mime);
-  if (entry && cfg.provider === "google") return googleTranscription(entry, audio.bytes, audio.mime);
-  return gatewayTranscription(audio.bytes, audio.mime);
+  const route = resolveRoute(cfg, "transcription");
+  const size = "x".repeat(Math.min(audio.bytes.byteLength / 50, 200_000));
+
+  if (route.entry && (route.provider === "openai" || route.provider === "google")) {
+    try {
+      const result =
+        route.provider === "openai"
+          ? await openAiTranscription(route.entry, audio.bytes, audio.mime)
+          : await googleTranscription(route.entry, audio.bytes, audio.mime);
+      await recordUsage({
+        userId: cfg.userId,
+        provider: route.provider,
+        fn: "transcription",
+        model: route.model ?? "",
+        inputText: size,
+        outputText: result.text,
+        ok: true,
+      });
+      return result;
+    } catch {
+      await recordUsage({
+        userId: cfg.userId,
+        provider: route.provider,
+        fn: "transcription",
+        model: route.model ?? "",
+        inputText: size,
+        outputText: "",
+        ok: false,
+      });
+      /* Sicherer Fallback auf den mitgelieferten Zugang */
+    }
+  }
+
+  const fallback = await gatewayTranscription(audio.bytes, audio.mime);
+  await recordUsage({
+    userId: cfg.userId,
+    provider: "lovable",
+    fn: "transcription",
+    model: "google/gemini-3.5-transcribe",
+    inputText: size,
+    outputText: fallback.text,
+    ok: true,
+  });
+  return fallback;
 }
 
 // ---------- Verbindungs-Test ----------
