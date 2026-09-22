@@ -72,7 +72,7 @@ export const getEmbedZone = createServerFn({ method: "POST" })
         title: (zone.title as string | null) ?? "Feld",
         content: (zone.content as string | null) ?? "",
       },
-      nodes: members,
-      edges,
+      nodes: members as unknown as JsonRow[],
+      edges: (edges ?? []) as unknown as JsonRow[],
     };
   });
