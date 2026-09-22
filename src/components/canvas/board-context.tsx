@@ -88,6 +88,8 @@ export type BoardApi = {
   runDecide: (id: string) => void;
   /** Run the selected tool of an external MCP server and store its answer. */
   runMcp: (id: string) => void;
+  /** Create a tool card next to an MCP hub card and connect both. */
+  spawnMcpTool: (hubId: string, serverId: string, serverName: string, tool: string) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
@@ -122,6 +124,7 @@ export const NODE_ACCENT: Record<string, string> = {
   risk: "var(--primary)",
   inspect: "var(--doc)",
   mcp: "var(--chat)",
+  mcphub: "var(--chat)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -149,4 +152,5 @@ export const NODE_LABEL: Record<string, string> = {
   risk: "Risiko",
   inspect: "Inspektion",
   mcp: "MCP-Werkzeug",
+  mcphub: "MCP-Hub",
 };

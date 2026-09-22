@@ -58,11 +58,11 @@ import {
 } from "@/lib/factor-score";
 import { suggestFactorWeights } from "@/lib/factor.functions";
 import { runApiModule } from "@/lib/api-module.functions";
-import { listMcpServers } from "@/lib/mcp-client.functions";
+import { listMcpServers, refreshMcpServer } from "@/lib/mcp-client.functions";
 import { mcpPreview, mcpValue, readMcp } from "@/lib/mcp-module";
 import { McpConnectDialog } from "./mcp-connect-dialog";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { analyzeInspection } from "@/lib/inspection.functions";
 import {
   CLUSTERS,
@@ -5380,6 +5380,218 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
       <pre className="nowheel nodrag flex-1 overflow-auto whitespace-pre-wrap break-words px-3 py-2 font-mono text-[10px] leading-snug text-muted-foreground">
         {mcpPreview(record) || "Noch keine Antwort."}
       </pre>
+    </div>
+  );
+});
+
+/** Zeigt einen externen MCP-Server mit Status und Werkzeugliste; legt daraus Werkzeugkarten an. */
+export const McpHubNode = memo(function McpHubNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode, spawnMcpTool } = useBoard();
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const serverId = typeof meta["mcpServerId"] === "string" ? (meta["mcpServerId"] as string) : "";
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [filter, setFilter] = useState("");
+  const queryClient = useQueryClient();
+  const servers = useQuery({
+    queryKey: ["mcp-servers"],
+    queryFn: () => listMcpServers(),
+    staleTime: 60_000,
+  });
+  const server = servers.data?.find((item) => item.id === serverId);
+  const tools = (server?.tools ?? []).filter((item) =>
+    filter.trim()
+      ? `${item.name} ${item.title ?? ""} ${item.description ?? ""}`
+          .toLowerCase()
+          .includes(filter.trim().toLowerCase())
+      : true,
+  );
+
+  const status: "none" | "ok" | "error" | "stale" = !server
+    ? "none"
+    : server.lastError
+      ? "error"
+      : server.lastCheckAt
+        ? "ok"
+        : "stale";
+  const statusColor =
+    status === "ok"
+      ? "var(--signal-ok, #4f8a5b)"
+      : status === "error"
+        ? "var(--signal-error, #de5a3a)"
+        : "var(--signal-warn, #d97706)";
+  const statusText =
+    status === "none"
+      ? "kein Server gewählt"
+      : status === "error"
+        ? (server?.lastError ?? "Fehler")
+        : status === "ok"
+          ? `geprüft ${new Date(server!.lastCheckAt!).toLocaleString("de-DE")}`
+          : "noch nicht geprüft";
+
+  function patch(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
+  }
+
+  async function check() {
+    if (!serverId) return;
+    setChecking(true);
+    try {
+      await refreshMcpServer({ data: { id: serverId } });
+      await queryClient.invalidateQueries({ queryKey: ["mcp-servers"] });
+    } catch (problem) {
+      toast.error(problem instanceof Error ? problem.message : "Prüfung fehlgeschlagen");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+      data-selected={Boolean(selected)}
+      style={{ borderTop: `3px solid ${NODE_ACCENT["mcphub"] ?? "var(--primary)"}` }}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
+      <SignalHandle type="source" position={Position.Right} />
+
+      <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
+        <Plug className="size-3.5 shrink-0 text-muted-foreground" />
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "MCP-Hub"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "MCP-Hub" })}
+        />
+        <span
+          className="size-2 shrink-0 rounded-full"
+          style={{ background: statusColor }}
+          title={statusText}
+        />
+      </div>
+
+      <div className="grid gap-1.5 border-b px-3 py-2">
+        <Select
+          value={serverId}
+          onValueChange={(next) => {
+            if (next === "__new__") {
+              setConnectOpen(true);
+              return;
+            }
+            const chosen = servers.data?.find((item) => item.id === next);
+            patch({ mcpServerId: next, mcpServerName: chosen?.name ?? "" });
+            if (chosen && (!record.title || record.title === "MCP-Hub")) {
+              updateNode(record.id, { title: chosen.name });
+            }
+          }}
+        >
+          <SelectTrigger className="nodrag h-8 text-xs" aria-label="MCP-Server">
+            <SelectValue placeholder={servers.isLoading ? "Lade Server …" : "Server wählen"} />
+          </SelectTrigger>
+          <SelectContent>
+            {(servers.data ?? []).map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {item.name}
+              </SelectItem>
+            ))}
+            <SelectItem value="__new__">+ Neuen Server verbinden …</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <McpConnectDialog
+          open={connectOpen}
+          onOpenChange={setConnectOpen}
+          onConnected={(created) => {
+            patch({ mcpServerId: created.id, mcpServerName: created.name });
+            updateNode(record.id, { title: created.name });
+          }}
+        />
+
+        {server ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 font-mono text-[10px] text-muted-foreground">
+            <dt>Adresse</dt>
+            <dd className="truncate text-foreground">{server.url}</dd>
+            <dt>Dienst</dt>
+            <dd className="truncate">{server.serverName || "unbekannt"}</dd>
+            <dt>Anmeldung</dt>
+            <dd>
+              {server.authKind === "none"
+                ? "offen"
+                : server.authKind === "bearer"
+                  ? "Zugangsschlüssel"
+                  : `Kopffeld ${server.headerName ?? ""}`}
+              {server.hasToken ? " · hinterlegt" : ""}
+            </dd>
+            <dt>Werkzeuge</dt>
+            <dd>{server.tools.length}</dd>
+          </dl>
+        ) : null}
+      </div>
+
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="nodrag h-7 rounded-full text-xs"
+          disabled={!serverId || checking}
+          onClick={() => void check()}
+        >
+          <RefreshCw className={`mr-1 size-3 ${checking ? "animate-spin" : ""}`} />
+          {checking ? "Prüft …" : "Prüfen"}
+        </Button>
+        <span className="truncate text-[10px]" style={{ color: statusColor }}>
+          {statusText}
+        </span>
+      </div>
+
+      {server && server.tools.length > 3 ? (
+        <div className="border-b px-3 py-1.5">
+          <input
+            value={filter}
+            placeholder="Werkzeug suchen"
+            aria-label="Werkzeug suchen"
+            className="nodrag w-full rounded-md border border-border/70 bg-transparent px-2 py-1 text-[11px] outline-none"
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+      ) : null}
+
+      <ul className="nowheel nodrag flex-1 divide-y overflow-auto">
+        {tools.map((item) => (
+          <li key={item.name} className="flex items-start gap-2 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-mono text-[11px] text-foreground">
+                {item.title || item.name}
+              </p>
+              {item.description ? (
+                <p className="line-clamp-2 text-[10px] text-muted-foreground">{item.description}</p>
+              ) : null}
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="nodrag h-6 shrink-0 rounded-full px-2 text-[10px]"
+              onClick={() => spawnMcpTool(record.id, server!.id, server!.name, item.name)}
+            >
+              <Plus className="mr-0.5 size-3" />
+              Karte
+            </Button>
+          </li>
+        ))}
+        {server && tools.length === 0 ? (
+          <li className="px-3 py-3 text-[11px] text-muted-foreground">
+            Keine Werkzeuge gefunden – prüfe die Verbindung.
+          </li>
+        ) : null}
+        {!server ? (
+          <li className="px-3 py-3 text-[11px] text-muted-foreground">
+            Wähle oben einen Server oder verbinde einen neuen Dienst.
+          </li>
+        ) : null}
+      </ul>
     </div>
   );
 });
