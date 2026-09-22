@@ -1618,6 +1618,39 @@ function BoardPage() {
     [updateNode],
   );
 
+  /** Create a tool card next to a hub card and connect both. */
+  const spawnMcpTool = useCallback(
+    (hubId: string, serverId: string, serverName: string, tool: string) => {
+      const hub = recordsRef.current[hubId];
+      if (!hub) return;
+      const siblings = Object.values(recordsRef.current).filter(
+        (item) => item.type === "mcp" && (item.metadata as Record<string, unknown> | null)?.["mcpHubId"] === hubId,
+      ).length;
+      void createRecord({
+        type: "mcp",
+        title: tool,
+        content: "",
+        position_x: hub.position_x + (hub.width ?? 380) + 60,
+        position_y: hub.position_y + siblings * 60,
+        metadata: {
+          mcpServerId: serverId,
+          mcpServerName: serverName,
+          mcpTool: tool,
+          mcpArgs: "{}",
+          pick: "",
+          mcpHubId: hubId,
+        },
+      })
+        .then((created) => {
+          createEdge(hub.id, created.id);
+        })
+        .catch((error: unknown) => {
+          toast.error(error instanceof Error ? error.message : "Karte konnte nicht angelegt werden");
+        });
+    },
+    [createRecord, createEdge],
+  );
+
   /** Let a decision module judge the context of its connections. */
   const runDecide = useCallback(
     (id: string) => {
@@ -2280,6 +2313,7 @@ function BoardPage() {
       runApi,
       runDecide,
       runMcp,
+      spawnMcpTool,
     }),
 
     [
@@ -2307,6 +2341,7 @@ function BoardPage() {
       runApi,
       runDecide,
       runMcp,
+      spawnMcpTool,
     ],
   );
 
@@ -3232,6 +3267,31 @@ function BoardPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">MCP-Werkzeug anlegen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="MCP-Hub anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "mcphub",
+                        title: "MCP-Hub",
+                        content: "",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { mcpServerId: "", mcpServerName: "" },
+                      });
+                    }}
+                  >
+                    <Server className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">MCP-Hub anlegen</TooltipContent>
               </Tooltip>
 
               <Tooltip>
