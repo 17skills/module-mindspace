@@ -339,7 +339,20 @@ export type RiskContext = {
   ageYears: number | null;
   ageLevel: number | null;
   /** Weighted factor cards connected to this matrix, keyed by card id. */
-  factors?: Record<string, { label: string; score: number; level: number; count: number }>;
+  factors?: Record<
+    string,
+    {
+      label: string;
+      /** Score after the edge labels were applied. */
+      score: number;
+      level: number;
+      count: number;
+      /** Card score before the edge labels. */
+      raw?: number;
+      /** Readable chain of the edge labels, e.g. "50 % · x * 0,8". */
+      transform?: string;
+    }
+  >;
 };
 
 function num(value: number | null, digits = 0): string | null {
@@ -392,11 +405,16 @@ function baseMeasure(field: RiskField, ctx: RiskContext): RiskMeasure {
   }
   if (field.auto === "factor") {
     const factor = ctx.factors?.[field.factorId ?? ""];
+    const scaled = factor?.transform
+      ? ` (${(factor.raw ?? factor.score).toFixed(1)} × ${factor.transform})`
+      : "";
     return {
-      text: factor ? `${factor.score.toFixed(1)} / 10 gewichtet` : null,
+      text: factor ? `${factor.score.toFixed(1)} / 10 gewichtet${scaled}` : null,
       limit: "6,0 / 10",
       breach: (factor?.score ?? 0) >= 6,
-      rule: "Eintritt = gewichteter Faktorwert ÷ 2 (1 – 5)",
+      rule: factor?.transform
+        ? `Eintritt = Faktorwert × Verbindungsformel (${factor.transform}) ÷ 2 (1 – 5)`
+        : "Eintritt = gewichteter Faktorwert ÷ 2 (1 – 5)",
       source: factor ? `${factor.label} · ${factor.count} Parameter` : "Faktor nicht verbunden",
     };
   }

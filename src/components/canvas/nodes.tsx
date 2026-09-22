@@ -38,12 +38,13 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { calcInputs, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
+import { calcInputs, edgeValue, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { readAgent, readAssignment } from "@/lib/zones";
 import {
   factorText,
   normalizeWeights,
   paramsFromText,
+  levelOf,
   readFactor,
   readThemeWeight,
   themeIndex,
@@ -3403,44 +3404,57 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     return { wind, rain };
   }, [points, weather]);
 
-  /** Factor cards connected to this matrix, collected across groups. */
-  const evidence = useMemo(() => {
+  /** Factor cards connected to this matrix, with the labels of the path to it. */
+  const evidencePaths = useMemo(() => {
     const byId = Object.fromEntries(
       flowNodes.map((node) => [node.id, (node.data as { record: NodeRecord }).record]),
     ) as Record<string, NodeRecord>;
     const visited = new Set<string>([id]);
-    const pending = [id];
-    const notes: NodeRecord[] = [];
+    const pending: Array<{ nodeId: string; labels: string[] }> = [{ nodeId: id, labels: [] }];
+    const found: Array<{ record: NodeRecord; labels: string[] }> = [];
     while (pending.length) {
-      const target = pending.shift();
-      if (!target) continue;
+      const step = pending.shift();
+      if (!step) continue;
       for (const edge of edges) {
-        if (edge.target !== target || visited.has(edge.source)) continue;
+        if (edge.target !== step.nodeId || visited.has(edge.source)) continue;
         visited.add(edge.source);
         const source = byId[edge.source];
         if (!source) continue;
-        if (source.type === "note") notes.push(source);
-        if (source.type === "note" || source.type === "frame") pending.push(source.id);
+        const label = typeof edge.label === "string" ? edge.label.trim() : "";
+        const labels = label ? [label, ...step.labels] : step.labels;
+        if (source.type === "note") found.push({ record: source, labels });
+        if (source.type === "note" || source.type === "frame")
+          pending.push({ nodeId: source.id, labels });
       }
     }
-    return notes;
+    return found;
   }, [edges, flowNodes, id]);
 
-  /** Weighted score of every connected factor card, keyed by card id. */
+  const evidence = useMemo(() => evidencePaths.map((item) => item.record), [evidencePaths]);
+
+  /** Weighted score of every connected factor card, scaled by the edge labels. */
   const factors = useMemo(() => {
-    const map: Record<string, { label: string; score: number; level: number; count: number }> = {};
-    for (const note of evidence) {
+    const map: Record<
+      string,
+      { label: string; score: number; level: number; count: number; raw: number; transform: string }
+    > = {};
+    for (const { record: note, labels } of evidencePaths) {
       const factor = readFactor(note);
       if (!factor.params.length) continue;
+      let value: number | null = factor.score;
+      for (const label of labels) value = edgeValue(label, value);
+      const scaled = value == null ? factor.score : Math.min(10, Math.max(0, Math.round(value * 10) / 10));
       map[note.id] = {
         label: note.title ?? "Faktor",
-        score: factor.score,
-        level: factor.level,
+        score: scaled,
+        level: levelOf(scaled),
         count: factor.params.length,
+        raw: factor.score,
+        transform: labels.join(" · "),
       };
     }
     return map;
-  }, [evidence]);
+  }, [evidencePaths]);
 
   /** Themes: background fields with a weight, scored by the factor cards on them. */
   const themes = useMemo<ThemeScore[]>(() => {
