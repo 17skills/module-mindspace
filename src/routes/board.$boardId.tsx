@@ -18,7 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, LayoutGrid, Scale, Shapes, Tag, TagOff } from "lucide-react";
+import { Globe, LayoutGrid, Scale, Shapes, Tag } from "lucide-react";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { readApi, readQuestions } from "@/lib/api-module";
@@ -2749,7 +2749,7 @@ function BoardPage() {
                     aria-pressed={edgeLabelsOn}
                     onClick={() => setEdgeLabelsVisible(!edgeLabelsOn)}
                   >
-                    {edgeLabelsOn ? <Tag className="size-5" /> : <TagOff className="size-5" />}
+                    <Tag className="size-5" style={{ opacity: edgeLabelsOn ? 1 : 0.45 }} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
