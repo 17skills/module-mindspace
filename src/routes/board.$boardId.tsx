@@ -2717,6 +2717,7 @@ function BoardPage() {
                 <TooltipTrigger asChild>
                   <Button
                     size="icon"
+                    variant="ghost"
                     className={toolBtn()}
                     aria-label="Chat-Modul anlegen"
                     onClick={() => {
