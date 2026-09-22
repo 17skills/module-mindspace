@@ -5349,6 +5349,14 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
     patch({ mcpBindings: bindings });
   }
 
+  /** Legt fest, welcher Teil einer verbundenen Textkarte als Kontext dient. */
+  function setContext(nodeId: string, choice: string) {
+    const next = { ...config.context };
+    if (choice) next[nodeId] = choice;
+    else delete next[nodeId];
+    patch({ mcpContext: next });
+  }
+
 
 
 
