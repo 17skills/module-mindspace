@@ -5264,13 +5264,13 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
 /** Ruft ein Werkzeug eines externen MCP-Servers auf und hält dessen Antwort. */
 export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode, runMcp, sourcesFor } = useBoard();
+  const { updateNode, runMcp } = useBoard();
   const config = readMcp(record);
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["mcpRunning"] === true;
   const value = mcpValue(record);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [section, setSection] = useState<"input" | "output" | "result">("input");
+  const [section, setSection] = useState<"input" | "context" | "output" | "result">("input");
   const servers = useQuery({
     queryKey: ["mcp-servers"],
     queryFn: () => listMcpServers(),
@@ -5282,7 +5282,9 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const fields = useMemo(() => schemaFields(tool?.inputSchema), [tool?.inputSchema]);
   const missing = missingRequired(fields, config.inputs);
   const paths = useMemo(() => suggestPaths(record.content), [record.content]);
-  const linkable = sourcesFor(record.id).filter((item) => item.id !== record.id);
+  const linked = useConnectedRecords(record.id);
+  const linkable = linked.filter((item) => item.id !== record.id);
+  const notes = contextCards(linked);
 
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
@@ -5420,6 +5422,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
         {(
           [
             ["input", "Eingaben"],
+            ["context", notes.length ? `Kontext (${notes.length})` : "Kontext"],
             ["output", "Ausgabe"],
             ["result", "Antwort"],
           ] as const
@@ -5542,6 +5545,42 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
           >
             {config.mode === "json" ? "Geführte Felder verwenden" : "Als JSON bearbeiten"}
           </button>
+        </div>
+      ) : section === "context" ? (
+        <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
+          {notes.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground">
+              Verbinde eine Textkarte mit dieser Karte – ihr Inhalt steht dann hier als Kontext
+              bereit und kann in jedes Eingabefeld übernommen werden.
+            </p>
+          ) : (
+            notes.map((note) => (
+              <div key={note.id} className="rounded-md border border-border/70 px-2 py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-[10px] font-medium">{note.title || "Text"}</span>
+                  <button
+                    type="button"
+                    className="nodrag ml-auto rounded-full bg-secondary px-2 py-0.5 text-[9px]"
+                    onClick={() => {
+                      const target = fields.find((field) => !config.bindings[field.name]);
+                      if (!target) {
+                        toast.info("Wähle zuerst ein Werkzeug mit Eingabefeldern");
+                        return;
+                      }
+                      setInput(target.name, note.content ?? "");
+                      setSection("input");
+                      toast.success(`Text in „${target.title}“ übernommen`);
+                    }}
+                  >
+                    In Eingabe übernehmen
+                  </button>
+                </div>
+                <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[10px] text-muted-foreground">
+                  {note.content}
+                </p>
+              </div>
+            ))
+          )}
         </div>
       ) : section === "output" ? (
         <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
