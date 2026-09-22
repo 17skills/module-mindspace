@@ -1,4 +1,6 @@
 /** Persönliche Einstellungen eines Kontos – geräteübergreifend in `profiles.settings`. */
+import type { AiProvider } from "@/lib/ai-providers";
+
 export type UserSettings = {
   theme: "light" | "dark" | "system";
   gridDefault: boolean;
@@ -8,6 +10,8 @@ export type UserSettings = {
   edgeLabels: boolean;
   notifyInvites: boolean;
   notifyAgents: boolean;
+  useByok: boolean;
+  byokProvider: AiProvider;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -19,6 +23,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   edgeLabels: true,
   notifyInvites: true,
   notifyAgents: false,
+  useByok: false,
+  byokProvider: "openai",
 };
 
 export function settingsFrom(value: unknown): UserSettings {
@@ -32,6 +38,8 @@ export function settingsFrom(value: unknown): UserSettings {
     edgeLabels: raw.edgeLabels ?? DEFAULT_SETTINGS.edgeLabels,
     notifyInvites: raw.notifyInvites ?? DEFAULT_SETTINGS.notifyInvites,
     notifyAgents: raw.notifyAgents ?? DEFAULT_SETTINGS.notifyAgents,
+    useByok: raw.useByok ?? DEFAULT_SETTINGS.useByok,
+    byokProvider: raw.byokProvider ?? DEFAULT_SETTINGS.byokProvider,
   };
 }
 
@@ -59,9 +67,10 @@ export const PROCESSING_PURPOSES = [
     purpose: "Betrieb der Anwendung und Speicherung deiner Arbeitsergebnisse",
   },
   {
-    service: "KI-Auswertung (Lovable AI Gateway)",
+    service: "KI-Auswertung (Lovable AI Gateway oder dein eigener KI-Anbieter)",
     data: "Von dir übergebene Texte und Fotos eines Moduls",
-    purpose: "Analyse, Bewertung und Vorschläge – nur nach Einwilligung",
+    purpose:
+      "Analyse, Bewertung und Vorschläge – nur nach Einwilligung. Mit eigenem Schlüssel (BYOK) gehen die Daten an dein eigenes Anbieterkonto, sonst an das Lovable AI Gateway.",
   },
   {
     service: "Kartendienst",
