@@ -337,7 +337,7 @@ async function anthropicStructured(
 async function googleFetchImage(url: string): Promise<{ mime: string; data: string }> {
   if (url.startsWith("data:")) {
     const match = url.match(/^data:([^;]+);base64,(.+)$/s);
-    if (match) return { mime: match[1], data: match[2] };
+    if (match) return { mime: match[1] ?? "image/png", data: match[2] ?? "" };
   }
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Bild konnte nicht geladen werden (${res.status})`);
