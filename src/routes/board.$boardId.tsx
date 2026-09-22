@@ -435,6 +435,10 @@ function BoardPage() {
   const appliedHeights = useRef(new Map<string, number>());
   /** Ignore DOM mutations caused by our own layout writes until this timestamp. */
   const suppressMeasure = useRef(0);
+  /** Modules the user sized by hand — their height stays untouched. */
+  const manualSize = useRef(new Set<string>());
+  /** True while the user drags or resizes a module. */
+  const interacting = useRef(false);
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const nodesRef = useRef(nodes);
@@ -1762,17 +1766,19 @@ function BoardPage() {
 
   const scheduleAutoHeight = useCallback(
     (id?: string) => {
-      const ids = id
-        ? [id]
-        : Object.values(recordsRef.current)
-            .filter((record) => AUTO_HEIGHT_TYPES.has(record.type) && !record.parent_id)
-            .map((record) => record.id);
+      const ids = (
+        id
+          ? [id]
+          : Object.values(recordsRef.current)
+              .filter((record) => AUTO_HEIGHT_TYPES.has(record.type) && !record.parent_id)
+              .map((record) => record.id)
+      ).filter((nodeId) => !manualSize.current.has(nodeId));
       for (const nodeId of ids) {
         const previous = heightTimers.current.get(nodeId);
         if (previous) clearTimeout(previous);
         const timer = setTimeout(() => {
           heightTimers.current.delete(nodeId);
-          if (Date.now() < suppressMeasure.current) return;
+          if (interacting.current || Date.now() < suppressMeasure.current) return;
           const root = flowWrapRef.current;
           const nodeElement = root?.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`);
           if (!nodeElement) return;
@@ -1794,7 +1800,7 @@ function BoardPage() {
     const root = flowWrapRef.current;
     if (!root) return;
     const observer = new MutationObserver((mutations) => {
-      if (Date.now() < suppressMeasure.current) return;
+      if (interacting.current || Date.now() < suppressMeasure.current) return;
       const ids = new Set<string>();
       for (const mutation of mutations) {
         const element =
@@ -1802,7 +1808,8 @@ function BoardPage() {
             ? mutation.target.closest<HTMLElement>(".react-flow__node")
             : null;
         const id = element?.dataset["id"];
-        if (id && AUTO_HEIGHT_TYPES.has(recordsRef.current[id]?.type ?? "")) ids.add(id);
+        if (!id || manualSize.current.has(id)) continue;
+        if (AUTO_HEIGHT_TYPES.has(recordsRef.current[id]?.type ?? "")) ids.add(id);
       }
       for (const id of ids) scheduleAutoHeight(id);
     });
@@ -1813,6 +1820,36 @@ function BoardPage() {
       heightTimers.current.clear();
     };
   }, [ready, scheduleAutoHeight]);
+
+  /** Keep manual resizes: persist the new size and stop auto-height for that module. */
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      onNodesChange(changes);
+      for (const change of changes) {
+        if (change.type !== "dimensions" || !change.dimensions) continue;
+        const record = recordsRef.current[change.id];
+        if (!record) continue;
+        if (change.resizing) {
+          interacting.current = true;
+          suppressMeasure.current = Date.now() + 800;
+          continue;
+        }
+        if (change.resizing !== false) continue;
+        interacting.current = false;
+        const width = Math.round(change.dimensions.width);
+        const height = Math.round(change.dimensions.height);
+        if (width < 40 || height < 40) continue;
+        manualSize.current.add(change.id);
+        appliedHeights.current.set(change.id, height);
+        suppressMeasure.current = Date.now() + 800;
+        if (record.type === "zone" || record.type === "frame") continue;
+        if (record.width === width && record.height === height) continue;
+        updateNode(change.id, { width, height });
+      }
+    },
+    [onNodesChange, updateNode],
+  );
+
 
   /** Persist a field size; a template group scales its fields along. */
   const resizeZone = useCallback(
@@ -2495,16 +2532,36 @@ function BoardPage() {
                 color: "var(--edge)",
               },
             }}
-            onNodesChange={onNodesChange}
+            onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={(_, node) => {
+              if (manualSize.current.has(node.id)) return;
               ensureReadableLayout(node.id);
               scheduleAutoHeight(node.id);
             }}
+            onNodeDragStart={() => {
+              interacting.current = true;
+              suppressMeasure.current = Date.now() + 800;
+              setMenu(null);
+            }}
             onNodeDragStop={(_, node) => {
+              interacting.current = false;
+              suppressMeasure.current = Date.now() + 500;
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
               syncZone(node.id, node.position.x, node.position.y);
+            }}
+            onSelectionDragStart={() => {
+              interacting.current = true;
+              suppressMeasure.current = Date.now() + 800;
+            }}
+            onSelectionDragStop={(_, dragged) => {
+              interacting.current = false;
+              suppressMeasure.current = Date.now() + 500;
+              for (const node of dragged) {
+                updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
+                syncZone(node.id, node.position.x, node.position.y);
+              }
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
