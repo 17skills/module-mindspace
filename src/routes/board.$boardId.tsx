@@ -2467,6 +2467,25 @@ function BoardPage() {
 
       <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
 
+      <AppDialog
+        open={appOpen}
+        onOpenChange={setAppOpen}
+        boardId={boardId}
+        userId={user.id}
+        preselected={appPreselect}
+        candidates={nodes
+          .map((node) => records[node.id])
+          .filter(
+            (record): record is NonNullable<typeof record> =>
+              Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? ""),
+          )
+          .map((record) => ({
+            id: record.id,
+            title: record.title ?? "",
+            type: record.type,
+          }))}
+      />
+
       <LibraryDialog
         open={libraryOpen}
         onOpenChange={(next) => {
