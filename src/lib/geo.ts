@@ -1,6 +1,6 @@
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { readStructure } from "@/lib/structure";
-import { readInspection } from "@/lib/inspection";
+import { priorityColor, readInspection } from "@/lib/inspection";
 
 export type GeoPoint = {
   id: string;
@@ -11,6 +11,12 @@ export type GeoPoint = {
   klass: string;
   /** Impact / importance 1..5 when supplied by the data. */
   impact: number | null;
+  /** Optional pin colour override (e.g. inspection priority colour). */
+  color?: string | null;
+  /** Optional photo (data URL) shown on hover / selection. */
+  photo?: string | null;
+  /** Optional short report text shown on hover / selection. */
+  note?: string | null;
 };
 
 export type WeatherValue = {
@@ -131,6 +137,9 @@ export function pointsFromSources(sources: NodeRecord[], config: MapConfig): Geo
           lon: finding.lon,
           klass: finding.category,
           impact: Math.min(5, Math.max(1, Math.round((11 - finding.priority) / 2))),
+          color: priorityColor(finding.priority),
+          photo: finding.thumb ?? null,
+          note: [finding.finding, finding.action].filter(Boolean).join(" · "),
         });
       }
       continue;
