@@ -2,9 +2,9 @@
  * App-Bühne: stellt beliebige Scope-Module eigenständig dar – ohne Canvas.
  * Dieselbe Darstellung nutzt die ausgelieferte App und die Live-Vorschau im Studio.
  */
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ClientOnly } from "@tanstack/react-router";
-import { MapPin } from "lucide-react";
+import { Grip, MapPin, MoveDiagonal2 } from "lucide-react";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { MODULE_TYPE_LABEL } from "@/lib/apps";
 import { formatValue, readFormat, valueOfNode } from "@/lib/calc";
@@ -21,8 +21,16 @@ import {
   totalCost,
   type Finding,
 } from "@/lib/inspection";
-import { resolveLayout, TILE_TYPES, WIDE_TYPES } from "@/lib/app-layout";
-import type { AppLayout } from "@/lib/zones";
+import {
+  APP_GRID_COLUMNS,
+  APP_GRID_ROW_HEIGHT,
+  buildFreeLayout,
+  resolveLayout,
+  TILE_TYPES,
+  updateFreeLayout,
+  WIDE_TYPES,
+} from "@/lib/app-layout";
+import type { AppGridItem, AppLayout } from "@/lib/zones";
 
 const LeafletMap = lazy(() => import("@/components/canvas/LeafletMap"));
 
@@ -43,7 +51,7 @@ function Card({
 }) {
   return (
     <section
-      className={`rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)] ${className}`}
+      className={`h-full overflow-auto rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)] ${className}`}
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <span className="module-eyebrow truncate text-muted-foreground">{title}</span>
@@ -343,10 +351,18 @@ export function AppEngine({
   nodes,
   layout,
   actions,
+  moduleLayout = [],
+  editable = false,
+  compactPreview = false,
+  onModuleLayoutChange,
 }: {
   nodes: NodeRecord[];
   layout: AppLayout;
   actions?: ModuleAction | undefined;
+  moduleLayout?: AppGridItem[];
+  editable?: boolean;
+  compactPreview?: boolean;
+  onModuleLayoutChange?: (layout: AppGridItem[]) => void;
 }) {
   const mode = resolveLayout(layout, nodes.map((node) => node.type));
   if (!nodes.length) {
@@ -358,6 +374,19 @@ export function AppEngine({
   }
 
   const common = { nodes, actions };
+
+  if (mode === "free") {
+    return (
+      <FreeAppLayout
+        nodes={nodes}
+        actions={actions}
+        saved={moduleLayout}
+        editable={editable}
+        compact={compactPreview}
+        onChange={onModuleLayoutChange}
+      />
+    );
+  }
 
   if (mode === "feed") {
     return (
@@ -413,6 +442,119 @@ export function AppEngine({
           <AppModule key={node.id} node={node} {...common} />
         ))}
       </div>
+    </main>
+  );
+}
+
+type Gesture = {
+  id: string;
+  kind: "move" | "resize";
+  startX: number;
+  startY: number;
+  initial: AppGridItem;
+};
+
+function FreeAppLayout({
+  nodes,
+  actions,
+  saved,
+  editable,
+  compact,
+  onChange,
+}: {
+  nodes: NodeRecord[];
+  actions?: ModuleAction | undefined;
+  saved: AppGridItem[];
+  editable: boolean;
+  compact: boolean;
+  onChange?: ((layout: AppGridItem[]) => void) | undefined;
+}) {
+  const gridRef = useRef<HTMLElement>(null);
+  const [layout, setLayout] = useState(() => buildFreeLayout(nodes, saved));
+  const [gesture, setGesture] = useState<Gesture | null>(null);
+
+  useEffect(() => {
+    setLayout(buildFreeLayout(nodes, saved));
+  }, [nodes, saved]);
+
+  useEffect(() => {
+    if (!gesture) return;
+    const finish = (event: PointerEvent) => {
+      const gridWidth = gridRef.current?.getBoundingClientRect().width ?? 0;
+      if (!gridWidth) {
+        setGesture(null);
+        return;
+      }
+      const columnWidth = gridWidth / APP_GRID_COLUMNS;
+      const dx = Math.round((event.clientX - gesture.startX) / columnWidth);
+      const dy = Math.round((event.clientY - gesture.startY) / APP_GRID_ROW_HEIGHT);
+      const patch = gesture.kind === "move"
+        ? { col: gesture.initial.col + dx, row: gesture.initial.row + dy }
+        : { width: gesture.initial.width + dx, height: gesture.initial.height + dy };
+      setLayout((current) => {
+        const next = updateFreeLayout(current, gesture.id, patch);
+        onChange?.(next);
+        return next;
+      });
+      setGesture(null);
+    };
+    window.addEventListener("pointerup", finish, { once: true });
+    return () => window.removeEventListener("pointerup", finish);
+  }, [gesture, onChange]);
+
+  const start = (event: React.PointerEvent, item: AppGridItem, kind: Gesture["kind"]) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setGesture({ id: item.id, kind, startX: event.clientX, startY: event.clientY, initial: item });
+  };
+
+  const mobile = compact;
+  return (
+    <main
+      ref={gridRef}
+      data-layout="free"
+      className={`relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : "max-md:!block max-md:space-y-3"}`}
+      style={mobile ? undefined : { gridAutoRows: `${APP_GRID_ROW_HEIGHT}px` }}
+    >
+      {nodes.map((node) => {
+        const item = layout.find((entry) => entry.id === node.id);
+        if (!item) return null;
+        return (
+          <div
+            key={node.id}
+            data-grid-id={node.id}
+            className={`relative min-h-0 ${mobile ? "mb-3" : "max-md:mb-3"}`}
+            style={mobile ? undefined : {
+              gridColumn: `${item.col} / span ${item.width}`,
+              gridRow: `${item.row} / span ${item.height}`,
+            }}
+          >
+            <AppModule node={node} nodes={nodes} actions={actions} className="h-full" />
+            {editable && !mobile ? (
+              <>
+                <button
+                  type="button"
+                  aria-label={`${node.title ?? "Modul"} verschieben`}
+                  title="Modul verschieben"
+                  className="absolute right-9 top-2 z-10 flex size-7 cursor-grab items-center justify-center rounded-md border border-border bg-background shadow-sm active:cursor-grabbing"
+                  onPointerDown={(event) => start(event, item, "move")}
+                >
+                  <Grip className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${node.title ?? "Modul"} Größe ändern`}
+                  title="Größe ändern"
+                  className="absolute bottom-2 right-2 z-10 flex size-7 cursor-nwse-resize items-center justify-center rounded-md border border-border bg-background shadow-sm"
+                  onPointerDown={(event) => start(event, item, "resize")}
+                >
+                  <MoveDiagonal2 className="size-3.5" />
+                </button>
+              </>
+            ) : null}
+          </div>
+        );
+      })}
     </main>
   );
 }

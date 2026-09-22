@@ -18,3 +18,4 @@
 - [x] Offline-Modus der mobilen Erfassung (Warteschlange im Gerät, Auto-Sync bei Netz)
 - [x] Startseite: Beschreibungen für Scopes und Apps, Vorschaubilder auf den Karten
 - [x] Scope-Freigabe mit Rollen (Lesen / Bearbeiten) inkl. RLS-Trennung
+- [x] App-Module auf einer freien Rasterfläche positionieren, skalieren und dauerhaft speichern

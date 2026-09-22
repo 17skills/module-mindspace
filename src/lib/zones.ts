@@ -131,7 +131,14 @@ export type AppLayoutEntry = { id: string; view: AppView; hidden?: boolean };
 export type AppAccent = "forest" | "sage" | "terracotta" | "cobalt";
 export type AppBackground = "stone" | "paper" | "grid";
 /** Aufbau der ausgelieferten App – bestimmt, wie die Module angeordnet werden. */
-export type AppLayout = "auto" | "split" | "dashboard" | "feed" | "report" | "capture";
+export type AppLayout = "auto" | "free" | "split" | "dashboard" | "feed" | "report" | "capture";
+export type AppGridItem = {
+  id: string;
+  col: number;
+  row: number;
+  width: number;
+  height: number;
+};
 export type AppBranding = {
   title: string;
   logo: string;
@@ -139,6 +146,7 @@ export type AppBranding = {
   accent: AppAccent;
   background: AppBackground;
   layout: AppLayout;
+  moduleLayout: AppGridItem[];
 };
 export type AppDesignProfile = {
   id: string;
@@ -154,6 +162,7 @@ export const DEFAULT_APP_BRANDING: AppBranding = {
   accent: "forest",
   background: "stone",
   layout: "auto",
+  moduleLayout: [],
 };
 
 
@@ -207,6 +216,24 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
   const value = raw as Record<string, unknown>;
   const accent = value["accent"];
   const background = value["background"];
+  const rawModuleLayout = Array.isArray(value["moduleLayout"]) ? value["moduleLayout"] : [];
+  const moduleLayout: AppGridItem[] = rawModuleLayout.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const entry = item as Record<string, unknown>;
+    if (typeof entry["id"] !== "string" || !entry["id"]) return [];
+    const number = (key: string, fallback: number) =>
+      typeof entry[key] === "number" && Number.isFinite(entry[key])
+        ? Math.round(entry[key] as number)
+        : fallback;
+    const width = Math.min(12, Math.max(2, number("width", 6)));
+    return [{
+      id: entry["id"] as string,
+      col: Math.min(13 - width, Math.max(1, number("col", 1))),
+      row: Math.max(1, number("row", 1)),
+      width,
+      height: Math.min(10, Math.max(2, number("height", 4))),
+    }];
+  });
   return {
     title: typeof value["title"] === "string" ? value["title"].slice(0, 80) : "",
     logo:
@@ -223,6 +250,7 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
         : "forest",
     background: background === "paper" || background === "grid" ? background : "stone",
     layout:
+      value["layout"] === "free" ||
       value["layout"] === "split" ||
       value["layout"] === "dashboard" ||
       value["layout"] === "feed" ||
@@ -230,6 +258,6 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
       value["layout"] === "capture"
         ? value["layout"]
         : "auto",
-
+    moduleLayout,
   };
 }

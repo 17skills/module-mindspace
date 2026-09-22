@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { APP_LAYOUTS, resolveLayout, TILE_TYPES, WIDE_TYPES } from "@/lib/app-layout";
+import {
+  APP_LAYOUTS,
+  buildFreeLayout,
+  resolveLayout,
+  TILE_TYPES,
+  updateFreeLayout,
+  WIDE_TYPES,
+} from "@/lib/app-layout";
 import { brandingFrom } from "@/lib/apps";
 import { DEFAULT_APP_BRANDING } from "@/lib/zones";
+import { mapNode, metricNode, riskNode } from "@/test/nodes";
 
 describe("resolveLayout", () => {
   it("behält jede feste Auswahl bei", () => {
@@ -48,5 +56,29 @@ describe("gespeicherte Konfiguration", () => {
   it("fällt bei unbekanntem Aufbau auf automatisch zurück", () => {
     expect(brandingFrom({ layout: "quatsch" }).layout).toBe("auto");
     expect(brandingFrom(null).layout).toBe("auto");
+  });
+
+  it("liest die freie Modulpositionierung wieder ein", () => {
+    const moduleLayout = [{ id: "metric", col: 3, row: 2, width: 5, height: 4 }];
+    const read = brandingFrom({ ...DEFAULT_APP_BRANDING, layout: "free", moduleLayout });
+    expect(read.layout).toBe("free");
+    expect(read.moduleLayout).toEqual(moduleLayout);
+  });
+});
+
+describe("freie Fläche", () => {
+  it("ordnet neue Module ohne Überlappung an", () => {
+    const layout = buildFreeLayout([metricNode, mapNode, riskNode], []);
+    expect(layout).toHaveLength(3);
+    expect(new Set(layout.map((item) => `${item.col}:${item.row}`)).size).toBe(3);
+  });
+
+  it("speichert eine gültige Verschiebung und verhindert Kollisionen", () => {
+    const layout = [
+      { id: metricNode.id, col: 1, row: 1, width: 4, height: 3 },
+      { id: mapNode.id, col: 7, row: 1, width: 6, height: 5 },
+    ];
+    expect(updateFreeLayout(layout, metricNode.id, { col: 2 })[0]?.col).toBe(2);
+    expect(updateFreeLayout(layout, metricNode.id, { col: 7 })).toEqual(layout);
   });
 });

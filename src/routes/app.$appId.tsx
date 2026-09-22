@@ -122,6 +122,7 @@ function AppStage() {
         <AppEngine
           nodes={nodes}
           layout={branding.layout}
+          moduleLayout={branding.moduleLayout}
           actions={{
             setStatus: (nodeId, finding, status) => {
               void appSetFindingStatus({
