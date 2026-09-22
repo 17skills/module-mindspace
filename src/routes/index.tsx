@@ -61,6 +61,19 @@ function LibraryPage() {
     },
   });
 
+  const apps = useQuery({
+    queryKey: ["apps", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("apps")
+        .select("id,title,kind,node_ids,updated_at")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const createBoard = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
@@ -181,6 +194,53 @@ function LibraryPage() {
               Noch kein Board. Lege dein erstes an und ziehe Inhalte darauf.
             </div>
           )}
+        </div>
+
+        <div className="mt-14">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-brand-navy">
+            Aktive Apps
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Aus Modulen gebaute Apps – als Link für Menschen und als Datenzugang für KI-Assistenten.
+          </p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {apps.data?.map((app) => (
+              <div key={app.id} className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-card)]">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-base font-semibold">{app.title}</h3>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                    {app.kind === "capture" ? "Erfassung" : "Cockpit"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {Array.isArray(app.node_ids) ? app.node_ids.length : 0} Module ·{" "}
+                  {new Date(app.updated_at).toLocaleDateString("de-DE")}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={`/app/${app.id}`} target="_blank" rel="noreferrer">
+                      Öffnen
+                    </a>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`${window.location.origin}/app/${app.id}`);
+                      toast.success("Link kopiert");
+                    }}
+                  >
+                    Link kopieren
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {apps.data?.length === 0 && (
+              <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                Noch keine App. Wähle im Board Module aus und klicke unten auf „App-Ansicht“.
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </main>

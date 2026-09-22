@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      apps: {
+        Row: {
+          board_id: string
+          branding: Json
+          created_at: string
+          id: string
+          is_public: boolean
+          kind: string
+          node_ids: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          board_id: string
+          branding?: Json
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          kind?: string
+          node_ids?: Json
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          board_id?: string
+          branding?: Json
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          kind?: string
+          node_ids?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apps_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_members: {
         Row: {
           board_id: string

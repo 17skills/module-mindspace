@@ -112,7 +112,9 @@ import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
-import { Library } from "lucide-react";
+import { Library, AppWindow } from "lucide-react";
+import { AppDialog } from "@/components/canvas/AppDialog";
+import { MAX_APP_MODULES } from "@/lib/apps";
 import { capture, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
 import {
@@ -425,6 +427,8 @@ function BoardPage() {
   /** Module ids chosen through the context menu; empty means "use the canvas selection". */
   const librarySelection = useRef<string[] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [appOpen, setAppOpen] = useState(false);
+  const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
@@ -2290,6 +2294,19 @@ function BoardPage() {
           ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
           : []),
         {
+          label: "Zu App hinzufügen …",
+          icon: AppWindow,
+          run: () => {
+            const selected = nodes
+              .filter((node) => node.selected)
+              .map((node) => node.id)
+              .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""));
+            const ids = selected.includes(menu.nodeId!) ? selected : [menu.nodeId!, ...selected];
+            setAppPreselect(ids.slice(0, MAX_APP_MODULES));
+            setAppOpen(true);
+          },
+        },
+        {
           label: "Im Kontextfenster öffnen",
           icon: PanelsTopLeft,
           run: () => openInspector(menu.nodeId!),
@@ -2462,6 +2479,25 @@ function BoardPage() {
       </header>
 
       <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
+
+      <AppDialog
+        open={appOpen}
+        onOpenChange={setAppOpen}
+        boardId={boardId}
+        userId={user.id}
+        preselected={appPreselect}
+        candidates={nodes
+          .map((node) => records[node.id])
+          .filter(
+            (record): record is NonNullable<typeof record> =>
+              Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? ""),
+          )
+          .map((record) => ({
+            id: record.id,
+            title: record.title ?? "",
+            type: record.type,
+          }))}
+      />
 
       <LibraryDialog
         open={libraryOpen}
@@ -2679,6 +2715,37 @@ function BoardPage() {
                   <TooltipContent side="top">Auswahl anordnen</TooltipContent>
                 </Tooltip>
               ) : null}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn(appOpen)}
+                    aria-label="App-Ansicht"
+                    aria-pressed={appOpen}
+                    onClick={() => {
+                      setAppPreselect(
+                        nodes
+                          .filter((node) => node.selected)
+                          .map((node) => node.id)
+                          .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""))
+                          .slice(0, MAX_APP_MODULES),
+                      );
+                      setAppOpen(true);
+                    }}
+                  >
+                    <AppWindow className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  App-Ansicht
+                  {selectedModuleCount > 0
+                    ? ` · ${Math.min(selectedModuleCount, MAX_APP_MODULES)}/${MAX_APP_MODULES} gewählt`
+                    : ""}
+                </TooltipContent>
+              </Tooltip>
+
 
               <Tooltip>
                 <TooltipTrigger asChild>

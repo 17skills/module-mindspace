@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AppAppIdRouteImport } from './routes/app.$appId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
 import { Route as LibraryTokenRouteImport } from './routes/library.$token'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
@@ -44,6 +45,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppAppIdRoute = AppAppIdRouteImport.update({
+  id: '/app/$appId',
+  path: '/app/$appId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
+  '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
+  '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
+  '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
+    | '/app/$appId'
     | '/board/$boardId'
     | '/library/$token'
     | '/share/$token'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
+    | '/app/$appId'
     | '/board/$boardId'
     | '/library/$token'
     | '/share/$token'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
+    | '/app/$appId'
     | '/board/$boardId'
     | '/library/$token'
     | '/share/$token'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiChatRoute: typeof ApiChatRoute
+  AppAppIdRoute: typeof AppAppIdRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
   LibraryTokenRoute: typeof LibraryTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
@@ -196,6 +209,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/$appId': {
+      id: '/app/$appId'
+      path: '/app/$appId'
+      fullPath: '/app/$appId'
+      preLoaderRoute: typeof AppAppIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/board/$boardId': {
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiChatRoute: ApiChatRoute,
+  AppAppIdRoute: AppAppIdRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
   LibraryTokenRoute: LibraryTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
