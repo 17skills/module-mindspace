@@ -18,7 +18,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, LayoutGrid, Scale, Shapes } from "lucide-react";
+import { Globe, LayoutGrid, Scale, Shapes, Tag, TagOff } from "lucide-react";
+import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
@@ -2736,6 +2737,25 @@ function BoardPage() {
                 </TooltipTrigger>
                 <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
               </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn(edgeLabelsOn)}
+                    aria-label="Beschriftung der Verbindungen"
+                    aria-pressed={edgeLabelsOn}
+                    onClick={() => setEdgeLabelsVisible(!edgeLabelsOn)}
+                  >
+                    {edgeLabelsOn ? <Tag className="size-5" /> : <TagOff className="size-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {edgeLabelsOn ? "Beschriftung ausblenden" : "Beschriftung einblenden"}
+                </TooltipContent>
+              </Tooltip>
+
 
               <DropdownMenu>
                 <Tooltip>
