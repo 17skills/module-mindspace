@@ -39,6 +39,24 @@ Ein neuer Bereich „Konto“ mit eigenem Profil, Team-Mitgliedern je Scope, Adm
 ```
 Erreichbar über ein Nutzermenü mit Avatar oben rechts auf der Startseite und im Scope; dort auch „Abmelden“.
 
+## Datenschutz (DSGVO) und EU-Vorgaben
+
+**6. Datenschutz-Bereich im Konto**
+- Datenexport: alle eigenen Daten (Profil, Scopes, Module, Mitgliedschaften, Einstellungen) als Datei zum Herunterladen — Recht auf Datenübertragbarkeit.
+- Konto löschen entfernt alle personenbezogenen Daten endgültig, mit klarer Vorschau, was gelöscht wird, und Wartezeit von 7 Tagen zum Widerruf.
+- Einwilligungen: getrennte Schalter für optionale E-Mails und für KI-Auswertung von Inhalten, mit Datum der Zustimmung; Widerruf jederzeit möglich.
+- Übersicht der Verarbeitungszwecke in einfacher Sprache und Verzeichnis der eingesetzten Dienste (Speicherung/Datenbank, KI-Auswertung, Karten, Wetterdaten) mit Angabe, welche Daten dorthin gehen.
+
+**7. Transparenz und Protokolle**
+- Protokoll sicherheitsrelevanter Vorgänge (Anmeldung, Rollenwechsel, Einladung, Löschung, Schlüsselerneuerung) mit Zeitpunkt und auslösender Person; für Betroffene einsehbar, für Administratoren vollständig.
+- Datensparsamkeit: keine IP-Adressen oder Standortdaten im Protokoll, Aufbewahrung 90 Tage, danach automatische Löschung.
+- KI-Kennzeichnung nach EU-Regeln für KI: Ergebnisse von Agenten, Entscheidungs- und Vision-Modulen werden sichtbar als maschinell erzeugt markiert, mit Hinweis auf menschliche Prüfpflicht; Entscheidungen bleiben Vorschläge.
+- Statische Seiten Datenschutzerklärung, Impressum und Nutzungsbedingungen mit Verlinkung in Anmeldung, Konto und Fußzeile; Inhalte müssen von dir kommen (Firmenangaben, Verantwortlicher, Auftragsverarbeiter).
+
+**8. Sicherheit und Barrierefreiheit**
+- Löschung und Export laufen serverseitig geprüft, Rollen werden getrennt geführt, Zugriff strikt auf eigene Daten begrenzt.
+- Bedienbarkeit nach EU-Barrierefreiheitsanforderungen: Tastaturbedienung, sichtbarer Fokus, ausreichende Kontraste, sinnvolle Beschriftungen in allen neuen Bereichen.
+
 ## Technische Umsetzung
 
 - Migration: `profiles` um `avatar_url`, `settings` (jsonb), `blocked_at`, `updated_at` erweitern; neue Tabelle `user_roles` mit Enum `app_role` (`admin`, `user`) und Security-Definer-Funktion `has_role`; Tabelle `board_invites` (E-Mail, Scope, Rolle, Token, Status, Ablauf). GRANTs und RLS-Policies für jede Tabelle in derselben Migration; `board_members`-Policies um Rollenwechsel durch Inhaber/Admin ergänzen.
@@ -49,8 +67,12 @@ Erreichbar über ein Nutzermenü mit Avatar oben rechts auf der Startseite und i
 - Neuer `useProfile`/`useSettings`-Hook über TanStack Query; Einstellungen werden im Scope-Editor für Raster, Hilfslinien und Kantenbeschriftungen gelesen.
 - App-Zugänge nutzen die bestehende `apps`-Tabelle (`mcp_token`, `mcp_scope`, `is_public`); Schlüsselerneuerung als Server-Funktion.
 - E-Mail-Benachrichtigungen: zunächst Einstellung speichern; Versand wird im Folgeschritt angebunden.
+- DSGVO-Technik: Tabellen `user_consents` (Zweck, Status, Zeitpunkt, Version) und `audit_log` (Akteur, Aktion, Objekt, Zeit) mit RLS — eigene Zeilen lesbar, Admin über `has_role`; Aufräum-Funktion löscht Protokolle älter als 90 Tage. Konto-Löschung als Server-Funktion mit Vormerkung (`deletion_requested_at`) und endgültiger Entfernung inkl. Storage-Dateien; Export als JSON-Download über eine geschützte Server-Funktion.
+- KI-Kennzeichnung: bestehende Ergebnisfelder der Agenten-, Entscheidungs- und Inspektionsmodule erhalten ein sichtbares Label plus Zeitstempel und Modellhinweis; Text zentral in einer Konstante.
+- Rechtstexte als eigene öffentliche Routen `/datenschutz`, `/impressum`, `/agb` mit eigenen Seitentiteln.
 
 ## Nicht in diesem Schritt
 
 - WorkOS-SSO (folgt als SAML-Anbindung, wenn gewünscht).
 - Tatsächlicher E-Mail-Versand für Einladungen und Agenten-Ergebnisse.
+- Rechtstexte inhaltlich: Gerüst und Platzhalter entstehen, die verbindlichen Angaben (Verantwortlicher, Kontakt, Auftragsverarbeiter) musst du liefern oder rechtlich prüfen lassen.
