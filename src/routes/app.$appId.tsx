@@ -86,7 +86,7 @@ function AppStage() {
 
   const branding = brandingFrom(data.app.branding);
   const title = branding.title || data.app.title || "App";
-  const nodes = data.nodes as unknown as NodeRecord[];
+  const nodes = JSON.parse(data.nodesJson) as NodeRecord[];
 
   return (
     <div
