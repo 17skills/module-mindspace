@@ -586,11 +586,32 @@ export function AppDialog({
                         }}
                       />
                       <span className="truncate text-sm font-medium">{app.title}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] ${
+                          app.is_public
+                            ? "bg-brand-sage/20 text-brand-navy"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {app.is_public ? "Aktiv" : "Inaktiv"}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {app.kind === "capture" ? "Erfassung" : "Cockpit"} · {count} Module ·{" "}
                         {app.mcp_scope === "write" ? "KI darf schreiben" : "KI liest nur"}
                       </span>
                       <div className="ml-auto flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title={app.is_public ? "App abschalten" : "App veröffentlichen"}
+                          onClick={() => void togglePublic(app)}
+                        >
+                          {app.is_public ? (
+                            <Eye className="size-3.5" />
+                          ) : (
+                            <EyeOff className="size-3.5" />
+                          )}
+                        </Button>
                         <Button size="sm" variant="ghost" title="Bearbeiten" onClick={() => edit(app)}>
                           <Pencil className="size-3.5" />
                         </Button>
