@@ -30,6 +30,7 @@ import { Route as AuthenticatedKontoAppsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedKontoDatenschutzRouteImport } from './routes/_authenticated/konto.datenschutz'
 import { Route as AuthenticatedKontoEinstellungenRouteImport } from './routes/_authenticated/konto.einstellungen'
 import { Route as AuthenticatedKontoKiSchluesselRouteImport } from './routes/_authenticated/konto.ki-schluessel'
+import { Route as AuthenticatedKontoMcpRouteImport } from './routes/_authenticated/konto.mcp'
 import { Route as AuthenticatedKontoMitgliederRouteImport } from './routes/_authenticated/konto.mitglieder'
 import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
@@ -142,6 +143,11 @@ const AuthenticatedKontoKiSchluesselRoute =
     path: '/ki-schluessel',
     getParentRoute: () => AuthenticatedKontoRoute,
   } as any)
+const AuthenticatedKontoMcpRoute = AuthenticatedKontoMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => AuthenticatedKontoRoute,
+} as any)
 const AuthenticatedKontoMitgliederRoute =
   AuthenticatedKontoMitgliederRouteImport.update({
     id: '/mitglieder',
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/konto/datenschutz': typeof AuthenticatedKontoDatenschutzRoute
   '/konto/einstellungen': typeof AuthenticatedKontoEinstellungenRoute
   '/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
+  '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto/': typeof AuthenticatedKontoIndexRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/konto/datenschutz': typeof AuthenticatedKontoDatenschutzRoute
   '/konto/einstellungen': typeof AuthenticatedKontoEinstellungenRoute
   '/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
+  '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto': typeof AuthenticatedKontoIndexRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/_authenticated/konto/datenschutz': typeof AuthenticatedKontoDatenschutzRoute
   '/_authenticated/konto/einstellungen': typeof AuthenticatedKontoEinstellungenRoute
   '/_authenticated/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
+  '/_authenticated/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/_authenticated/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/_authenticated/konto/': typeof AuthenticatedKontoIndexRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/konto/datenschutz'
     | '/konto/einstellungen'
     | '/konto/ki-schluessel'
+    | '/konto/mcp'
     | '/konto/mitglieder'
     | '/embed/zone/$zoneId'
     | '/konto/'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/konto/datenschutz'
     | '/konto/einstellungen'
     | '/konto/ki-schluessel'
+    | '/konto/mcp'
     | '/konto/mitglieder'
     | '/embed/zone/$zoneId'
     | '/konto'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/datenschutz'
     | '/_authenticated/konto/einstellungen'
     | '/_authenticated/konto/ki-schluessel'
+    | '/_authenticated/konto/mcp'
     | '/_authenticated/konto/mitglieder'
     | '/embed/zone/$zoneId'
     | '/_authenticated/konto/'
@@ -481,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKontoKiSchluesselRouteImport
       parentRoute: typeof AuthenticatedKontoRoute
     }
+    '/_authenticated/konto/mcp': {
+      id: '/_authenticated/konto/mcp'
+      path: '/mcp'
+      fullPath: '/konto/mcp'
+      preLoaderRoute: typeof AuthenticatedKontoMcpRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
     '/_authenticated/konto/mitglieder': {
       id: '/_authenticated/konto/mitglieder'
       path: '/mitglieder'
@@ -511,6 +530,7 @@ interface AuthenticatedKontoRouteChildren {
   AuthenticatedKontoDatenschutzRoute: typeof AuthenticatedKontoDatenschutzRoute
   AuthenticatedKontoEinstellungenRoute: typeof AuthenticatedKontoEinstellungenRoute
   AuthenticatedKontoKiSchluesselRoute: typeof AuthenticatedKontoKiSchluesselRoute
+  AuthenticatedKontoMcpRoute: typeof AuthenticatedKontoMcpRoute
   AuthenticatedKontoMitgliederRoute: typeof AuthenticatedKontoMitgliederRoute
   AuthenticatedKontoIndexRoute: typeof AuthenticatedKontoIndexRoute
 }
@@ -521,6 +541,7 @@ const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
   AuthenticatedKontoDatenschutzRoute: AuthenticatedKontoDatenschutzRoute,
   AuthenticatedKontoEinstellungenRoute: AuthenticatedKontoEinstellungenRoute,
   AuthenticatedKontoKiSchluesselRoute: AuthenticatedKontoKiSchluesselRoute,
+  AuthenticatedKontoMcpRoute: AuthenticatedKontoMcpRoute,
   AuthenticatedKontoMitgliederRoute: AuthenticatedKontoMitgliederRoute,
   AuthenticatedKontoIndexRoute: AuthenticatedKontoIndexRoute,
 }
