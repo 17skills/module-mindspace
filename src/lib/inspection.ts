@@ -23,6 +23,12 @@ export type Finding = {
   createdAt: string;
   /** Priority of the previous assessment of the same station, if any. */
   prevPriority: number | null;
+  /** Work status of the measure. */
+  status: "offen" | "beauftragt" | "in arbeit" | "erledigt";
+  /** Person responsible for the measure. */
+  owner: string;
+  /** Due date as ISO day (YYYY-MM-DD), empty when not set. */
+  due: string;
   /** How the position was determined. */
   source: "exif" | "manuell" | "unbekannt";
 };
