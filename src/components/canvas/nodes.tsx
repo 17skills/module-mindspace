@@ -904,6 +904,9 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                 className="nodrag mr-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 onClick={() => {
                   const url = `${window.location.origin}/embed/zone/${record.id}`;
+                  updateNode(record.id, {
+                    metadata: { ...(record.metadata ?? {}), embed: true },
+                  });
                   void navigator.clipboard?.writeText(url);
                   window.open(url, "_blank", "noopener");
                 }}
