@@ -2113,11 +2113,12 @@ export function LabeledEdge(props: EdgeProps) {
       const source = records[props.source];
       const raw = source ? valueOfNode(source, records, store.edges) : null;
       const result = edgeValue(label, raw);
-      if (result == null) return { text: "", bad: raw != null };
-      return { text: formatValue(result, readFormat(source?.metadata)), bad: false };
+      if (result == null) return { text: "", bad: raw != null, raw };
+      return { text: formatValue(result, readFormat(source?.metadata)), bad: false, raw };
     },
-    (a, b) => a.text === b.text && a.bad === b.bad,
+    (a, b) => a.text === b.text && a.bad === b.bad && a.raw === b.raw,
   );
+  const problem = flow.bad ? edgeProblem(label, flow.raw) : null;
   const stroke = props.selected
     ? "var(--ring)"
     : flow.bad
