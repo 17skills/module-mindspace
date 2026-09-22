@@ -146,6 +146,17 @@
   box-shadow: 0 1px 0 color-mix(in oklab, var(--app-accent) 10%, transparent);
 }
 .app-logo-mark { background: var(--app-accent); }
+.app-preview-canvas {
+  background-color: var(--app-surface);
+  background-image: radial-gradient(var(--app-grid) 0.7px, transparent 0.7px);
+  background-size: 10px 10px;
+}
+.app-background-paper .app-preview-canvas { background-image: none; }
+.app-background-grid .app-preview-canvas {
+  background-image:
+    linear-gradient(var(--app-grid) 0.7px, transparent 0.7px),
+    linear-gradient(90deg, var(--app-grid) 0.7px, transparent 0.7px);
+}
 .app-shell .react-flow__edge-path { stroke: var(--app-accent); }
 
 

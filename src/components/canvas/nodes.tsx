@@ -41,7 +41,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
-import { readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppLayoutEntry } from "@/lib/zones";
+import { APP_DESIGN_PRESETS, readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppDesignProfile, type AppLayoutEntry } from "@/lib/zones";
 import {
   factorText,
   normalizeWeights,
@@ -857,8 +857,21 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const running = meta["agentRunning"] === true;
   const stale = agent ? agentStale(record.id) : false;
   const [designOpen, setDesignOpen] = useState(false);
+  const [previewTitle, setPreviewTitle] = useState("");
+  const [profileName, setProfileName] = useState("");
+  const [customProfiles, setCustomProfiles] = useState<AppDesignProfile[]>([]);
   const logoInput = useRef<HTMLInputElement>(null);
   const branding = readAppBranding(record);
+  useEffect(() => setPreviewTitle(branding.title), [record.id, branding.title]);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("canvas.appDesignProfiles");
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) setCustomProfiles(parsed as AppDesignProfile[]);
+    } catch {
+      setCustomProfiles([]);
+    }
+  }, []);
   const members = useMemo(() => zoneMembers(record.id, allNodes()), [record.id, allNodes]);
   const layout = useMemo<AppLayoutEntry[]>(() => {
     const saved = readAppLayout(record) ?? [];
@@ -878,13 +891,73 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
       },
     });
   const uploadLogo = async (file: File | undefined) => {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error("Das Logo darf höchstens 1 MB groß sein");
+      return;
+    }
+    const isPng = file.type === "image/png" || file.name.toLowerCase().endsWith(".png");
+    const isSvg = file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
+    if (!isPng && !isSvg) {
+      toast.error("Bitte ein PNG- oder SVG-Logo auswählen");
+      return;
+    }
     try {
-      const logo = await downscale(file, 320, 0.86);
+      let logo = "";
+      if (isSvg) {
+        const source = await file.text();
+        const documentNode = new DOMParser().parseFromString(source, "image/svg+xml");
+        if (documentNode.querySelector("parsererror") || documentNode.documentElement.tagName.toLowerCase() !== "svg") {
+          throw new Error("invalid svg");
+        }
+        documentNode.querySelectorAll("script, foreignObject, iframe, object, embed").forEach((node) => node.remove());
+        documentNode.querySelectorAll("*").forEach((node) => {
+          for (const attribute of [...node.attributes]) {
+            const name = attribute.name.toLowerCase();
+            const value = attribute.value.trim().toLowerCase();
+            if (name.startsWith("on") || ((name === "href" || name.endsWith(":href")) && !value.startsWith("#") && value !== "")) {
+              node.removeAttribute(attribute.name);
+            }
+          }
+        });
+        const clean = new XMLSerializer().serializeToString(documentNode.documentElement);
+        logo = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(clean)}`;
+      } else {
+        logo = await downscale(file, 320, 0.9);
+      }
       saveBranding({ logo });
     } catch {
       toast.error("Logo konnte nicht gelesen werden");
     }
+  };
+  const storeProfiles = (profiles: AppDesignProfile[]) => {
+    setCustomProfiles(profiles);
+    window.localStorage.setItem("canvas.appDesignProfiles", JSON.stringify(profiles));
+  };
+  const applyProfile = (profile: AppDesignProfile) => {
+    const next = {
+      ...profile.branding,
+      title: profile.branding.title || branding.title,
+      logo: profile.branding.logo || branding.logo,
+    };
+    setPreviewTitle(next.title);
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), appBranding: next } });
+  };
+  const saveProfile = () => {
+    const name = profileName.trim();
+    if (!name) {
+      toast.error("Bitte einen Profilnamen eingeben");
+      return;
+    }
+    const profile: AppDesignProfile = {
+      id: globalThis.crypto?.randomUUID?.() ?? `profile-${Date.now()}`,
+      name,
+      branding: { ...branding, title: previewTitle.trim() },
+      custom: true,
+    };
+    storeProfiles([...customProfiles, profile]);
+    setProfileName("");
+    toast.success("Designprofil gespeichert");
   };
   const moveEntry = (id: string, dir: -1 | 1) => {
     const next = [...layout];
@@ -985,15 +1058,64 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
           </UiTooltip>
         </div>
         {designOpen && (
-          <div className="nodrag absolute top-12 right-2 z-10 w-80 rounded-xl border border-border/70 bg-card/95 p-3 shadow-[var(--shadow-float)]">
+          <div className="nodrag absolute top-12 right-2 z-10 w-96 rounded-xl border border-border/70 bg-card/95 p-3 shadow-[var(--shadow-float)]">
             <div className="module-eyebrow pb-2 text-muted-foreground">App-Ansicht gestalten</div>
             <div className="space-y-2.5 border-b border-border/70 pb-3">
+              <div>
+                <span className="module-eyebrow mb-1.5 block">Designprofile</span>
+                <div className="grid grid-cols-4 gap-1">
+                  {APP_DESIGN_PRESETS.map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      title={profile.name}
+                      onClick={() => applyProfile(profile)}
+                      className={`app-accent-${profile.branding.accent} app-background-${profile.branding.background} flex h-12 flex-col justify-end rounded-md border border-border/70 p-1.5 text-left hover:border-ring`}
+                    >
+                      <span className="app-logo-mark mb-auto size-2 rounded-sm" />
+                      <span className="truncate text-[9px] font-semibold">{profile.name}</span>
+                    </button>
+                  ))}
+                </div>
+                {customProfiles.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {customProfiles.map((profile) => (
+                      <div key={profile.id} className="flex items-center rounded-md border border-border/70 bg-secondary">
+                        <button type="button" className="max-w-24 truncate px-2 py-1 text-[10px]" onClick={() => applyProfile(profile)}>{profile.name}</button>
+                        <button type="button" aria-label={`${profile.name} löschen`} className="border-l border-border/70 p-1 text-muted-foreground hover:text-destructive" onClick={() => storeProfiles(customProfiles.filter((item) => item.id !== profile.id))}><X className="size-3" /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-1.5 flex gap-1">
+                  <input aria-label="Name des Designprofils" value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Eigenes Profil" className="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-[10px] outline-none focus:border-ring" />
+                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={saveProfile}>Speichern</Button>
+                </div>
+              </div>
+              <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} overflow-hidden rounded-lg border border-border/70`}>
+                <div className="app-header flex items-center gap-2 border-b px-2.5 py-2">
+                  {branding.logo ? (
+                    <img src={branding.logo} alt="Logo-Vorschau" className="app-preview-logo shrink-0 rounded bg-card object-contain" style={{ width: Math.max(20, branding.logoSize * 0.55), height: Math.max(20, branding.logoSize * 0.55) }} />
+                  ) : (
+                    <span className="app-logo-mark size-2.5 rounded-sm" />
+                  )}
+                  <div className="min-w-0">
+                    <span className="module-eyebrow block">MCP · APP</span>
+                    <span className="block truncate text-xs font-semibold">{previewTitle || record.title || "Feld-App"}</span>
+                  </div>
+                </div>
+                <div className="app-preview-canvas grid grid-cols-[0.7fr_1.3fr] gap-1.5 p-2.5">
+                  <div className="h-8 rounded border border-border bg-card shadow-sm" />
+                  <div className="h-12 rounded border border-border bg-card shadow-sm" />
+                </div>
+              </div>
               <label className="block">
                 <span className="module-eyebrow mb-1 block">Titel</span>
                 <input
                   aria-label="Titel der App"
-                  defaultValue={branding.title}
+                  value={previewTitle}
                   placeholder={record.title ?? "Feld-App"}
+                  onChange={(event) => setPreviewTitle(event.target.value)}
                   onBlur={(event) => saveBranding({ title: event.target.value.trim() })}
                   className="h-8 w-full rounded-md border border-input bg-card px-2.5 text-xs outline-none focus:border-ring"
                 />
@@ -1011,7 +1133,7 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                   <input
                     ref={logoInput}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/png,image/svg+xml,.png,.svg"
                     className="hidden"
                     onChange={(event) => void uploadLogo(event.target.files?.[0])}
                   />
@@ -1024,6 +1146,13 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                     </Button>
                   )}
                 </div>
+                {branding.logo && (
+                  <label className="mt-2 grid grid-cols-[1fr_auto] items-center gap-2">
+                    <span className="module-eyebrow">Logogröße</span>
+                    <output className="font-mono text-[10px] text-muted-foreground">{branding.logoSize}px</output>
+                    <input aria-label="Größe des Logos" type="range" min={24} max={72} step={4} value={branding.logoSize} onChange={(event) => saveBranding({ logoSize: Number(event.target.value) })} className="col-span-2 w-full accent-primary" />
+                  </label>
+                )}
               </div>
               <fieldset>
                 <legend className="module-eyebrow mb-1.5">Akzentfarbe</legend>
@@ -1061,7 +1190,7 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
               </fieldset>
               <button
                 type="button"
-                onClick={() => saveBranding({ title: "", logo: "", accent: "forest", background: "stone" })}
+                onClick={() => { setPreviewTitle(""); saveBranding({ title: "", logo: "", logoSize: 40, accent: "forest", background: "stone" }); }}
                 className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="size-3" /> Standard wiederherstellen

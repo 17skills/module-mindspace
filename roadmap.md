@@ -8,3 +8,4 @@
 - [x] Modulhöhen automatisch an sichtbare Inhalte anpassen und Kollisionen bereinigen
 - [x] Ausgewählte Module automatisch übersichtlich und kollisionsfrei anordnen
 - [x] Feld-Apps mit eigenem Titel, Logo, Akzentfarbe und Hintergrund gestalten
+- [x] Wiederverwendbare Designprofile, Live-Vorschau und SVG-/PNG-Logoeditor ergänzen
