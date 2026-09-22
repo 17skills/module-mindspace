@@ -171,11 +171,11 @@ function EmbedZonePage() {
         setRecords(result.nodes as unknown as NodeRecord[]);
         setEdges(
           result.edges.map((edge) => ({
-            id: edge.id as string,
-            source: edge.source_id as string,
-            target: edge.target_id as string,
+            id: String(edge["id"]),
+            source: String(edge["source_id"]),
+            target: String(edge["target_id"]),
             type: "labeled",
-            label: (edge.label as string | null) ?? undefined,
+            label: edge["label"] ? String(edge["label"]) : undefined,
           })),
         );
       })
