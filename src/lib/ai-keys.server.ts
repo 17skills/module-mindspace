@@ -414,6 +414,8 @@ async function googleStructured(
 // ---------- Zentrale Auflösung ----------
 
 export type StructuredRequest = {
+  /** Welche Funktion ruft an – steuert Anbieter- und Modellwahl. */
+  fn: AiFunctionId;
   prompt: string;
   /** Bild als https-URL oder data-URL. */
   image?: string;
@@ -421,29 +423,105 @@ export type StructuredRequest = {
   schema: Record<string, unknown>;
 };
 
+/** Löst die pro Funktion gewählte Anbieter-/Modellkombination auf. */
+export function resolveRoute(
+  cfg: AiKeyConfig,
+  fn: AiFunctionId,
+): { provider: AiRouteProvider; entry?: AiKeyEntry; model: string | null } {
+  const route = cfg.routing?.[fn] ?? DEFAULT_ROUTE;
+  if (!cfg.useByok || route.provider === "lovable") {
+    return { provider: "lovable", model: null };
+  }
+  const entry = cfg.keys[route.provider];
+  // Sicherer Fallback: ohne hinterlegten Schlüssel läuft es über Lovable AI.
+  if (!entry) return { provider: "lovable", model: null };
+  const model = route.model ?? entry.modelHint ?? AI_PROVIDER_META[route.provider].model;
+  return { provider: route.provider, entry: { ...entry, modelHint: model }, model };
+}
+
+/** Schreibt einen Nutzungs-Datensatz; Fehler dabei dürfen die Anfrage nie stoppen. */
+async function recordUsage(entry: {
+  userId: string;
+  provider: AiRouteProvider;
+  fn: string;
+  model: string;
+  inputText: string;
+  outputText: string;
+  ok: boolean;
+}): Promise<void> {
+  try {
+    const inputTokens = estimateTokens(entry.inputText);
+    const outputTokens = entry.outputText ? estimateTokens(entry.outputText) : 0;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("ai_usage").insert({
+      user_id: entry.userId,
+      provider: entry.provider,
+      fn: entry.fn,
+      model: entry.model,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cost_usd: estimateCost(entry.provider, inputTokens, outputTokens),
+      ok: entry.ok,
+    });
+  } catch {
+    /* Nutzungserfassung ist optional */
+  }
+}
+
 /**
- * Führt eine strukturierte KI-Anfrage aus: eigenes Anbieterkonto, wenn BYOK
- * aktiv ist und ein Schlüssel vorliegt, sonst der Lovable-KI-Zugang.
- * Liefert bereinigten JSON-Text zurück.
+ * Führt eine strukturierte KI-Anfrage aus: eigenes Anbieterkonto nach der
+ * Auswahl je Funktion, sonst – und bei jedem Fehler des eigenen Anbieters –
+ * der Lovable-KI-Zugang. Liefert bereinigten JSON-Text zurück.
  */
 export async function runStructured(cfg: AiKeyConfig, req: StructuredRequest): Promise<string> {
-  const entry = cfg.useByok ? cfg.keys[cfg.provider] : undefined;
+  const route = resolveRoute(cfg, req.fn);
+  const promptSize = req.prompt + (req.image ? "x".repeat(2000) : "");
 
-  let text: string;
-  if (entry) {
-    const provider = cfg.provider;
-    if (provider === "anthropic") {
-      text = await anthropicStructured(entry, req);
-    } else if (provider === "google") {
-      text = await googleStructured(entry, req);
-    } else {
-      // openai und openrouter sind OpenAI-kompatibel
-      text = await openAiCompatibleStructured(provider, entry, req);
+  const callProvider = async (): Promise<string> => {
+    const entry = route.entry!;
+    if (route.provider === "anthropic") return anthropicStructured(entry, req);
+    if (route.provider === "google") return googleStructured(entry, req);
+    // openai und openrouter sind OpenAI-kompatibel
+    return openAiCompatibleStructured(route.provider as AiProvider, entry, req);
+  };
+
+  if (route.entry) {
+    try {
+      const text = await callProvider();
+      await recordUsage({
+        userId: cfg.userId,
+        provider: route.provider,
+        fn: req.fn,
+        model: route.model ?? "",
+        inputText: promptSize,
+        outputText: text,
+        ok: true,
+      });
+      return cleanJsonText(text);
+    } catch {
+      await recordUsage({
+        userId: cfg.userId,
+        provider: route.provider,
+        fn: req.fn,
+        model: route.model ?? "",
+        inputText: promptSize,
+        outputText: "",
+        ok: false,
+      });
+      /* Sicherer Fallback auf den mitgelieferten Zugang */
     }
-  } else {
-    text = await gatewayResponses(req);
   }
 
+  const text = await gatewayResponses(req);
+  await recordUsage({
+    userId: cfg.userId,
+    provider: "lovable",
+    fn: req.fn,
+    model: "openai/gpt-6-astra",
+    inputText: promptSize,
+    outputText: text,
+    ok: true,
+  });
   return cleanJsonText(text);
 }
 
