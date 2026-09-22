@@ -1,5 +1,9 @@
 /** Persönliche Einstellungen eines Kontos – geräteübergreifend in `profiles.settings`. */
 import type { AiProvider } from "@/lib/ai-providers";
+import { defaultRouting, routingFrom, type AiRouting } from "@/lib/ai-functions";
+
+/** Monatlicher Ausgabenhinweis je Anbieter in US-Dollar. */
+export type AiBudgets = Partial<Record<"lovable" | AiProvider, number>>;
 
 export type UserSettings = {
   theme: "light" | "dark" | "system";
@@ -12,6 +16,8 @@ export type UserSettings = {
   notifyAgents: boolean;
   useByok: boolean;
   byokProvider: AiProvider;
+  aiRouting: AiRouting;
+  aiBudgets: AiBudgets;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -25,7 +31,19 @@ export const DEFAULT_SETTINGS: UserSettings = {
   notifyAgents: false,
   useByok: false,
   byokProvider: "openai",
+  aiRouting: defaultRouting(),
+  aiBudgets: {},
 };
+
+function budgetsFrom(value: unknown): AiBudgets {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const out: AiBudgets = {};
+  for (const [key, amount] of Object.entries(raw)) {
+    const num = Number(amount);
+    if (Number.isFinite(num) && num > 0) out[key as keyof AiBudgets] = num;
+  }
+  return out;
+}
 
 export function settingsFrom(value: unknown): UserSettings {
   const raw = (value ?? {}) as Partial<UserSettings>;
@@ -40,6 +58,8 @@ export function settingsFrom(value: unknown): UserSettings {
     notifyAgents: raw.notifyAgents ?? DEFAULT_SETTINGS.notifyAgents,
     useByok: raw.useByok ?? DEFAULT_SETTINGS.useByok,
     byokProvider: raw.byokProvider ?? DEFAULT_SETTINGS.byokProvider,
+    aiRouting: routingFrom((raw as { aiRouting?: unknown }).aiRouting),
+    aiBudgets: budgetsFrom((raw as { aiBudgets?: unknown }).aiBudgets),
   };
 }
 
