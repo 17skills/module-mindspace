@@ -63,6 +63,7 @@ Regeln für die Priorität (Skala 1 bis 10):
 Antworte auf Deutsch.`;
 
   const text = await runStructured(aiConfig, {
+    fn: "vision",
     prompt,
     image: input.image,
     schemaName: "inspection_assessment",

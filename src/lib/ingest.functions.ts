@@ -381,6 +381,7 @@ ${data.text.slice(0, 120_000)}`;
 
     const cfg = await loadAiKeyConfig(context.supabase, context.userId);
     const text = await runStructured(cfg, {
+      fn: "extract",
       prompt,
       schemaName: "structures",
       schema: {
