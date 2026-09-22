@@ -5221,12 +5221,13 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
 /** Ruft ein Werkzeug eines externen MCP-Servers auf und hält dessen Antwort. */
 export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode, runMcp } = useBoard();
+  const { updateNode, runMcp, sourcesFor } = useBoard();
   const config = readMcp(record);
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["mcpRunning"] === true;
   const value = mcpValue(record);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [section, setSection] = useState<"input" | "output" | "result">("input");
   const servers = useQuery({
     queryKey: ["mcp-servers"],
     queryFn: () => listMcpServers(),
@@ -5235,10 +5236,29 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const server = servers.data?.find((item) => item.id === config.serverId);
   const tools = server?.tools ?? [];
   const tool = tools.find((item) => item.name === config.tool);
+  const fields = useMemo(() => schemaFields(tool?.inputSchema), [tool?.inputSchema]);
+  const missing = missingRequired(fields, config.inputs);
+  const paths = useMemo(() => suggestPaths(record.content), [record.content]);
+  const linkable = sourcesFor(record.id).filter((item) => item.id !== record.id);
 
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
+
+  /** Speichert einen Formularwert und hält das JSON für den Aufruf aktuell. */
+  function setInput(name: string, raw: string) {
+    const inputs = { ...config.inputs, [name]: raw };
+    patch({ mcpInputs: inputs, mcpArgs: JSON.stringify(argsFromInputs(fields, inputs)) });
+  }
+
+  function setBinding(name: string, nodeId: string) {
+    const bindings = { ...config.bindings };
+    if (nodeId) bindings[name] = nodeId;
+    else delete bindings[name];
+    patch({ mcpBindings: bindings });
+  }
+
+
 
 
   return (
