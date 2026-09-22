@@ -291,7 +291,9 @@ function EmbedZonePage() {
             <span className="font-display text-base font-semibold tracking-tight text-brand-navy">
               {title || "Feld"}
             </span>
-            <span className="text-xs text-muted-foreground">{records.length} Module</span>
+            <span className="text-xs text-muted-foreground">
+              {layoutById ? layoutById.size : records.length} Module
+            </span>
           </div>
           <Button variant="ghost" size="sm" onClick={downloadManifest} className="gap-1.5">
             <Download className="size-3.5" />
