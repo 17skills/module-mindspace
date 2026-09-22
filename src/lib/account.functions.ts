@@ -222,16 +222,14 @@ export const exportMyData = createServerFn({ method: "POST" })
     ]);
 
     const boardIds = (boards.data ?? []).map((board) => board.id);
-    let nodes: Record<string, unknown>[] = [];
-    let edges: Record<string, unknown>[] = [];
-    if (boardIds.length) {
-      const [n, e] = await Promise.all([
-        db.from("nodes").select("*").in("board_id", boardIds),
-        db.from("edges").select("*").in("board_id", boardIds),
-      ]);
-      nodes = n.data ?? [];
-      edges = e.data ?? [];
-    }
+    const [nodeRes, edgeRes] = boardIds.length
+      ? await Promise.all([
+          db.from("nodes").select("*").in("board_id", boardIds),
+          db.from("edges").select("*").in("board_id", boardIds),
+        ])
+      : [null, null];
+    const nodes = nodeRes?.data ?? [];
+    const edges = edgeRes?.data ?? [];
 
     await audit({ actorId: userId, action: "data.export" });
 
