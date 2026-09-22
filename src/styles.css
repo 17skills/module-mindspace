@@ -328,6 +328,23 @@
   transform: scale(1.18);
 }
 
+/* Status lights on connection points */
+.react-flow__handle[data-status="ok"] {
+  background: #4f8a5b;
+  opacity: 1;
+  box-shadow: 0 0 0 3px color-mix(in oklab, #4f8a5b 18%, transparent);
+}
+.react-flow__handle[data-status="warn"] {
+  background: var(--color-warning, #e0682b);
+  opacity: 1;
+  box-shadow: 0 0 0 3px color-mix(in oklab, #e0682b 18%, transparent);
+}
+.react-flow__handle[data-status="error"] {
+  background: #de5a3a;
+  opacity: 1;
+  box-shadow: 0 0 0 3px color-mix(in oklab, #de5a3a 22%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .module-card,
   .react-flow__handle { transition: none; }
