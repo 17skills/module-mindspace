@@ -13,10 +13,17 @@ export default defineMcp({
   title: "Canvas Spark",
   version: "0.1.0",
   instructions:
-    "Tools for Canvas Spark, a visual knowledge canvas. Use `list_boards` to find the user's boards, `get_board` to read a board's modules and connections, `search_content` to find modules by text, and `create_note` to add a note to a board.",
+    "Tools for Canvas Spark, a visual knowledge canvas. Use `list_boards` to find the user's boards, `get_board` to read a board's modules and connections, `list_zones` to find the background fields (module bundles) of a board, `get_zone` to read one field as a self-contained app bundle, `search_content` to find modules by text, and `create_note` to add a note to a board.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [listBoardsTool, getBoardTool, searchContentTool, createNoteTool],
+  tools: [
+    listBoardsTool,
+    getBoardTool,
+    listZonesTool,
+    getZoneTool,
+    searchContentTool,
+    createNoteTool,
+  ],
 });
