@@ -483,7 +483,6 @@ function BoardPage() {
           id,
           source,
           target,
-          animated: true,
           type: "labeled",
           label: (row.label as string | null) ?? undefined,
         });
@@ -648,7 +647,7 @@ function BoardPage() {
       const id = crypto.randomUUID();
       setEdges((current) => [
         ...current,
-        { id, source: sourceId, target: targetId, animated: true, type: "labeled" },
+        { id, source: sourceId, target: targetId, type: "labeled" },
       ]);
       trackSave(
         supabase
