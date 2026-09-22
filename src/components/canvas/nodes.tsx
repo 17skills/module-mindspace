@@ -1639,7 +1639,7 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
 
 /** Connection with an editable value label ("25 %", "2500") at its midpoint. */
 export function LabeledEdge(props: EdgeProps) {
-  const { updateEdge, calcForEdge } = useBoard();
+  const { updateEdge, deleteEdge, calcForEdge } = useBoard();
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX: props.sourceX,
     sourceY: props.sourceY,
@@ -1712,7 +1712,19 @@ export function LabeledEdge(props: EdgeProps) {
                     <Calculator className="size-3.5" />
                   </button>
                 </TooltipTrigger>
-                <UiTooltipContent>Rechnung anlegen</UiTooltipContent>
+               <UiTooltipContent>Rechnung anlegen</UiTooltipContent>
+              </UiTooltip>
+              <UiTooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    aria-label="Verbindung löschen"
+                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+                    onClick={() => deleteEdge(props.id)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <UiTooltipContent>Verbindung löschen</UiTooltipContent>
               </UiTooltip>
               <UiTooltip>
                 <TooltipTrigger asChild>
@@ -1737,6 +1749,15 @@ export function LabeledEdge(props: EdgeProps) {
             <span className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[11px] font-medium leading-tight text-foreground shadow-[var(--shadow-card)]">
               {label}
             </span>
+          ) : props.selected ? (
+            <button
+              aria-label="Verbindung löschen"
+              title="Verbindung löschen (oder Entf/Delete drücken)"
+              className="rounded-full border border-border/70 bg-card p-1 text-muted-foreground shadow-[var(--shadow-card)] transition-colors hover:text-destructive"
+              onClick={() => deleteEdge(props.id)}
+            >
+              <Trash2 className="size-3" />
+            </button>
           ) : (
             <span className="block size-2 rounded-full bg-border/60 opacity-0 transition-opacity hover:opacity-100" />
           )}

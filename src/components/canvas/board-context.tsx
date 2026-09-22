@@ -51,6 +51,8 @@ export type BoardApi = {
   updateNode: (id: string, patch: Partial<NodeRecord>) => void;
   /** Persist a connection label (e.g. "25%") used by calculation modules. */
   updateEdge: (id: string, label: string) => void;
+  /** Remove a connection from canvas and database. */
+  deleteEdge: (id: string) => void;
   deleteNode: (id: string) => void;
   collectContext: (id: string) => string;
   /** Transparent breakdown of what the chat context actually contains. */

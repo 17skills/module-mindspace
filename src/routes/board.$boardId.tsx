@@ -697,6 +697,14 @@ function BoardPage() {
     [setEdges],
   );
 
+  const deleteEdge = useCallback(
+    (id: string) => {
+      setEdges((current) => current.filter((edge) => edge.id !== id));
+      trackSave(supabase.from("edges").delete().eq("id", id));
+    },
+    [setEdges],
+  );
+
   const collectContext = useCallback((id: string) => {
     const connected = new Set<string>();
     for (const edge of edgesRef.current) {
@@ -2078,6 +2086,7 @@ function BoardPage() {
     () => ({
       updateNode,
       updateEdge,
+      deleteEdge,
       deleteNode,
       collectContext,
       contextReport,
@@ -2103,6 +2112,7 @@ function BoardPage() {
     [
       updateNode,
       updateEdge,
+      deleteEdge,
       deleteNode,
       collectContext,
       contextReport,
@@ -2570,6 +2580,7 @@ function BoardPage() {
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
+            deleteKeyCode={["Backspace", "Delete"]}
             onPaneContextMenu={(event) => {
               event.preventDefault();
               const mouse = event as unknown as MouseEvent;
