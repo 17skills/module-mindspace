@@ -241,6 +241,63 @@ const TYPE_GLYPH: Record<string, string> = {
 
 type Data = { record: NodeRecord };
 
+type PortStatus = "idle" | "ok" | "warn" | "error";
+
+const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
+
+/**
+ * Connection point with a discreet status light:
+ * green = value flows, amber = waiting for a value, red = invalid calculation.
+ */
+function SignalHandle(props: React.ComponentProps<typeof Handle>) {
+  const nodeId = useNodeId();
+  const kind = props.type;
+  const state = useStore(
+    (store) => {
+      if (!nodeId) return { status: "idle" as PortStatus, hint: "" };
+      const recordOf = (id: string) =>
+        (store.nodeLookup.get(id)?.data as Data | undefined)?.record;
+      const own = recordOf(nodeId);
+      if (kind === "source") {
+        const linked = store.edges.some((edge) => edge.source === nodeId);
+        if (!linked) return { status: "idle" as PortStatus, hint: "" };
+        const value = own ? nodeValue(own) : null;
+        if (value == null)
+          return { status: "warn" as PortStatus, hint: "Ausgang: noch kein Wert" };
+        return { status: "ok" as PortStatus, hint: `Ausgang: ${NUM.format(value)}` };
+      }
+      const incoming = store.edges.filter((edge) => edge.target === nodeId);
+      if (!incoming.length) return { status: "idle" as PortStatus, hint: "" };
+      let status: PortStatus = "ok";
+      const parts: string[] = [];
+      for (const edge of incoming) {
+        const source = recordOf(edge.source);
+        const raw = source ? nodeValue(source) : null;
+        const label = typeof edge.label === "string" ? edge.label : "";
+        const result = edgeValue(label, raw);
+        if (raw != null && result == null) {
+          status = "error";
+          parts.push(`${source?.title ?? "Quelle"}: Rechnung ungültig`);
+        } else if (raw == null) {
+          if (status !== "error") status = "warn";
+          parts.push(`${source?.title ?? "Quelle"}: kein Wert`);
+        } else {
+          parts.push(`${source?.title ?? "Quelle"}: ${NUM.format(result!)}`);
+        }
+      }
+      return { status, hint: `Eingang · ${parts.join(" · ")}` };
+    },
+    (a, b) => a.status === b.status && a.hint === b.hint,
+  );
+  return (
+    <Handle
+      {...props}
+      data-status={state.status}
+      {...(state.hint ? { title: state.hint } : {})}
+    />
+  );
+}
+
 function Shell({
   type,
   children,
