@@ -435,6 +435,10 @@ function BoardPage() {
   const appliedHeights = useRef(new Map<string, number>());
   /** Ignore DOM mutations caused by our own layout writes until this timestamp. */
   const suppressMeasure = useRef(0);
+  /** Modules the user sized by hand — their height stays untouched. */
+  const manualSize = useRef(new Set<string>());
+  /** True while the user drags or resizes a module. */
+  const interacting = useRef(false);
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const nodesRef = useRef(nodes);
