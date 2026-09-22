@@ -125,3 +125,25 @@ export function zoneContext(zone: NodeRecord, members: NodeRecord[]): string {
     })
     .join("\n\n---\n\n");
 }
+
+export type AppView = "full" | "compact";
+export type AppLayoutEntry = { id: string; view: AppView; hidden?: boolean };
+
+/** Gestaltung der Feld-App: Reihenfolge, Darstellung und Sichtbarkeit der Module. */
+export function readAppLayout(record: NodeRecord | undefined | null): AppLayoutEntry[] | null {
+  const meta = (record?.metadata ?? {}) as Record<string, unknown>;
+  const raw = meta["appLayout"];
+  if (!Array.isArray(raw)) return null;
+  const entries: AppLayoutEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as Record<string, unknown>;
+    if (typeof entry["id"] !== "string" || !entry["id"]) continue;
+    entries.push({
+      id: entry["id"] as string,
+      view: entry["view"] === "compact" ? "compact" : "full",
+      hidden: entry["hidden"] === true,
+    });
+  }
+  return entries.length ? entries : null;
+}

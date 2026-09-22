@@ -25,7 +25,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { AlertTriangle, BookOpen, Calculator, Camera, ChevronRight, CloudSun, ExternalLink, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, LayoutTemplate, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -41,7 +41,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
-import { readAgent, readAssignment } from "@/lib/zones";
+import { readAgent, readAppLayout, readAssignment, zoneMembers, type AppLayoutEntry } from "@/lib/zones";
 import {
   factorText,
   normalizeWeights,
@@ -835,7 +835,7 @@ export const ZONE_COLORS: readonly ZoneColor[] = [
 
 export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode, resizeZone, runAgent, agentStale, openInspector } = useBoard();
+  const { updateNode, resizeZone, runAgent, agentStale, openInspector, allNodes } = useBoard();
   const color = record.color ?? ZONE_WHITE;
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const isGroup = meta["templateGroup"] === true;
@@ -843,6 +843,29 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const agent = readAgent(record);
   const running = meta["agentRunning"] === true;
   const stale = agent ? agentStale(record.id) : false;
+  const [designOpen, setDesignOpen] = useState(false);
+  const members = useMemo(() => zoneMembers(record.id, allNodes()), [record.id, allNodes]);
+  const layout = useMemo<AppLayoutEntry[]>(() => {
+    const saved = readAppLayout(record) ?? [];
+    const kept = saved.filter((entry) => members.some((m) => m.id === entry.id));
+    const missing = members
+      .filter((m) => !saved.some((entry) => entry.id === m.id))
+      .map((m) => ({ id: m.id, view: "full" as const }));
+    return [...kept, ...missing];
+  }, [record, members]);
+  const saveLayout = (entries: AppLayoutEntry[]) =>
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), appLayout: entries } });
+  const moveEntry = (id: string, dir: -1 | 1) => {
+    const next = [...layout];
+    const from = next.findIndex((entry) => entry.id === id);
+    const to = from + dir;
+    if (from < 0 || to < 0 || to >= next.length) return;
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item!);
+    saveLayout(next);
+  };
+  const patchEntry = (id: string, patch: Partial<AppLayoutEntry>) =>
+    saveLayout(layout.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)));
   return (
     <>
       <NodeResizer
@@ -900,6 +923,19 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
           <UiTooltip>
             <TooltipTrigger asChild>
               <button
+                aria-label="App-Ansicht gestalten"
+                aria-pressed={designOpen}
+                className={`nodrag shrink-0 rounded-md p-1 transition-colors hover:bg-accent hover:text-accent-foreground ${designOpen ? "text-primary" : "text-muted-foreground"}`}
+                onClick={() => setDesignOpen((open) => !open)}
+              >
+                <LayoutTemplate className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <UiTooltipContent>App-Ansicht gestalten</UiTooltipContent>
+          </UiTooltip>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <button
                 aria-label="Feld als eigene App öffnen"
                 className="nodrag mr-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 onClick={() => {
@@ -917,6 +953,71 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
             <UiTooltipContent>Als App öffnen (Link kopiert)</UiTooltipContent>
           </UiTooltip>
         </div>
+        {designOpen && (
+          <div className="nodrag absolute top-12 right-2 z-10 w-72 rounded-xl border border-border/70 bg-card/95 p-2 shadow-[var(--shadow-card)]">
+            <div className="module-eyebrow px-1 pb-1.5 text-muted-foreground">
+              App-Ansicht · Reihenfolge &amp; Darstellung
+            </div>
+            {layout.length === 0 && (
+              <p className="px-1 py-2 text-[11px] text-muted-foreground">
+                Noch keine Module auf diesem Feld.
+              </p>
+            )}
+            <ul className="max-h-64 space-y-1 overflow-auto">
+              {layout.map((entry, index) => {
+                const member = members.find((m) => m.id === entry.id);
+                if (!member) return null;
+                return (
+                  <li
+                    key={entry.id}
+                    className={`flex items-center gap-1 rounded-lg border border-border/60 px-1.5 py-1 ${entry.hidden ? "opacity-50" : ""}`}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium">
+                      {member.title ?? "Modul"}
+                    </span>
+                    <select
+                      aria-label="Darstellung"
+                      value={entry.view}
+                      onChange={(e) =>
+                        patchEntry(entry.id, { view: e.target.value === "compact" ? "compact" : "full" })
+                      }
+                      className="rounded-md border border-border/60 bg-card px-1 py-0.5 font-mono text-[10px] outline-none"
+                    >
+                      <option value="full">Breit</option>
+                      <option value="compact">Kompakt</option>
+                    </select>
+                    <button
+                      aria-label="Nach oben"
+                      disabled={index === 0}
+                      onClick={() => moveEntry(entry.id, -1)}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-accent disabled:opacity-30"
+                    >
+                      <ChevronUp className="size-3" />
+                    </button>
+                    <button
+                      aria-label="Nach unten"
+                      disabled={index === layout.length - 1}
+                      onClick={() => moveEntry(entry.id, 1)}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-accent disabled:opacity-30"
+                    >
+                      <ChevronDown className="size-3" />
+                    </button>
+                    <button
+                      aria-label={entry.hidden ? "Einblenden" : "Ausblenden"}
+                      onClick={() => patchEntry(entry.id, { hidden: !entry.hidden })}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-accent"
+                    >
+                      {entry.hidden ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="px-1 pt-1.5 text-[10px] leading-snug text-muted-foreground">
+              Gilt für die App-Ansicht („Als App öffnen“) und Teams.
+            </p>
+          </div>
+        )}
         {locked && (
           <Lock className="pointer-events-none absolute top-3.5 right-3.5 size-3.5 text-muted-foreground/70" />
         )}
