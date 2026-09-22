@@ -4226,7 +4226,10 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
   const summary = useMemo(() => inspectionText(findings), [findings]);
 
   // keep the chat / decision context in sync with the action plan
+  const lastSummary = useRef<string | null>(null);
   useEffect(() => {
+    if (summary === lastSummary.current) return;
+    lastSummary.current = summary;
     if (summary !== record.content) updateNode(record.id, { content: summary });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary]);
