@@ -255,6 +255,21 @@ export function AppDialog({
     await reload();
   };
 
+  /** App veröffentlichen oder wieder abschalten – der Link bleibt erhalten. */
+  const togglePublic = async (app: Row) => {
+    const next = !app.is_public;
+    const { error } = await supabase
+      .from("apps")
+      .update({ is_public: next, updated_at: new Date().toISOString() })
+      .eq("id", app.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(next ? "App ist jetzt öffentlich erreichbar" : "App ist abgeschaltet");
+    await reload();
+  };
+
   const urlFor = (id: string) => `${window.location.origin}/app/${id}`;
   const mcpFor = (app: Row) =>
     `${window.location.origin}/api/public/app/${app.id}/mcp?token=${app.mcp_token}`;
