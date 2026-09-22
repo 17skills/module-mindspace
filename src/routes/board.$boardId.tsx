@@ -18,9 +18,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, LayoutGrid, Scale, Shapes, Tag } from "lucide-react";
+import { Globe, LayoutGrid, Plug, Scale, Shapes, Tag } from "lucide-react";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
+import { runMcpTool } from "@/lib/mcp-client.functions";
+import { readMcp } from "@/lib/mcp-module";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
   DropdownMenu,
@@ -78,6 +80,7 @@ import {
   shapeKind,
   SheetNode,
   ApiNode,
+  McpNode,
   DecisionNode,
   SignalNode,
   QuotesNode,
@@ -165,6 +168,7 @@ const nodeTypes = {
   gauge: GaugeNode,
   sheet: SheetNode,
   api: ApiNode,
+  mcp: McpNode,
   decision: DecisionNode,
   signal: SignalNode,
   quotes: QuotesNode,
@@ -189,6 +193,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   gauge: { width: 260, height: 240 },
   sheet: { width: 360, height: 240 },
   api: { width: 360, height: 280 },
+  mcp: { width: 380, height: 420 },
   decision: { width: 560, height: 560 },
   signal: { width: 220, height: 170 },
   quotes: { width: 460, height: 420 },
@@ -211,6 +216,7 @@ const READABLE_WIDTH: Record<string, number> = {
   calc: 380,
   sheet: 440,
   api: 420,
+  mcp: 420,
   decision: 560,
   quotes: 500,
   map: 560,
@@ -227,6 +233,7 @@ const AUTO_HEIGHT_TYPES = new Set([
   "gauge",
   "sheet",
   "api",
+  "mcp",
   "decision",
   "signal",
   "risk",
@@ -239,6 +246,7 @@ const AUTO_MIN_HEIGHT: Record<string, number> = {
   gauge: 220,
   sheet: 180,
   api: 220,
+  mcp: 360,
   decision: 300,
   signal: 140,
   risk: 520,
@@ -353,6 +361,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "gauge" ||
     record.type === "sheet" ||
     record.type === "api" ||
+    record.type === "mcp" ||
     record.type === "decision" ||
     record.type === "signal" ||
     record.type === "map" ||
@@ -1567,6 +1576,43 @@ function BoardPage() {
     [updateNode],
   );
 
+  /** Run the chosen tool of an external MCP server and keep its answer. */
+  const runMcp = useCallback(
+    (id: string) => {
+      const record = recordsRef.current[id];
+      if (!record) return;
+      const config = readMcp(record);
+      if (!config.serverId || !config.tool) {
+        toast.info("Wähle zuerst Server und Werkzeug");
+        return;
+      }
+      updateNode(id, { metadata: { ...(record.metadata ?? {}), mcpRunning: true } });
+      void runMcpTool({ data: { serverId: config.serverId, tool: config.tool, args: config.args } })
+        .then((result) => {
+          const current = recordsRef.current[id];
+          updateNode(id, {
+            content: result.text,
+            status: result.isError ? "error" : "ready",
+            metadata: {
+              ...(current?.metadata ?? {}),
+              mcpRunning: false,
+              lastAt: result.at,
+              lastError: result.isError ? "Das Werkzeug meldet einen Fehler" : null,
+            },
+          });
+        })
+        .catch((error: unknown) => {
+          const current = recordsRef.current[id];
+          const message = error instanceof Error ? error.message : "Aufruf fehlgeschlagen";
+          updateNode(id, {
+            metadata: { ...(current?.metadata ?? {}), mcpRunning: false, lastError: message },
+          });
+          toast.error(message);
+        });
+    },
+    [updateNode],
+  );
+
   /** Let a decision module judge the context of its connections. */
   const runDecide = useCallback(
     (id: string) => {
@@ -2228,6 +2274,7 @@ function BoardPage() {
       calcForEdge,
       runApi,
       runDecide,
+      runMcp,
     }),
 
     [
@@ -2254,6 +2301,7 @@ function BoardPage() {
       calcForEdge,
       runApi,
       runDecide,
+      runMcp,
     ],
   );
 
@@ -3154,6 +3202,31 @@ function BoardPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">API-Modul anlegen</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="MCP-Werkzeug anlegen"
+                    onClick={() => {
+                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                      void createRecord({
+                        type: "mcp",
+                        title: "MCP-Werkzeug",
+                        content: "",
+                        position_x: at.x,
+                        position_y: at.y,
+                        metadata: { mcpServerId: "", mcpTool: "", mcpArgs: "{}", pick: "" },
+                      });
+                    }}
+                  >
+                    <Plug className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">MCP-Werkzeug anlegen</TooltipContent>
               </Tooltip>
 
               <Tooltip>
