@@ -25,7 +25,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { AlertTriangle, BookOpen, Calculator, ChevronRight, CloudSun, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, ChevronRight, CloudSun, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -1634,6 +1634,7 @@ export function LabeledEdge(props: EdgeProps) {
   });
   const label = typeof props.label === "string" ? props.label : "";
   const labelsVisible = useEdgeLabelsVisible();
+  const { setEdges } = useReactFlow();
   const stroke = props.selected ? "var(--ring)" : "var(--edge)";
   return (
     <>
