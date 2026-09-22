@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 type Row = Record<string, unknown>;
+type JsonRow = Record<string, Json>;
 
 function metaZoneId(row: Row): string | null {
   const meta = (row["metadata"] ?? {}) as Record<string, unknown>;
