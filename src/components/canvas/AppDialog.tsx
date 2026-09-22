@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
-import { Bot, Copy, ExternalLink, Trash2 } from "lucide-react";
+import {
+  Bot,
+  Copy,
+  ExternalLink,
+  Key,
+  Maximize2,
+  Minimize2,
+  Pencil,
+  PlugZap,
+  Trash2,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,10 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { APP_KINDS, MAX_APP_MODULES, brandingFrom, suggestKind, type AppKind } from "@/lib/apps";
+import { APP_KINDS, MAX_APP_MODULES, brandingFrom, moduleLabel, suggestKind, type AppKind } from "@/lib/apps";
 import {
   APP_DESIGN_PRESETS,
   DEFAULT_APP_BRANDING,
@@ -26,9 +38,12 @@ type Candidate = { id: string; title: string; type: string };
 type Row = {
   id: string;
   title: string;
+  description: string | null;
   kind: string;
   node_ids: unknown;
   branding: unknown;
+  mcp_token: string;
+  mcp_scope: string;
   updated_at: string;
 };
 
@@ -43,6 +58,13 @@ const BACKGROUNDS: { id: AppBackground; label: string }[] = [
   { id: "stone", label: "Stein" },
   { id: "paper", label: "Papier" },
   { id: "grid", label: "Raster" },
+];
+
+const PROMPTS = [
+  "Zeig mir alle offenen Befunde mit Dringlichkeit 1–3 und schlage eine Reihenfolge für diese Woche vor.",
+  "Welche Kennzahlen hat diese App gerade? Fasse die Lage in fünf Sätzen zusammen.",
+  "Trage einen neuen Befund ein: Trafostation Nord 7, Zaun beschädigt, Dringlichkeit 4, geschätzt 2400 €.",
+  "Setze den Befund mit der höchsten Dringlichkeit auf „beauftragt“ und trage Team West als zuständig ein.",
 ];
 
 export function AppDialog({
@@ -61,12 +83,20 @@ export function AppDialog({
   preselected: string[];
 }) {
   const [apps, setApps] = useState<Row[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [kind, setKind] = useState<AppKind>("cockpit");
+  const [scope, setScope] = useState<"read" | "write">("read");
   const [picked, setPicked] = useState<string[]>([]);
   const [branding, setBranding] = useState<AppBranding>(DEFAULT_APP_BRANDING);
   const [saving, setSaving] = useState(false);
+  const [wide, setWide] = useState(false);
   const [qr, setQr] = useState<{ id: string; src: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [docsFor, setDocsFor] = useState<string | null>(null);
+  const [tab, setTab] = useState("module");
   const logoInput = useRef<HTMLInputElement>(null);
 
   const chosenTypes = useMemo(
@@ -80,7 +110,7 @@ export function AppDialog({
   const reload = async () => {
     const { data, error } = await supabase
       .from("apps")
-      .select("id,title,kind,node_ids,branding,updated_at")
+      .select("id,title,description,kind,node_ids,branding,mcp_token,mcp_scope,updated_at")
       .eq("board_id", boardId)
       .order("updated_at", { ascending: false });
     if (error) {
@@ -90,16 +120,24 @@ export function AppDialog({
     setApps((data ?? []) as Row[]);
   };
 
+  const resetForm = (start: string[]) => {
+    setEditing(null);
+    setTitle("");
+    setDescription("");
+    setBranding(DEFAULT_APP_BRANDING);
+    setScope("read");
+    setPicked(start);
+    setKind(
+      suggestKind(start.map((id) => candidates.find((item) => item.id === id)?.type ?? "")),
+    );
+  };
+
   useEffect(() => {
     if (!open) return;
     void reload();
-    const start = preselected.slice(0, MAX_APP_MODULES);
-    setPicked(start);
-    setKind(
-      suggestKind(
-        start.map((id) => candidates.find((item) => item.id === id)?.type ?? ""),
-      ),
-    );
+    resetForm(preselected.slice(0, MAX_APP_MODULES));
+    setTab("module");
+    setTestResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -126,22 +164,38 @@ export function AppDialog({
     reader.readAsDataURL(file);
   };
 
-  const create = async () => {
+  const submit = async () => {
     if (!picked.length) {
       toast.error("Bitte mindestens ein Modul wählen");
       return;
     }
     setSaving(true);
+    const name = title.trim() || (kind === "capture" ? "Foto-Erfassung" : "Lagebild");
+    const payload = {
+      title: name,
+      description: description.trim(),
+      kind,
+      node_ids: picked,
+      mcp_scope: scope,
+      branding: { ...branding, title: title.trim() },
+    };
+    if (editing) {
+      const { error } = await supabase
+        .from("apps")
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq("id", editing);
+      setSaving(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("App aktualisiert – Link und KI-Anschluss bleiben gleich");
+      await reload();
+      return;
+    }
     const { data, error } = await supabase
       .from("apps")
-      .insert({
-        user_id: userId,
-        board_id: boardId,
-        title: title.trim() || (kind === "capture" ? "Foto-Erfassung" : "Lagebild"),
-        kind,
-        node_ids: picked,
-        branding: { ...branding, title: title.trim() },
-      })
+      .insert({ user_id: userId, board_id: boardId, ...payload })
       .select("id")
       .single();
     setSaving(false);
@@ -150,9 +204,20 @@ export function AppDialog({
       return;
     }
     toast.success("App ausgeliefert");
-    setTitle("");
+    resetForm([]);
     await reload();
     void showQr(String(data.id));
+  };
+
+  const edit = (app: Row) => {
+    setEditing(app.id);
+    setTitle(app.title);
+    setDescription(app.description ?? "");
+    setKind(app.kind === "capture" ? "capture" : "cockpit");
+    setScope(app.mcp_scope === "write" ? "write" : "read");
+    setPicked(Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : []);
+    setBranding(brandingFrom(app.branding));
+    setTab("module");
   };
 
   const remove = async (id: string) => {
@@ -162,14 +227,69 @@ export function AppDialog({
       return;
     }
     if (qr?.id === id) setQr(null);
+    if (editing === id) resetForm([]);
     await reload();
   };
 
   const urlFor = (id: string) => `${window.location.origin}/app/${id}`;
-  const mcpFor = (id: string) => `${window.location.origin}/api/public/app/${id}/mcp`;
+  const mcpFor = (app: Row) =>
+    `${window.location.origin}/api/public/app/${app.id}/mcp?token=${app.mcp_token}`;
   const copy = (text: string, note: string) => {
     void navigator.clipboard.writeText(text);
     toast.success(note);
+  };
+
+  const claudeConfig = (app: Row) =>
+    JSON.stringify(
+      {
+        mcpServers: {
+          [app.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "scope-app"]: {
+            command: "npx",
+            args: ["-y", "mcp-remote", mcpFor(app)],
+          },
+        },
+      },
+      null,
+      2,
+    );
+
+  const testConnection = async (app: Row) => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const response = await fetch(mcpFor(app), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2024-11-05",
+            capabilities: {},
+            clientInfo: { name: "scopebuilder-test", version: "1.0" },
+          },
+        }),
+      });
+      if (response.status === 401) {
+        setTestResult("Schlüssel abgelehnt – bitte Link neu kopieren.");
+      } else if (!response.ok) {
+        setTestResult(`Endpunkt antwortet mit Fehler ${response.status}.`);
+      } else {
+        setTestResult(
+          app.mcp_scope === "write"
+            ? "Verbindung erfolgreich – 5 Werkzeuge aktiv (Lesen und Schreiben)."
+            : "Verbindung erfolgreich – 3 Werkzeuge aktiv (nur Lesen).",
+        );
+      }
+    } catch {
+      setTestResult("Der Endpunkt war nicht erreichbar.");
+    } finally {
+      setTesting(false);
+    }
   };
 
   const showQr = async (id: string) => {
@@ -183,193 +303,394 @@ export function AppDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] max-w-2xl overflow-auto">
+      <DialogContent
+        className={
+          wide
+            ? "h-[94vh] w-[96vw] max-w-none overflow-auto"
+            : "max-h-[88vh] max-w-2xl overflow-auto"
+        }
+      >
         <DialogHeader>
-          <DialogTitle>App-Ansicht</DialogTitle>
-          <DialogDescription>
-            Bis zu {MAX_APP_MODULES} Module dieses Boards werden zu einer eigenständigen App –
-            als Link für Menschen und als Datenzugang für KI-Assistenten.
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <DialogTitle>App-Ansicht</DialogTitle>
+              <DialogDescription>
+                Bis zu {MAX_APP_MODULES} Module dieses Scopes werden zu einer eigenständigen App –
+                als Link für Menschen und als Datenzugang für KI-Assistenten.
+              </DialogDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setWide((value) => !value)}>
+              {wide ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+            </Button>
+          </div>
         </DialogHeader>
 
-        <section className="space-y-2">
-          <span className="module-eyebrow text-muted-foreground">Module</span>
-          <div className="grid max-h-48 gap-1 overflow-auto rounded-lg border border-border/70 p-2">
-            {candidates.map((item) => (
-              <label key={item.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={picked.includes(item.id)}
-                  onChange={() => toggle(item.id)}
-                />
-                <span className="truncate">{item.title || "Ohne Titel"}</span>
-                <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-                  {item.type}
-                </span>
-              </label>
-            ))}
-            {candidates.length === 0 && (
-              <p className="text-sm text-muted-foreground">Dieses Board hat noch keine Module.</p>
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="module">1 · Module</TabsTrigger>
+            <TabsTrigger value="design">2 · Gestaltung</TabsTrigger>
+            <TabsTrigger value="access">3 · Zugriff</TabsTrigger>
+            <TabsTrigger value="deliver">4 · Ausliefern</TabsTrigger>
+            <TabsTrigger value="docs">5 · KI-Anleitung</TabsTrigger>
+          </TabsList>
+
+          {/* 1 – Module */}
+          <TabsContent value="module" className="space-y-3">
+            {editing && (
+              <p className="rounded-lg border border-border/70 bg-accent/30 p-2 text-xs">
+                Du bearbeitest eine aktive App. Änderungen gelten sofort – der Link bleibt gleich.{" "}
+                <button className="underline" onClick={() => resetForm([])}>
+                  Neue App stattdessen
+                </button>
+              </p>
             )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {picked.length} / {MAX_APP_MODULES} gewählt
-            {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
-          </p>
-        </section>
-
-        <section className="space-y-2">
-          <span className="module-eyebrow text-muted-foreground">Zweck</span>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {APP_KINDS.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setKind(option.id)}
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  kind === option.id ? "border-ring bg-accent/40" : "border-border/70 hover:bg-accent/20"
-                }`}
-              >
-                <p className="text-sm font-medium">{option.label}</p>
-                <p className="text-xs text-muted-foreground">{option.hint}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="space-y-2">
-          <span className="module-eyebrow text-muted-foreground">Gestaltung</span>
-          <Input
-            value={title}
-            placeholder="Titel der App, z. B. Trafostationen-Inspektion"
-            onChange={(event) => setTitle(event.target.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            {APP_DESIGN_PRESETS.map((profile) => (
-              <button
-                key={profile.id}
-                onClick={() => setBranding((b) => ({ ...b, ...profile.branding, logo: b.logo }))}
-                className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
-              >
-                {profile.name}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {ACCENTS.map((accent) => (
-              <button
-                key={accent.id}
-                aria-label={accent.label}
-                onClick={() => setBranding((b) => ({ ...b, accent: accent.id }))}
-                className={`size-7 rounded-full border-2 ${
-                  branding.accent === accent.id ? "border-foreground" : "border-transparent"
-                }`}
-                style={{ background: accent.color }}
-              />
-            ))}
-            <div className="ml-2 flex gap-1">
-              {BACKGROUNDS.map((background) => (
+            <div className="grid max-h-72 gap-1 overflow-auto rounded-lg border border-border/70 p-2">
+              {candidates.map((item) => (
+                <label key={item.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(item.id)}
+                    onChange={() => toggle(item.id)}
+                  />
+                  <span className="truncate">{moduleLabel(item.type, item.title)}</span>
+                </label>
+              ))}
+              {candidates.length === 0 && (
+                <p className="text-sm text-muted-foreground">Dieser Scope hat noch keine Module.</p>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {picked.length} / {MAX_APP_MODULES} gewählt
+              {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {APP_KINDS.map((option) => (
                 <button
-                  key={background.id}
-                  onClick={() => setBranding((b) => ({ ...b, background: background.id }))}
-                  className={`rounded-full border px-2 py-0.5 text-[11px] ${
-                    branding.background === background.id
-                      ? "border-transparent bg-primary text-primary-foreground"
-                      : "border-border"
+                  key={option.id}
+                  onClick={() => setKind(option.id)}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    kind === option.id ? "border-ring bg-accent/40" : "border-border/70 hover:bg-accent/20"
                   }`}
                 >
-                  {background.label}
+                  <p className="text-sm font-medium">{option.label}</p>
+                  <p className="text-xs text-muted-foreground">{option.hint}</p>
                 </button>
               ))}
             </div>
-            <input
-              ref={logoInput}
-              type="file"
-              accept="image/png,image/svg+xml,.png,.svg"
-              className="hidden"
-              onChange={(event) => void uploadLogo(event.target.files?.[0])}
+          </TabsContent>
+
+          {/* 2 – Gestaltung */}
+          <TabsContent value="design" className="space-y-3">
+            <Input
+              value={title}
+              placeholder="Titel der App, z. B. Trafostationen-Inspektion"
+              onChange={(event) => setTitle(event.target.value)}
             />
-            <Button variant="outline" size="sm" onClick={() => logoInput.current?.click()}>
-              Logo
+            <Textarea
+              value={description}
+              rows={2}
+              placeholder="Kurze Beschreibung, z. B. Vor-Ort-Erfassung für Team West"
+              onChange={(event) => setDescription(event.target.value)}
+            />
+            <div className="flex flex-wrap gap-2">
+              {APP_DESIGN_PRESETS.map((profile) => (
+                <button
+                  key={profile.id}
+                  onClick={() => setBranding((b) => ({ ...b, ...profile.branding, logo: b.logo }))}
+                  className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
+                >
+                  {profile.name}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {ACCENTS.map((accent) => (
+                <button
+                  key={accent.id}
+                  aria-label={accent.label}
+                  onClick={() => setBranding((b) => ({ ...b, accent: accent.id }))}
+                  className={`size-7 rounded-full border-2 ${
+                    branding.accent === accent.id ? "border-foreground" : "border-transparent"
+                  }`}
+                  style={{ background: accent.color }}
+                />
+              ))}
+              <div className="ml-2 flex gap-1">
+                {BACKGROUNDS.map((background) => (
+                  <button
+                    key={background.id}
+                    onClick={() => setBranding((b) => ({ ...b, background: background.id }))}
+                    className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                      branding.background === background.id
+                        ? "border-transparent bg-primary text-primary-foreground"
+                        : "border-border"
+                    }`}
+                  >
+                    {background.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                ref={logoInput}
+                type="file"
+                accept="image/png,image/svg+xml,.png,.svg"
+                className="hidden"
+                onChange={(event) => void uploadLogo(event.target.files?.[0])}
+              />
+              <Button variant="outline" size="sm" onClick={() => logoInput.current?.click()}>
+                Logo
+              </Button>
+              {branding.logo && (
+                <img src={branding.logo} alt="" className="size-7 rounded object-contain" />
+              )}
+            </div>
+          </TabsContent>
+
+          {/* 3 – Zugriff */}
+          <TabsContent value="access" className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Menschen öffnen die App über den Link – ohne Konto. KI-Assistenten brauchen zusätzlich
+              den Schlüssel dieser App.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(
+                [
+                  {
+                    id: "read" as const,
+                    label: "Nur lesen",
+                    hint: "Befunde und Kennzahlen abrufen. Nichts ändern.",
+                  },
+                  {
+                    id: "write" as const,
+                    label: "Lesen und schreiben",
+                    hint: "Zusätzlich Befunde melden und Status setzen.",
+                  },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setScope(option.id)}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    scope === option.id ? "border-ring bg-accent/40" : "border-border/70 hover:bg-accent/20"
+                  }`}
+                >
+                  <p className="text-sm font-medium">{option.label}</p>
+                  <p className="text-xs text-muted-foreground">{option.hint}</p>
+                </button>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* 4 – Ausliefern */}
+          <TabsContent value="deliver" className="space-y-3">
+            <Button onClick={() => void submit()} disabled={saving} className="w-full">
+              {editing ? "Änderungen speichern" : "App ausliefern"}
             </Button>
-            {branding.logo && (
-              <img src={branding.logo} alt="" className="size-7 rounded object-contain" />
-            )}
-          </div>
-        </section>
+            <span className="module-eyebrow text-muted-foreground">Aktive Apps</span>
+            <ul className="space-y-2">
+              {apps.map((app) => {
+                const count = Array.isArray(app.node_ids) ? app.node_ids.length : 0;
+                const look = brandingFrom(app.branding);
+                return (
+                  <li key={app.id} className="rounded-lg border border-border/70 p-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="size-2.5 rounded-full"
+                        style={{
+                          background:
+                            ACCENTS.find((item) => item.id === look.accent)?.color ?? "#132B25",
+                        }}
+                      />
+                      <span className="truncate text-sm font-medium">{app.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {app.kind === "capture" ? "Erfassung" : "Cockpit"} · {count} Module ·{" "}
+                        {app.mcp_scope === "write" ? "KI darf schreiben" : "KI liest nur"}
+                      </span>
+                      <div className="ml-auto flex gap-1">
+                        <Button size="sm" variant="ghost" title="Bearbeiten" onClick={() => edit(app)}>
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="App-Link kopieren"
+                          onClick={() => copy(urlFor(app.id), "App-Link kopiert")}
+                        >
+                          <Copy className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="KI-Anschluss mit Schlüssel kopieren"
+                          onClick={() => copy(mcpFor(app), "KI-Anschluss kopiert")}
+                        >
+                          <Bot className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Anleitung anzeigen"
+                          onClick={() => {
+                            setDocsFor(app.id);
+                            setTestResult(null);
+                            setTab("docs");
+                          }}
+                        >
+                          <PlugZap className="size-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => void showQr(app.id)}>
+                          QR
+                        </Button>
+                        <Button size="sm" variant="ghost" asChild>
+                          <a href={urlFor(app.id)} target="_blank" rel="noreferrer">
+                            <ExternalLink className="size-3.5" />
+                          </a>
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => void remove(app.id)}>
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    {app.description ? (
+                      <p className="mt-1 text-xs text-muted-foreground">{app.description}</p>
+                    ) : null}
+                    {qr?.id === app.id && (
+                      <div className="mt-2 flex items-center gap-3">
+                        <img src={qr.src} alt="QR-Code" className="size-28 rounded bg-white p-1" />
+                        <p className="text-xs text-muted-foreground">
+                          Mit dem Handy scannen, um die App vor Ort zu öffnen.
+                        </p>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+              {apps.length === 0 && (
+                <li className="text-sm text-muted-foreground">Noch keine App in diesem Scope.</li>
+              )}
+            </ul>
+          </TabsContent>
 
-        <Button onClick={() => void create()} disabled={saving}>
-          App ausliefern
-        </Button>
-
-        <section className="space-y-2">
-          <span className="module-eyebrow text-muted-foreground">Aktive Apps</span>
-          <ul className="space-y-2">
-            {apps.map((app) => {
-              const count = Array.isArray(app.node_ids) ? app.node_ids.length : 0;
-              const look = brandingFrom(app.branding);
+          {/* 5 – KI-Anleitung */}
+          <TabsContent value="docs" className="space-y-3">
+            {(() => {
+              const app = apps.find((item) => item.id === docsFor) ?? apps[0];
+              if (!app) {
+                return (
+                  <p className="text-sm text-muted-foreground">
+                    Liefere zuerst eine App aus – danach steht hier die Anleitung.
+                  </p>
+                );
+              }
               return (
-                <li key={app.id} className="rounded-lg border border-border/70 p-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="size-2.5 rounded-full"
-                      style={{
-                        background:
-                          ACCENTS.find((item) => item.id === look.accent)?.color ?? "#132B25",
-                      }}
-                    />
-                    <span className="truncate text-sm font-medium">{app.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {app.kind === "capture" ? "Erfassung" : "Cockpit"} · {count} Module
-                    </span>
-                    <div className="ml-auto flex gap-1">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">{app.title}</span>
+                    {apps.length > 1 && (
+                      <select
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                        value={app.id}
+                        onChange={(event) => setDocsFor(event.target.value)}
+                      >
+                        {apps.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.title}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={testing}
+                      onClick={() => void testConnection(app)}
+                    >
+                      <PlugZap className="size-3.5" />
+                      Verbindung testen
+                    </Button>
+                    {testResult && <span className="text-xs">{testResult}</span>}
+                  </div>
+
+                  <div className="rounded-lg border border-border/70 p-3">
+                    <div className="flex items-center gap-2">
+                      <Key className="size-3.5 text-muted-foreground" />
+                      <span className="module-eyebrow text-muted-foreground">
+                        Verbindungsadresse mit Schlüssel
+                      </span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        title="App-Link kopieren"
-                        onClick={() => copy(urlFor(app.id), "App-Link kopiert")}
+                        className="ml-auto"
+                        onClick={() => copy(mcpFor(app), "Adresse kopiert")}
                       >
                         <Copy className="size-3.5" />
                       </Button>
+                    </div>
+                    <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">
+                      {mcpFor(app)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Rechte: {app.mcp_scope === "write" ? "lesen und schreiben" : "nur lesen"}. Der
+                      Schlüssel wirkt wie ein Passwort – nur an vertraute Assistenten geben.
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border/70 p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="module-eyebrow text-muted-foreground">Claude Desktop</span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        title="KI-Anschluss (MCP) kopieren"
-                        onClick={() => copy(mcpFor(app.id), "KI-Anschluss (MCP) kopiert")}
+                        className="ml-auto"
+                        onClick={() => copy(claudeConfig(app), "Einstellung kopiert")}
                       >
-                        <Bot className="size-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => void showQr(app.id)}>
-                        QR
-                      </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <a href={urlFor(app.id)} target="_blank" rel="noreferrer">
-                          <ExternalLink className="size-3.5" />
-                        </a>
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => void remove(app.id)}>
-                        <Trash2 className="size-3.5" />
+                        <Copy className="size-3.5" />
                       </Button>
                     </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      In Claude Desktop unter Einstellungen → Entwickler → Konfiguration bearbeiten
+                      einfügen und Claude neu starten.
+                    </p>
+                    <pre className="mt-2 overflow-auto rounded bg-secondary p-2 font-mono text-[11px]">
+{claudeConfig(app)}
+                    </pre>
                   </div>
-                  <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
-                    KI-Anschluss: {mcpFor(app.id).replace(/^https?:\/\//, "")}
-                  </p>
-                  {qr?.id === app.id && (
-                    <div className="mt-2 flex items-center gap-3">
-                      <img src={qr.src} alt="QR-Code" className="size-28 rounded bg-white p-1" />
-                      <p className="text-xs text-muted-foreground">
-                        Mit dem Handy scannen, um die App vor Ort zu öffnen.
-                      </p>
-                    </div>
-                  )}
-                </li>
+
+                  <div className="rounded-lg border border-border/70 p-3 text-xs text-muted-foreground">
+                    <p className="module-eyebrow text-muted-foreground">
+                      VS Code / Copilot, Cursor und andere
+                    </p>
+                    <ol className="mt-1 list-decimal space-y-1 pl-4">
+                      <li>Im Assistenten „MCP-Server hinzufügen“ wählen und Typ „HTTP“ nehmen.</li>
+                      <li>Obige Adresse einfügen – der Schlüssel steckt bereits darin.</li>
+                      <li>
+                        Alternativ Adresse ohne <code>?token=</code> eintragen und den Schlüssel als
+                        Kopfzeile <code>Authorization: Bearer …</code> hinterlegen.
+                      </li>
+                      <li>Speichern, Assistent neu laden, dann „Verbindung testen“ hier drücken.</li>
+                    </ol>
+                  </div>
+
+                  <div className="rounded-lg border border-border/70 p-3">
+                    <span className="module-eyebrow text-muted-foreground">Beispiel-Anfragen</span>
+                    <ul className="mt-2 space-y-1">
+                      {PROMPTS.map((prompt) => (
+                        <li key={prompt} className="flex items-start gap-2">
+                          <button
+                            className="text-left text-xs hover:underline"
+                            onClick={() => copy(prompt, "Anfrage kopiert")}
+                          >
+                            {prompt}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               );
-            })}
-            {apps.length === 0 && (
-              <li className="text-sm text-muted-foreground">Noch keine App auf diesem Board.</li>
-            )}
-          </ul>
-        </section>
+            })()}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
