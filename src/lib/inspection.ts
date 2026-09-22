@@ -1,4 +1,3 @@
-import type { NodeRecord } from "@/components/canvas/board-context";
 
 /** One assessed inspection photo of a station or asset. */
 export type Finding = {
@@ -73,7 +72,9 @@ function nullableNum(raw: unknown): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-export function readInspection(record: NodeRecord | null | undefined): InspectionConfig {
+export function readInspection(
+  record: { metadata?: Record<string, unknown> | null } | null | undefined,
+): InspectionConfig {
   const meta = (record?.metadata ?? {}) as Record<string, unknown>;
   const rawFindings = Array.isArray(meta["findings"]) ? (meta["findings"] as unknown[]) : [];
   const findings: Finding[] = rawFindings.map((entry, index) => {
