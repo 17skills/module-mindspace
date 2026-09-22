@@ -264,9 +264,26 @@ function CaptureApp({
     }
   };
 
+  const clear = () => {
+    setPhoto(null);
+    setLabel("");
+    setReport("");
+    setLat(null);
+    setLon(null);
+    setSource("unbekannt");
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   const save = async () => {
     if (!photo) {
       toast.error("Bitte zuerst ein Foto aufnehmen");
+      return;
+    }
+    if (!online) {
+      enqueueFinding({ appId, label, report, lat, lon, source, photo, assessment: null });
+      setQueue(queuedFor(appId));
+      toast.success("Ohne Netz gespeichert – wird später übertragen");
+      clear();
       return;
     }
     setBusy("assess");
@@ -294,20 +311,18 @@ function CaptureApp({
         },
       });
       toast.success(`Befund gespeichert · Prio ${Math.round(assessment.priority)}/10`);
-      setPhoto(null);
-      setLabel("");
-      setReport("");
-      setLat(null);
-      setLon(null);
-      setSource("unbekannt");
-      if (fileRef.current) fileRef.current.value = "";
+      clear();
       onSaved();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Befund konnte nicht gespeichert werden");
+      enqueueFinding({ appId, label, report, lat, lon, source, photo, assessment: null });
+      setQueue(queuedFor(appId));
+      toast.warning("Keine Verbindung – Befund liegt in der Warteschlange");
+      clear();
     } finally {
       setBusy("");
     }
   };
+
 
   if (!inspect) {
     return (
