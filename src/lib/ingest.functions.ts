@@ -152,7 +152,7 @@ export const transcribeAudio = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     let bytes: ArrayBuffer;
     let mime = data.mimeType;
 
