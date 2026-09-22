@@ -232,10 +232,11 @@ export const deleteMcpServer = createServerFn({ method: "POST" })
       .maybeSingle();
     const { error } = await context.supabase.from("mcp_servers").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    const name = (row as { name: string } | null)?.name;
     await audit({
       actorId: context.userId,
       action: "mcp_server.deleted",
-      detail: (row as { name: string } | null)?.name ?? null ?? undefined,
+      ...(name ? { detail: name } : {}),
     });
     return { ok: true as const };
   });
@@ -281,5 +282,10 @@ export const runMcpTool = createServerFn({ method: "POST" })
     }
 
     const result = await callTool(targetFromRow(row as Row), data.tool, args);
-    return { ...result, at: new Date().toISOString() };
+    return {
+      text: result.text,
+      structured: (result.structured ?? null) as Json,
+      isError: result.isError,
+      at: new Date().toISOString(),
+    };
   });
