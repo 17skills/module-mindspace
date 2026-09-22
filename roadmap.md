@@ -11,4 +11,4 @@
 - [x] Wiederverwendbare Designprofile, Live-Vorschau und SVG-/PNG-Logoeditor ergänzen
 
 - [x] Studio-zu-App: Modulauswahl (max. 5), App-Ansicht-Dialog, /app/$appId (mobile Erfassung + Lagebild-Cockpit), App-Übersicht auf der Startseite
-- [ ] MCP-Werkzeuge je App (report_finding, get_findings, get_kpis) an den App-Endpunkt binden
+- [x] MCP-Werkzeuge je App (report_finding, get_findings, update_finding_status, get_kpis, get_app) an den App-Endpunkt binden
