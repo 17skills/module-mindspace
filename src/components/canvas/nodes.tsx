@@ -25,7 +25,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { AlertTriangle, BookOpen, Calculator, ChevronRight, CloudSun, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, Camera, ChevronRight, CloudSun, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -55,6 +55,20 @@ import {
 } from "@/lib/factor-score";
 import { suggestFactorWeights } from "@/lib/factor.functions";
 import { runApiModule } from "@/lib/api-module.functions";
+import { analyzeInspection } from "@/lib/inspection.functions";
+import {
+  CLUSTERS,
+  downscale,
+  euro,
+  exifLocation,
+  inspectionText,
+  labelFromFile,
+  priorityColor,
+  rateFor,
+  readInspection,
+  totalCost,
+  type Finding,
+} from "@/lib/inspection";
 import {
   QUOTE_COLORS,
   chartRows,
