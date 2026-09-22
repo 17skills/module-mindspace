@@ -46,8 +46,8 @@ export const appAssessPhoto = createServerFn({ method: "POST" })
     const { app } = await loadPublicApp(data.appId);
     const { assessPhoto } = await import("@/lib/inspection-vision.server");
     const { loadAiKeyConfigForOwner } = await import("@/lib/ai-keys.server");
-    // BYOK des App-Inhabers: die App läuft ohne Login, zahlt aber beim Inhaber.
-    const cfg = app.user_id ? await loadAiKeyConfigForOwner(app.user_id) : null;
+    // BYOK des App-Inhabers: die App läuft ohne Login, die KI-Kosten aber beim Inhaber.
+    const cfg = await loadAiKeyConfigForOwner(app.user_id);
     return assessPhoto(
       {
         image: data.image,
@@ -55,7 +55,7 @@ export const appAssessPhoto = createServerFn({ method: "POST" })
         report: data.report,
         rates: data.rates,
       },
-      cfg ?? { useByok: false, provider: "openai", keys: {} },
+      cfg,
     );
   });
 

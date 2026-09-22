@@ -3,6 +3,7 @@
 export type AppRow = {
   id: string;
   board_id: string;
+  user_id: string;
   title: string;
   description: string;
   kind: string;
@@ -36,7 +37,7 @@ export async function loadPublicApp(appId: string) {
   const { data: app, error } = await db
     .from("apps")
     .select(
-      "id,board_id,title,description,kind,node_ids,branding,is_public,mcp_token,mcp_scope,updated_at",
+      "id,board_id,user_id,title,description,kind,node_ids,branding,is_public,mcp_token,mcp_scope,updated_at",
     )
     .eq("id", appId)
     .maybeSingle();
