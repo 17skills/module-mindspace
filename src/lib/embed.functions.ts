@@ -41,8 +41,12 @@ export const getEmbedZone = createServerFn({ method: "POST" })
       .eq("id", zone.board_id)
       .maybeSingle();
     if (boardError) throw new Error(boardError.message);
-    if (!board || !board.is_public) {
-      throw new Error("Dieses Feld ist noch nicht freigegeben. Bitte das Board freigeben.");
+    const zoneMeta = (zone.metadata ?? {}) as Record<string, unknown>;
+    const shared = Boolean(board?.is_public) || zoneMeta["embed"] === true;
+    if (!board || !shared) {
+      throw new Error(
+        "Dieses Feld ist noch nicht freigegeben. Bitte am Feld auf „Als App öffnen“ klicken.",
+      );
     }
 
     const [nodeRes, edgeRes] = await Promise.all([
