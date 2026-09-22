@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { saveMcpServer, type McpServerInfoRow } from "@/lib/mcp-client.functions";
+import { MCP_TEMPLATES, type McpTemplate } from "@/lib/mcp-templates";
 
 type AuthKind = "none" | "bearer" | "header";
 
