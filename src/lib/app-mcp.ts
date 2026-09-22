@@ -3,7 +3,7 @@
  * AI assistant can call at /api/public/app/<appId>/mcp. The app link itself is
  * the credential – only apps with `is_public` answer here.
  */
-import { defineMcp, defineTool, type StaticToolDefinition } from "@lovable.dev/mcp-js";
+import { defineMcp, defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import {
   appFindingStore,
@@ -277,19 +277,18 @@ function getKpisTool(appId: string) {
 
 /** Baut den MCP-Server für eine App; die Tools sind an die App gebunden. */
 export function buildAppMcp(appId: string) {
-  const tools: StaticToolDefinition[] = [
-    getAppTool(appId),
-    getFindingsTool(appId),
-    reportFindingTool(appId),
-    updateFindingStatusTool(appId),
-    getKpisTool(appId),
-  ];
   return defineMcp({
     name: `canvas-spark-app-${appId.slice(0, 8)}`,
     title: "Canvas Spark App",
     version: "0.1.0",
     instructions:
       "Tools of a delivered Canvas Spark app (link-shared). Typical flow: `get_app` for context, `get_findings` / `get_kpis` to read state, `report_finding` to add an assessed inspection result, `update_finding_status` to move work along. Priorities run 1 (act now) to 10 (cosmetic); costs are EUR.",
-    tools,
+    tools: [
+      getAppTool(appId),
+      getFindingsTool(appId),
+      reportFindingTool(appId),
+      updateFindingStatusTool(appId),
+      getKpisTool(appId),
+    ],
   });
 }
