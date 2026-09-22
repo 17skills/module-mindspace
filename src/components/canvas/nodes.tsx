@@ -39,6 +39,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
+import { useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { readAgent, readAssignment } from "@/lib/zones";
 import {
   factorText,
