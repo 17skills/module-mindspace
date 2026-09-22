@@ -114,6 +114,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "signal" ||
     record.type === "map" ||
     record.type === "risk" ||
+    record.type === "inspect" ||
     record.type === "quotes" ||
     record.type === "text"
       ? record.type
