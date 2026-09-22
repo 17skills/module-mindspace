@@ -4306,7 +4306,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
 
   const total = totalCost(findings);
   const urgent = findings.filter((item) => item.priority <= 3);
-  const located = findings.filter((item) => item.lat != null).length;
+  const located = findings.filter((item) => item.lat != null && item.lon != null).length;
 
   return (
     <div
@@ -4379,6 +4379,13 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
           if (e.dataTransfer.files.length) void handleFiles(e.dataTransfer.files);
         }}
       >
+        {findings.length - located > 0 && (
+          <p className="rounded-md border border-dashed px-2 py-1 text-[10px]" style={{ borderColor: "#dc2626", color: "#dc2626" }}>
+            {findings.length - located} Befund(e) ohne vollständige Koordinaten – sie erscheinen
+            nicht auf der Karte. Breite und Länge unten am Eintrag eintragen.
+          </p>
+        )}
+
         <div>
           <p className="module-eyebrow mb-1">Prüfbericht zum Foto (optional)</p>
           <Textarea
