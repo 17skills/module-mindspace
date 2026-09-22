@@ -44,7 +44,7 @@ export const runZoneAgent = createServerFn({ method: "POST" })
     const numberRule =
       data.kind === "number"
         ? `- "value" ist eine reine Zahl ohne Tausenderpunkte und ohne Einheit (Dezimaltrennzeichen: Punkt).
-- "unit" ist die Einheit${data.unit ? ` (verwende „${data.unit}“)"` : ""}.
+- "unit" ist die Einheit${data.unit ? ` (verwende „${data.unit}“)` : ""}.
 - Wenn sich keine belastbare Zahl ableiten lässt, gib "value" als leeren Text zurück und erkläre das in "reason".`
         : `- "value" ist eine kurze Antwort in höchstens zwei Sätzen.
 - "unit" bleibt leer.`;
