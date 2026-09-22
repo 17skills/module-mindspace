@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { brandingFrom } from "@/lib/apps";
 
 type Json = Record<string, unknown>;
 
@@ -40,10 +41,10 @@ export const getPublicApp = createServerFn({ method: "POST" })
         boardId: app.board_id as string,
         title: app.title as string,
         kind: app.kind as string,
-        branding: (app.branding ?? {}) as Json,
+        branding: brandingFrom(app.branding),
       },
       boardTitle: (boardRes.data?.title as string | undefined) ?? "",
-      nodes: nodes as unknown as Json[],
+      nodesJson: JSON.stringify(nodes),
     };
   });
 
@@ -122,7 +123,7 @@ export const appAddFinding = createServerFn({ method: "POST" })
     const next = [...findings, entry];
     const { error } = await supabaseAdmin
       .from("nodes")
-      .update({ metadata: { ...meta, findings: next } })
+      .update({ metadata: { ...meta, findings: next } as never })
       .eq("id", target.id);
     if (error) throw new Error(error.message);
     return { id: entry.id, count: next.length };
@@ -150,7 +151,7 @@ export const appSetFindingStatus = createServerFn({ method: "POST" })
     );
     const { error } = await supabaseAdmin
       .from("nodes")
-      .update({ metadata: { ...meta, findings: next } })
+      .update({ metadata: { ...meta, findings: next } as never })
       .eq("id", target.id);
     if (error) throw new Error(error.message);
     return { ok: true };
