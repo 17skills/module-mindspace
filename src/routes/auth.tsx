@@ -20,15 +20,15 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Anmelden – Canvas Spark" },
+      { title: "Anmelden – scopebuilder" },
       {
         name: "description",
         content: "Melde dich an, um deine Wissens-Boards mit Videos, Podcasts und Dokumenten zu öffnen.",
       },
-      { property: "og:title", content: "Anmelden – Canvas Spark" },
+      { property: "og:title", content: "Anmelden – scopebuilder" },
       {
         property: "og:description",
-        content: "Zugang zu deiner persönlichen Wissens-Bibliothek auf Canvas Spark.",
+        content: "Zugang zu deiner persönlichen Sammlung aus Scopes und Apps.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -106,7 +106,7 @@ function AuthPage() {
             ✦
           </div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-navy">
-            Canvas Spark
+            scopebuilder
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Deine Inhalte auf einer Fläche – verbunden und mit KI auswertbar.

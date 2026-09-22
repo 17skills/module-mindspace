@@ -44,16 +44,16 @@ import { getSharedBoard } from "@/lib/share.functions";
 export const Route = createFileRoute("/share/$token")({
   head: () => ({
     meta: [
-      { title: "Geteiltes Board – Canvas Spark" },
+      { title: "Geteilter Scope – scopebuilder" },
       {
         name: "description",
         content:
           "Nur-Lese-Ansicht eines geteilten Canvas Spark Boards mit Videos, Dokumenten und Notizen.",
       },
-      { property: "og:title", content: "Geteiltes Board – Canvas Spark" },
+      { property: "og:title", content: "Geteilter Scope – scopebuilder" },
       {
         property: "og:description",
-        content: "Ein geteiltes Board ansehen – ohne Anmeldung, nur lesen.",
+        content: "Einen geteilten Scope ansehen – ohne Anmeldung, nur lesen.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -168,7 +168,7 @@ function SharedBoardPage() {
         );
       })
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "Board nicht verfügbar"),
+        setError(err instanceof Error ? err.message : "Scope nicht verfügbar"),
       )
       .finally(() => active && setLoading(false));
     return () => {
@@ -230,7 +230,7 @@ function SharedBoardPage() {
       <div className="flex h-screen flex-col bg-background">
         <header className="flex h-14 items-center gap-3 border-b border-border/70 bg-card/90 px-4 backdrop-blur">
           <span className="font-display text-base font-semibold tracking-tight text-brand-navy">
-            {title || "Geteiltes Board"}
+            {title || "Geteilter Scope"}
           </span>
           <span className="flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
             <Eye className="size-3.5" />
