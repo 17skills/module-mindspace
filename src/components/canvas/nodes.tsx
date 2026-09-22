@@ -4195,3 +4195,300 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
   );
 });
 
+
+/** Inspection photos of substations: assessment, priority, cost and action plan. */
+export const InspectNode = memo(function InspectNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode } = useBoard();
+  const config = readInspection(record);
+  const [busy, setBusy] = useState(0);
+  const [report, setReport] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const findings = useMemo(
+    () => [...config.findings].sort((a, b) => a.priority - b.priority),
+    [config.findings],
+  );
+  const summary = useMemo(() => inspectionText(findings), [findings]);
+
+  // keep the chat / decision context in sync with the action plan
+  useEffect(() => {
+    if (summary !== record.content) updateNode(record.id, { content: summary });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary]);
+
+  function save(next: Finding[]) {
+    updateNode(record.id, {
+      metadata: { ...(record.metadata ?? {}), findings: next, rates: config.rates },
+    });
+  }
+
+  async function handleFiles(files: FileList | File[]) {
+    const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (!list.length) return;
+    setBusy(list.length);
+    const added: Finding[] = [];
+    for (const file of list) {
+      try {
+        const [image, thumb, gps] = await Promise.all([
+          downscale(file, 1024, 0.75),
+          downscale(file, 180, 0.6),
+          exifLocation(file),
+        ]);
+        const result = await analyzeInspection({
+          data: {
+            image,
+            label: labelFromFile(file.name),
+            report,
+            rates: Object.entries(config.rates)
+              .map(([key, value]) => `${key}: ${value} EUR`)
+              .join(", "),
+          },
+        });
+        const priority = Math.min(10, Math.max(1, Math.round(result.priority)));
+        const previous = config.findings.find(
+          (item) => item.label.toLowerCase() === result.label.trim().toLowerCase(),
+        );
+        added.push({
+          id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          label: result.label.trim() || labelFromFile(file.name),
+          lat: gps?.lat ?? null,
+          lon: gps?.lon ?? null,
+          category: result.category.trim() || "Sonstiges",
+          finding: result.finding,
+          priority,
+          action: result.action,
+          cost: result.cost > 0 ? Math.round(result.cost) : rateFor(result.category, config.rates),
+          confidence: Math.min(100, Math.max(0, Math.round(result.confidence))),
+          reason: result.reason,
+          thumb,
+          createdAt: new Date().toISOString(),
+          prevPriority: previous ? previous.priority : null,
+          source: gps ? "exif" : "unbekannt",
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Foto konnte nicht bewertet werden");
+      } finally {
+        setBusy((count) => Math.max(0, count - 1));
+      }
+    }
+    if (added.length) {
+      save([...config.findings, ...added]);
+      const blind = added.filter((item) => item.lat == null).length;
+      toast.success(
+        blind
+          ? `${added.length} Foto(s) bewertet – ${blind} ohne Ortung, Koordinaten bitte eintragen`
+          : `${added.length} Foto(s) bewertet und auf der Karte verortet`,
+      );
+    }
+  }
+
+  function patchFinding(id: string, next: Partial<Finding>) {
+    save(config.findings.map((item) => (item.id === id ? { ...item, ...next } : item)));
+  }
+
+  const total = totalCost(findings);
+  const urgent = findings.filter((item) => item.priority <= 3);
+  const located = findings.filter((item) => item.lat != null).length;
+
+  return (
+    <div
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+      data-selected={Boolean(selected)}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={360} minHeight={320} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} />
+
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "Inspektion"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "Inspektion" })}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          className="nodrag h-7 rounded-full px-2 text-[11px]"
+          disabled={busy > 0}
+          onClick={() => fileRef.current?.click()}
+        >
+          <Camera className={`size-3 ${busy ? "animate-pulse" : ""}`} />
+          {busy ? `${busy} in Prüfung …` : "Fotos hinzufügen"}
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) void handleFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 border-b bg-secondary/25 px-3 py-2">
+        <div>
+          <p className="module-eyebrow">Sofort</p>
+          <p className="kpi-value" style={{ color: urgent.length ? "#dc2626" : undefined }}>
+            {urgent.length}
+          </p>
+          <div className="kpi-bar" style={{ background: urgent.length ? "#dc2626" : "#16a34a" }} />
+        </div>
+        <div>
+          <p className="module-eyebrow">Befunde</p>
+          <p className="kpi-value">{findings.length}</p>
+          <p className="font-mono text-[9px] text-muted-foreground">{located} verortet</p>
+        </div>
+        <div>
+          <p className="module-eyebrow">Kosten</p>
+          <p className="kpi-value">{euro(total)}</p>
+          <p className="font-mono text-[9px] text-muted-foreground">geschätzt</p>
+        </div>
+      </div>
+
+      <div
+        className="nodrag nowheel flex-1 space-y-3 overflow-auto px-3 py-2"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (e.dataTransfer.files.length) void handleFiles(e.dataTransfer.files);
+        }}
+      >
+        <div>
+          <p className="module-eyebrow mb-1">Prüfbericht zum Foto (optional)</p>
+          <Textarea
+            value={report}
+            onChange={(e) => setReport(e.target.value)}
+            placeholder="Stations-Kennung, Datum, Beobachtung des Prüfers …"
+            className="nodrag min-h-[52px] text-[11px]"
+          />
+        </div>
+
+        {!findings.length && (
+          <p className="rounded-md border border-dashed border-border/70 px-3 py-4 text-center text-[11px] text-muted-foreground">
+            Fotos hierher ziehen oder oben auswählen. Standortangaben im Foto werden automatisch
+            gelesen und auf der verbundenen Karte angezeigt.
+          </p>
+        )}
+
+        {CLUSTERS.map((cluster) => {
+          const rows = findings.filter(
+            (item) => item.priority >= cluster.from && item.priority <= cluster.to,
+          );
+          if (!rows.length) return null;
+          const sum = totalCost(rows);
+          return (
+            <section key={cluster.id}>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="module-eyebrow" style={{ color: cluster.color }}>
+                  {cluster.label} · Prio {cluster.from}–{cluster.to}
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {rows.length} · {euro(sum)}
+                </span>
+              </div>
+              <ul className="space-y-1.5">
+                {rows.map((finding) => {
+                  const shift =
+                    finding.prevPriority != null ? finding.prevPriority - finding.priority : 0;
+                  return (
+                    <li
+                      key={finding.id}
+                      className="rounded-md border border-border/60 p-1.5"
+                      onClick={() =>
+                        finding.lat != null && setMapFocus([finding.id], finding.label)
+                      }
+                    >
+                      <div className="flex items-start gap-2">
+                        {finding.thumb ? (
+                          <img
+                            src={finding.thumb}
+                            alt={finding.label}
+                            className="size-12 shrink-0 rounded object-cover"
+                          />
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-[11px] font-semibold">
+                              {finding.label}
+                            </span>
+                            <span
+                              className="shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold text-white"
+                              style={{ background: priorityColor(finding.priority) }}
+                            >
+                              PRIO {finding.priority}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {finding.category} · {finding.finding}
+                          </p>
+                          <p className="text-[10px]">{finding.action}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[9px] text-muted-foreground">
+                            <span>{euro(finding.cost)}</span>
+                            <span>Sicherheit {finding.confidence} %</span>
+                            <span>
+                              {finding.lat != null
+                                ? `${finding.lat.toFixed(4)}, ${finding.lon?.toFixed(4)}`
+                                : "ohne Ortung"}
+                            </span>
+                            {shift !== 0 && (
+                              <span style={{ color: shift > 0 ? "#dc2626" : "#16a34a" }}>
+                                {shift > 0 ? "▲" : "▼"} vorher Prio {finding.prevPriority}
+                              </span>
+                            )}
+                          </div>
+                          {finding.lat == null && (
+                            <div className="mt-1 flex items-center gap-1">
+                              <input
+                                placeholder="Breite"
+                                className="nodrag w-20 rounded border border-border/70 px-1 py-0.5 font-mono text-[9px]"
+                                onBlur={(e) => {
+                                  const lat = Number(e.target.value.replace(",", "."));
+                                  if (Number.isFinite(lat) && lat !== 0) {
+                                    patchFinding(finding.id, { lat, source: "manuell" });
+                                  }
+                                }}
+                              />
+                              <input
+                                placeholder="Länge"
+                                className="nodrag w-20 rounded border border-border/70 px-1 py-0.5 font-mono text-[9px]"
+                                onBlur={(e) => {
+                                  const lon = Number(e.target.value.replace(",", "."));
+                                  if (Number.isFinite(lon) && lon !== 0) {
+                                    patchFinding(finding.id, { lon, source: "manuell" });
+                                  }
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="nodrag shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            save(config.findings.filter((item) => item.id !== finding.id));
+                          }}
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
