@@ -26,6 +26,11 @@ export function nodeValue(record: NodeRecord | undefined): number | null {
   if (record.type === "sheet") return sheetResult(record);
   if (record.type === "api") return apiValue(record);
   if (record.type === "decision") return decisionValue(record);
+  // a weighted factor card sends its card score (1..10) into the network
+  if (record.type === "note") {
+    const factor = readFactor(record);
+    if (factor.stored && factor.params.length) return factor.score;
+  }
   return toNumber(record.metadata?.["value"]);
 }
 
