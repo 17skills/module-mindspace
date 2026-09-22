@@ -43,6 +43,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, nodeValue, readFormat, sheetOutputRow, sheetRows, sheetValues, valueOfNode } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
+import { Markdown } from "@/lib/markdown";
 import { edgeProblem, isReference, type PortStatus as SignalPortStatus } from "@/lib/signal-status";
 import { APP_DESIGN_PRESETS, readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppDesignProfile, type AppLayoutEntry } from "@/lib/zones";
 import {
