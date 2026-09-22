@@ -4451,11 +4451,14 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
 
       <div className="grid grid-cols-3 gap-2 border-b bg-secondary/25 px-3 py-2">
         <div>
-          <p className="module-eyebrow">Sofort</p>
+          <p className="module-eyebrow">Sofort offen</p>
           <p className="kpi-value" style={{ color: urgent.length ? "#dc2626" : undefined }}>
             {urgent.length}
           </p>
           <div className="kpi-bar" style={{ background: urgent.length ? "#dc2626" : "#16a34a" }} />
+          <p className="font-mono text-[9px] text-muted-foreground">
+            {overdue ? `${overdue} überfällig` : "kein Termin überschritten"}
+          </p>
         </div>
         <div>
           <p className="module-eyebrow">Befunde</p>
