@@ -163,10 +163,13 @@ export function inspectionText(findings: Finding[]): string {
       finding.prevPriority != null && finding.prevPriority !== finding.priority
         ? ` (vorher Prio ${finding.prevPriority})`
         : "";
-    return `- Prio ${finding.priority}/10${shift} · ${finding.label} · ${finding.category}: ${finding.finding} → ${finding.action}, ${euro(finding.cost)} · ${place} · Sicherheit ${Math.round(finding.confidence)} %`;
+    const owner = finding.owner ? ` · zuständig ${finding.owner}` : " · noch niemand zuständig";
+    const due = finding.due ? ` · fällig ${finding.due}${isOverdue(finding) ? " (überfällig)" : ""}` : " · ohne Termin";
+    return `- Prio ${finding.priority}/10${shift} · ${finding.label} · ${finding.category}: ${finding.finding} → ${finding.action}, ${euro(finding.cost)} · Status ${finding.status}${owner}${due} · ${place} · Sicherheit ${Math.round(finding.confidence)} %`;
   });
-  const urgent = sorted.filter((finding) => finding.priority <= 3).length;
-  return `Maßnahmenplan aus Vor-Ort-Fotos (${findings.length} Befunde, davon ${urgent} sofort, Gesamtkosten ${euro(totalCost(findings))}):\n${lines.join("\n")}`;
+  const urgent = sorted.filter((finding) => finding.priority <= 3 && finding.status !== "erledigt").length;
+  const overdue = sorted.filter(isOverdue).length;
+  return `Maßnahmenplan aus Vor-Ort-Fotos (${findings.length} Befunde, davon ${urgent} sofort offen, ${overdue} überfällig, Gesamtkosten ${euro(totalCost(findings))}):\n${lines.join("\n")}`;
 }
 
 /* ------------------------------------------------------------------ */
