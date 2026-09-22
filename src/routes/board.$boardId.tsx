@@ -654,7 +654,7 @@ function BoardPage() {
   );
 
   const createEdge = useCallback(
-    (sourceId: string, targetId: string) => {
+    (sourceId: string, targetId: string, label?: string | null) => {
       if (!user || sourceId === targetId) return;
       const exists = edgesRef.current.some(
         (e) =>
@@ -663,9 +663,16 @@ function BoardPage() {
       );
       if (exists) return;
       const id = crypto.randomUUID();
+      const text = label?.trim() || "";
       setEdges((current) => [
         ...current,
-        { id, source: sourceId, target: targetId, type: "labeled" },
+        {
+          id,
+          source: sourceId,
+          target: targetId,
+          type: "labeled",
+          ...(text ? { label: text } : {}),
+        },
       ]);
       trackSave(
         supabase
@@ -676,6 +683,7 @@ function BoardPage() {
             user_id: user.id,
             source_id: sourceId,
             target_id: targetId,
+            label: text || null,
           } as never)
           .then(({ error }) => {
             if (error) {
@@ -687,6 +695,7 @@ function BoardPage() {
     },
     [boardId, setEdges, user],
   );
+
 
   const updateEdge = useCallback(
     (id: string, label: string) => {
