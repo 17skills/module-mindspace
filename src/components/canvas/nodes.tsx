@@ -62,7 +62,7 @@ import { listMcpServers, refreshMcpServer } from "@/lib/mcp-client.functions";
 import { mcpPreview, mcpValue, readMcp } from "@/lib/mcp-module";
 import { McpConnectDialog } from "./mcp-connect-dialog";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { analyzeInspection } from "@/lib/inspection.functions";
 import {
   CLUSTERS,
