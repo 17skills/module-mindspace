@@ -173,7 +173,7 @@ function AiKeysPage() {
                   {provider === "openrouter" ? (
                     <Input
                       className="w-56"
-                      value={info?.baseUrl ?? ""}
+                      value={info?.baseUrl ?? AI_PROVIDER_META.openrouter.baseUrl}
                       disabled
                       placeholder="Basis-Adresse"
                       aria-label="Basis-Adresse"
