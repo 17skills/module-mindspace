@@ -1724,6 +1724,7 @@ function BoardPage() {
       }
 
       if (!changes.size) return;
+      suppressMeasure.current = Date.now() + 600;
       setNodes((current) =>
         current.map((node) => {
           const change = changes.get(node.id);
@@ -1760,12 +1761,16 @@ function BoardPage() {
         if (previous) clearTimeout(previous);
         const timer = setTimeout(() => {
           heightTimers.current.delete(nodeId);
+          if (Date.now() < suppressMeasure.current) return;
           const root = flowWrapRef.current;
           const nodeElement = root?.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`);
           if (!nodeElement) return;
           const height = measuredCardHeight(nodeElement);
-          if (height != null) ensureReadableLayout(nodeId, height);
-        }, 120);
+          if (height == null) return;
+          const last = appliedHeights.current.get(nodeId);
+          if (last != null && Math.abs(height - last) < 12) return;
+          ensureReadableLayout(nodeId, height);
+        }, 200);
         heightTimers.current.set(nodeId, timer);
       }
     },
@@ -1778,6 +1783,7 @@ function BoardPage() {
     const root = flowWrapRef.current;
     if (!root) return;
     const observer = new MutationObserver((mutations) => {
+      if (Date.now() < suppressMeasure.current) return;
       const ids = new Set<string>();
       for (const mutation of mutations) {
         const element =
