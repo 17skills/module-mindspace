@@ -5597,30 +5597,127 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
               bereit und kann in jedes Eingabefeld übernommen werden.
             </p>
           ) : (
-            notes.map((note) => (
-              <div key={note.id} className="rounded-md border border-border/70 px-2 py-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[10px] font-medium">{note.title || "Text"}</span>
-                  <button
-                    type="button"
-                    className="nodrag ml-auto rounded-full bg-secondary px-2 py-0.5 text-[9px]"
-                    onClick={() => {
-                      const target = fields.find((field) => !config.bindings[field.name]);
-                      if (!target) {
-                        toast.info("Wähle zuerst ein Werkzeug mit Eingabefeldern");
-                        return;
-                      }
-                      setInput(target.name, note.content ?? "");
-                      setSection("input");
-                      toast.success(`Text in „${target.title}“ übernommen`);
-                    }}
-                  >
-                    In Eingabe übernehmen
-                  </button>
+            notes.map((note) => {
+              const choice = config.context[note.id] ?? "";
+              const active = choice !== "off";
+              const sections = markdownSections(note.content ?? "");
+              const chosen = choice && choice !== "off" ? new Set(choice.split("|")) : null;
+              const selectedText = contextTextFor(note, choice);
+              return (
+                <div key={note.id} className="rounded-md border border-border/70 px-2 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={active}
+                      className={`nodrag rounded-full px-2 py-0.5 text-[9px] ${
+                        active ? "bg-secondary text-foreground" : "text-muted-foreground"
+                      }`}
+                      onClick={() => setContext(note.id, active ? "off" : "")}
+                    >
+                      {active ? "verwendet" : "aus"}
+                    </button>
+                    <span className="truncate text-[10px] font-medium">{note.title || "Text"}</span>
+                    <button
+                      type="button"
+                      className="nodrag ml-auto rounded-full bg-secondary px-2 py-0.5 text-[9px]"
+                      disabled={!selectedText}
+                      onClick={() => {
+                        const target = fields.find((field) => !config.bindings[field.name]);
+                        if (!target) {
+                          toast.info("Wähle zuerst ein Werkzeug mit Eingabefeldern");
+                          return;
+                        }
+                        setInput(target.name, selectedText);
+                        setSection("input");
+                        toast.success(`Text in „${target.title}“ übernommen`);
+                      }}
+                    >
+                      In Eingabe übernehmen
+                    </button>
+                  </div>
+                  {active && sections.length > 1 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        className={`nodrag rounded-full px-2 py-0.5 text-[9px] ${
+                          chosen ? "text-muted-foreground" : "bg-secondary text-foreground"
+                        }`}
+                        onClick={() => setContext(note.id, "")}
+                      >
+                        ganzer Text
+                      </button>
+                      {sections.map((part) => {
+                        const on = chosen?.has(part.title) ?? false;
+                        return (
+                          <button
+                            key={part.title}
+                            type="button"
+                            className={`nodrag rounded-full px-2 py-0.5 text-[9px] ${
+                              on ? "bg-secondary text-foreground" : "text-muted-foreground"
+                            }`}
+                            onClick={() => {
+                              const next = new Set(chosen ?? []);
+                              if (on) next.delete(part.title);
+                              else next.add(part.title);
+                              setContext(note.id, next.size ? [...next].join("|") : "");
+                            }}
+                          >
+                            {part.title}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {active ? (
+                    <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[10px] text-muted-foreground">
+                      {selectedText || "Keine Abschnitte gewählt."}
+                    </p>
+                  ) : null}
                 </div>
-                <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[10px] text-muted-foreground">
-                  {note.content}
+              );
+            })
+          )}
+        </div>
+      ) : section === "history" ? (
+        <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
+          {history.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground">
+              Noch keine Ausführung. Nach jedem Lauf stehen hier Zeitpunkt, Eingaben und Antwort.
+            </p>
+          ) : (
+            history.map((run, index) => (
+              <div
+                key={`${run.at}-${index}`}
+                className="rounded-md border px-2 py-1.5"
+                style={{ borderColor: run.ok ? "var(--border)" : "var(--signal-error, #de5a3a)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-medium">
+                    {new Date(run.at).toLocaleString("de-DE")}
+                  </span>
+                  <span className="truncate font-mono text-[9px] text-muted-foreground">
+                    {run.tool}
+                  </span>
+                  <span
+                    className="ml-auto text-[9px]"
+                    style={{ color: run.ok ? "var(--signal-ok, #4f8a5b)" : "var(--signal-error, #de5a3a)" }}
+                  >
+                    {run.ok ? "erfolgreich" : "Fehler"}
+                  </span>
+                </div>
+                {run.error ? (
+                  <p className="mt-1 text-[10px]" style={{ color: "var(--signal-error, #de5a3a)" }}>
+                    {run.error}
+                  </p>
+                ) : null}
+                <p className="mt-1 break-all font-mono text-[9px] text-muted-foreground">
+                  Eingaben: {run.args || "{}"}
                 </p>
+                {run.preview ? (
+                  <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap break-words font-mono text-[9px] text-muted-foreground">
+                    {run.preview}
+                  </pre>
+                ) : null}
               </div>
             ))
           )}
