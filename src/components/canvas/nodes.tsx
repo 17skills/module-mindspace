@@ -5794,6 +5794,17 @@ export const McpHubNode = memo(function McpHubNode({ data, selected }: NodeProps
         </span>
       </div>
 
+      {notes.length > 0 ? (
+        <div className="nowheel border-b px-3 py-1.5">
+          <p className="text-[10px] font-medium text-muted-foreground">
+            Kontext aus {notes.length} Textkarte{notes.length === 1 ? "" : "n"}
+          </p>
+          <p className="line-clamp-3 whitespace-pre-wrap text-[10px] text-muted-foreground">
+            {notes.map((note) => note.content).join(" · ")}
+          </p>
+        </div>
+      ) : null}
+
       {server && server.tools.length > 3 ? (
         <div className="border-b px-3 py-1.5">
           <input
