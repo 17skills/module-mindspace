@@ -10,7 +10,7 @@ import {
   setUseByok,
   testAiKey,
 } from "@/lib/ai-keys.functions";
-import { AI_PROVIDERS, type AiProvider } from "@/lib/ai-providers";
+import { AI_PROVIDER_META, AI_PROVIDERS, type AiProvider } from "@/lib/ai-providers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -141,7 +141,7 @@ function AiKeysPage() {
                   <p className="text-xs text-muted-foreground">
                     {info ? (
                       <>
-                        Hinterlegt: {visible[provider] && draft === "" ? info.last4 : `•••• ${info.last4}`}
+                        Hinterlegt: •••• {info.last4}
                         {info.updatedAt
                           ? ` · geändert am ${new Date(info.updatedAt).toLocaleDateString("de-DE")}`
                           : ""}
