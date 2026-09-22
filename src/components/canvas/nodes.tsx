@@ -4369,7 +4369,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
       </div>
 
       <div
-        className="nodrag nowheel flex-1 space-y-3 overflow-auto px-3 py-2"
+        className="nodrag flex-1 space-y-3 overflow-visible px-3 py-2"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
