@@ -405,11 +405,16 @@ function baseMeasure(field: RiskField, ctx: RiskContext): RiskMeasure {
   }
   if (field.auto === "factor") {
     const factor = ctx.factors?.[field.factorId ?? ""];
+    const scaled = factor?.transform
+      ? ` (${(factor.raw ?? factor.score).toFixed(1)} × ${factor.transform})`
+      : "";
     return {
-      text: factor ? `${factor.score.toFixed(1)} / 10 gewichtet` : null,
+      text: factor ? `${factor.score.toFixed(1)} / 10 gewichtet${scaled}` : null,
       limit: "6,0 / 10",
       breach: (factor?.score ?? 0) >= 6,
-      rule: "Eintritt = gewichteter Faktorwert ÷ 2 (1 – 5)",
+      rule: factor?.transform
+        ? `Eintritt = Faktorwert × Verbindungsformel (${factor.transform}) ÷ 2 (1 – 5)`
+        : "Eintritt = gewichteter Faktorwert ÷ 2 (1 – 5)",
       source: factor ? `${factor.label} · ${factor.count} Parameter` : "Faktor nicht verbunden",
     };
   }
