@@ -46,7 +46,13 @@ async function listKeys(db: SupabaseClient, userId: string) {
       .eq("user_id", userId),
     db.from("profiles").select("settings").eq("id", userId),
   ]);
-  const rows = (keysResult.data as Json[] | null) ?? [];
+  const rows = (keysResult.data ?? []) as {
+    provider: unknown;
+    last4: string | null;
+    base_url: string | null;
+    model_hint: string | null;
+    updated_at: string | null;
+  }[];
   const profileRows = (profileResult.data as { settings: unknown }[] | null) ?? [];
   const settings = settingsFrom(profileRows[0]?.settings);
   const keys: AiKeyInfo[] = rows
@@ -55,8 +61,8 @@ async function listKeys(db: SupabaseClient, userId: string) {
       provider: row.provider as AiProvider,
       label: AI_PROVIDER_META[row.provider as AiProvider].label,
       last4: String(row.last4 ?? ""),
-      baseUrl: (row.base_url as string | null) ?? null,
-      modelHint: (row.model_hint as string | null) ?? null,
+      baseUrl: row.base_url,
+      modelHint: row.model_hint,
       updatedAt: String(row.updated_at ?? ""),
     }));
   return { keys, useByok: settings.useByok, byokProvider: settings.byokProvider };
@@ -171,9 +177,9 @@ export const testAiKey = createServerFn({ method: "POST" })
     if (!row) return { ok: false, message: "Für diesen Anbieter ist kein Schlüssel hinterlegt." };
     try {
       const entry = {
-        key: decryptKey((row as Json).encrypted_key as string),
-        baseUrl: ((row as Json).base_url as string | null) ?? null,
-        modelHint: ((row as Json).model_hint as string | null) ?? null,
+        key: decryptKey(row.encrypted_key),
+        baseUrl: row.base_url,
+        modelHint: row.model_hint,
       };
       return await testProviderKey(data.provider, entry);
     } catch (error) {

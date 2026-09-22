@@ -44,13 +44,7 @@ export function decryptKey(packed: string): string {
 
 // ---------- Konfiguration laden ----------
 
-type DbClient = {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => PromiseLike<{ data: unknown }>;
-    };
-  };
-};
+type DbClient = import("@supabase/supabase-js").SupabaseClient<Database>;
 
 export async function loadAiKeyConfig(
   supabase: DbClient,
