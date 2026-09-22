@@ -135,7 +135,7 @@ export const Route = createFileRoute("/board/$boardId")({
         content:
           "Arbeitsfläche mit Videos, Podcasts, Dokumenten, Notizen und KI-Chat – alles miteinander verbunden.",
       },
-      { property: "og:title", content: "Board – scopebuilder" },
+      { property: "og:title", content: "Scope – scopebuilder" },
       {
         property: "og:description",
         content: "Inhalte verbinden, gruppieren und per Chat auswerten.",
@@ -2462,13 +2462,13 @@ function BoardPage() {
                   size="icon"
                   variant="ghost"
                   className="size-9 rounded-lg"
-                  aria-label="Board teilen"
+                  aria-label="Scope teilen"
                   onClick={() => setShareOpen(true)}
                 >
                   <Share2 className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Board teilen</TooltipContent>
+              <TooltipContent>Scope teilen</TooltipContent>
             </Tooltip>
           ) : (
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">

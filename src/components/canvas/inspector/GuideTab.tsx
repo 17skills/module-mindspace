@@ -49,14 +49,14 @@ export function GuideTab() {
         hint: "Messwerte gegen die Grenzwerte prüfen, Eintritt und Auswirkung je Zeile festlegen.",
         status: riskResult
           ? `Klasse ${riskResult.portfolio.key} · Index ${riskResult.index}/100`
-          : "Keine Risikomatrix auf dem Board",
+          : "Keine Risikomatrix in diesem Scope",
         done: Boolean(riskResult),
         target: risk,
       },
       {
         title: "3 · Lageentscheidung",
         hint: "Die Regeln der Entscheidung gegen den aktuellen Stand prüfen lassen.",
-        status: decision ? `${answered} Fragen beantwortet` : "Keine Entscheidung auf dem Board",
+        status: decision ? `${answered} Fragen beantwortet` : "Keine Entscheidung in diesem Scope",
         done: answered > 0,
         target: decision,
         action: decision
