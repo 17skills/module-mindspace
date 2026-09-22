@@ -390,6 +390,16 @@ function LibraryPage() {
                   >
                     Link kopieren
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={togglePublic.isPending}
+                    onClick={() =>
+                      togglePublic.mutate({ id: app.id, is_public: app.is_public })
+                    }
+                  >
+                    {app.is_public ? "Abschalten" : "Aktivieren"}
+                  </Button>
                 </div>
               </div>
             ))}
