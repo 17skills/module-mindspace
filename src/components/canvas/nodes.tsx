@@ -1980,6 +1980,25 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
   const inputs = useIncoming(id);
   const linked = pickLinked(inputs, meta["sourceEdge"]);
   const value = linked?.value ?? manual;
+  const flowNodes = useStore((state) => state.nodes);
+  const linkedType = linked
+    ? ((flowNodes.find((n) => n.id === linked.sourceId)?.data as { record?: NodeRecord } | undefined)
+        ?.record?.type ?? null)
+    : null;
+  const threshold = (key: string, fallback: number | null) => {
+    const parsed = Number(meta[key]);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  // inspection sources flag red as soon as one immediate measure exists
+  const warnAbove = threshold("warnAbove", linkedType === "inspect" ? 1 : null);
+  const dangerAbove = threshold("dangerAbove", linkedType === "inspect" ? 1 : null);
+  const valueColor = (shown: number | null): string | undefined => {
+    if (shown == null) return undefined;
+    if (dangerAbove != null && shown >= dangerAbove) return "var(--destructive)";
+    if (warnAbove != null && shown >= warnAbove) return "var(--brand-orange)";
+    if (dangerAbove != null || warnAbove != null) return "var(--support)";
+    return undefined;
+  };
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
