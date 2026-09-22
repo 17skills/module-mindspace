@@ -3,13 +3,15 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { encryptKey } from "@/lib/ai-keys.server";
-import {
-  callTool,
-  connectAndList,
-  safeMcpUrl,
-  targetFromRow,
-  type McpTool,
-} from "@/lib/mcp-client.server";
+import { callTool, connectAndList, safeMcpUrl, targetFromRow } from "@/lib/mcp-client.server";
+
+/** Werkzeugbeschreibung, wie sie zum Browser übertragen wird. */
+export type McpToolInfo = {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: Json;
+};
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -34,7 +36,7 @@ export type McpServerInfoRow = {
   authKind: "none" | "bearer" | "header";
   headerName: string | null;
   hasToken: boolean;
-  tools: McpTool[];
+  tools: McpToolInfo[];
   serverName: string;
   lastCheckAt: string | null;
   lastError: string | null;
@@ -53,9 +55,21 @@ type Row = {
   last_error: string | null;
 };
 
-function toolsOf(raw: unknown): McpTool[] {
+function toolsOf(raw: unknown): McpToolInfo[] {
   if (!Array.isArray(raw)) return [];
-  return raw.filter((item): item is McpTool => Boolean(item) && typeof item === "object" && "name" in item);
+  const tools: McpToolInfo[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as Record<string, unknown>;
+    if (typeof entry["name"] !== "string") continue;
+    tools.push({
+      name: entry["name"],
+      title: typeof entry["title"] === "string" ? entry["title"] : "",
+      description: typeof entry["description"] === "string" ? entry["description"] : "",
+      inputSchema: (entry["inputSchema"] ?? {}) as Json,
+    });
+  }
+  return tools;
 }
 
 function toRow(row: Row): McpServerInfoRow {
@@ -136,13 +150,14 @@ export const saveMcpServer = createServerFn({ method: "POST" })
     };
     const { info, tools } = await connectAndList(target);
 
+    const encrypted_token = token ? encryptKey(token) : null;
     const payload = {
       user_id: context.userId,
       name: data.name.trim(),
       url,
       auth_kind: data.authKind,
       header_name: target.headerName,
-      ...(token ? { encrypted_token: encryptKey(token) } : { encrypted_token: null }),
+      encrypted_token,
       tools: tools as unknown as Json,
       server_info: info as unknown as Json,
       last_check_at: new Date().toISOString(),

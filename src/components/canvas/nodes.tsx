@@ -5261,7 +5261,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
 
       <div className="grid gap-1.5 border-b px-3 py-2">
         <Select
-          value={config.serverId || undefined}
+          value={config.serverId}
           onValueChange={(next) => {
             const chosen = servers.data?.find((item) => item.id === next);
             patch({
@@ -5285,7 +5285,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
         </Select>
 
         <Select
-          value={config.tool || undefined}
+          value={config.tool}
           disabled={!config.serverId || tools.length === 0}
           onValueChange={(next) => patch({ mcpTool: next, lastError: null })}
         >
