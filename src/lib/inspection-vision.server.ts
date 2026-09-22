@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
+import { runStructured, type AiKeyConfig } from "@/lib/ai-keys.server";
 
 export const Assessment = z.object({
   label: z.string(),
@@ -15,16 +14,32 @@ export const Assessment = z.object({
 
 export type InspectionAssessment = z.infer<typeof Assessment>;
 
-/** Bewertet ein Inspektionsfoto mit Prüfbericht und liefert Priorität 1–10. */
-export async function assessPhoto(input: {
-  image: string;
-  label: string;
-  report: string;
-  rates: string;
-}): Promise<InspectionAssessment> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("LOVABLE_API_KEY fehlt");
+const RESULT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    label: { type: "string" },
+    category: { type: "string" },
+    finding: { type: "string" },
+    priority: { type: "number" },
+    action: { type: "string" },
+    cost: { type: "number" },
+    confidence: { type: "number" },
+    reason: { type: "string" },
+  },
+  required: ["label", "category", "finding", "priority", "action", "cost", "confidence", "reason"],
+} as const;
 
+/** Bewertet ein Inspektionsfoto mit Prüfbericht und liefert Priorität 1–10. */
+export async function assessPhoto(
+  input: {
+    image: string;
+    label: string;
+    report: string;
+    rates: string;
+  },
+  aiConfig: AiKeyConfig,
+): Promise<InspectionAssessment> {
   const prompt = `Du bist Sachverständiger für die Zustandsbewertung von Betriebsmitteln im Stromverteilnetz (Trafostationen, Schaltanlagen, Umzäunungen) nach ISO 55001.
 
 Bewerte das Foto zusammen mit dem Prüfbericht.
@@ -47,79 +62,12 @@ Regeln für die Priorität (Skala 1 bis 10):
 - "reason" erklärt in einem Satz, warum diese Priorität gilt.
 Antworte auf Deutsch.`;
 
-  const response = await fetch(`${GATEWAY}/responses`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "Lovable-API-Key": key,
-      "X-Lovable-AIG-SDK": "fetch",
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-6-astra",
-      input: [
-        {
-          role: "user",
-          content: [
-            { type: "input_text", text: prompt },
-            { type: "input_image", image_url: input.image },
-          ],
-        },
-      ],
-      store: false,
-      reasoning: { effort: "low" },
-      text: {
-        format: {
-          type: "json_schema",
-          name: "inspection_assessment",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              label: { type: "string" },
-              category: { type: "string" },
-              finding: { type: "string" },
-              priority: { type: "number" },
-              action: { type: "string" },
-              cost: { type: "number" },
-              confidence: { type: "number" },
-              reason: { type: "string" },
-            },
-            required: [
-              "label",
-              "category",
-              "finding",
-              "priority",
-              "action",
-              "cost",
-              "confidence",
-              "reason",
-            ],
-          },
-        },
-      },
-    }),
+  const text = await runStructured(aiConfig, {
+    prompt,
+    image: input.image,
+    schemaName: "inspection_assessment",
+    schema: RESULT_SCHEMA,
   });
-
-  if (response.status === 402) {
-    throw new Error("Das KI-Guthaben ist aufgebraucht – bitte im Arbeitsbereich aufladen.");
-  }
-  if (response.status === 429) {
-    throw new Error("Zu viele Anfragen gleichzeitig – bitte kurz warten und erneut hochladen.");
-  }
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Bildbewertung fehlgeschlagen [${response.status}]: ${detail.slice(0, 300)}`);
-  }
-
-  const payload = (await response.json()) as {
-    output_text?: string;
-    output?: { content?: { text?: string }[] }[];
-  };
-  const text =
-    payload.output_text ??
-    payload.output?.flatMap((item) => item.content ?? []).find((part) => part.text)?.text ??
-    "";
 
   try {
     return Assessment.parse(JSON.parse(text));
