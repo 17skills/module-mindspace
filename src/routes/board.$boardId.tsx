@@ -411,6 +411,7 @@ function BoardPage() {
   const [inspector, setInspector] = useState<{ nodeId: string; tab: InspectorTab } | null>(null);
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
+  const edgeLabelsOn = useEdgeLabelsVisible();
   const [templateOpen, setTemplateOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   /** Module ids chosen through the context menu; empty means "use the canvas selection". */
