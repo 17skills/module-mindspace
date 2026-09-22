@@ -109,7 +109,7 @@ export const getAccount = createServerFn({ method: "POST" })
       blocked: Boolean(profile?.blocked_at),
       deletionRequestedAt: profile?.deletion_requested_at ?? null,
       settings: settingsFrom(profile?.settings),
-      isAdmin: (roles.data ?? []).some((row) => row.role === "admin"),
+      isAdmin,
       consents: Object.fromEntries(
         (consents.data ?? []).map((row) => [row.purpose, { granted: row.granted, at: row.updated_at }]),
       ) as Record<string, { granted: boolean; at: string }>,
