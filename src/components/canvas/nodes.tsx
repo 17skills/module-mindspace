@@ -4573,6 +4573,57 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                               </span>
                             )}
                           </div>
+                          <div
+                            className="mt-1 flex flex-wrap items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <select
+                              value={finding.status}
+                              aria-label="Status"
+                              className="nodrag rounded-full border px-1.5 py-0.5 font-mono text-[9px] font-bold text-white outline-none"
+                              style={{
+                                background: STATUS_COLOR[finding.status],
+                                borderColor: STATUS_COLOR[finding.status],
+                              }}
+                              onChange={(e) =>
+                                patchFinding(finding.id, {
+                                  status: e.target.value as Finding["status"],
+                                })
+                              }
+                            >
+                              {STATUS_VALUES.map((value) => (
+                                <option key={value} value={value} className="text-foreground">
+                                  {value}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              key={finding.id + "owner" + finding.owner}
+                              defaultValue={finding.owner}
+                              placeholder="verantwortlich"
+                              aria-label="Verantwortliche Person"
+                              className="nodrag w-24 rounded border border-border/70 px-1 py-0.5 text-[9px]"
+                              onBlur={(e) => patchFinding(finding.id, { owner: e.target.value.trim() })}
+                            />
+                            <input
+                              key={finding.id + "due" + finding.due}
+                              type="date"
+                              defaultValue={finding.due}
+                              aria-label="Fällig am"
+                              className="nodrag rounded border px-1 py-0.5 font-mono text-[9px]"
+                              style={
+                                isOverdue(finding)
+                                  ? { borderColor: "#dc2626", color: "#dc2626" }
+                                  : { borderColor: "var(--border)" }
+                              }
+                              onBlur={(e) => patchFinding(finding.id, { due: e.target.value })}
+                            />
+                            {isOverdue(finding) && (
+                              <span className="font-mono text-[9px]" style={{ color: "#dc2626" }}>
+                                überfällig
+                              </span>
+                            )}
+                          </div>
                           {(finding.lat == null || finding.lon == null) && (
                             <div
                               className="mt-1 flex items-center gap-1"
