@@ -263,7 +263,7 @@ function Shell({
         isVisible={Boolean(selected)}
         color="var(--primary)"
       />
-      {!locked && <Handle type="target" position={Position.Left} />}
+      {!locked && <SignalHandle type="target" position={Position.Left} />}
       <div
         className="module-card flex h-full w-full flex-col overflow-hidden border bg-card"
         data-selected={Boolean(selected)}
@@ -271,7 +271,7 @@ function Shell({
       >
         {children}
       </div>
-      {!locked && <Handle type="source" position={Position.Right} />}
+      {!locked && <SignalHandle type="source" position={Position.Right} />}
     </>
   );
 }
@@ -797,7 +797,7 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
         isVisible={Boolean(selected)}
         color="var(--primary)"
       />
-      <Handle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Left} />
       <div className="h-full w-full rounded-3xl border-2 border-dashed bg-[color-mix(in_oklab,var(--frame)_10%,transparent)]">
         <div className="flex items-center gap-2 px-4 py-2">
           <input
@@ -813,7 +813,7 @@ export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) 
           </button>
         </div>
       </div>
-      <Handle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Right} />
     </>
   );
 });
@@ -979,10 +979,10 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
         color="var(--primary)"
         onResizeEnd={(_, params) => resizeZone(record.id, params.width, params.height)}
       />
-      <Handle type="target" position={Position.Left} className="!size-3" />
-      <Handle type="target" position={Position.Top} className="!size-3" />
-      <Handle type="source" position={Position.Right} className="!size-3" />
-      <Handle type="source" position={Position.Bottom} className="!size-3" />
+      <SignalHandle type="target" position={Position.Left} className="!size-3" />
+      <SignalHandle type="target" position={Position.Top} className="!size-3" />
+      <SignalHandle type="source" position={Position.Right} className="!size-3" />
+      <SignalHandle type="source" position={Position.Bottom} className="!size-3" />
       <div
         className={`relative h-full w-full overflow-hidden rounded-2xl border-2 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--card)_70%,transparent)] transition-colors${isGroup ? " border-dashed" : ""}${selected ? " ring-2 ring-primary/35" : ""}`}
         style={{
@@ -1733,8 +1733,8 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) 
         isVisible={Boolean(selected)}
         color="var(--primary)"
       />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
       <div
         className="flex h-full w-full items-center justify-center p-3 transition-shadow"
         style={{
@@ -1760,8 +1760,8 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) 
           className="nodrag nowheel w-full resize-none bg-transparent text-center text-xs font-medium text-foreground outline-none placeholder:text-muted-foreground"
         />
       </div>
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
+      <SignalHandle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Bottom} />
       {selected ? (
         <button
           aria-label="Form drehen"
@@ -2156,8 +2156,8 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={260} minHeight={180} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="source" position={Position.Right} />
       <div className="module-heading flex items-center gap-2 border-b px-3 py-2">
         <span
           className="h-2 w-2 shrink-0 rounded-full"
@@ -2393,10 +2393,10 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={180} minHeight={130} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
+      <SignalHandle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Bottom} />
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Kennzahl"}
@@ -2580,10 +2580,10 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={220} minHeight={200} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
+      <SignalHandle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Bottom} />
 
       <input
         key={record.id + (record.title ?? "")}
@@ -2694,8 +2694,8 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={280} minHeight={180} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="source" position={Position.Right} />
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Rechenblatt"}
@@ -2799,8 +2799,8 @@ export const ApiNode = memo(function ApiNode({ data, selected }: NodeProps) {
       style={{ borderTop: `3px solid ${NODE_ACCENT["api"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={280} minHeight={200} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="source" position={Position.Right} />
       <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
         <Globe className="size-3.5 shrink-0 text-muted-foreground" />
         <input
@@ -2905,8 +2905,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
       style={{ borderTop: `3px solid ${NODE_ACCENT["decision"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={220} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="source" position={Position.Right} />
       <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
         <Scale className="size-3.5 shrink-0 text-muted-foreground" />
         <input
@@ -3172,8 +3172,8 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={180} minHeight={140} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
       <input
         key={record.id + (record.title ?? "")}
         defaultValue={record.title ?? "Signal"}
@@ -3393,10 +3393,10 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
+      <SignalHandle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Bottom} />
       <div className="module-heading flex items-center gap-2 border-b px-3 py-2">
         <input
           key={record.id + (record.title ?? "")}
@@ -3726,10 +3726,10 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
+      <SignalHandle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Bottom} />
 
       <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
         <input
@@ -4172,10 +4172,10 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={360} minHeight={320} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
+      <SignalHandle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Bottom} />
 
       <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
         <input
@@ -4797,10 +4797,10 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
       data-selected={Boolean(selected)}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={360} minHeight={320} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="target" position={Position.Top} />
+      <SignalHandle type="source" position={Position.Right} />
+      <SignalHandle type="source" position={Position.Bottom} />
 
       <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
         <input
