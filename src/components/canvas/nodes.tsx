@@ -4306,7 +4306,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
 
   const total = totalCost(findings);
   const urgent = findings.filter((item) => item.priority <= 3);
-  const located = findings.filter((item) => item.lat != null).length;
+  const located = findings.filter((item) => item.lat != null && item.lon != null).length;
 
   return (
     <div
