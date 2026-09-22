@@ -301,7 +301,7 @@ function EmbedZonePage() {
         <div className="relative flex-1">
           <ReactFlow
             nodes={nodes}
-            edges={edges}
+            edges={visibleEdges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             defaultEdgeOptions={{
