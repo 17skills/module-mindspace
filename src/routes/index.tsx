@@ -87,7 +87,7 @@ function LibraryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("apps")
-        .select("id,title,description,kind,node_ids,mcp_scope,updated_at")
+        .select("id,title,description,kind,node_ids,mcp_scope,is_public,updated_at")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -114,6 +114,22 @@ function LibraryPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["boards"] }),
+    onError: (error) => toast.error(error.message),
+  });
+
+  const togglePublic = useMutation({
+    mutationFn: async (app: { id: string; is_public: boolean }) => {
+      const { error } = await supabase
+        .from("apps")
+        .update({ is_public: !app.is_public, updated_at: new Date().toISOString() })
+        .eq("id", app.id);
+      if (error) throw error;
+      return !app.is_public;
+    },
+    onSuccess: (next) => {
+      toast.success(next ? "App ist öffentlich erreichbar" : "App ist abgeschaltet");
+      void queryClient.invalidateQueries({ queryKey: ["apps"] });
+    },
     onError: (error) => toast.error(error.message),
   });
 
