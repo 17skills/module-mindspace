@@ -170,9 +170,7 @@ function LibraryPage() {
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              Abmelden
-            </Button>
+            <UserMenu />
           </div>
         </div>
       </header>
