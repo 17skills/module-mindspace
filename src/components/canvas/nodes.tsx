@@ -2059,9 +2059,17 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
   useEffect(() => {
     if (editing) areaRef.current?.focus();
   }, [editing]);
+  const stateRef = useRef({ text, editing });
+  stateRef.current = { text, editing };
   useEffect(() => {
-    if (!selected) setEditing(false);
-  }, [selected]);
+    if (selected) return;
+    const { text: latest, editing: wasEditing } = stateRef.current;
+    setEditing(false);
+    // Beim Verlassen der Karte den zuletzt getippten Text sichern.
+    if (wasEditing && latest !== (record.content ?? "")) {
+      updateNode(record.id, { content: latest, title: latest.slice(0, 60) || "Text" });
+    }
+  }, [selected, record.id, record.content, updateNode]);
 
   function save() {
     setEditing(false);
