@@ -1290,6 +1290,7 @@ function BoardPage() {
       toast.info("Wähle mindestens zwei Module im selben Bereich aus");
       return;
     }
+    suppressMeasure.current = Date.now() + 1200;
     setNodes((current) =>
       current.map((node) => {
         const change = changes.get(node.id);
