@@ -18,7 +18,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, LayoutGrid, Scale, Shapes } from "lucide-react";
+import { Globe, LayoutGrid, Scale, Shapes, Tag } from "lucide-react";
+import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { readApi, readQuestions } from "@/lib/api-module";
 import {
@@ -410,6 +411,7 @@ function BoardPage() {
   const [inspector, setInspector] = useState<{ nodeId: string; tab: InspectorTab } | null>(null);
   const [linkPrompt, setLinkPrompt] = useState<{ x: number; y: number } | null>(null);
   const [linkValue, setLinkValue] = useState("");
+  const edgeLabelsOn = useEdgeLabelsVisible();
   const [templateOpen, setTemplateOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   /** Module ids chosen through the context menu; empty means "use the canvas selection". */
@@ -2717,6 +2719,7 @@ function BoardPage() {
                 <TooltipTrigger asChild>
                   <Button
                     size="icon"
+                    variant="ghost"
                     className={toolBtn()}
                     aria-label="Chat-Modul anlegen"
                     onClick={() => {
@@ -2735,6 +2738,25 @@ function BoardPage() {
                 </TooltipTrigger>
                 <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
               </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn(edgeLabelsOn)}
+                    aria-label="Beschriftung der Verbindungen"
+                    aria-pressed={edgeLabelsOn}
+                    onClick={() => setEdgeLabelsVisible(!edgeLabelsOn)}
+                  >
+                    <Tag className="size-5" style={{ opacity: edgeLabelsOn ? 1 : 0.45 }} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {edgeLabelsOn ? "Beschriftung ausblenden" : "Beschriftung einblenden"}
+                </TooltipContent>
+              </Tooltip>
+
 
               <DropdownMenu>
                 <Tooltip>
