@@ -5,6 +5,7 @@
  */
 import { defineMcp, defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
+import type { Edge } from "@xyflow/react";
 import {
   appFindingStore,
   changeFinding,
@@ -13,7 +14,7 @@ import {
   type NodeRow,
 } from "@/lib/app-data.server";
 import { readInspection, totalCost, type Finding } from "@/lib/inspection";
-import { nodeValue } from "@/lib/calc";
+import { valueOfNode } from "@/lib/calc";
 import { readFactor } from "@/lib/factor-score";
 import type { NodeRecord } from "@/components/canvas/board-context";
 
@@ -79,13 +80,15 @@ function getFindingsTool(appId: string) {
       status: z
         .enum(["offen", "beauftragt", "in arbeit", "erledigt"])
         .nullable()
-        .describe("Only findings with this work status. Null means all."),
+        .optional()
+        .describe("Only findings with this work status. Omit for all."),
       max_priority: z
         .number()
         .int()
         .min(1)
         .max(10)
         .nullable()
+        .optional()
         .describe("Only findings with priority up to this value, e.g. 3 for urgent ones."),
       limit: z
         .number()
@@ -93,7 +96,8 @@ function getFindingsTool(appId: string) {
         .min(1)
         .max(100)
         .nullable()
-        .describe("Maximum number of findings, ordered by priority. Null means 50."),
+        .optional()
+        .describe("Maximum number of findings, ordered by priority. Default 50."),
     },
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     handler: async ({ status, max_priority, limit }) => {
@@ -223,7 +227,7 @@ function getKpisTool(appId: string) {
     inputSchema: {},
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     handler: async () => {
-      const { nodes } = await loadAppNodes(appId);
+      const { db, app, nodes } = await loadAppNodes(appId);
       const inspect = nodes.find((row) => appType(row) === "inspect") ?? null;
       const inspectionKpis = (() => {
         if (!inspect) return null;
@@ -243,26 +247,42 @@ function getKpisTool(appId: string) {
         };
       })();
 
+      // Netzwerk-Werte: Kennzahlen, Tachos, Rechenblätter und Risiko-Module
+      // spiegeln die Werte ihrer verbundenen Module – dieselbe Rechnung wie im Studio.
+      const edgeRes = await db
+        .from("edges")
+        .select("id,source_id,target_id,label")
+        .eq("board_id", app.board_id);
+      const edges: Edge[] = (edgeRes.data ?? []).map((row) => ({
+        id: String(row.id),
+        source: String(row.source_id),
+        target: String(row.target_id),
+        label: (row.label as string | null) ?? undefined,
+      }));
+      const records = new Map(nodes.map((row) => [row.id, asRecord(row)]));
+
       const moduleValues = nodes
-        .filter((row) => ["metric", "gauge", "factor", "sheet"].includes(appType(row)))
+        .filter((row) =>
+          ["metric", "gauge", "sheet", "risk", "note", "inspect"].includes(appType(row)),
+        )
         .map((row) => {
           const type = appType(row);
-          if (type === "factor") {
+          if (type === "note") {
             const factor = safe(() => readFactor(asRecord(row)), null);
+            if (!factor?.stored || !factor.params.length) return null;
             return {
               id: row.id,
-              type,
+              type: "factor",
               title: row.title ?? "",
-              value: factor ? Number(factor.score.toFixed(2)) : null,
+              value: Number(factor.score.toFixed(2)),
               scale: "1..10",
-              detail: factor
-                ? { weight_sum: factor.weightSum, balanced: factor.balanced, level: factor.level }
-                : null,
+              detail: { weight_sum: factor.weightSum, balanced: factor.balanced, level: factor.level },
             };
           }
-          const value = safe(() => nodeValue(asRecord(row)), null);
+          const value = safe(() => valueOfNode(asRecord(row), records, edges), null);
           return { id: row.id, type, title: row.title ?? "", value };
-        });
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
       const payload = { inspection: inspectionKpis, modules: moduleValues };
       return {
