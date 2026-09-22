@@ -3,6 +3,8 @@ import listBoardsTool from "./tools/list-boards";
 import getBoardTool from "./tools/get-board";
 import createNoteTool from "./tools/create-note";
 import searchContentTool from "./tools/search-content";
+import listZonesTool from "./tools/list-zones";
+import getZoneTool from "./tools/get-zone";
 
 const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
 

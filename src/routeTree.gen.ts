@@ -18,6 +18,7 @@ import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
 import { Route as LibraryTokenRouteImport } from './routes/library.$token'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -65,6 +66,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmbedZoneZoneIdRoute = EmbedZoneZoneIdRouteImport.update({
+  id: '/embed/zone/$zoneId',
+  path: '/embed/zone/$zoneId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
+    | '/embed/zone/$zoneId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
+    | '/embed/zone/$zoneId'
   id:
     | '__root__'
     | '/'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
+    | '/embed/zone/$zoneId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -146,6 +158,7 @@ export interface RootRouteChildren {
   LibraryTokenRoute: typeof LibraryTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  EmbedZoneZoneIdRoute: typeof EmbedZoneZoneIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/embed/zone/$zoneId': {
+      id: '/embed/zone/$zoneId'
+      path: '/embed/zone/$zoneId'
+      fullPath: '/embed/zone/$zoneId'
+      preLoaderRoute: typeof EmbedZoneZoneIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -227,6 +247,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryTokenRoute: LibraryTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  EmbedZoneZoneIdRoute: EmbedZoneZoneIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
