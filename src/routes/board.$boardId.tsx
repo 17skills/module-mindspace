@@ -1664,16 +1664,19 @@ function BoardPage() {
       const placed: LayoutRect[] = [targetRect];
       const changes = new Map<string, { x: number; y: number; width?: number; height?: number }>();
 
-      if (width !== currentWidth || Math.abs(height - currentHeight) >= 8) {
+      const grewWidth = width > currentWidth;
+      const grewHeight = height - currentHeight >= 8;
+      if (grewWidth || Math.abs(height - currentHeight) >= 8) {
         changes.set(id, {
           x: target.position.x,
           y: target.position.y,
-          ...(width !== currentWidth ? { width } : {}),
+          ...(grewWidth ? { width } : {}),
           ...(Math.abs(height - currentHeight) >= 8 ? { height } : {}),
         });
+        appliedHeights.current.set(id, height);
       }
 
-      const peers = nodesRef.current
+      const peers = (grewWidth || grewHeight ? nodesRef.current : [])
         .filter((node) => {
           const item = recordsRef.current[node.id];
           return (
@@ -1688,6 +1691,8 @@ function BoardPage() {
           const db = Math.hypot(b.position.x - target.position.x, b.position.y - target.position.y);
           return da - db;
         });
+
+
 
       for (const peer of peers) {
         const item = recordsRef.current[peer.id];
