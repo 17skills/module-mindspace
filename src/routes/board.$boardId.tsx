@@ -1834,7 +1834,7 @@ function BoardPage() {
           suppressMeasure.current = Date.now() + 800;
           continue;
         }
-        if (!manualSize.current.has(change.id) && change.resizing !== false) continue;
+        if (change.resizing !== false) continue;
         interacting.current = false;
         const width = Math.round(change.dimensions.width);
         const height = Math.round(change.dimensions.height);
