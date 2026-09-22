@@ -92,6 +92,13 @@
       "when": 1790111217919,
       "tag": "0012_ai_usage_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790111692479,
+      "tag": "0013_mcp_servers",
+      "breakpoints": true
     }
   ]
 }

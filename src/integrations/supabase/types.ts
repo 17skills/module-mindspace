@@ -338,6 +338,54 @@ export type Database = {
           },
         ]
       }
+      mcp_servers: {
+        Row: {
+          auth_kind: string
+          created_at: string
+          encrypted_token: string | null
+          header_name: string | null
+          id: string
+          last_check_at: string | null
+          last_error: string | null
+          name: string
+          server_info: Json
+          tools: Json
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          auth_kind?: string
+          created_at?: string
+          encrypted_token?: string | null
+          header_name?: string | null
+          id?: string
+          last_check_at?: string | null
+          last_error?: string | null
+          name: string
+          server_info?: Json
+          tools?: Json
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          auth_kind?: string
+          created_at?: string
+          encrypted_token?: string | null
+          header_name?: string | null
+          id?: string
+          last_check_at?: string | null
+          last_error?: string | null
+          name?: string
+          server_info?: Json
+          tools?: Json
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       module_library: {
         Row: {
           created_at: string
