@@ -339,7 +339,20 @@ export type RiskContext = {
   ageYears: number | null;
   ageLevel: number | null;
   /** Weighted factor cards connected to this matrix, keyed by card id. */
-  factors?: Record<string, { label: string; score: number; level: number; count: number }>;
+  factors?: Record<
+    string,
+    {
+      label: string;
+      /** Score after the edge labels were applied. */
+      score: number;
+      level: number;
+      count: number;
+      /** Card score before the edge labels. */
+      raw?: number;
+      /** Readable chain of the edge labels, e.g. "50 % · x * 0,8". */
+      transform?: string;
+    }
+  >;
 };
 
 function num(value: number | null, digits = 0): string | null {
