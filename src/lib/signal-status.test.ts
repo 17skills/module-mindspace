@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Edge } from "@xyflow/react";
 import { makeNode } from "@/test/nodes";
-import { sourceStatus, targetStatus } from "@/lib/signal-status";
+import { edgeProblem, sourceStatus, targetStatus } from "@/lib/signal-status";
 import { valueOfNode } from "@/lib/calc";
 import type { NodeRecord } from "@/components/canvas/board-context";
 
@@ -75,5 +75,25 @@ describe("Signalzustände an den Verbindungspunkten", () => {
 
     expect(sourceStatus("a", records, [])).toBe("idle");
     expect(targetStatus("a", records, [])).toBe("idle");
+  });
+});
+
+describe("Fehlermeldung an der Verbindung", () => {
+  it("nennt fehlende Klammer als Ursache", () => {
+    const problem = edgeProblem("(x + 10 * 2", 100);
+    expect(problem.title).toContain("Klammern");
+    expect(problem.fix).toContain("Klammer");
+  });
+
+  it("erkennt Teilen durch null", () => {
+    expect(edgeProblem("x / 0", 100).title).toContain("null");
+  });
+
+  it("erkennt unbekannte Variable", () => {
+    expect(edgeProblem("y * 2", 100).title).toContain("y");
+  });
+
+  it("meldet fehlenden Wert des Ausgangsmoduls", () => {
+    expect(edgeProblem("x * 2", null).title).toContain("Kein Wert");
   });
 });

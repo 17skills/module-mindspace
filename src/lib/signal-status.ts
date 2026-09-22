@@ -32,6 +32,68 @@ export function isReference(record: NodeRecord | undefined): boolean {
   return false;
 }
 
+/** Plain-language explanation of a red connection signal. */
+export type EdgeProblem = { title: string; cause: string; fix: string };
+
+/**
+ * Explains why the calculation on a connection cannot produce a value.
+ * Only called when a source value exists but the connection result is null.
+ */
+export function edgeProblem(label: string | null | undefined, raw: number | null): EdgeProblem {
+  const text = (label ?? "").trim();
+
+  if (raw == null) {
+    return {
+      title: "Kein Wert vom Ausgangsmodul",
+      cause: "Das verbundene Modul liefert gerade keine Zahl.",
+      fix: "Modul ausführen oder einen Wert hinterlegen, dann fließt er hier weiter.",
+    };
+  }
+
+  const open = (text.match(/\(/g) ?? []).length;
+  const close = (text.match(/\)/g) ?? []).length;
+  if (open !== close) {
+    return {
+      title: "Klammern passen nicht",
+      cause: `In „${text}“ sind ${open} öffnende und ${close} schließende Klammern.`,
+      fix: "Fehlende Klammer ergänzen, z. B. „(x + 10) * 2“.",
+    };
+  }
+
+  if (/\/\s*0(?:[.,]0+)?(?!\d)/.test(text)) {
+    return {
+      title: "Teilen durch null",
+      cause: `Die Rechnung „${text}“ teilt durch 0 – das ergibt keinen Wert.`,
+      fix: "Teiler auf eine Zahl ungleich 0 ändern.",
+    };
+  }
+
+  const names = (text.match(/[A-Za-z][A-Za-z0-9]*/g) ?? []).filter(
+    (name) => name.toUpperCase() !== "X",
+  );
+  if (names.length) {
+    return {
+      title: `Unbekannte Variable „${names[0]}“`,
+      cause: "In der Rechnung an einer Verbindung ist nur x erlaubt – der eingehende Wert.",
+      fix: `„${names[0]}“ durch x ersetzen, z. B. „x * 0,75“.`,
+    };
+  }
+
+  if (/[+\-*/%]\s*$/.test(text) || /^\s*[*/%]/.test(text)) {
+    return {
+      title: "Rechnung ist unvollständig",
+      cause: `„${text}“ endet oder beginnt mit einem Rechenzeichen.`,
+      fix: "Die fehlende Zahl ergänzen, z. B. „x * 0,75“.",
+    };
+  }
+
+  return {
+    title: "Rechnung nicht lesbar",
+    cause: `„${text}“ konnte nicht berechnet werden.`,
+    fix: "Erlaubt sind x, Zahlen, + − × ÷ und Klammern – z. B. „25 %“, „1500“ oder „x * 0,75“.",
+  };
+}
+
 /** Status of the output point of a module. */
 export function sourceStatus(
   nodeId: string,
