@@ -5471,6 +5471,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
             ["context", notes.length ? `Kontext (${notes.length})` : "Kontext"],
             ["output", "Ausgabe"],
             ["result", "Antwort"],
+            ["history", history.length ? `Verlauf (${history.length})` : "Verlauf"],
           ] as const
         ).map(([key, label]) => (
           <button
