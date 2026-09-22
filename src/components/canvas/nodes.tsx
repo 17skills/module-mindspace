@@ -44,6 +44,7 @@ import {
   factorText,
   normalizeWeights,
   paramsFromText,
+  levelOf,
   readFactor,
   readThemeWeight,
   themeIndex,
