@@ -1,14 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
-
-function apiKey() {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("LOVABLE_API_KEY fehlt");
-  return key;
-}
+import { loadAiKeyConfig, runStructured, runTranscription } from "@/lib/ai-keys.server";
 
 function decodeEntities(value: string) {
   return value
@@ -181,30 +174,11 @@ export const transcribeAudio = createServerFn({ method: "POST" })
       throw new Error("Audiodatei ist zu groß (max. 80 MB)");
     }
 
-    const form = new FormData();
-    form.append("file", new Blob([bytes], { type: mime }), "audio");
-    form.append("model", "google/gemini-3.5-transcribe");
-    form.append("response_format", "verbose_json");
-
-    const response = await fetch(`${GATEWAY}/audio/transcriptions`, {
-      method: "POST",
-      headers: { "Lovable-API-Key": apiKey(), "X-Lovable-AIG-SDK": "fetch" },
-      body: form,
-    });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Transkription fehlgeschlagen [${response.status}]: ${detail.slice(0, 400)}`);
-    }
-
-    const payload = (await response.json()) as {
-      text?: string;
-      segments?: { start?: number; text?: string }[];
-    };
-    const lines = (payload.segments ?? [])
-      .map((s) => ({ start: Number(s.start ?? 0), text: (s.text ?? "").trim() }))
-      .filter((line) => line.text);
-    return { text: payload.text ?? "", segments: lines.length ? chunkByTime(lines) : [] };
+    // Eigener OpenAI-/Google-Schlüssel (BYOK), sonst Lovable AI.
+    const cfg = await loadAiKeyConfig(context.supabase, context.userId);
+    const result = await runTranscription(cfg, { bytes, mime });
+    const lines = result.segments.filter((line) => line.text);
+    return { text: result.text, segments: lines.length ? chunkByTime(lines) : [] };
   });
 
 function ogImage(html: string): string | null {
