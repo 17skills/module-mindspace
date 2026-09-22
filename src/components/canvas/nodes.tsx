@@ -25,7 +25,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { AlertTriangle, BookOpen, Calculator, Camera, ChevronRight, CloudSun, ExternalLink, Globe, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, LayoutTemplate, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -41,7 +41,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
-import { readAgent, readAssignment } from "@/lib/zones";
+import { readAgent, readAppLayout, readAssignment, zoneMembers, type AppLayoutEntry } from "@/lib/zones";
 import {
   factorText,
   normalizeWeights,
