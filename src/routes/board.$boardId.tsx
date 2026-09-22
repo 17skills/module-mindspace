@@ -1614,6 +1614,7 @@ function BoardPage() {
       void runMcpTool({ data: { serverId: config.serverId, tool: config.tool, args } })
         .then((result) => {
           const current = recordsRef.current[id];
+          const error = result.isError ? "Das Werkzeug meldet einen Fehler" : null;
           updateNode(id, {
             content: result.text,
             status: result.isError ? "error" : "ready",
@@ -1621,7 +1622,15 @@ function BoardPage() {
               ...(current?.metadata ?? {}),
               mcpRunning: false,
               lastAt: result.at,
-              lastError: result.isError ? "Das Werkzeug meldet einen Fehler" : null,
+              lastError: error,
+              mcpHistory: appendMcpRun(readMcpHistory(current), {
+                at: result.at,
+                tool: config.tool,
+                args,
+                ok: !result.isError,
+                error,
+                preview: (result.text ?? "").slice(0, 600),
+              }),
             },
           });
         })
@@ -1629,7 +1638,19 @@ function BoardPage() {
           const current = recordsRef.current[id];
           const message = error instanceof Error ? error.message : "Aufruf fehlgeschlagen";
           updateNode(id, {
-            metadata: { ...(current?.metadata ?? {}), mcpRunning: false, lastError: message },
+            metadata: {
+              ...(current?.metadata ?? {}),
+              mcpRunning: false,
+              lastError: message,
+              mcpHistory: appendMcpRun(readMcpHistory(current), {
+                at: new Date().toISOString(),
+                tool: config.tool,
+                args,
+                ok: false,
+                error: message,
+                preview: "",
+              }),
+            },
           });
           toast.error(message);
         });
