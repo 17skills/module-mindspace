@@ -77,7 +77,13 @@ export const listMembers = createServerFn({ method: "POST" })
 export const addMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
-    z.object({ boardId: z.string().uuid(), email: z.string().email() }).parse(input),
+    z
+      .object({
+        boardId: z.string().uuid(),
+        email: z.string().email(),
+        role: z.enum(["viewer", "editor"]).default("viewer"),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertOwner(context.supabase as never, data.boardId, context.userId);
@@ -93,11 +99,35 @@ export const addMember = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("board_members")
       .upsert(
-        { board_id: data.boardId, user_id: profile.id, role: "member" },
+        { board_id: data.boardId, user_id: profile.id, role: data.role },
         { onConflict: "board_id,user_id" },
       );
     if (error) throw new Error(error.message);
     return { email };
+  });
+
+/** Change a member's role between viewer (read) and editor (collaborate). Owner only. */
+export const setMemberRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        boardId: z.string().uuid(),
+        memberId: z.string().uuid(),
+        role: z.enum(["viewer", "editor"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertOwner(context.supabase as never, data.boardId, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("board_members")
+      .update({ role: data.role })
+      .eq("id", data.memberId)
+      .eq("board_id", data.boardId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 /** Remove a member. Owner only. */
