@@ -492,7 +492,15 @@ export function AppDialog({
               {APP_DESIGN_PRESETS.map((profile) => (
                 <button
                   key={profile.id}
-                  onClick={() => setBranding((b) => ({ ...b, ...profile.branding, logo: b.logo }))}
+                  onClick={() =>
+                    setBranding((b) => ({
+                      ...b,
+                      ...profile.branding,
+                      logo: b.logo,
+                      layout: b.layout,
+                      moduleLayout: b.moduleLayout,
+                    }))
+                  }
                   className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
                 >
                   {profile.name}

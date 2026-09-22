@@ -81,4 +81,10 @@ describe("freie Fläche", () => {
     expect(updateFreeLayout(layout, metricNode.id, { col: 2 })[0]?.col).toBe(2);
     expect(updateFreeLayout(layout, metricNode.id, { col: 7 })).toEqual(layout);
   });
+
+  it("ändert die Modulgröße innerhalb der zwölf Spalten", () => {
+    const layout = [{ id: metricNode.id, col: 5, row: 1, width: 4, height: 3 }];
+    const resized = updateFreeLayout(layout, metricNode.id, { width: 9, height: 6 });
+    expect(resized[0]).toMatchObject({ col: 4, width: 9, height: 6 });
+  });
 });
