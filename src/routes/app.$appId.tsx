@@ -149,6 +149,79 @@ function CaptureApp({
   const [lon, setLon] = useState<number | null>(null);
   const [source, setSource] = useState<"exif" | "manuell" | "unbekannt">("unbekannt");
   const [busy, setBusy] = useState<"" | "locate" | "assess">("");
+  const [online, setOnline] = useState(true);
+  const [queue, setQueue] = useState<QueuedFinding[]>([]);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    setOnline(navigator.onLine);
+    setQueue(queuedFor(appId));
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => {
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+    };
+  }, [appId]);
+
+  const uploadQueued = async (entry: QueuedFinding) => {
+    const assessment =
+      entry.assessment ??
+      (await appAssessPhoto({
+        data: { appId, image: entry.photo, label: entry.label, report: entry.report, rates: "" },
+      }));
+    await appAddFinding({
+      data: {
+        appId,
+        finding: {
+          label: assessment.label || entry.label || "Unbenanntes Objekt",
+          lat: entry.lat,
+          lon: entry.lon,
+          category: assessment.category,
+          finding: assessment.finding,
+          priority: assessment.priority,
+          action: assessment.action,
+          cost: assessment.cost,
+          confidence: assessment.confidence,
+          reason: assessment.reason,
+          thumb: entry.photo,
+          source: entry.source,
+        },
+      },
+    });
+    dequeueFinding(entry.id);
+  };
+
+  const sync = async () => {
+    const pending = queuedFor(appId);
+    if (!pending.length || syncing) return;
+    setSyncing(true);
+    let done = 0;
+    for (const entry of pending) {
+      try {
+        await uploadQueued(entry);
+        done += 1;
+      } catch {
+        break;
+      }
+    }
+    setQueue(queuedFor(appId));
+    setSyncing(false);
+    if (done > 0) {
+      toast.success(`${done} Befund${done === 1 ? "" : "e"} übertragen`);
+      onSaved();
+    } else {
+      toast.error("Übertragung nicht möglich – bitte später erneut versuchen");
+    }
+  };
+
+  useEffect(() => {
+    if (online && queue.length && !syncing) void sync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
+
 
   const locate = () => {
     if (!navigator.geolocation) {
