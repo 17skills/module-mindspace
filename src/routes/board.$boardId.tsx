@@ -81,6 +81,7 @@ import {
   SheetNode,
   ApiNode,
   McpNode,
+  McpHubNode,
   DecisionNode,
   SignalNode,
   QuotesNode,
@@ -169,6 +170,7 @@ const nodeTypes = {
   sheet: SheetNode,
   api: ApiNode,
   mcp: McpNode,
+  mcphub: McpHubNode,
   decision: DecisionNode,
   signal: SignalNode,
   quotes: QuotesNode,
@@ -194,6 +196,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   sheet: { width: 360, height: 240 },
   api: { width: 360, height: 280 },
   mcp: { width: 380, height: 420 },
+  mcphub: { width: 380, height: 440 },
   decision: { width: 560, height: 560 },
   signal: { width: 220, height: 170 },
   quotes: { width: 460, height: 420 },
@@ -217,6 +220,7 @@ const READABLE_WIDTH: Record<string, number> = {
   sheet: 440,
   api: 420,
   mcp: 420,
+  mcphub: 400,
   decision: 560,
   quotes: 500,
   map: 560,
@@ -362,6 +366,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "sheet" ||
     record.type === "api" ||
     record.type === "mcp" ||
+    record.type === "mcphub" ||
     record.type === "decision" ||
     record.type === "signal" ||
     record.type === "map" ||
