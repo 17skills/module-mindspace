@@ -1,6 +1,7 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { apiValue, decisionValue } from "@/lib/api-module";
+import { mcpValue } from "@/lib/mcp-module";
 import { readFactor } from "@/lib/factor-score";
 import { readInspection } from "@/lib/inspection";
 import {
@@ -27,6 +28,7 @@ export function nodeValue(record: NodeRecord | undefined): number | null {
   if (record.type === "zone") return toNumber(record.metadata?.["agentResult"]);
   if (record.type === "sheet") return sheetResult(record);
   if (record.type === "api") return apiValue(record);
+  if (record.type === "mcp") return mcpValue(record);
   if (record.type === "decision") return decisionValue(record);
   // a weighted factor card sends its card score (1..10) into the network
   if (record.type === "note") {
