@@ -42,6 +42,7 @@ export const MODULE_TYPE_LABEL: Record<string, string> = {
   inspect: "Inspektion",
   decision: "Entscheidung (JEV)",
   api: "API-Modul",
+  mcp: "MCP-Werkzeug",
   zone: "Feld",
   chat: "Chat",
   link: "Link",

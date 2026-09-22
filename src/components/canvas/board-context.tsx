@@ -86,6 +86,8 @@ export type BoardApi = {
   runApi: (id: string) => void;
   /** Let a decision module judge its connected context. */
   runDecide: (id: string) => void;
+  /** Run the selected tool of an external MCP server and store its answer. */
+  runMcp: (id: string) => void;
 };
 
 export const BoardContext = createContext<BoardApi | null>(null);
@@ -119,6 +121,7 @@ export const NODE_ACCENT: Record<string, string> = {
   map: "var(--doc)",
   risk: "var(--primary)",
   inspect: "var(--doc)",
+  mcp: "var(--chat)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -145,4 +148,5 @@ export const NODE_LABEL: Record<string, string> = {
   map: "Karte",
   risk: "Risiko",
   inspect: "Inspektion",
+  mcp: "MCP-Werkzeug",
 };

@@ -25,6 +25,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
+import { Plug } from "lucide-react";
 import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
   BaseEdge,
@@ -57,6 +58,9 @@ import {
 } from "@/lib/factor-score";
 import { suggestFactorWeights } from "@/lib/factor.functions";
 import { runApiModule } from "@/lib/api-module.functions";
+import { listMcpServers } from "@/lib/mcp-client.functions";
+import { mcpPreview, mcpValue, readMcp } from "@/lib/mcp-module";
+import { useQuery } from "@tanstack/react-query";
 import { analyzeInspection } from "@/lib/inspection.functions";
 import {
   CLUSTERS,
@@ -5208,6 +5212,151 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
           );
         })}
       </div>
+    </div>
+  );
+});
+
+/** Ruft ein Werkzeug eines externen MCP-Servers auf und hält dessen Antwort. */
+export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
+  const record = (data as unknown as Data).record;
+  const { updateNode, runMcp } = useBoard();
+  const config = readMcp(record);
+  const meta = (record.metadata ?? {}) as Record<string, unknown>;
+  const running = meta["mcpRunning"] === true;
+  const value = mcpValue(record);
+  const servers = useQuery({
+    queryKey: ["mcp-servers"],
+    queryFn: () => listMcpServers(),
+    staleTime: 60_000,
+  });
+  const server = servers.data?.find((item) => item.id === config.serverId);
+  const tools = server?.tools ?? [];
+  const tool = tools.find((item) => item.name === config.tool);
+
+  function patch(next: Record<string, unknown>) {
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
+  }
+
+  return (
+    <div
+      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
+        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+      }`}
+      data-selected={Boolean(selected)}
+      style={{ borderTop: `3px solid ${NODE_ACCENT["mcp"] ?? "var(--primary)"}` }}
+    >
+      <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={240} />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="source" position={Position.Right} />
+
+      <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
+        <Plug className="size-3.5 shrink-0 text-muted-foreground" />
+        <input
+          key={record.id + (record.title ?? "")}
+          defaultValue={record.title ?? "MCP-Werkzeug"}
+          className="nodrag min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+          onBlur={(e) => updateNode(record.id, { title: e.target.value.trim() || "MCP-Werkzeug" })}
+        />
+      </div>
+
+      <div className="grid gap-1.5 border-b px-3 py-2">
+        <Select
+          value={config.serverId}
+          onValueChange={(next) => {
+            const chosen = servers.data?.find((item) => item.id === next);
+            patch({
+              mcpServerId: next,
+              mcpServerName: chosen?.name ?? "",
+              mcpTool: "",
+              lastError: null,
+            });
+          }}
+        >
+          <SelectTrigger className="nodrag h-8 text-xs" aria-label="MCP-Server">
+            <SelectValue placeholder={servers.isLoading ? "Lade Server …" : "Server wählen"} />
+          </SelectTrigger>
+          <SelectContent>
+            {(servers.data ?? []).map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {item.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={config.tool}
+          disabled={!config.serverId || tools.length === 0}
+          onValueChange={(next) => patch({ mcpTool: next, lastError: null })}
+        >
+          <SelectTrigger className="nodrag h-8 text-xs" aria-label="Werkzeug">
+            <SelectValue placeholder={tools.length ? "Werkzeug wählen" : "Keine Werkzeuge"} />
+          </SelectTrigger>
+          <SelectContent>
+            {tools.map((item) => (
+              <SelectItem key={item.name} value={item.name}>
+                {item.title || item.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {tool?.description ? (
+          <p className="line-clamp-2 text-[10px] text-muted-foreground">{tool.description}</p>
+        ) : null}
+
+        <Textarea
+          key={record.id + "args"}
+          defaultValue={config.args}
+          rows={2}
+          spellCheck={false}
+          aria-label="Eingabewerte als JSON"
+          placeholder={'{ "query": "Text" }'}
+          className="nodrag nowheel min-h-[52px] font-mono text-[10px]"
+          onBlur={(e) => patch({ mcpArgs: e.target.value })}
+        />
+      </div>
+
+      <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="nodrag h-7 rounded-full text-xs"
+          disabled={running || !config.serverId || !config.tool}
+          onClick={() => runMcp(record.id)}
+        >
+          <RefreshCw className={`mr-1 size-3 ${running ? "animate-spin" : ""}`} />
+          {running ? "Führt aus …" : "Ausführen"}
+        </Button>
+        <span className="truncate text-[10px] text-muted-foreground">
+          {config.lastError
+            ? config.lastError
+            : config.lastAt
+              ? new Date(config.lastAt).toLocaleString("de-DE")
+              : config.serverId
+                ? "noch nicht ausgeführt"
+                : "kein Server gewählt"}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1 border-b px-3 py-1.5 text-[10px] text-muted-foreground">
+        <span className="shrink-0">Feld</span>
+        <input
+          key={record.id + config.pick}
+          defaultValue={config.pick}
+          placeholder="z. B. items.0.value"
+          aria-label="Feld für die Verbindung"
+          className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 font-mono outline-none hover:border-border focus:border-border"
+          onBlur={(e) => patch({ pick: e.target.value })}
+        />
+        <span className="shrink-0 font-mono text-foreground">
+          {value != null ? formatValue(value) : "–"}
+        </span>
+      </div>
+
+      <pre className="nowheel nodrag flex-1 overflow-auto whitespace-pre-wrap break-words px-3 py-2 font-mono text-[10px] leading-snug text-muted-foreground">
+        {mcpPreview(record) || "Noch keine Antwort."}
+      </pre>
     </div>
   );
 });
