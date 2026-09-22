@@ -5224,6 +5224,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["mcpRunning"] === true;
   const value = mcpValue(record);
+  const [connectOpen, setConnectOpen] = useState(false);
   const servers = useQuery({
     queryKey: ["mcp-servers"],
     queryFn: () => listMcpServers(),
@@ -5236,6 +5237,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
+
 
   return (
     <div
