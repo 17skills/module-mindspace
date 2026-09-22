@@ -9,6 +9,8 @@ import {
   Maximize2,
   Minimize2,
   Monitor,
+  Eye,
+  EyeOff,
   Pencil,
   PlugZap,
   Smartphone,
@@ -49,6 +51,7 @@ type Row = {
   branding: unknown;
   mcp_token: string;
   mcp_scope: string;
+  is_public: boolean;
   updated_at: string;
 };
 
@@ -120,7 +123,7 @@ export function AppDialog({
   const reload = async () => {
     const { data, error } = await supabase
       .from("apps")
-      .select("id,title,description,kind,node_ids,branding,mcp_token,mcp_scope,updated_at")
+      .select("id,title,description,kind,node_ids,branding,mcp_token,mcp_scope,is_public,updated_at")
       .eq("board_id", boardId)
       .order("updated_at", { ascending: false });
     if (error) {
