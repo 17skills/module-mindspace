@@ -5347,17 +5347,6 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
         {tool?.description ? (
           <p className="line-clamp-2 text-[10px] text-muted-foreground">{tool.description}</p>
         ) : null}
-
-        <Textarea
-          key={record.id + "args"}
-          defaultValue={config.args}
-          rows={2}
-          spellCheck={false}
-          aria-label="Eingabewerte als JSON"
-          placeholder={'{ "query": "Text" }'}
-          className="nodrag nowheel min-h-[52px] font-mono text-[10px]"
-          onBlur={(e) => patch({ mcpArgs: e.target.value })}
-        />
       </div>
 
       <div className="module-heading flex items-center gap-2 border-b px-3 py-1.5">
@@ -5374,32 +5363,186 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
         <span className="truncate text-[10px] text-muted-foreground">
           {config.lastError
             ? config.lastError
-            : config.lastAt
-              ? new Date(config.lastAt).toLocaleString("de-DE")
-              : config.serverId
-                ? "noch nicht ausgeführt"
-                : "kein Server gewählt"}
+            : missing.length
+              ? `Pflichtfeld offen: ${missing.join(", ")}`
+              : config.lastAt
+                ? new Date(config.lastAt).toLocaleString("de-DE")
+                : config.serverId
+                  ? "noch nicht ausgeführt"
+                  : "kein Server gewählt"}
         </span>
       </div>
 
-      <div className="flex items-center gap-1 border-b px-3 py-1.5 text-[10px] text-muted-foreground">
-        <span className="shrink-0">Feld</span>
-        <input
-          key={record.id + config.pick}
-          defaultValue={config.pick}
-          placeholder="z. B. items.0.value"
-          aria-label="Feld für die Verbindung"
-          className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 font-mono outline-none hover:border-border focus:border-border"
-          onBlur={(e) => patch({ pick: e.target.value })}
-        />
-        <span className="shrink-0 font-mono text-foreground">
-          {value != null ? formatValue(value) : "–"}
-        </span>
+      <div className="flex items-center gap-1 border-b px-3 py-1 text-[10px]">
+        {(
+          [
+            ["input", "Eingaben"],
+            ["output", "Ausgabe"],
+            ["result", "Antwort"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={`nodrag rounded-full px-2 py-0.5 ${
+              section === key ? "bg-secondary text-foreground" : "text-muted-foreground"
+            }`}
+            onClick={() => setSection(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <pre className="nowheel nodrag flex-1 overflow-auto whitespace-pre-wrap break-words px-3 py-2 font-mono text-[10px] leading-snug text-muted-foreground">
-        {mcpPreview(record) || "Noch keine Antwort."}
-      </pre>
+      {section === "input" ? (
+        <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
+          {config.mode === "json" || (config.tool && fields.length === 0) ? (
+            <Textarea
+              key={record.id + "args"}
+              defaultValue={config.args}
+              rows={4}
+              spellCheck={false}
+              aria-label="Eingabewerte als JSON"
+              placeholder={'{ "query": "Text" }'}
+              className="nodrag nowheel min-h-[80px] font-mono text-[10px]"
+              onBlur={(e) => patch({ mcpArgs: e.target.value })}
+            />
+          ) : fields.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground">
+              Wähle ein Werkzeug – die Eingabefelder erscheinen dann automatisch.
+            </p>
+          ) : (
+            fields.map((field) => {
+              const bound = config.bindings[field.name] ?? "";
+              return (
+                <div key={field.name} className="grid gap-1">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[10px] font-medium">{field.title}</span>
+                    {field.required ? <span className="text-[10px] text-destructive">*</span> : null}
+                    <span className="ml-auto font-mono text-[9px] text-muted-foreground">
+                      {field.type}
+                    </span>
+                  </div>
+                  {field.description ? (
+                    <p className="line-clamp-2 text-[9px] text-muted-foreground">{field.description}</p>
+                  ) : null}
+                  {bound ? (
+                    <p className="rounded-md bg-secondary px-2 py-1 text-[10px]">
+                      Wert kommt aus „{linkable.find((item) => item.id === bound)?.title ?? "Modul"}“
+                    </p>
+                  ) : field.type === "enum" ? (
+                    <Select
+                      value={config.inputs[field.name] ?? ""}
+                      onValueChange={(next) => setInput(field.name, next)}
+                    >
+                      <SelectTrigger className="nodrag h-7 text-xs" aria-label={field.title}>
+                        <SelectValue placeholder="Auswahl" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : field.type === "boolean" ? (
+                    <Select
+                      value={config.inputs[field.name] ?? ""}
+                      onValueChange={(next) => setInput(field.name, next)}
+                    >
+                      <SelectTrigger className="nodrag h-7 text-xs" aria-label={field.title}>
+                        <SelectValue placeholder="nicht gesetzt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">ja</SelectItem>
+                        <SelectItem value="false">nein</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <input
+                      key={record.id + field.name}
+                      defaultValue={config.inputs[field.name] ?? ""}
+                      placeholder={field.placeholder}
+                      aria-label={field.title}
+                      inputMode={field.type === "number" || field.type === "integer" ? "decimal" : "text"}
+                      className="nodrag h-7 w-full rounded-md border border-border/70 bg-background px-2 text-[11px] outline-none focus:border-ring"
+                      onBlur={(e) => setInput(field.name, e.target.value)}
+                    />
+                  )}
+                  {linkable.length > 0 ? (
+                    <Select value={bound} onValueChange={(next) => setBinding(field.name, next === "__none__" ? "" : next)}>
+                      <SelectTrigger
+                        className="nodrag h-6 text-[10px] text-muted-foreground"
+                        aria-label={`${field.title}: Wert aus Modul`}
+                      >
+                        <SelectValue placeholder="fester Wert" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">fester Wert</SelectItem>
+                        {linkable.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.title || "Modul"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                </div>
+              );
+            })
+          )}
+          <button
+            type="button"
+            className="nodrag text-[10px] underline text-muted-foreground"
+            onClick={() => patch({ mcpMode: config.mode === "json" ? "form" : "json" })}
+          >
+            {config.mode === "json" ? "Geführte Felder verwenden" : "Als JSON bearbeiten"}
+          </button>
+        </div>
+      ) : section === "output" ? (
+        <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
+          <div className="grid gap-1">
+            <span className="text-[10px] font-medium">Feld für die Verbindung</span>
+            <input
+              key={record.id + config.pick}
+              defaultValue={config.pick}
+              placeholder="z. B. items.0.value"
+              aria-label="Feld für die Verbindung"
+              className="nodrag h-7 w-full rounded-md border border-border/70 bg-background px-2 font-mono text-[10px] outline-none focus:border-ring"
+              onBlur={(e) => patch({ pick: e.target.value })}
+            />
+          </div>
+          {paths.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {paths.map((path) => (
+                <button
+                  key={path}
+                  type="button"
+                  className="nodrag rounded-full bg-secondary px-2 py-0.5 font-mono text-[9px]"
+                  onClick={() => patch({ pick: path })}
+                >
+                  {path}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground">
+              Führe das Werkzeug aus – danach schlägt die Karte passende Felder vor.
+            </p>
+          )}
+          <p className="text-[10px] text-muted-foreground">
+            Weitergegebener Wert:{" "}
+            <span className="font-mono text-foreground">
+              {value != null ? formatValue(value) : "–"}
+            </span>
+          </p>
+        </div>
+      ) : (
+        <pre className="nowheel nodrag flex-1 overflow-auto whitespace-pre-wrap break-words px-3 py-2 font-mono text-[10px] leading-snug text-muted-foreground">
+          {mcpPreview(record) || "Noch keine Antwort."}
+        </pre>
+      )}
     </div>
   );
 });
