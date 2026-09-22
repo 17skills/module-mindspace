@@ -4226,7 +4226,10 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
   const summary = useMemo(() => inspectionText(findings), [findings]);
 
   // keep the chat / decision context in sync with the action plan
+  const lastSummary = useRef<string | null>(null);
   useEffect(() => {
+    if (summary === lastSummary.current) return;
+    lastSummary.current = summary;
     if (summary !== record.content) updateNode(record.id, { content: summary });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary]);
@@ -4369,7 +4372,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
       </div>
 
       <div
-        className="nodrag nowheel flex-1 space-y-3 overflow-auto px-3 py-2"
+        className="nodrag flex-1 space-y-3 overflow-visible px-3 py-2"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -4417,9 +4420,12 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                     <li
                       key={finding.id}
                       className="rounded-md border border-border/60 p-1.5"
-                      onClick={() =>
-                        finding.lat != null && setMapFocus([finding.id], finding.label)
-                      }
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest("input,button,textarea")) return;
+                        if (finding.lat != null && finding.lon != null) {
+                          setMapFocus([finding.id], finding.label);
+                        }
+                      }}
                     >
                       <div className="flex items-start gap-2">
                         {finding.thumb ? (
@@ -4459,10 +4465,14 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                               </span>
                             )}
                           </div>
-                          {finding.lat == null && (
-                            <div className="mt-1 flex items-center gap-1">
+                          {(finding.lat == null || finding.lon == null) && (
+                            <div
+                              className="mt-1 flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <input
                                 placeholder="Breite"
+                                defaultValue={finding.lat ?? ""}
                                 className="nodrag w-20 rounded border border-border/70 px-1 py-0.5 font-mono text-[9px]"
                                 onBlur={(e) => {
                                   const lat = Number(e.target.value.replace(",", "."));
@@ -4473,6 +4483,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                               />
                               <input
                                 placeholder="Länge"
+                                defaultValue={finding.lon ?? ""}
                                 className="nodrag w-20 rounded border border-border/70 px-1 py-0.5 font-mono text-[9px]"
                                 onBlur={(e) => {
                                   const lon = Number(e.target.value.replace(",", "."));
