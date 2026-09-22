@@ -379,88 +379,36 @@ Titel: ${data.title ?? "Unbenannt"}
 Inhalt:
 ${data.text.slice(0, 120_000)}`;
 
-    const response = await fetch(`${GATEWAY}/responses`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "Lovable-API-Key": apiKey(),
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-6-astra",
-        input: prompt,
-        stream: true,
-        store: false,
-        reasoning: { effort: "low" },
-        text: {
-          format: {
-            type: "json_schema",
-            name: "structures",
-            strict: true,
-            schema: {
+    const cfg = await loadAiKeyConfig(context.supabase, context.userId);
+    const text = await runStructured(cfg, {
+      prompt,
+      schemaName: "structures",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          items: {
+            type: "array",
+            items: {
               type: "object",
               additionalProperties: false,
               properties: {
-                items: {
+                kind: { type: "string", enum: ["table", "list", "chart"] },
+                title: { type: "string" },
+                chartType: { type: "string", enum: ["bar", "line", "pie", "none"] },
+                columns: { type: "array", items: { type: "string" } },
+                rows: {
                   type: "array",
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      kind: { type: "string", enum: ["table", "list", "chart"] },
-                      title: { type: "string" },
-                      chartType: { type: "string", enum: ["bar", "line", "pie", "none"] },
-                      columns: { type: "array", items: { type: "string" } },
-                      rows: {
-                        type: "array",
-                        items: { type: "array", items: { type: "string" } },
-                      },
-                    },
-                    required: ["kind", "title", "chartType", "columns", "rows"],
-                  },
+                  items: { type: "array", items: { type: "string" } },
                 },
               },
-              required: ["items"],
+              required: ["kind", "title", "chartType", "columns", "rows"],
             },
           },
         },
-      }),
+        required: ["items"],
+      },
     });
-
-    if (!response.ok || !response.body) {
-      const detail = await response.text();
-      throw new Error(`Analyse fehlgeschlagen [${response.status}]: ${detail.slice(0, 300)}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let text = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.startsWith("data:")) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === "[DONE]") continue;
-        try {
-          const event = JSON.parse(payload) as {
-            type?: string;
-            delta?: string;
-            response?: { output_text?: string };
-          };
-          if (event.type === "response.output_text.delta" && event.delta) text += event.delta;
-          if (event.type === "response.completed" && !text && event.response?.output_text) {
-            text = event.response.output_text;
-          }
-        } catch {
-          /* Teil-Event ignorieren */
-        }
-      }
-    }
 
     try {
       return StructureSchema.parse(JSON.parse(text));
