@@ -2294,6 +2294,19 @@ function BoardPage() {
           ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
           : []),
         {
+          label: "Zu App hinzufügen …",
+          icon: AppWindow,
+          run: () => {
+            const selected = nodes
+              .filter((node) => node.selected)
+              .map((node) => node.id)
+              .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""));
+            const ids = selected.includes(menu.nodeId!) ? selected : [menu.nodeId!, ...selected];
+            setAppPreselect(ids.slice(0, MAX_APP_MODULES));
+            setAppOpen(true);
+          },
+        },
+        {
           label: "Im Kontextfenster öffnen",
           icon: PanelsTopLeft,
           run: () => openInspector(menu.nodeId!),
