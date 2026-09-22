@@ -4459,10 +4459,14 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                               </span>
                             )}
                           </div>
-                          {finding.lat == null && (
-                            <div className="mt-1 flex items-center gap-1">
+                          {(finding.lat == null || finding.lon == null) && (
+                            <div
+                              className="mt-1 flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <input
                                 placeholder="Breite"
+                                defaultValue={finding.lat ?? ""}
                                 className="nodrag w-20 rounded border border-border/70 px-1 py-0.5 font-mono text-[9px]"
                                 onBlur={(e) => {
                                   const lat = Number(e.target.value.replace(",", "."));
@@ -4473,6 +4477,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                               />
                               <input
                                 placeholder="Länge"
+                                defaultValue={finding.lon ?? ""}
                                 className="nodrag w-20 rounded border border-border/70 px-1 py-0.5 font-mono text-[9px]"
                                 onBlur={(e) => {
                                   const lon = Number(e.target.value.replace(",", "."));
