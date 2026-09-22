@@ -45,24 +45,44 @@ export default function LeafletMap({
       {points.map((point) => {
         const marked = focus ? focus.has(point.id) : false;
         const dimmed = focus ? !marked : false;
+        const pinColor = point.color ?? ringColor(weather[point.id]);
         return (
           <CircleMarker
             key={point.id}
             center={[point.lat, point.lon]}
             radius={point.id === selectedId ? 10 : marked ? 9 : 7}
             pathOptions={{
-              color: marked ? "#111827" : ringColor(weather[point.id]),
+              color: marked ? "#111827" : pinColor,
               weight: point.id === selectedId ? 4 : marked ? 3 : 2,
-              fillColor: ringColor(weather[point.id]),
+              fillColor: pinColor,
               fillOpacity: dimmed ? 0.12 : 0.55,
               opacity: dimmed ? 0.25 : 1,
             }}
             eventHandlers={{ click: () => onSelect?.(point.id) }}
           >
             <Tooltip>
-              <span style={{ fontSize: 11 }}>
+              <span style={{ display: "block", maxWidth: 220, fontSize: 11 }}>
+                {point.photo ? (
+                  <img
+                    src={point.photo}
+                    alt={point.label}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      maxHeight: 120,
+                      objectFit: "cover",
+                      borderRadius: 6,
+                      marginBottom: 4,
+                    }}
+                  />
+                ) : null}
                 <strong>{point.label}</strong>
                 {point.klass ? ` · ${point.klass}` : ""}
+                {point.note ? (
+                  <span style={{ display: "block", marginTop: 2, color: "#475569" }}>
+                    {point.note}
+                  </span>
+                ) : null}
                 {weather[point.id]
                   ? ` · Regen ${weather[point.id]!.rain ?? "?"} mm/h · Wind ${weather[point.id]!.wind ?? "?"} km/h`
                   : ""}

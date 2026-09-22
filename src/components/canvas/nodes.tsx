@@ -3355,11 +3355,25 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
             if (!point) return null;
             const w = config.weather[point.id];
             return (
-              <span>
-                <strong>{point.label}</strong>
-                {point.klass ? ` · ${point.klass}` : ""} ·{" "}
-                {w ? `Regen ${w.rain ?? "?"} mm/h, Wind ${w.wind ?? "?"} km/h` : "kein Wetter"}
-              </span>
+              <div className="flex items-start gap-2">
+                {point.photo ? (
+                  <img
+                    src={point.photo}
+                    alt={point.label}
+                    className="size-14 shrink-0 rounded-md border border-border/60 object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <p>
+                    <strong>{point.label}</strong>
+                    {point.klass ? ` · ${point.klass}` : ""} ·{" "}
+                    {w ? `Regen ${w.rain ?? "?"} mm/h, Wind ${w.wind ?? "?"} km/h` : "kein Wetter"}
+                  </p>
+                  {point.note ? (
+                    <p className="mt-0.5 text-muted-foreground">{point.note}</p>
+                  ) : null}
+                </div>
+              </div>
             );
           })()}
         </div>
