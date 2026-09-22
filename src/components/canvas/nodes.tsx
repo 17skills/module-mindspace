@@ -4402,7 +4402,8 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
   }
 
   const total = totalCost(findings);
-  const urgent = findings.filter((item) => item.priority <= 3);
+  const urgent = findings.filter((item) => item.priority <= 3 && item.status !== "erledigt");
+  const overdue = findings.filter(isOverdue).length;
   const located = findings.filter((item) => item.lat != null && item.lon != null).length;
 
   return (
