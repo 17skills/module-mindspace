@@ -44,7 +44,7 @@ export const Route = createFileRoute("/")({
 });
 
 function LibraryPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<{ kind: "scope" | "app"; id: string } | null>(null);
