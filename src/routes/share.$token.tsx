@@ -160,7 +160,6 @@ function SharedBoardPage() {
             source: edge.source_id as string,
             target: edge.target_id as string,
             type: "labeled",
-            type: "labeled",
             label: (edge.label as string | null) ?? undefined,
           })),
         );
