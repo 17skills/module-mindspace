@@ -2,6 +2,13 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { settingsFrom } from "@/lib/settings";
 import { AI_PROVIDER_META, isAiProvider, type AiProvider } from "@/lib/ai-providers";
+import {
+  DEFAULT_ROUTE,
+  type AiFunctionId,
+  type AiRouteProvider,
+  type AiRouting,
+} from "@/lib/ai-functions";
+import { estimateCost, estimateTokens } from "@/lib/ai-pricing";
 import type { Database } from "@/integrations/supabase/types";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
@@ -9,9 +16,11 @@ const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 export type AiKeyEntry = { key: string; baseUrl: string | null; modelHint: string | null };
 
 export type AiKeyConfig = {
+  userId: string;
   useByok: boolean;
   provider: AiProvider;
   keys: Partial<Record<AiProvider, AiKeyEntry>>;
+  routing: AiRouting;
 };
 
 // ---------- Verschlüsselung ----------
@@ -78,7 +87,13 @@ export async function loadAiKeyConfig(
   }
 
   const settings = settingsFrom(profileRows[0]?.settings);
-  return { useByok: settings.useByok, provider: settings.byokProvider, keys };
+  return {
+    userId,
+    useByok: settings.useByok,
+    provider: settings.byokProvider,
+    keys,
+    routing: settings.aiRouting,
+  };
 }
 
 /** Für öffentliche App-Endpunkte: Konfiguration des App-Inhabers laden. */
