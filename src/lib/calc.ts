@@ -1,6 +1,7 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { apiValue, decisionValue } from "@/lib/api-module";
+import { readFactor } from "@/lib/factor-score";
 import {
   maxRisk,
   pointsFromSources,
