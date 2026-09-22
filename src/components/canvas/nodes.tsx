@@ -35,6 +35,7 @@ import {
   getSmoothStepPath,
   useReactFlow,
   useEdges,
+  useNodeId,
   useStore,
   type EdgeProps,
   type NodeProps,
