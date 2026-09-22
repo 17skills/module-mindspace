@@ -61,7 +61,7 @@ export function targetStatus(
     const result = edgeValue(label, raw);
     if (raw != null && result == null) return "error";
     if (raw == null) {
-      if (!isReference(source) && status !== "error") status = "warn";
+      if (!isReference(source)) status = "warn";
     } else if (status === "idle") {
       status = "ok";
     }
