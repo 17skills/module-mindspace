@@ -1968,18 +1968,9 @@ function BoardPage() {
     };
   }, [nodes]);
 
-  /** Place a library entry on the canvas, optionally without any stored content. */
-  const insertLibraryEntry = useCallback(
-    async (entry: LibraryEntry, mode: "empty" | "full") => {
-      const payload: LibraryPayload = mode === "empty" ? stripContent(entry.payload) : entry.payload;
-      if (!payload.nodes.length) {
-        toast.error("Dieser Eintrag enthält keine Module");
-        return;
-      }
-      const at = screenToFlowPosition({
-        x: window.innerWidth / 2 - payload.bounds.width / 2,
-        y: window.innerHeight / 2 - payload.bounds.height / 2,
-      });
+  /** Recreate a captured payload on the canvas at a flow position; returns the new ids. */
+  const insertPayload = useCallback(
+    async (payload: LibraryPayload, at: { x: number; y: number }) => {
       const idMap = new Map<string, string>();
       // parents first, so children can reference them
       const ordered = [...payload.nodes].sort(
@@ -2005,8 +1996,26 @@ function BoardPage() {
       for (const edge of payload.edges) {
         const source = idMap.get(edge.source);
         const target = idMap.get(edge.target);
-        if (source && target) createEdge(source, target);
+        if (source && target) createEdge(source, target, edge.label);
       }
+      return [...idMap.values()];
+    },
+    [createRecord, createEdge],
+  );
+
+  /** Place a library entry on the canvas, optionally without any stored content. */
+  const insertLibraryEntry = useCallback(
+    async (entry: LibraryEntry, mode: "empty" | "full") => {
+      const payload: LibraryPayload = mode === "empty" ? stripContent(entry.payload) : entry.payload;
+      if (!payload.nodes.length) {
+        toast.error("Dieser Eintrag enthält keine Module");
+        return;
+      }
+      const at = screenToFlowPosition({
+        x: window.innerWidth / 2 - payload.bounds.width / 2,
+        y: window.innerHeight / 2 - payload.bounds.height / 2,
+      });
+      await insertPayload(payload, at);
       setCenter(at.x + payload.bounds.width / 2, at.y + payload.bounds.height / 2, {
         zoom: Math.min(1, Math.max(0.25, 900 / Math.max(payload.bounds.width, 1))),
         duration: 500,
@@ -2015,8 +2024,107 @@ function BoardPage() {
         mode === "empty" ? `${entry.title} leer eingefügt` : `${entry.title} eingefügt`,
       );
     },
-    [createRecord, createEdge, screenToFlowPosition, setCenter],
+    [insertPayload, screenToFlowPosition, setCenter],
   );
+
+  /** Modules copied with Cmd/Ctrl+C, kept for pasting and duplicating. */
+  const clipboard = useRef<LibraryPayload | null>(null);
+
+  /** Copy the chosen modules (or the current selection) with size, position and links. */
+  const copyModules = useCallback(
+    (ids?: string[]) => {
+      const list =
+        ids && ids.length
+          ? ids
+          : nodesRef.current.filter((node) => node.selected && !node.parentId).map((n) => n.id);
+      if (!list.length) {
+        toast.info("Kein Modul ausgewählt");
+        return null;
+      }
+      const payload = capture(
+        list,
+        Object.values(recordsRef.current),
+        edgesRef.current.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          label: typeof edge.label === "string" ? edge.label : null,
+        })),
+      );
+      if (!payload.nodes.length) return null;
+      clipboard.current = payload;
+      void navigator.clipboard
+        ?.writeText(JSON.stringify({ scopebuilder: payload }))
+        .catch(() => undefined);
+      toast.success(
+        payload.nodes.length > 1 ? `${payload.nodes.length} Module kopiert` : "Modul kopiert",
+      );
+      return payload;
+    },
+    [],
+  );
+
+  /** Select freshly created modules so they can be moved right away. */
+  const selectOnly = useCallback(
+    (ids: string[]) => {
+      const set = new Set(ids);
+      setNodes((current) => current.map((node) => ({ ...node, selected: set.has(node.id) })));
+    },
+    [setNodes],
+  );
+
+  /** Paste the copied modules, offset so the copy stays visible. */
+  const pasteModules = useCallback(
+    async (at?: { x: number; y: number }) => {
+      const payload = clipboard.current;
+      if (!payload?.nodes.length) {
+        toast.info("Nichts zum Einfügen");
+        return;
+      }
+      const target =
+        at ??
+        screenToFlowPosition({
+          x: window.innerWidth / 2 - payload.bounds.width / 2,
+          y: window.innerHeight / 2 - payload.bounds.height / 2,
+        });
+      const created = await insertPayload(payload, target);
+      selectOnly(created);
+      toast.success(created.length > 1 ? `${created.length} Module eingefügt` : "Modul eingefügt");
+    },
+    [insertPayload, screenToFlowPosition, selectOnly],
+  );
+
+  /** Duplicate modules next to the originals, including their inner connections. */
+  const duplicateModules = useCallback(
+    async (ids?: string[]) => {
+      const list =
+        ids && ids.length
+          ? ids
+          : nodesRef.current.filter((node) => node.selected && !node.parentId).map((n) => n.id);
+      if (!list.length) {
+        toast.info("Kein Modul ausgewählt");
+        return;
+      }
+      const payload = capture(
+        list,
+        Object.values(recordsRef.current),
+        edgesRef.current.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          label: typeof edge.label === "string" ? edge.label : null,
+        })),
+      );
+      if (!payload.nodes.length) return;
+      const roots = payload.nodes.filter((node) => !node.parentLocalId);
+      const base = roots.length
+        ? { x: Math.min(...list.map((id) => recordsRef.current[id]?.position_x ?? 0)), y: Math.min(...list.map((id) => recordsRef.current[id]?.position_y ?? 0)) }
+        : { x: 0, y: 0 };
+      const created = await insertPayload(payload, { x: base.x + 48, y: base.y + 48 });
+      selectOnly(created);
+      toast.success(created.length > 1 ? `${created.length} Module dupliziert` : "Modul dupliziert");
+    },
+    [insertPayload, selectOnly],
+  );
+
 
 
   /** Fields of the selected template group, otherwise every field on the board. */
