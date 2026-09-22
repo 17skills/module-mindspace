@@ -61,6 +61,19 @@ function LibraryPage() {
     },
   });
 
+  const apps = useQuery({
+    queryKey: ["apps", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("apps")
+        .select("id,title,kind,node_ids,updated_at")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const createBoard = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
