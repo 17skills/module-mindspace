@@ -345,6 +345,21 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, #de5a3a 22%, transparent);
 }
 
+/* Live value next to an active output point */
+.port-value {
+  z-index: 5;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, #4f8a5b 35%, transparent);
+  background: var(--card);
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #3f6f4a;
+  box-shadow: var(--shadow-card);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .module-card,
   .react-flow__handle { transition: none; }
