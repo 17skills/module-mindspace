@@ -2026,8 +2026,12 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
             const shown = linked ? linked.value : Number.isFinite(value) ? value : null;
             const text = formatValue(shown ?? null, fmt);
             const size = text.length > 12 ? "text-lg" : text.length > 8 ? "text-2xl" : "text-3xl";
+            const color = valueColor(shown);
             return linked ? (
-              <span className={`min-w-0 flex-1 truncate font-display font-semibold tracking-tight ${size}`}>
+              <span
+                className={`min-w-0 flex-1 truncate font-display font-semibold tracking-tight ${size}`}
+                style={color ? { color } : undefined}
+              >
                 {text}
               </span>
             ) : null;
@@ -2069,6 +2073,43 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
           onBlur={(e) => patch({ compare: e.target.value.trim() })}
         />
         {selected ? <FormatRow meta={meta} onPatch={patch} /> : null}
+        {selected ? (
+          <div className="nodrag mt-2 flex items-center gap-2 border-t pt-2 text-[10px] text-muted-foreground">
+            <span className="shrink-0">Farbe:</span>
+            <label className="flex items-center gap-1">
+              ab
+              <input
+                key={record.id + "warn" + String(meta["warnAbove"] ?? "")}
+                defaultValue={meta["warnAbove"] != null ? String(meta["warnAbove"]) : ""}
+                inputMode="decimal"
+                placeholder="–"
+                aria-label="Gelb ab"
+                className="w-10 rounded border border-border/60 bg-background px-1 py-0.5 text-foreground outline-none"
+                onBlur={(e) => {
+                  const text = e.target.value.trim().replace(",", ".");
+                  patch({ warnAbove: text === "" ? null : Number(text) });
+                }}
+              />
+              <span style={{ color: "var(--brand-orange)" }}>gelb</span>
+            </label>
+            <label className="flex items-center gap-1">
+              ab
+              <input
+                key={record.id + "danger" + String(meta["dangerAbove"] ?? "")}
+                defaultValue={meta["dangerAbove"] != null ? String(meta["dangerAbove"]) : ""}
+                inputMode="decimal"
+                placeholder="–"
+                aria-label="Rot ab"
+                className="w-10 rounded border border-border/60 bg-background px-1 py-0.5 text-foreground outline-none"
+                onBlur={(e) => {
+                  const text = e.target.value.trim().replace(",", ".");
+                  patch({ dangerAbove: text === "" ? null : Number(text) });
+                }}
+              />
+              <span className="text-destructive">rot</span>
+            </label>
+          </div>
+        ) : null}
       </div>
     </div>
   );
