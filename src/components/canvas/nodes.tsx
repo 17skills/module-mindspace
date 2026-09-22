@@ -25,7 +25,7 @@ import {
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 
-import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, LayoutTemplate, Lock, Plus, RefreshCw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -41,7 +41,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, readFormat, sheetOutputRow, sheetRows, sheetValues } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
-import { readAgent, readAppLayout, readAssignment, zoneMembers, type AppLayoutEntry } from "@/lib/zones";
+import { readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppLayoutEntry } from "@/lib/zones";
 import {
   factorText,
   normalizeWeights,
@@ -833,6 +833,19 @@ export const ZONE_COLORS: readonly ZoneColor[] = [
   { name: "Petrol", value: "var(--chat)" },
 ] as const;
 
+const APP_ACCENTS: { id: AppAccent; label: string; swatch: string }[] = [
+  { id: "forest", label: "Tiefgrün", swatch: "bg-brand-navy" },
+  { id: "sage", label: "Salbei", swatch: "bg-brand-green" },
+  { id: "terracotta", label: "Terrakotta", swatch: "bg-brand-orange" },
+  { id: "cobalt", label: "Kobalt", swatch: "bg-app-cobalt" },
+];
+
+const APP_BACKGROUNDS: { id: AppBackground; label: string }[] = [
+  { id: "stone", label: "Stein" },
+  { id: "paper", label: "Papier" },
+  { id: "grid", label: "Raster" },
+];
+
 export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode, resizeZone, runAgent, agentStale, openInspector, allNodes } = useBoard();
@@ -844,6 +857,8 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   const running = meta["agentRunning"] === true;
   const stale = agent ? agentStale(record.id) : false;
   const [designOpen, setDesignOpen] = useState(false);
+  const logoInput = useRef<HTMLInputElement>(null);
+  const branding = readAppBranding(record);
   const members = useMemo(() => zoneMembers(record.id, allNodes()), [record.id, allNodes]);
   const layout = useMemo<AppLayoutEntry[]>(() => {
     const saved = readAppLayout(record) ?? [];
@@ -855,6 +870,22 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
   }, [record, members]);
   const saveLayout = (entries: AppLayoutEntry[]) =>
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), appLayout: entries } });
+  const saveBranding = (patch: Partial<AppBranding>) =>
+    updateNode(record.id, {
+      metadata: {
+        ...(record.metadata ?? {}),
+        appBranding: { ...branding, ...patch },
+      },
+    });
+  const uploadLogo = async (file: File | undefined) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    try {
+      const logo = await downscale(file, 320, 0.86);
+      saveBranding({ logo });
+    } catch {
+      toast.error("Logo konnte nicht gelesen werden");
+    }
+  };
   const moveEntry = (id: string, dir: -1 | 1) => {
     const next = [...layout];
     const from = next.findIndex((entry) => entry.id === id);
@@ -954,10 +985,89 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
           </UiTooltip>
         </div>
         {designOpen && (
-          <div className="nodrag absolute top-12 right-2 z-10 w-72 rounded-xl border border-border/70 bg-card/95 p-2 shadow-[var(--shadow-card)]">
-            <div className="module-eyebrow px-1 pb-1.5 text-muted-foreground">
-              App-Ansicht · Reihenfolge &amp; Darstellung
+          <div className="nodrag absolute top-12 right-2 z-10 w-80 rounded-xl border border-border/70 bg-card/95 p-3 shadow-[var(--shadow-float)]">
+            <div className="module-eyebrow pb-2 text-muted-foreground">App-Ansicht gestalten</div>
+            <div className="space-y-2.5 border-b border-border/70 pb-3">
+              <label className="block">
+                <span className="module-eyebrow mb-1 block">Titel</span>
+                <input
+                  aria-label="Titel der App"
+                  defaultValue={branding.title}
+                  placeholder={record.title ?? "Feld-App"}
+                  onBlur={(event) => saveBranding({ title: event.target.value.trim() })}
+                  className="h-8 w-full rounded-md border border-input bg-card px-2.5 text-xs outline-none focus:border-ring"
+                />
+              </label>
+              <div>
+                <span className="module-eyebrow mb-1 block">Logo</span>
+                <div className="flex items-center gap-2">
+                  {branding.logo ? (
+                    <img src={branding.logo} alt="App-Logo" className="size-9 rounded-md border border-border object-contain" />
+                  ) : (
+                    <div className="flex size-9 items-center justify-center rounded-md border border-dashed border-border bg-secondary">
+                      <ImagePlus className="size-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  <input
+                    ref={logoInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(event) => void uploadLogo(event.target.files?.[0])}
+                  />
+                  <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => logoInput.current?.click()}>
+                    {branding.logo ? "Ersetzen" : "Hochladen"}
+                  </Button>
+                  {branding.logo && (
+                    <Button type="button" size="icon" variant="ghost" className="size-8" aria-label="Logo entfernen" onClick={() => saveBranding({ logo: "" })}>
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <fieldset>
+                <legend className="module-eyebrow mb-1.5">Akzentfarbe</legend>
+                <div className="grid grid-cols-4 gap-1">
+                  {APP_ACCENTS.map((accent) => (
+                    <button
+                      key={accent.id}
+                      type="button"
+                      aria-label={accent.label}
+                      aria-pressed={branding.accent === accent.id}
+                      title={accent.label}
+                      onClick={() => saveBranding({ accent: accent.id })}
+                      className={`flex h-8 items-center justify-center rounded-md border transition-colors ${branding.accent === accent.id ? "border-ring bg-accent" : "border-border/70 hover:bg-secondary"}`}
+                    >
+                      <span className={`size-3.5 rounded-full ${accent.swatch}`} />
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend className="module-eyebrow mb-1.5">Hintergrund</legend>
+                <div className="grid grid-cols-3 rounded-md border border-border/70 bg-secondary p-0.5">
+                  {APP_BACKGROUNDS.map((background) => (
+                    <button
+                      key={background.id}
+                      type="button"
+                      aria-pressed={branding.background === background.id}
+                      onClick={() => saveBranding({ background: background.id })}
+                      className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${branding.background === background.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {background.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <button
+                type="button"
+                onClick={() => saveBranding({ title: "", logo: "", accent: "forest", background: "stone" })}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="size-3" /> Standard wiederherstellen
+              </button>
             </div>
+            <div className="module-eyebrow px-1 pt-3 pb-1.5 text-muted-foreground">Module · Reihenfolge &amp; Darstellung</div>
             {layout.length === 0 && (
               <p className="px-1 py-2 text-[11px] text-muted-foreground">
                 Noch keine Module auf diesem Feld.

@@ -51,6 +51,7 @@
   --color-brand-support: var(--brand-support);
   --color-brand-ui-ink: var(--brand-ui-ink);
   --color-brand-text-soft: var(--brand-text-soft);
+  --color-app-cobalt: var(--app-cobalt);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -80,6 +81,7 @@
   --brand-support: oklch(0.6 0.02 90);
   --brand-ui-ink: oklch(0.42 0.04 175);
   --brand-text-soft: oklch(0.52 0.012 90);
+  --app-cobalt: oklch(0.57 0.2 264);
 
   --background: oklch(0.928 0.008 85);
   --foreground: var(--brand-navy);
@@ -123,6 +125,28 @@
   --sidebar-border: oklch(0.892 0.009 85);
   --sidebar-ring: var(--brand-green-deep);
 }
+
+/* Curated field-app themes: shared Cohere-inspired material, distinct product roles. */
+.app-shell {
+  --app-accent: var(--brand-navy);
+  --app-accent-foreground: var(--brand-navy-foreground);
+  --app-surface: var(--background);
+  --app-grid: color-mix(in oklab, var(--brand-navy) 16%, transparent);
+  background: var(--app-surface);
+}
+
+.app-accent-sage { --app-accent: var(--brand-green-deep); }
+.app-accent-terracotta { --app-accent: var(--brand-orange); }
+.app-accent-cobalt { --app-accent: var(--app-cobalt); }
+.app-background-paper { --app-surface: var(--card); }
+.app-background-grid { --app-surface: color-mix(in oklab, var(--background) 84%, var(--brand-green) 16%); }
+.app-header {
+  border-color: color-mix(in oklab, var(--app-accent) 24%, var(--border));
+  background: color-mix(in oklab, var(--card) 92%, var(--app-accent) 8%);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--app-accent) 10%, transparent);
+}
+.app-logo-mark { background: var(--app-accent); }
+.app-shell .react-flow__edge-path { stroke: var(--app-accent); }
 
 
 .dark {

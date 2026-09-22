@@ -128,6 +128,21 @@ export function zoneContext(zone: NodeRecord, members: NodeRecord[]): string {
 
 export type AppView = "full" | "compact";
 export type AppLayoutEntry = { id: string; view: AppView; hidden?: boolean };
+export type AppAccent = "forest" | "sage" | "terracotta" | "cobalt";
+export type AppBackground = "stone" | "paper" | "grid";
+export type AppBranding = {
+  title: string;
+  logo: string;
+  accent: AppAccent;
+  background: AppBackground;
+};
+
+export const DEFAULT_APP_BRANDING: AppBranding = {
+  title: "",
+  logo: "",
+  accent: "forest",
+  background: "stone",
+};
 
 /** Gestaltung der Feld-App: Reihenfolge, Darstellung und Sichtbarkeit der Module. */
 export function readAppLayout(record: NodeRecord | undefined | null): AppLayoutEntry[] | null {
@@ -146,4 +161,26 @@ export function readAppLayout(record: NodeRecord | undefined | null): AppLayoutE
     });
   }
   return entries.length ? entries : null;
+}
+
+/** Brand settings for a field app, constrained to the shared design system. */
+export function readAppBranding(record: NodeRecord | undefined | null): AppBranding {
+  const meta = (record?.metadata ?? {}) as Record<string, unknown>;
+  const raw = meta["appBranding"];
+  if (!raw || typeof raw !== "object") return DEFAULT_APP_BRANDING;
+  const value = raw as Record<string, unknown>;
+  const accent = value["accent"];
+  const background = value["background"];
+  return {
+    title: typeof value["title"] === "string" ? value["title"].slice(0, 80) : "",
+    logo:
+      typeof value["logo"] === "string" && value["logo"].startsWith("data:image/")
+        ? value["logo"]
+        : "",
+    accent:
+      accent === "sage" || accent === "terracotta" || accent === "cobalt"
+        ? accent
+        : "forest",
+    background: background === "paper" || background === "grid" ? background : "stone",
+  };
 }

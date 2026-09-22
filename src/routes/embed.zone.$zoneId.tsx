@@ -41,7 +41,7 @@ import {
 } from "@/components/canvas/nodes";
 import { Button } from "@/components/ui/button";
 import { getEmbedZone } from "@/lib/embed.functions";
-import { readAppLayout, type AppLayoutEntry } from "@/lib/zones";
+import { readAppBranding, readAppLayout, type AppLayoutEntry } from "@/lib/zones";
 
 export const Route = createFileRoute("/embed/zone/$zoneId")({
   head: () => ({
@@ -198,6 +198,11 @@ function EmbedZonePage() {
     const visible = layout.filter((entry) => !entry.hidden);
     return visible.length ? new Map(visible.map((entry) => [entry.id, entry])) : null;
   }, [zoneMeta]);
+  const branding = useMemo(
+    () => readAppBranding({ metadata: zoneMeta } as unknown as NodeRecord),
+    [zoneMeta],
+  );
+  const appTitle = branding.title || title || "Feld";
 
   const nodes = useMemo(() => {
     if (!layoutById) return records.map(toFlowNode);
@@ -257,7 +262,7 @@ function EmbedZonePage() {
 
   const downloadManifest = () => {
     const url = window.location.href.split("?")[0]!;
-    const blob = new Blob([JSON.stringify(teamsManifest(title || "Feld", zoneId, url), null, 2)], {
+    const blob = new Blob([JSON.stringify(teamsManifest(appTitle, zoneId, url), null, 2)], {
       type: "application/json",
     });
     const link = document.createElement("a");
@@ -284,13 +289,20 @@ function EmbedZonePage() {
 
   return (
     <BoardContext.Provider value={api}>
-      <div className="flex h-screen flex-col bg-background">
-        <header className="flex h-12 items-center justify-between gap-3 border-b border-border/70 bg-card/90 px-4 backdrop-blur">
-          <div className="flex items-baseline gap-2">
-            <span className="module-eyebrow text-muted-foreground">Feld</span>
-            <span className="font-display text-base font-semibold tracking-tight text-brand-navy">
-              {title || "Feld"}
-            </span>
+      <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex h-screen flex-col`}>
+        <header className="app-header flex min-h-16 items-center justify-between gap-3 border-b px-5 py-2.5">
+          <div className="flex min-w-0 items-center gap-3">
+            {branding.logo ? (
+              <img src={branding.logo} alt="" className="size-10 shrink-0 rounded-md bg-card object-contain p-1" />
+            ) : (
+              <div className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
+            )}
+            <div className="min-w-0">
+              <span className="module-eyebrow block text-muted-foreground">MCP · Teams App</span>
+              <span className="block truncate font-display text-base font-semibold text-foreground">
+                {appTitle}
+              </span>
+            </div>
             <span className="text-xs text-muted-foreground">
               {layoutById ? layoutById.size : records.length} Module
             </span>
@@ -320,7 +332,14 @@ function EmbedZonePage() {
             deleteKeyCode={null}
             fitView
           >
-            <Background variant={BackgroundVariant.Dots} gap={22} size={1} />
+            {branding.background !== "paper" && (
+              <Background
+                variant={branding.background === "grid" ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+                gap={branding.background === "grid" ? 28 : 22}
+                size={1}
+                color="var(--app-grid)"
+              />
+            )}
             <Controls showInteractive={false} />
           </ReactFlow>
         </div>
