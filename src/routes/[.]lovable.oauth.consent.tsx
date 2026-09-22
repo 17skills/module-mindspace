@@ -20,15 +20,15 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Zugriff erlauben – Canvas Spark" },
+      { title: "Zugriff erlauben – scopebuilder" },
       {
         name: "description",
         content: "Bestätige, dass eine verbundene Anwendung in deinem Namen auf deine Canvas-Spark-Boards zugreifen darf.",
       },
-      { property: "og:title", content: "Zugriff erlauben – Canvas Spark" },
+      { property: "og:title", content: "Zugriff erlauben – scopebuilder" },
       {
         property: "og:description",
-        content: "Freigabe für verbundene Anwendungen auf Canvas Spark.",
+        content: "Freigabe für verbundene Anwendungen auf scopebuilder.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -90,7 +90,7 @@ function Consent() {
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-16">
       <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
         <h1 className="font-display text-xl font-semibold tracking-tight text-brand-navy">
-          {name} mit Canvas Spark verbinden
+          {name} mit scopebuilder verbinden
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {name} darf danach in deinem Namen deine Boards lesen und Notizen anlegen. Du kannst die

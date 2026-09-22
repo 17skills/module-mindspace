@@ -129,13 +129,13 @@ import {
 export const Route = createFileRoute("/board/$boardId")({
   head: () => ({
     meta: [
-      { title: "Board – Canvas Spark" },
+      { title: "Scope – scopebuilder" },
       {
         name: "description",
         content:
           "Arbeitsfläche mit Videos, Podcasts, Dokumenten, Notizen und KI-Chat – alles miteinander verbunden.",
       },
-      { property: "og:title", content: "Board – Canvas Spark" },
+      { property: "og:title", content: "Board – scopebuilder" },
       {
         property: "og:description",
         content: "Inhalte verbinden, gruppieren und per Chat auswerten.",

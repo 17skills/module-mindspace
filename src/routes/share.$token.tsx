@@ -48,7 +48,7 @@ export const Route = createFileRoute("/share/$token")({
       {
         name: "description",
         content:
-          "Nur-Lese-Ansicht eines geteilten Canvas Spark Boards mit Videos, Dokumenten und Notizen.",
+          "Nur-Lese-Ansicht eines geteilten scopebuilder-Scopes mit Videos, Dokumenten und Notizen.",
       },
       { property: "og:title", content: "Geteilter Scope – scopebuilder" },
       {
