@@ -115,7 +115,7 @@ import { LibraryDialog, type CapturedSelection } from "@/components/canvas/Libra
 import { Library, AppWindow } from "lucide-react";
 import { AppDialog } from "@/components/canvas/AppDialog";
 import { MAX_APP_MODULES } from "@/lib/apps";
-import { capture, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
+import { capture, readPayload, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
 import {
   extractStructured,
