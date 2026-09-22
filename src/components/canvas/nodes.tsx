@@ -5265,6 +5265,10 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
         <Select
           value={config.serverId}
           onValueChange={(next) => {
+            if (next === "__new__") {
+              setConnectOpen(true);
+              return;
+            }
             const chosen = servers.data?.find((item) => item.id === next);
             patch({
               mcpServerId: next,
@@ -5283,8 +5287,23 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
                 {item.name}
               </SelectItem>
             ))}
+            <SelectItem value="__new__">+ Neuen Server verbinden …</SelectItem>
           </SelectContent>
         </Select>
+
+        <McpConnectDialog
+          open={connectOpen}
+          onOpenChange={setConnectOpen}
+          onConnected={(created) =>
+            patch({
+              mcpServerId: created.id,
+              mcpServerName: created.name,
+              mcpTool: created.tools[0]?.name ?? "",
+              lastError: null,
+            })
+          }
+        />
+
 
         <Select
           value={config.tool}
