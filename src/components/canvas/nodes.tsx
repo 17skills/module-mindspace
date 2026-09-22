@@ -58,10 +58,13 @@ import { runApiModule } from "@/lib/api-module.functions";
 import { analyzeInspection } from "@/lib/inspection.functions";
 import {
   CLUSTERS,
+  STATUS_COLOR,
+  STATUS_VALUES,
   downscale,
   euro,
   exifLocation,
   inspectionText,
+  isOverdue,
   labelFromFile,
   priorityColor,
   rateFor,
