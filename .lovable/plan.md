@@ -39,6 +39,24 @@ Ein neuer Bereich „Konto“ mit eigenem Profil, Team-Mitgliedern je Scope, Adm
 ```
 Erreichbar über ein Nutzermenü mit Avatar oben rechts auf der Startseite und im Scope; dort auch „Abmelden“.
 
+## Datenschutz (DSGVO) und EU-Vorgaben
+
+**6. Datenschutz-Bereich im Konto**
+- Datenexport: alle eigenen Daten (Profil, Scopes, Module, Mitgliedschaften, Einstellungen) als Datei zum Herunterladen — Recht auf Datenübertragbarkeit.
+- Konto löschen entfernt alle personenbezogenen Daten endgültig, mit klarer Vorschau, was gelöscht wird, und Wartezeit von 7 Tagen zum Widerruf.
+- Einwilligungen: getrennte Schalter für optionale E-Mails und für KI-Auswertung von Inhalten, mit Datum der Zustimmung; Widerruf jederzeit möglich.
+- Übersicht der Verarbeitungszwecke in einfacher Sprache und Verzeichnis der eingesetzten Dienste (Speicherung/Datenbank, KI-Auswertung, Karten, Wetterdaten) mit Angabe, welche Daten dorthin gehen.
+
+**7. Transparenz und Protokolle**
+- Protokoll sicherheitsrelevanter Vorgänge (Anmeldung, Rollenwechsel, Einladung, Löschung, Schlüsselerneuerung) mit Zeitpunkt und auslösender Person; für Betroffene einsehbar, für Administratoren vollständig.
+- Datensparsamkeit: keine IP-Adressen oder Standortdaten im Protokoll, Aufbewahrung 90 Tage, danach automatische Löschung.
+- KI-Kennzeichnung nach EU-Regeln für KI: Ergebnisse von Agenten, Entscheidungs- und Vision-Modulen werden sichtbar als maschinell erzeugt markiert, mit Hinweis auf menschliche Prüfpflicht; Entscheidungen bleiben Vorschläge.
+- Statische Seiten Datenschutzerklärung, Impressum und Nutzungsbedingungen mit Verlinkung in Anmeldung, Konto und Fußzeile; Inhalte müssen von dir kommen (Firmenangaben, Verantwortlicher, Auftragsverarbeiter).
+
+**8. Sicherheit und Barrierefreiheit**
+- Löschung und Export laufen serverseitig geprüft, Rollen werden getrennt geführt, Zugriff strikt auf eigene Daten begrenzt.
+- Bedienbarkeit nach EU-Barrierefreiheitsanforderungen: Tastaturbedienung, sichtbarer Fokus, ausreichende Kontraste, sinnvolle Beschriftungen in allen neuen Bereichen.
+
 ## Technische Umsetzung
 
 - Migration: `profiles` um `avatar_url`, `settings` (jsonb), `blocked_at`, `updated_at` erweitern; neue Tabelle `user_roles` mit Enum `app_role` (`admin`, `user`) und Security-Definer-Funktion `has_role`; Tabelle `board_invites` (E-Mail, Scope, Rolle, Token, Status, Ablauf). GRANTs und RLS-Policies für jede Tabelle in derselben Migration; `board_members`-Policies um Rollenwechsel durch Inhaber/Admin ergänzen.
