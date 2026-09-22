@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 import { settingsFrom } from "@/lib/settings";
 import {
   AI_PROVIDER_META,
@@ -10,8 +11,6 @@ import {
   type AiProvider,
 } from "@/lib/ai-providers";
 import { decryptKey, encryptKey, testProviderKey } from "@/lib/ai-keys.server";
-
-type Json = Record<string, unknown>;
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
