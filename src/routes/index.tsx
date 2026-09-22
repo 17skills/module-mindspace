@@ -315,6 +315,15 @@ function LibraryPage() {
                 />
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-base font-semibold">{app.title}</h3>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] ${
+                      app.is_public
+                        ? "bg-brand-sage/20 text-brand-navy"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {app.is_public ? "Aktiv" : "Inaktiv"}
+                  </span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
                     {app.mcp_scope === "write" ? "KI schreibt" : "KI liest"}
                   </span>
