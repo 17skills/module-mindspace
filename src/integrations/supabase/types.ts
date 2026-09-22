@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          fn: string
+          id: string
+          input_tokens: number
+          model: string
+          ok: boolean
+          output_tokens: number
+          provider: string
+          user_id: string
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          fn: string
+          id?: string
+          input_tokens?: number
+          model?: string
+          ok?: boolean
+          output_tokens?: number
+          provider: string
+          user_id: string
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          fn?: string
+          id?: string
+          input_tokens?: number
+          model?: string
+          ok?: boolean
+          output_tokens?: number
+          provider?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       apps: {
         Row: {
           board_id: string
