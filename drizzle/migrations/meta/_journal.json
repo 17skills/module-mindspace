@@ -71,6 +71,13 @@
       "when": 1790092356192,
       "tag": "0009_scope_roles_and_app_access",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790109571353,
+      "tag": "0010_user_management_and_gdpr",
+      "breakpoints": true
     }
   ]
 }

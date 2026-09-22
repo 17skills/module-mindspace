@@ -1,0 +1,150 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ShieldCheck, Trash2 } from "lucide-react";
+import {
+  adminListAuditLog,
+  adminListUsers,
+  adminPurgeAuditLog,
+  adminSetBlocked,
+  adminSetRole,
+} from "@/lib/admin.functions";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export const Route = createFileRoute("/_authenticated/konto/admin")({
+  component: AdminPage,
+});
+
+function AdminPage() {
+  const client = useQueryClient();
+  const users = useQuery({ queryKey: ["admin-users"], queryFn: () => adminListUsers() });
+  const log = useQuery({ queryKey: ["admin-audit"], queryFn: () => adminListAuditLog() });
+
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ["admin-users"] });
+    void client.invalidateQueries({ queryKey: ["admin-audit"] });
+  };
+
+  const role = useMutation({
+    mutationFn: (input: { userId: string; isAdmin: boolean }) => adminSetRole({ data: input }),
+    onSuccess: refresh,
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const blocked = useMutation({
+    mutationFn: (input: { userId: string; blocked: boolean }) => adminSetBlocked({ data: input }),
+    onSuccess: refresh,
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const purge = useMutation({
+    mutationFn: () => adminPurgeAuditLog(),
+    onSuccess: () => {
+      toast.success("Alte Protokolleinträge entfernt");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (users.isError) {
+    return (
+      <p className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground">
+        Dieser Bereich ist Administratoren vorbehalten.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
+        <h2 className="font-display text-xl font-semibold text-brand-navy">Konten</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gesperrte Konten werden beim nächsten Seitenaufruf abgemeldet.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>E-Mail</TableHead>
+                <TableHead>Scopes</TableHead>
+                <TableHead>Dabei seit</TableHead>
+                <TableHead>Administrator</TableHead>
+                <TableHead>Gesperrt</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(users.data ?? []).map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{user.email}</span>
+                      {user.deletionRequestedAt ? (
+                        <Badge variant="secondary">Löschung vorgemerkt</Badge>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell>{user.scopes}</TableCell>
+                  <TableCell>
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString("de-DE") : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={user.isAdmin}
+                      aria-label={`Administrator für ${user.email}`}
+                      onCheckedChange={(next) => role.mutate({ userId: user.id, isAdmin: next })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={user.blocked}
+                      aria-label={`Konto ${user.email} sperren`}
+                      onCheckedChange={(next) => blocked.mutate({ userId: user.id, blocked: next })}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-semibold text-brand-navy">Protokoll</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Letzte 200 Vorgänge. Aufbewahrung 90 Tage, ohne IP-Adresse und ohne Standort.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => purge.mutate()}>
+            <Trash2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            Alte Einträge entfernen
+          </Button>
+        </div>
+        <ul className="mt-4 divide-y rounded-xl border">
+          {(log.data ?? []).map((entry) => (
+            <li key={entry.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                {entry.action}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {entry.actor} · {new Date(entry.createdAt).toLocaleString("de-DE")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
