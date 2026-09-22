@@ -911,7 +911,7 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                 <ExternalLink className="size-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent>Als App öffnen (Link kopiert)</TooltipContent>
+            <UiTooltipContent>Als App öffnen (Link kopiert)</UiTooltipContent>
           </UiTooltip>
         </div>
         {locked && (
