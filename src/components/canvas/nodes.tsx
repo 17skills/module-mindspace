@@ -58,7 +58,7 @@ import {
 } from "@/lib/factor-score";
 import { suggestFactorWeights } from "@/lib/factor.functions";
 import { runApiModule } from "@/lib/api-module.functions";
-import { listMcpServers } from "@/lib/mcp-client.functions";
+import { listMcpServers, refreshMcpServer } from "@/lib/mcp-client.functions";
 import { mcpPreview, mcpValue, readMcp } from "@/lib/mcp-module";
 import { McpConnectDialog } from "./mcp-connect-dialog";
 
