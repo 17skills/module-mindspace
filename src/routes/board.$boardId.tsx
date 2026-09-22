@@ -420,6 +420,10 @@ function BoardPage() {
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
   const flowWrapRef = useRef<HTMLDivElement>(null);
   const heightTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  /** Last height we applied per module — stops measure/apply feedback loops. */
+  const appliedHeights = useRef(new Map<string, number>());
+  /** Ignore DOM mutations caused by our own layout writes until this timestamp. */
+  const suppressMeasure = useRef(0);
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const nodesRef = useRef(nodes);
