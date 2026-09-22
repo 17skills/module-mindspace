@@ -188,6 +188,7 @@ function SharedBoardPage() {
       createZone: async () => null,
       updateNode: noop,
       updateEdge: noop,
+      deleteEdge: noop,
       runAgent: noop,
       agentStale: () => false,
       calcForEdge: noop,
