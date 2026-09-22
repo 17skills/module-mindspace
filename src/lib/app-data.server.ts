@@ -4,12 +4,16 @@ export type AppRow = {
   id: string;
   board_id: string;
   title: string;
+  description: string;
   kind: string;
   node_ids: unknown;
   branding: unknown;
   is_public: boolean;
+  mcp_token: string;
+  mcp_scope: string;
   updated_at: string;
 };
+
 
 type Db = Awaited<ReturnType<typeof admin>>;
 export type NodeRow = {
