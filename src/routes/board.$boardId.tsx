@@ -2592,10 +2592,27 @@ function BoardPage() {
             setTemplateOpen(true);
           },
         },
+        ...(clipboard.current?.nodes.length
+          ? [
+              {
+                label: "Hier einfügen",
+                icon: ClipboardPaste,
+                run: () =>
+                  void pasteModules({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
+              },
+            ]
+          : []),
+        ...(selectedModuleCount >= 1
+          ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
+          : []),
+        ...(selectedModuleCount >= 1
+          ? [{ label: "Auswahl duplizieren", icon: CopyPlus, run: () => void duplicateModules() }]
+          : []),
         ...(selectedModuleCount >= 2
           ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
           : []),
         { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
+
         {
           label: "Bibliothek öffnen …",
           icon: Library,
