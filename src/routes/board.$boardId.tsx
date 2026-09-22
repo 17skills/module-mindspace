@@ -240,6 +240,7 @@ const AUTO_MIN_HEIGHT: Record<string, number> = {
   decision: 300,
   signal: 140,
   risk: 520,
+  inspect: 360,
 };
 const AUTO_MAX_HEIGHT = 1800;
 
