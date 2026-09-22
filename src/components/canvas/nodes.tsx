@@ -1660,7 +1660,7 @@ export function LabeledEdge(props: EdgeProps) {
             pointerEvents: "all",
           }}
         >
-          {props.selected ? (
+          {props.selected && labelsVisible ? (
             <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-card p-1 shadow-[var(--shadow-float)]">
               <input
                 key={label}
@@ -1694,6 +1694,24 @@ export function LabeledEdge(props: EdgeProps) {
                   </button>
                 </TooltipTrigger>
                 <UiTooltipContent>Rechnung anlegen</UiTooltipContent>
+              </UiTooltip>
+              <UiTooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    aria-label="Beschriftung schließen"
+                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    onClick={() =>
+                      setEdges((list) =>
+                        list.map((item) =>
+                          item.id === props.id ? { ...item, selected: false } : item,
+                        ),
+                      )
+                    }
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <UiTooltipContent>Schließen</UiTooltipContent>
               </UiTooltip>
             </div>
           ) : label && labelsVisible ? (
