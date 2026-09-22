@@ -43,6 +43,7 @@ import {
 } from "@xyflow/react";
 import { calcInputs, edgeValue, evalFormula, formatValue, nodeValue, readFormat, sheetOutputRow, sheetRows, sheetValues, valueOfNode } from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
+import { Markdown } from "@/lib/markdown";
 import { edgeProblem, isReference, type PortStatus as SignalPortStatus } from "@/lib/signal-status";
 import { APP_DESIGN_PRESETS, readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppDesignProfile, type AppLayoutEntry } from "@/lib/zones";
 import {
@@ -337,6 +338,35 @@ function SignalHandle(props: React.ComponentProps<typeof Handle>) {
     </>
   );
 }
+
+/** Alle direkt verbundenen Karten (beide Richtungen), stabil sortiert. */
+function useConnectedRecords(nodeId: string): NodeRecord[] {
+  return useStore(
+    (store) => {
+      const linked: NodeRecord[] = [];
+      const seen = new Set<string>();
+      for (const edge of store.edges) {
+        const otherId =
+          edge.source === nodeId ? edge.target : edge.target === nodeId ? edge.source : null;
+        if (!otherId || seen.has(otherId)) continue;
+        seen.add(otherId);
+        const record = (store.nodeLookup.get(otherId)?.data as Data | undefined)?.record;
+        if (record) linked.push(record);
+      }
+      return linked.sort((a, b) => (a.title ?? "").localeCompare(b.title ?? ""));
+    },
+    (a, b) =>
+      a.length === b.length &&
+      a.every((item, index) => item.id === b[index]?.id && item.content === b[index]?.content),
+  );
+}
+
+/** Verbundene Textkarten mit Inhalt – sie dienen als Kontext für MCP-Karten. */
+function contextCards(linked: NodeRecord[]): NodeRecord[] {
+  return linked.filter((item) => item.type === "text" && (item.content ?? "").trim());
+}
+
+
 
 function Shell({
   type,
@@ -2052,6 +2082,8 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
           : `color-mix(in oklab, ${style.background.value} 22%, var(--card))`,
   };
 
+  const formatted = /(^|\n)\s*(#{1,3}\s|[-*+]\s|\d+[.)]\s|>)|\*\*|`/.test(text);
+
   return (
     <div className="relative flex h-full w-full items-center px-1">
       <NodeResizer
@@ -2061,6 +2093,8 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
         color="var(--primary)"
         keepAspectRatio={false}
       />
+      <SignalHandle type="target" position={Position.Left} />
+      <SignalHandle type="source" position={Position.Right} />
       {selected && !editing ? <TextToolbar record={record} /> : null}
       {editing ? (
         <textarea
@@ -2074,7 +2108,7 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
               setEditing(false);
             }
           }}
-          placeholder="Beschriftung"
+          placeholder="Text – Überschriften mit #, Listen mit - oder 1."
           rows={1}
           style={boxStyle}
           className={`nodrag nowheel h-full w-full resize-none rounded-md px-1 outline-none ring-1 ring-ring/40 placeholder:text-muted-foreground/60 ${size.className}`}
@@ -2083,11 +2117,19 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
         <div
           onDoubleClick={() => setEditing(true)}
           style={boxStyle}
-          className={`h-full w-full cursor-text overflow-hidden whitespace-pre-wrap rounded-md px-1 ${size.className}${
-            selected ? " ring-1 ring-ring/40" : ""
-          }`}
+          className={`nowheel h-full w-full cursor-text overflow-auto rounded-md px-1 ${
+            formatted ? "" : "whitespace-pre-wrap "
+          }${size.className}${selected ? " ring-1 ring-ring/40" : ""}`}
         >
-          {text || <span className="text-muted-foreground/60">Beschriftung</span>}
+          {text ? (
+            formatted ? (
+              <Markdown source={text} />
+            ) : (
+              text
+            )
+          ) : (
+            <span className="text-muted-foreground/60">Beschriftung</span>
+          )}
         </div>
       )}
     </div>
@@ -5222,13 +5264,13 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
 /** Ruft ein Werkzeug eines externen MCP-Servers auf und hält dessen Antwort. */
 export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { updateNode, runMcp, sourcesFor } = useBoard();
+  const { updateNode, runMcp } = useBoard();
   const config = readMcp(record);
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["mcpRunning"] === true;
   const value = mcpValue(record);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [section, setSection] = useState<"input" | "output" | "result">("input");
+  const [section, setSection] = useState<"input" | "context" | "output" | "result">("input");
   const servers = useQuery({
     queryKey: ["mcp-servers"],
     queryFn: () => listMcpServers(),
@@ -5240,7 +5282,9 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const fields = useMemo(() => schemaFields(tool?.inputSchema), [tool?.inputSchema]);
   const missing = missingRequired(fields, config.inputs);
   const paths = useMemo(() => suggestPaths(record.content), [record.content]);
-  const linkable = sourcesFor(record.id).filter((item) => item.id !== record.id);
+  const linked = useConnectedRecords(record.id);
+  const linkable = linked.filter((item) => item.id !== record.id);
+  const notes = contextCards(linked);
 
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
@@ -5378,6 +5422,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
         {(
           [
             ["input", "Eingaben"],
+            ["context", notes.length ? `Kontext (${notes.length})` : "Kontext"],
             ["output", "Ausgabe"],
             ["result", "Antwort"],
           ] as const
@@ -5501,6 +5546,42 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
             {config.mode === "json" ? "Geführte Felder verwenden" : "Als JSON bearbeiten"}
           </button>
         </div>
+      ) : section === "context" ? (
+        <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
+          {notes.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground">
+              Verbinde eine Textkarte mit dieser Karte – ihr Inhalt steht dann hier als Kontext
+              bereit und kann in jedes Eingabefeld übernommen werden.
+            </p>
+          ) : (
+            notes.map((note) => (
+              <div key={note.id} className="rounded-md border border-border/70 px-2 py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-[10px] font-medium">{note.title || "Text"}</span>
+                  <button
+                    type="button"
+                    className="nodrag ml-auto rounded-full bg-secondary px-2 py-0.5 text-[9px]"
+                    onClick={() => {
+                      const target = fields.find((field) => !config.bindings[field.name]);
+                      if (!target) {
+                        toast.info("Wähle zuerst ein Werkzeug mit Eingabefeldern");
+                        return;
+                      }
+                      setInput(target.name, note.content ?? "");
+                      setSection("input");
+                      toast.success(`Text in „${target.title}“ übernommen`);
+                    }}
+                  >
+                    In Eingabe übernehmen
+                  </button>
+                </div>
+                <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[10px] text-muted-foreground">
+                  {note.content}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
       ) : section === "output" ? (
         <div className="nowheel nodrag flex-1 space-y-2 overflow-auto px-3 py-2">
           <div className="grid gap-1">
@@ -5552,6 +5633,7 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
 export const McpHubNode = memo(function McpHubNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode, spawnMcpTool } = useBoard();
+  const notes = contextCards(useConnectedRecords((data as unknown as Data).record.id));
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const serverId = typeof meta["mcpServerId"] === "string" ? (meta["mcpServerId"] as string) : "";
   const [connectOpen, setConnectOpen] = useState(false);
@@ -5620,6 +5702,7 @@ export const McpHubNode = memo(function McpHubNode({ data, selected }: NodeProps
       style={{ borderTop: `3px solid ${NODE_ACCENT["mcphub"] ?? "var(--primary)"}` }}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
+      <SignalHandle type="target" position={Position.Left} />
       <SignalHandle type="source" position={Position.Right} />
 
       <div className="module-heading flex items-center gap-1.5 border-b px-3 py-2">
@@ -5710,6 +5793,17 @@ export const McpHubNode = memo(function McpHubNode({ data, selected }: NodeProps
           {statusText}
         </span>
       </div>
+
+      {notes.length > 0 ? (
+        <div className="nowheel border-b px-3 py-1.5">
+          <p className="text-[10px] font-medium text-muted-foreground">
+            Kontext aus {notes.length} Textkarte{notes.length === 1 ? "" : "n"}
+          </p>
+          <p className="line-clamp-3 whitespace-pre-wrap text-[10px] text-muted-foreground">
+            {notes.map((note) => note.content).join(" · ")}
+          </p>
+        </div>
+      ) : null}
 
       {server && server.tools.length > 3 ? (
         <div className="border-b px-3 py-1.5">

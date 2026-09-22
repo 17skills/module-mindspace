@@ -20,6 +20,7 @@ export const REFERENCE_TYPES = new Set([
   "chat",
   "frame",
   "image",
+  "text",
 ]);
 
 export function isReference(record: NodeRecord | undefined): boolean {
