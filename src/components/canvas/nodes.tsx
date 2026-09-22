@@ -5313,7 +5313,10 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
   const running = meta["mcpRunning"] === true;
   const value = mcpValue(record);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [section, setSection] = useState<"input" | "context" | "output" | "result">("input");
+  const [section, setSection] = useState<"input" | "context" | "output" | "result" | "history">(
+    "input",
+  );
+  const history = readMcpHistory(record);
   const servers = useQuery({
     queryKey: ["mcp-servers"],
     queryFn: () => listMcpServers(),
