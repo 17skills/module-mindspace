@@ -191,13 +191,20 @@ function updateFindingStatusTool(appId: string) {
       status: z
         .enum(["offen", "beauftragt", "in arbeit", "erledigt"])
         .nullable()
-        .describe("New work status. Null keeps the current one."),
-      owner: z.string().max(120).nullable().describe("Person responsible. Null keeps the current one."),
+        .optional()
+        .describe("New work status. Omit to keep the current one."),
+      owner: z
+        .string()
+        .max(120)
+        .nullable()
+        .optional()
+        .describe("Person responsible. Omit to keep the current one."),
       due: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .nullable()
-        .describe("Due date as YYYY-MM-DD. Null keeps or clears nothing."),
+        .optional()
+        .describe("Due date as YYYY-MM-DD. Omit to keep the current one."),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     handler: async ({ finding_id, status, owner, due }) => {
