@@ -366,6 +366,21 @@ function contextCards(linked: NodeRecord[]): NodeRecord[] {
   return linked.filter((item) => item.type === "text" && (item.content ?? "").trim());
 }
 
+/**
+ * Der Teil einer Textkarte, der als Kontext gilt.
+ * "" = ganze Karte, "off" = nichts, sonst die gewählten Abschnitte.
+ */
+function contextTextFor(note: NodeRecord, choice: string): string {
+  const content = note.content ?? "";
+  if (choice === "off") return "";
+  if (!choice) return content;
+  const wanted = new Set(choice.split("|"));
+  return markdownSections(content)
+    .filter((part) => wanted.has(part.title))
+    .map((part) => part.text)
+    .join("\n\n");
+}
+
 
 
 function Shell({
