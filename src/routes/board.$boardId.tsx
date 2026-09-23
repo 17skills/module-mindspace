@@ -120,6 +120,9 @@ import {
   ZoneNode,
 } from "@/components/canvas/nodes";
 import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
+import { NodeAccessDialog } from "@/components/canvas/NodeAccessDialog";
+import { canEditRole, ROLE_LABEL, type AccessRole } from "@/lib/permissions";
+import { getBoardAccess } from "@/lib/permissions.functions";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
@@ -471,9 +474,23 @@ function BoardPage() {
   const [appOpen, setAppOpen] = useState(false);
   const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
-  /** Rolle in diesem Scope: Inhaber, Bearbeiten oder nur Lesen. */
-  const [role, setRole] = useState<"owner" | "editor" | "viewer">("editor");
-  const canEdit = role !== "viewer";
+  /** Rolle in diesem Scope: Inhaber, Bearbeiten, Kommentieren oder nur Lesen. */
+  const [role, setRole] = useState<AccessRole>("editor");
+  /** Module mit abweichender (engerer) Regel: Modul-Id → tatsächliches Recht. */
+  const [nodeAccess, setNodeAccess] = useState<Record<string, AccessRole>>({});
+  const [accessFor, setAccessFor] = useState<string | null>(null);
+  const canEdit = canEditRole(role);
+  const nodeAccessRef = useRef(nodeAccess);
+  nodeAccessRef.current = nodeAccess;
+  /** Recht an einem einzelnen Modul – die Modulregel schlägt die Scope-Rolle. */
+  const roleForNode = useCallback(
+    (id: string): AccessRole => nodeAccessRef.current[id] ?? role,
+    [role],
+  );
+  const canEditNode = useCallback(
+    (id: string) => canEditRole(nodeAccessRef.current[id] ?? role),
+    [role],
+  );
   const myName =
     (user?.user_metadata?.["full_name"] as string | undefined) ||
     (user?.user_metadata?.["name"] as string | undefined) ||
