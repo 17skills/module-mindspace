@@ -18,7 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Download, Globe, LayoutGrid, Plug, Plus, Scale, Server, Shapes, Tag } from "lucide-react";
+import { Download, Globe, LayoutGrid, Plug, Plus, Scale, Send, Server, Shapes, Tag } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";

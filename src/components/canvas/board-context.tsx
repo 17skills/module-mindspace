@@ -156,4 +156,5 @@ export const NODE_LABEL: Record<string, string> = {
   mcp: "MCP-Werkzeug",
   mcphub: "MCP-Hub",
   source: "Quelle",
+  action: "Aktion",
 };
