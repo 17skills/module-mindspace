@@ -13,6 +13,8 @@ export type QueuedFinding = {
   lon: number | null;
   source: "exif" | "manuell" | "unbekannt";
   photo: string;
+  /** Kleines Vorschaubild, das im Scope direkt angezeigt wird. */
+  thumb?: string | null;
   /** Bereits bewertet? Dann steht hier das Ergebnis der KI-Bewertung. */
   assessment: {
     label: string;

@@ -20,6 +20,8 @@ export type Finding = {
   reason: string;
   /** Small preview of the photo as a data URL. */
   thumb: string | null;
+  /** Path of the full photo in the "field-photos" storage bucket, if uploaded. */
+  photoPath: string | null;
   createdAt: string;
   /** Priority of the previous assessment of the same station, if any. */
   prevPriority: number | null;
@@ -115,6 +117,7 @@ export function readInspection(
       confidence: Math.min(100, Math.max(0, num(row["confidence"], 0))),
       reason: typeof row["reason"] === "string" ? (row["reason"] as string) : "",
       thumb: typeof row["thumb"] === "string" ? (row["thumb"] as string) : null,
+      photoPath: typeof row["photoPath"] === "string" ? (row["photoPath"] as string) : null,
       createdAt: typeof row["createdAt"] === "string" ? (row["createdAt"] as string) : "",
       prevPriority: nullableNum(row["prevPriority"]),
       status: STATUS_VALUES.includes(String(row["status"]) as Finding["status"])
