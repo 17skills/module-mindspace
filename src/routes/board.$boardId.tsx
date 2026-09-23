@@ -23,6 +23,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
 import { exportBoard } from "@/lib/backup.functions";
+import { createBoardVersion } from "@/lib/versions.functions";
 import {
   cacheBoard,
   readBoardCache,

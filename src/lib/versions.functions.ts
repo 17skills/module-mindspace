@@ -123,10 +123,10 @@ export const listBoardVersions = createServerFn({ method: "POST" })
     if (ids.length) {
       const { data: profiles } = await db
         .from("profiles")
-        .select("id,full_name,email")
+        .select("id,display_name,email")
         .in("id", ids);
       for (const profile of profiles ?? []) {
-        names.set(profile.id, profile.full_name || profile.email || "Unbekannt");
+        names.set(profile.id, profile.display_name || profile.email || "Unbekannt");
       }
     }
 
