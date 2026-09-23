@@ -3019,6 +3019,8 @@ function BoardPage() {
             />
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable className="!bg-card" />
+            <PresenceLayer peers={peers} nodes={nodes} />
+
           </ReactFlow>
 
           <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
