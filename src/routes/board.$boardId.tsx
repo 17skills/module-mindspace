@@ -865,9 +865,10 @@ function BoardPage() {
           ? [toFlowNode(record), ...current]
           : [...current, toFlowNode(record)],
       );
+      recordHistory({ kind: "nodes.add", rows: [record], edges: [] });
       return record;
     },
-    [boardId, user, setNodes],
+    [boardId, user, setNodes, recordHistory],
   );
 
   const createEdge = useCallback(
