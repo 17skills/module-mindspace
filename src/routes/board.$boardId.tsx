@@ -2806,7 +2806,7 @@ function BoardPage() {
             </Tooltip>
           ) : (
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              Geteilter Scope
+              {canEdit ? "Geteilter Scope · Bearbeiten" : "Nur Leserecht"}
             </span>
           )}
         </div>
