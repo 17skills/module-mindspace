@@ -638,6 +638,7 @@ function BoardPage() {
       }
       if (drop.length) trackSave(supabase.from("edges").delete().in("id", drop));
       setEdges(keep);
+      cacheBoard(boardId, { title: boardRes.data.title, nodes: list, edges: keep });
       setReady(true);
       done = true;
     })();
