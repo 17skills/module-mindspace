@@ -124,8 +124,8 @@ function AppStage() {
           nodes={nodes}
           layout={branding.layout}
           moduleLayout={branding.moduleLayout}
-          actions={{
-            setStatus: canUpdateData ? (nodeId, finding, status) => {
+          actions={canUpdateData ? {
+            setStatus: (nodeId, finding, status) => {
               void appSetFindingStatus({
                 data: { appId, nodeId, findingId: finding.id, status },
               })
@@ -135,8 +135,8 @@ function AppStage() {
                     err instanceof Error ? err.message : "Status konnte nicht geändert werden",
                   ),
                 );
-            } : undefined,
-          }}
+            },
+          } : undefined}
         />
       )}
       {!canUpdateData && (

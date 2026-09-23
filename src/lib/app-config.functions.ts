@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAppRole } from "@/lib/app-permissions.server";
 import { assertBoardRole } from "@/lib/guard.server";
+import type { Json } from "@/integrations/supabase/types";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -42,7 +43,7 @@ export const saveDeliveredApp = createServerFn({ method: "POST" })
       channels: data.app.channels,
       audience: data.app.audience,
       lead_question: data.app.leadQuestion,
-      branding: data.app.branding,
+      branding: data.app.branding as Json,
       updated_at: new Date().toISOString(),
     };
     if (data.appId) {
@@ -52,6 +53,7 @@ export const saveDeliveredApp = createServerFn({ method: "POST" })
       return { id: data.appId };
     }
     const { data: board } = await db.from("boards").select("org_id").eq("id", data.boardId).single();
+    if (!board) throw new Error("Scope nicht gefunden");
     const { data: row, error } = await db.from("apps").insert({
       user_id: context.userId,
       board_id: data.boardId,

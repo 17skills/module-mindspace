@@ -27,6 +27,7 @@ export const getAppAccessConfig = createServerFn({ method: "POST" })
     await assertAppRole(context.userId, data.appId, "config_admin");
     const db = await admin();
     const { data: app } = await db.from("apps").select("id,org_id,access_mode").eq("id", data.appId).single();
+    if (!app) throw new Error("App nicht gefunden");
     const [grants, members, teams] = await Promise.all([
       db.from("app_permissions").select("id,subject_type,subject_id,role").eq("app_id", data.appId),
       app.org_id
