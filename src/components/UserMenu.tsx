@@ -20,6 +20,14 @@ export function UserMenu() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const account = useQuery({ queryKey: ["account"], queryFn: () => getAccount() });
+  const orgs = useQuery({ queryKey: ["my-orgs"], queryFn: () => listMyOrgs() });
+
+  const switchOrg = useMutation({
+    mutationFn: (orgId: string) => setActiveOrg({ data: { orgId } }),
+    onSuccess: () => {
+      void client.invalidateQueries();
+    },
+  });
 
   const email = account.data?.email ?? "";
   const name = account.data?.displayName || email.split("@")[0] || "Konto";
