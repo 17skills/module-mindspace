@@ -56,7 +56,7 @@ export function ShareDialog({
   const [members, setMembers] = useState<Member[]>([]);
   const [myRole, setMyRole] = useState<string>("viewer");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"viewer" | "editor">("editor");
+  const [role, setRole] = useState<"viewer" | "commenter" | "editor">("editor");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -118,7 +118,7 @@ export function ShareDialog({
     }
   }
 
-  async function changeRole(memberId: string, next: "viewer" | "editor") {
+  async function changeRole(memberId: string, next: "viewer" | "commenter" | "editor") {
     setMembers((current) => current.map((m) => (m.id === memberId ? { ...m, role: next } : m)));
     try {
       await setMemberRole({ data: { boardId, memberId, role: next } });
@@ -308,11 +308,12 @@ export function ShareDialog({
               />
               <select
                 value={role}
-                onChange={(event) => setRole(event.target.value as "viewer" | "editor")}
+                onChange={(event) => setRole(event.target.value as "viewer" | "commenter" | "editor")}
                 className="h-9 rounded-xl border border-border bg-background px-2 text-sm"
                 aria-label="Rolle"
               >
                 <option value="viewer">Lesen</option>
+                <option value="commenter">Kommentieren</option>
                 <option value="editor">Bearbeiten</option>
               </select>
               <Button
@@ -336,14 +337,15 @@ export function ShareDialog({
                 {isOwner ? (
                   <>
                     <select
-                      value={member.role === "viewer" ? "viewer" : "editor"}
+                      value={member.role === "viewer" || member.role === "commenter" ? member.role : "editor"}
                       onChange={(event) =>
-                        void changeRole(member.id, event.target.value as "viewer" | "editor")
+                        void changeRole(member.id, event.target.value as "viewer" | "commenter" | "editor")
                       }
                       aria-label={`Rolle von ${member.email}`}
                       className="ml-auto mr-1 h-8 rounded-lg border border-border bg-background px-2 text-xs"
                     >
                       <option value="viewer">Lesen</option>
+                      <option value="commenter">Kommentieren</option>
                       <option value="editor">Bearbeiten</option>
                     </select>
                     <Tooltip>
