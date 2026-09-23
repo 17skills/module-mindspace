@@ -764,6 +764,18 @@ function BoardPage() {
     removeEdge: (id) => setEdges((current) => current.filter((edge) => edge.id !== id)),
   });
 
+  /* ---- Rückgängig / Wiederholen ---- */
+  const pastRef = useRef<HistoryEntry[]>([]);
+  const futureRef = useRef<HistoryEntry[]>([]);
+  const historyBusy = useRef(false);
+  const [historyTick, setHistoryTick] = useState(0);
+  const recordHistory = useCallback((entry: HistoryEntry) => {
+    if (historyBusy.current) return;
+    pastRef.current = pushHistory(pastRef.current, entry);
+    futureRef.current = [];
+    setHistoryTick((tick) => tick + 1);
+  }, []);
+
   const patchRecord = useCallback((id: string, patch: Partial<NodeRecord>) => {
     setRecords((current) => {
       const existing = current[id];
