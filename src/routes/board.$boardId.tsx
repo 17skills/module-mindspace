@@ -462,6 +462,14 @@ function BoardPage() {
     name: myName,
   });
 
+  // Bearbeitungshinweis: welches Modul hat die Person gerade ausgewählt
+  useEffect(() => {
+    const selected = nodes.find((node) => node.selected);
+    setEditing(canEdit ? (selected?.id ?? null) : null);
+  }, [nodes, setEditing, canEdit]);
+
+
+
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
