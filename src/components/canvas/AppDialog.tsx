@@ -587,6 +587,47 @@ export function AppDialog({
 
           {/* 3 – Zugriff */}
           <TabsContent value="access" className="space-y-3">
+            <span className="module-eyebrow text-muted-foreground">Wo wird entschieden?</span>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {(
+                [
+                  { id: "web" as const, label: "Web-Cockpit", hint: "Link und QR-Code für den Browser." },
+                  { id: "teams" as const, label: "Microsoft Teams", hint: "Registerkarte und Entscheidungskarte." },
+                  { id: "mcp" as const, label: "KI-Anschluss", hint: "Copilot und andere Assistenten." },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setChannels({ ...channels, [option.id]: !channels[option.id] })}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    channels[option.id]
+                      ? "border-ring bg-accent/40"
+                      : "border-border/70 hover:bg-accent/20"
+                  }`}
+                >
+                  <p className="text-sm font-medium">{option.label}</p>
+                  <p className="text-xs text-muted-foreground">{option.hint}</p>
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-xs text-muted-foreground">Zielgruppe</span>
+                <Input
+                  value={audience}
+                  onChange={(event) => setAudience(event.target.value)}
+                  placeholder="z. B. Betriebsleitung"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-muted-foreground">Leitfrage der Entscheidung</span>
+                <Input
+                  value={leadQuestion}
+                  onChange={(event) => setLeadQuestion(event.target.value)}
+                  placeholder="z. B. Freigeben oder nachbessern?"
+                />
+              </label>
+            </div>
             <p className="text-sm text-muted-foreground">
               Menschen öffnen die App über den Link – ohne Konto. KI-Assistenten brauchen zusätzlich
               den Schlüssel dieser App.
@@ -677,6 +718,22 @@ export function AppDialog({
                           onClick={() => copy(urlFor(app.id), "App-Link kopiert")}
                         >
                           <Copy className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Teams-Entscheidungskarte kopieren"
+                          onClick={() => copy(teamsCardFor(app), "Adresse der Teams-Karte kopiert")}
+                        >
+                          <MessageSquare className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Teams-Manifest herunterladen"
+                          onClick={() => window.open(teamsManifestFor(app), "_blank")}
+                        >
+                          <Download className="size-3.5" />
                         </Button>
                         <Button
                           size="sm"
