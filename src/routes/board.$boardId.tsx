@@ -562,8 +562,21 @@ function BoardPage() {
     loadedKey.current = key;
     let active = true;
     let done = false;
+    /** Ohne Netz: den zuletzt gesehenen Stand aus dem Browser zeigen. */
+    const useCache = () => {
+      const cache = readBoardCache(boardId);
+      if (!cache) return false;
+      setTitle(cache.title);
+      setRecords(Object.fromEntries(cache.nodes.map((r) => [r.id, r])));
+      setNodes(sortNodes(cache.nodes).map(toFlowNode));
+      setEdges(cache.edges);
+      setReady(true);
+      toast.warning("Ohne Verbindung – gespeicherter Stand wird angezeigt");
+      return true;
+    };
+
     void (async () => {
-      const [boardRes, nodeRes, edgeRes, memberRes] = await Promise.all([
+      const result = await Promise.all([
         supabase.from("boards").select("title,user_id").eq("id", boardId).single(),
         supabase.from("nodes").select("*").eq("board_id", boardId),
         supabase.from("edges").select("*").eq("board_id", boardId),
@@ -573,9 +586,19 @@ function BoardPage() {
           .eq("board_id", boardId)
           .eq("user_id", userId)
           .maybeSingle(),
-      ]);
+      ]).catch(() => null);
       if (!active) return;
+      if (!result) {
+        if (useCache()) done = true;
+        else toast.error("Scope konnte nicht geladen werden");
+        return;
+      }
+      const [boardRes, nodeRes, edgeRes, memberRes] = result;
       if (boardRes.error) {
+        if (!navigator.onLine && useCache()) {
+          done = true;
+          return;
+        }
         toast.error("Scope nicht gefunden");
         void navigate({ to: "/" });
         return;
