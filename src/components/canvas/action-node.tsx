@@ -14,6 +14,7 @@ import { SignalHandle } from "./nodes";
 import { useAuth } from "@/hooks/useAuth";
 import { evaluateSignal, signalTone, type SignalStatus } from "@/lib/runtime/signal-engine";
 import { readOntology, readSource } from "@/lib/source-node";
+import { closeJournal } from "@/lib/decision-journal.functions";
 import { runEvaluate, stageEffect } from "@/lib/runtime/unit-spec";
 import {
   ACTION_CHANNELS,
@@ -72,11 +73,14 @@ function useBasis(nodeId: string): ActionBasis[] {
           : record.content?.trim()
             ? "ok"
             : "idle";
+        const journal = (record.metadata as { journal?: Record<string, string> } | null)?.journal;
+        const journalIds = journal ? Object.values(journal).filter((id) => typeof id === "string") : [];
         return {
           unitId: record.id,
           title: record.title ?? "Karte",
           brief: (record.content ?? "").slice(0, 2000),
           status,
+          journalIds,
         };
       }),
     [records],
@@ -115,8 +119,22 @@ export const ActionNode = memo(function ActionNode({ id, data, selected }: NodeP
 
   function decide(effect: StagedEffect, release: boolean) {
     const next = release ? releaseEffect(effect, who, note) : discardEffect(effect, who, note);
+    const decisionNote = note;
     setNote("");
     save({}, stored.effects.map((item) => (item.id === effect.id ? next : item)));
+
+    // Rückkopplung: Der Ausgang wandert zurück auf die Urteile, die ihn ausgelöst haben.
+    const ids = [...new Set(basis.flatMap((item) => item.journalIds ?? []))];
+    if (ids.length) {
+      void closeJournal({
+        data: {
+          ids,
+          outcome: release ? "released" : "discarded",
+          by: who,
+          note: decisionNote,
+        },
+      }).catch(() => undefined);
+    }
   }
 
   /** Protokoll als Karteninhalt: so liest Chat und Freigabe-Prüfung mit. */

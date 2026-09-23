@@ -48,6 +48,11 @@ export interface ActionBasis {
   title: string;
   brief: string;
   status: SignalStatus;
+  /**
+   * Urteile im Entscheidungs-Journal, aus denen diese Grundlage stammt.
+   * Freigabe oder Verwerfung wird genau auf diese Urteile zurückgeschrieben.
+   */
+  journalIds?: string[];
 }
 
 export interface ActionConfig {

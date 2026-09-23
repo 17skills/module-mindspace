@@ -29,6 +29,7 @@ import { riskRowsFromSource, type SourceRiskRow } from "@/lib/runtime/source-bri
 import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
 import { runEvaluate } from "@/lib/runtime/unit-spec";
 import { decisionUnit, riskUnit } from "@/lib/runtime/units";
+import { loadCalibration } from "@/lib/decision-journal.functions";
 
 /** Ampelfarben der Modul-Verträge: grün, bernstein, rot, grau. */
 const UNIT_TONE: Record<string, string> = {
@@ -3220,6 +3221,14 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), questions: next } });
   }
 
+  /** Kalibrierung: Urteil gegen den Ausgang, den Menschen danach gesetzt haben. */
+  const calibration = useQuery({
+    queryKey: ["calibration", record.id, meta["decidedAt"] ?? ""],
+    queryFn: () => loadCalibration({ data: { nodeId: record.id } }),
+    staleTime: 60_000,
+    retry: false,
+  });
+
   /** Auch diese Karte urteilt über ihren Modul-Vertrag. */
   const unit = runEvaluate(
     decisionUnit(),
@@ -3278,6 +3287,15 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
         {typeof meta["decideEngine"] === "string" && meta["decideEngine"] ? (
           <p className="mt-1 font-mono text-[10px] text-muted-foreground">
             Engine: {meta["decideEngine"] as string}
+          </p>
+        ) : null}
+        {calibration.data ? (
+          <p
+            className="mt-1 text-[10px]"
+            style={{ color: UNIT_TONE[signalTone(calibration.data.status)] }}
+            title={calibration.data.note}
+          >
+            {calibration.data.line}
           </p>
         ) : null}
       </div>

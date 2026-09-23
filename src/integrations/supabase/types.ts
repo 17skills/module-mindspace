@@ -472,6 +472,90 @@ export type Database = {
           },
         ]
       }
+      decision_journal: {
+        Row: {
+          board_id: string
+          confidence: number | null
+          context_checksum: string
+          created_at: string
+          engine: string
+          id: string
+          min_confidence: number
+          node_id: string
+          ontology_digest: string
+          outcome: string | null
+          outcome_at: string | null
+          outcome_by: string | null
+          outcome_note: string | null
+          probability: number | null
+          provider: string
+          question_id: string
+          question_text: string
+          question_type: string
+          user_id: string
+          verdict: string
+        }
+        Insert: {
+          board_id: string
+          confidence?: number | null
+          context_checksum?: string
+          created_at?: string
+          engine?: string
+          id?: string
+          min_confidence?: number
+          node_id: string
+          ontology_digest?: string
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_by?: string | null
+          outcome_note?: string | null
+          probability?: number | null
+          provider?: string
+          question_id: string
+          question_text?: string
+          question_type?: string
+          user_id: string
+          verdict?: string
+        }
+        Update: {
+          board_id?: string
+          confidence?: number | null
+          context_checksum?: string
+          created_at?: string
+          engine?: string
+          id?: string
+          min_confidence?: number
+          node_id?: string
+          ontology_digest?: string
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_by?: string | null
+          outcome_note?: string | null
+          probability?: number | null
+          provider?: string
+          question_id?: string
+          question_text?: string
+          question_type?: string
+          user_id?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_journal_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_journal_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edges: {
         Row: {
           board_id: string
