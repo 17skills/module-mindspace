@@ -20,6 +20,8 @@ import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
 import { Globe, LayoutGrid, Plug, Scale, Server, Shapes, Tag } from "lucide-react";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
+import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
+import { exportBoard } from "@/lib/backup.functions";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { runMcpTool } from "@/lib/mcp-client.functions";
 import { appendMcpRun, readMcp, readMcpHistory } from "@/lib/mcp-module";
@@ -136,6 +138,9 @@ import {
 } from "@/lib/ingest.functions";
 
 export const Route = createFileRoute("/board/$boardId")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    focus: typeof search["focus"] === "string" ? (search["focus"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Scope – scopebuilder" },
@@ -583,6 +588,41 @@ function BoardPage() {
     );
   }, [records, setNodes]);
 
+  // Echtzeit: fremde Änderungen an Modulen und Verbindungen sofort übernehmen
+  useBoardSync(boardId, ready, {
+    upsertNode: (record) => {
+      setRecords((current) => ({ ...current, [record.id]: record }));
+      setNodes((current) =>
+        current.some((node) => node.id === record.id)
+          ? current.map((node) =>
+              node.id === record.id
+                ? { ...node, position: { x: record.position_x, y: record.position_y }, data: { record } }
+                : node,
+            )
+          : (record.type === "frame" || record.type === "zone") && !record.parent_id
+            ? [toFlowNode(record), ...current]
+            : [...current, toFlowNode(record)],
+      );
+    },
+    removeNode: (id) => {
+      setRecords((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      setNodes((current) => current.filter((node) => node.id !== id));
+      setEdges((current) => current.filter((edge) => edge.source !== id && edge.target !== id));
+    },
+    upsertEdge: (edge) => {
+      setEdges((current) =>
+        current.some((item) => item.id === edge.id)
+          ? current.map((item) => (item.id === edge.id ? { ...item, ...edge } : item))
+          : [...current, edge],
+      );
+    },
+    removeEdge: (id) => setEdges((current) => current.filter((edge) => edge.id !== id)),
+  });
+
   const patchRecord = useCallback((id: string, patch: Partial<NodeRecord>) => {
     setRecords((current) => {
       const existing = current[id];
@@ -594,6 +634,7 @@ function BoardPage() {
   const updateNode = useCallback(
     (id: string, patch: Partial<NodeRecord>) => {
       patchRecord(id, patch);
+      markSelfWrite(id);
       trackSave(
         supabase
           .from("nodes")
@@ -630,6 +671,7 @@ function BoardPage() {
         for (const key of list) delete next[key];
         return next;
       });
+      markSelfWrite(...list);
       trackSave(
         supabase
           .from("nodes")
@@ -685,12 +727,13 @@ function BoardPage() {
       };
       // a Supabase builder fires a new request on every await — resolve it once
       const insertPromise = Promise.resolve(
-        supabase.from("nodes").insert(payload as never).select("*").single(),
+        supabase.from("nodes").insert(payload as never).select("id,board_id,user_id,parent_id,type,title,position_x,position_y,width,height,color,source_url,storage_path,mime_type,content,status,error,metadata,created_at,updated_at").single(),
       );
       trackSave(insertPromise);
       const { data, error } = await insertPromise;
       if (error) throw error;
       const record = data as unknown as NodeRecord;
+      markSelfWrite(record.id);
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
         (record.type === "frame" || record.type === "zone") && !record.parent_id
@@ -723,6 +766,7 @@ function BoardPage() {
           ...(text ? { label: text } : {}),
         },
       ]);
+      markSelfWrite(id);
       trackSave(
         supabase
           .from("edges")
@@ -754,6 +798,7 @@ function BoardPage() {
           edge.id === id ? { ...edge, label: value || undefined } : edge,
         ),
       );
+      markSelfWrite(id);
       trackSave(supabase.from("edges").update({ label: value || null }).eq("id", id));
     },
     [setEdges],
@@ -762,6 +807,7 @@ function BoardPage() {
   const deleteEdge = useCallback(
     (id: string) => {
       setEdges((current) => current.filter((edge) => edge.id !== id));
+      markSelfWrite(id);
       trackSave(supabase.from("edges").delete().eq("id", id));
     },
     [setEdges],
@@ -1223,6 +1269,7 @@ function BoardPage() {
     if (stale.length) {
       const ids = stale.map((e) => e.id);
       setEdges((current) => current.filter((e) => !ids.includes(e.id)));
+      markSelfWrite(...ids);
       trackSave(supabase.from("edges").delete().in("id", ids));
     }
     for (const otherId of outside) createEdge(frame.id, otherId);
@@ -2972,7 +3019,10 @@ function BoardPage() {
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
-              deleted.forEach((e) => trackSave(supabase.from("edges").delete().eq("id", e.id)));
+              deleted.forEach((e) => {
+                markSelfWrite(e.id);
+                trackSave(supabase.from("edges").delete().eq("id", e.id));
+              });
             }}
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
