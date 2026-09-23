@@ -176,6 +176,13 @@
       "when": 1790151219395,
       "tag": "0024_protect_app_credentials_from_viewers",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790175417868,
+      "tag": "0025_decision_journal",
+      "breakpoints": true
     }
   ]
 }
