@@ -484,6 +484,26 @@ export function AppDialog({
   /** App veröffentlichen oder wieder abschalten – der Link bleibt erhalten. */
   const togglePublic = async (app: Row) => {
     const next = !app.is_public;
+    if (next) {
+      const appNodeIds = Array.isArray(app.node_ids) ? app.node_ids.map(String) : [];
+      const appNodes = appNodeIds
+        .map((id) => candidates.find((candidate) => candidate.id === id))
+        .filter((candidate): candidate is Candidate => Boolean(candidate));
+      const issues = deploymentIssues({
+        title: app.title,
+        leadQuestion: app.lead_question ?? "",
+        audience: app.audience ?? "",
+        nodes: appNodes,
+      });
+      const missing = Object.values(issues).filter((message): message is string => Boolean(message));
+      if (missing.length) {
+        edit(app);
+        setShowValidation(true);
+        setTab(issues.metrics ? "module" : issues.title ? "design" : "access");
+        toast.error(`Vor dem Veröffentlichen fehlen noch ${missing.length} Angaben.`);
+        return;
+      }
+    }
     try {
       await setDeliveredAppPublished({ data: { appId: app.id, published: next } });
     } catch (error) {

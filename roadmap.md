@@ -27,6 +27,6 @@
 - [x] Öffentliche Schreibwege der Apps serverseitig absichern
 - [x] Rechteverwaltung und rollenabhängige App-Oberfläche prüfen
 
-- [ ] Live-Vorschauen mit realistischen grünen, gelben und roten Kennzahlzuständen
-- [ ] Klickbare Module, Kennzahlen und Direktlinks in Cockpit- und Teams-Vorschau
-- [ ] Veröffentlichungsvalidierung für Titel, Leitfrage, Zielgruppe und Kennzahlen
+- [x] Live-Vorschauen mit realistischen grünen, gelben und roten Kennzahlzuständen
+- [x] Klickbare Module, Kennzahlen und Direktlinks in Cockpit- und Teams-Vorschau
+- [x] Veröffentlichungsvalidierung für Titel, Leitfrage, Zielgruppe und Kennzahlen
