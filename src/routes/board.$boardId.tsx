@@ -2668,6 +2668,15 @@ function BoardPage() {
     [nodes, nodeAccess, role],
   );
 
+  const selectedModuleCount = useMemo(
+    () =>
+      nodes.filter((node) => {
+        const record = records[node.id];
+        return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
+      }).length,
+    [nodes, records],
+  );
+
 
   if (loading || !user) {
     return (
@@ -2677,14 +2686,6 @@ function BoardPage() {
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
   const accessRecord = accessFor ? records[accessFor] : undefined;
-  const selectedModuleCount = useMemo(
-    () =>
-      nodes.filter((node) => {
-        const record = records[node.id];
-        return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
-      }).length,
-    [nodes, records],
-  );
 
   const menuItems = menuRecord?.type === "text"
     ? [
