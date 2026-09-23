@@ -3447,7 +3447,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                       {low ? "zur Prüfung · " : ""}
                       {Math.round(answer.confidence * 100)} % sicher
                     </span>
-                  ) : null
+                  ) : null}
 
                 </p>
               )}
