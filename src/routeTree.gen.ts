@@ -21,6 +21,7 @@ import { Route as AuthenticatedKontoRouteImport } from './routes/_authenticated/
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppAppIdRouteImport } from './routes/app.$appId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
+import { Route as EinladungTokenRouteImport } from './routes/einladung.$token'
 import { Route as LibraryTokenRouteImport } from './routes/library.$token'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -97,6 +98,11 @@ const AppAppIdRoute = AppAppIdRouteImport.update({
 const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
   id: '/board/$boardId',
   path: '/board/$boardId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EinladungTokenRoute = EinladungTokenRouteImport.update({
+  id: '/einladung/$token',
+  path: '/einladung/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LibraryTokenRoute = LibraryTokenRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/einladung/$token': typeof EinladungTokenRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/einladung/$token': typeof EinladungTokenRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/einladung/$token': typeof EinladungTokenRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/app/$appId'
     | '/board/$boardId'
+    | '/einladung/$token'
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/app/$appId'
     | '/board/$boardId'
+    | '/einladung/$token'
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/app/$appId'
     | '/board/$boardId'
+    | '/einladung/$token'
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
@@ -388,6 +400,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   AppAppIdRoute: typeof AppAppIdRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
+  EinladungTokenRoute: typeof EinladungTokenRoute
   LibraryTokenRoute: typeof LibraryTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
@@ -479,6 +492,13 @@ declare module '@tanstack/react-router' {
       path: '/board/$boardId'
       fullPath: '/board/$boardId'
       preLoaderRoute: typeof BoardBoardIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/einladung/$token': {
+      id: '/einladung/$token'
+      path: '/einladung/$token'
+      fullPath: '/einladung/$token'
+      preLoaderRoute: typeof EinladungTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/library/$token': {
@@ -660,6 +680,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   AppAppIdRoute: AppAppIdRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
+  EinladungTokenRoute: EinladungTokenRoute,
   LibraryTokenRoute: LibraryTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
