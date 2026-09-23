@@ -48,4 +48,43 @@ describe("Kalibrierung", () => {
   it("zählt Einsätze erst ab der Mindestzahl", () => {
     expect(MIN_SAMPLES).toBe(3);
   });
+
+  it("misst auf Wunsch, ob der Mensch dem Urteil gefolgt ist", () => {
+    const points = [
+      { confidence: 0.9, probability: 0.9, yes: true, outcome: "released" as const },
+      { confidence: 0.9, probability: 0.1, yes: false, outcome: "discarded" as const },
+      { confidence: 0.9, probability: 0.1, yes: false, outcome: "released" as const },
+    ];
+    const followed = calibrate(points, { basis: "followed" });
+    expect(followed.released).toBe(2);
+    expect(followed.line).toBe("3 Einsätze · 67 % gefolgt");
+
+    const release = calibrate(points, { basis: "release" });
+    expect(release.released).toBe(2);
+    expect(release.line).toContain("Bestätigung");
+  });
+
+  it("lässt Urteile ohne Richtung bei „gefolgt“ außen vor", () => {
+    const result = calibrate(
+      [
+        { confidence: 0.8, yes: null, probability: null, outcome: "released" },
+        { confidence: 0.8, yes: null, probability: null, outcome: "released" },
+        { confidence: 0.8, yes: null, probability: null, outcome: "released" },
+      ],
+      { basis: "followed" },
+    );
+    expect(result.decided).toBe(0);
+    expect(result.status).toBe("idle");
+  });
+
+  it("nimmt die selbst eingetragene Sicherheit vor der abgeleiteten", () => {
+    expect(certaintyOf({ confidence: null, humanConfidence: 0.6, probability: 0.9, outcome: null })).toBe(0.6);
+    const result = calibrate([
+      { confidence: null, humanConfidence: 0.9, probability: 0.9, outcome: "released" },
+      { confidence: null, humanConfidence: 0.9, probability: 0.9, outcome: "released" },
+      { confidence: null, humanConfidence: 0.9, probability: 0.9, outcome: "released" },
+    ]);
+    expect(result.certaintySource).toBe("human");
+    expect(result.note).toContain("von Hand eingetragen");
+  });
 });
