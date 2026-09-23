@@ -83,7 +83,7 @@ export const createInvite = createServerFn({ method: "POST" })
         teamId: z.string().uuid().nullable().default(null),
         emails: z.array(z.string().trim().email()).min(1).max(25),
         orgRole: z.enum(["admin", "member", "guest"]).default("member"),
-        boardRole: z.enum(["viewer", "editor"]).default("viewer"),
+        boardRole: z.enum(["viewer", "commenter", "editor"]).default("viewer"),
         origin: z.string().url(),
       })
       .refine((value) => value.orgId || value.boardId, { message: "Ziel fehlt" })
