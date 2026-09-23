@@ -2811,7 +2811,9 @@ function BoardPage() {
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
         <SaveIndicator />
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-3">
+          <PresenceBar peers={peers} myColor={myColor} myName={myName} />
+
           {isOwner ? (
             <Tooltip>
               <TooltipTrigger asChild>
