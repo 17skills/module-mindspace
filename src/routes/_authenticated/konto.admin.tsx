@@ -191,6 +191,15 @@ function AdminPage() {
                       onCheckedChange={(next) => blocked.mutate({ userId: user.id, blocked: next })}
                     />
                   </TableCell>
+                  <TableCell>
+                    <Link
+                      to="/konto/nutzer/$userId"
+                      params={{ userId: user.id }}
+                      className="text-sm underline underline-offset-4"
+                    >
+                      Öffnen
+                    </Link>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
