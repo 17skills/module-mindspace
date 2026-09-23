@@ -144,7 +144,7 @@ import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
-import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste } from "lucide-react";
+import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste, Undo2, Redo2 } from "lucide-react";
 import { AppDialog } from "@/components/canvas/AppDialog";
 import {
   HISTORY_LIMIT,
@@ -3596,7 +3596,7 @@ function BoardPage() {
                     variant="ghost"
                     className={toolBtn()}
                     aria-label="Rückgängig"
-                    disabled={!canEdit || pastRef.current.length === 0}
+                    disabled={!canEdit || !canUndo}
                     onClick={() => undo()}
                   >
                     <Undo2 className="size-5" />
@@ -3612,7 +3612,7 @@ function BoardPage() {
                     variant="ghost"
                     className={toolBtn()}
                     aria-label="Wiederholen"
-                    disabled={!canEdit || futureRef.current.length === 0}
+                    disabled={!canEdit || !canRedo}
                     onClick={() => redo()}
                   >
                     <Redo2 className="size-5" />
