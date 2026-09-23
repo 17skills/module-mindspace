@@ -2195,7 +2195,7 @@ function BoardPage() {
           toast.error(error instanceof Error ? error.message : "Entscheidung fehlgeschlagen");
         });
     },
-    [updateNode, collectContext],
+    [updateNode, collectContext, boardId],
   );
 
   /** Open the calculation belonging to a connection, or create it. */
