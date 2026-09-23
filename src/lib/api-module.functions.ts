@@ -333,4 +333,4 @@ Antworte für jede Frage mit ihrer Kennung (q0, q1, …):
       ...(typeof raw?.confidence === "number" ? { confidence: raw.confidence } : {}),
     };
   });
-  });
+}
