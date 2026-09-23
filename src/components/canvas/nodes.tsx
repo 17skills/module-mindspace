@@ -29,7 +29,7 @@ import { riskRowsFromSource, type SourceRiskRow } from "@/lib/runtime/source-bri
 import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
 import { runEvaluate } from "@/lib/runtime/unit-spec";
 import { decisionUnit, riskUnit } from "@/lib/runtime/units";
-import { loadCalibration } from "@/lib/decision-journal.functions";
+import { loadCalibration, rateJournal } from "@/lib/decision-journal.functions";
 
 /** Ampelfarben der Modul-Verträge: grün, bernstein, rot, grau. */
 const UNIT_TONE: Record<string, string> = {
