@@ -18,6 +18,7 @@ export type UserSettings = {
   byokProvider: AiProvider;
   aiRouting: AiRouting;
   aiBudgets: AiBudgets;
+  activeOrgId: string | null;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
