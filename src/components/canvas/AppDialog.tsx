@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import QRCode from "qrcode";
 import {
   Bot,
+  CheckCircle2,
   Copy,
   Download,
   ExternalLink,
@@ -17,6 +18,7 @@ import {
   PlugZap,
   Smartphone,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import {
   Dialog,
@@ -34,6 +36,7 @@ import type { NodeRecord } from "@/components/canvas/board-context";
 import { AppEngine } from "@/components/app/AppEngine";
 import { AppAccessManager } from "@/components/app/AppAccessManager";
 import { executiveView } from "@/lib/app-executive";
+import { deploymentIssues, previewExecutiveView, type PreviewScenario } from "@/lib/app-preview";
 import { APP_LAYOUTS, buildFreeLayout, resolveLayout } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
 import { deleteDeliveredApp, saveDeliveredApp, setDeliveredAppPublished } from "@/lib/app-config.functions";
@@ -107,17 +110,20 @@ const PREVIEW_SIGNAL = {
 } as const;
 
 function TeamsCardPreview({
-  nodes,
   title,
   description,
   leadQuestion,
+  view,
+  onOpen,
+  onDriverOpen,
 }: {
-  nodes: NodeRecord[];
   title: string;
   description: string;
   leadQuestion: string;
+  view: ReturnType<typeof executiveView>;
+  onOpen: () => void;
+  onDriverOpen: (id: string) => void;
 }) {
-  const view = useMemo(() => executiveView(nodes), [nodes]);
   const signal = PREVIEW_SIGNAL[view.signal];
   return (
     <div className="mx-auto w-full max-w-[430px] rounded-lg border border-border bg-card p-5 shadow-[var(--shadow-card)]">
@@ -140,24 +146,24 @@ function TeamsCardPreview({
         </p>
       )}
       {view.drivers.length > 0 ? (
-        <dl className="mt-5 divide-y divide-border border-y border-border">
+        <div className="mt-5 divide-y divide-border border-y border-border">
           {view.drivers.map((driver) => (
-            <div key={driver.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-2.5">
-              <dt className="min-w-0 text-xs text-muted-foreground">
+            <button type="button" onClick={() => onDriverOpen(driver.id)} key={driver.id} className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-4 py-2.5 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <span className="min-w-0 text-xs text-muted-foreground">
                 <span className="block truncate font-medium text-foreground">{driver.label}</span>
                 <span className="line-clamp-1">{driver.hint}</span>
-              </dt>
-              <dd className="self-center text-right font-mono text-sm font-medium">{driver.value}</dd>
-            </div>
+              </span>
+              <span className="self-center text-right font-mono text-sm font-medium">{driver.value}</span>
+            </button>
           ))}
-        </dl>
+        </div>
       ) : (
         <p className="mt-5 border-y border-border py-4 text-sm text-muted-foreground">
           Wähle Module, damit Kennzahlen und Entscheidungstreiber erscheinen.
         </p>
       )}
       <p className="mt-3 text-[11px] text-muted-foreground">Stand: Vorschau · Änderungen noch nicht veröffentlicht</p>
-      <Button className="mt-4 w-full" size="sm" disabled>
+      <Button className="mt-4 w-full" size="sm" onClick={onOpen}>
         Entscheider-Cockpit öffnen
       </Button>
     </div>
@@ -177,6 +183,9 @@ function DeploymentPreview({
   onDeviceChange,
   onChannelChange,
   onModuleLayoutChange,
+  scenario,
+  onScenarioChange,
+  onInteraction,
 }: {
   nodes: NodeRecord[];
   title: string;
@@ -190,7 +199,11 @@ function DeploymentPreview({
   onDeviceChange: (device: "desktop" | "mobile") => void;
   onChannelChange: (channel: PreviewChannel) => void;
   onModuleLayoutChange: (moduleLayout: AppBranding["moduleLayout"]) => void;
+  scenario: PreviewScenario;
+  onScenarioChange: (scenario: PreviewScenario) => void;
+  onInteraction: (label: string) => void;
 }) {
+  const previewView = useMemo(() => previewExecutiveView(nodes, scenario), [nodes, scenario]);
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
       <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2">
@@ -203,6 +216,13 @@ function DeploymentPreview({
             <MessageSquare className="size-3.5" />
             Teams-Karte
           </Button>
+        </div>
+        <div className="flex rounded-lg border border-border bg-background p-0.5" aria-label="Testzustand">
+          {(["live", "ok", "warn", "alert"] as const).map((state) => (
+            <Button key={state} size="sm" variant={scenario === state ? "secondary" : "ghost"} onClick={() => onScenarioChange(state)}>
+              {state === "live" ? "Live" : PREVIEW_SIGNAL[state].label}
+            </Button>
+          ))}
         </div>
         {!channels[channel === "cockpit" ? "web" : "teams"] && (
           <span className="text-[11px] text-muted-foreground">Kanal nicht ausgewählt</span>
@@ -220,7 +240,7 @@ function DeploymentPreview({
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
         {channel === "teams" ? (
-          <TeamsCardPreview nodes={nodes} title={title} description={description} leadQuestion={leadQuestion} />
+          <TeamsCardPreview title={title} description={description} leadQuestion={leadQuestion} view={previewView} onOpen={() => onInteraction("Direktlink zum Cockpit")} onDriverOpen={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? "Kennzahl")} />
         ) : (
           <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${device === "mobile" ? "w-full max-w-[390px]" : "w-full"}`}>
             <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}>
@@ -236,7 +256,9 @@ function DeploymentPreview({
                     <span className="block truncate font-display text-base font-semibold">{title.trim() || "Titel der App"}</span>
                   </div>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">Live</span>
+                <Button size="sm" variant="ghost" className="shrink-0" onClick={() => onInteraction("Direktlink zur veröffentlichten App")}>
+                  Live <ExternalLink className="size-3.5" />
+                </Button>
               </header>
               {leadQuestion.trim() && (
                 <div className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground">
@@ -256,6 +278,8 @@ function DeploymentPreview({
                   moduleLayout={branding.moduleLayout}
                   compactPreview={device === "mobile"}
                   onModuleLayoutChange={onModuleLayoutChange}
+                  executiveOverride={previewView}
+                  onModuleClick={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? nodes.find((node) => node.id === id)?.title ?? "Modul")}
                 />
               )}
             </div>
@@ -299,6 +323,8 @@ export function AppDialog({
   const [testResult, setTestResult] = useState<string | null>(null);
   const [docsFor, setDocsFor] = useState<string | null>(null);
   const [tab, setTab] = useState("module");
+  const [previewScenario, setPreviewScenario] = useState<PreviewScenario>("live");
+  const [showValidation, setShowValidation] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
 
   const pickedNodes = useMemo(
@@ -311,6 +337,8 @@ export function AppDialog({
   const chosenTypes = useMemo(() => pickedNodes.map((node) => node.type), [pickedNodes]);
   const kind: "capture" | "cockpit" =
     resolveLayout(branding.layout, chosenTypes) === "capture" ? "capture" : "cockpit";
+  const validation = useMemo(() => deploymentIssues({ title, leadQuestion, audience, nodes: pickedNodes }), [title, leadQuestion, audience, pickedNodes]);
+  const validationMessages = Object.values(validation).filter((message): message is string => Boolean(message));
 
   useEffect(() => {
     if (branding.layout !== "free") return;
@@ -345,6 +373,7 @@ export function AppDialog({
     setAudience("");
     setLeadQuestion("");
     setPicked(start);
+    setShowValidation(false);
   };
 
 
@@ -394,8 +423,10 @@ export function AppDialog({
   };
 
   const submit = async () => {
-    if (!picked.length) {
-      toast.error("Bitte mindestens ein Modul wählen");
+    setShowValidation(true);
+    if (validationMessages.length) {
+      toast.error(`Vor dem Veröffentlichen fehlen noch ${validationMessages.length} Angaben.`);
+      setTab(validation.metrics ? "module" : validation.title ? "design" : "access");
       return;
     }
     setSaving(true);
@@ -438,6 +469,7 @@ export function AppDialog({
     setLeadQuestion(app.lead_question ?? "");
     setPicked(Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : []);
     setBranding(brandingFrom(app.branding));
+    setShowValidation(false);
     setTab("module");
   };
 
@@ -456,6 +488,26 @@ export function AppDialog({
   /** App veröffentlichen oder wieder abschalten – der Link bleibt erhalten. */
   const togglePublic = async (app: Row) => {
     const next = !app.is_public;
+    if (next) {
+      const appNodeIds = Array.isArray(app.node_ids) ? app.node_ids.map(String) : [];
+      const appNodes = appNodeIds
+        .map((id) => candidates.find((candidate) => candidate.id === id))
+        .filter((candidate): candidate is Candidate => Boolean(candidate));
+      const issues = deploymentIssues({
+        title: app.title,
+        leadQuestion: app.lead_question ?? "",
+        audience: app.audience ?? "",
+        nodes: appNodes,
+      });
+      const missing = Object.values(issues).filter((message): message is string => Boolean(message));
+      if (missing.length) {
+        edit(app);
+        setShowValidation(true);
+        setTab(issues.metrics ? "module" : issues.title ? "design" : "access");
+        toast.error(`Vor dem Veröffentlichen fehlen noch ${missing.length} Angaben.`);
+        return;
+      }
+    }
     try {
       await setDeliveredAppPublished({ data: { appId: app.id, published: next } });
     } catch (error) {
@@ -593,7 +645,7 @@ export function AppDialog({
                 </button>
               </p>
             )}
-            <div className="grid max-h-60 gap-1 overflow-auto rounded-lg border border-border/70 p-2">
+            <div className={`grid max-h-60 gap-1 overflow-auto rounded-lg border p-2 ${showValidation && validation.metrics ? "border-destructive" : "border-border/70"}`}>
               {candidates.map((item) => (
                 <label key={item.id} className="flex items-center gap-2 text-sm">
                   <input
@@ -612,6 +664,7 @@ export function AppDialog({
               {picked.length} / {MAX_APP_MODULES} gewählt
               {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
             </p>
+            {showValidation && validation.metrics && <p className="text-xs text-destructive">{validation.metrics}</p>}
             {pickedNodes.length > 0 && (
               <ul className="space-y-1 rounded-lg border border-border/70 p-2">
                 {pickedNodes.map((node, index) => (
@@ -673,9 +726,12 @@ export function AppDialog({
           <TabsContent value="design" className="space-y-3">
             <Input
               value={title}
+              aria-invalid={showValidation && Boolean(validation.title)}
+              className={showValidation && validation.title ? "border-destructive focus-visible:ring-destructive" : ""}
               placeholder="Titel der App, z. B. Trafostationen-Inspektion"
               onChange={(event) => setTitle(event.target.value)}
             />
+            {showValidation && validation.title && <p className="text-xs text-destructive">{validation.title}</p>}
             <Textarea
               value={description}
               rows={2}
@@ -776,7 +832,10 @@ export function AppDialog({
                   value={audience}
                   onChange={(event) => setAudience(event.target.value)}
                   placeholder="z. B. Betriebsleitung"
+                  aria-invalid={showValidation && Boolean(validation.audience)}
+                  className={showValidation && validation.audience ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                {showValidation && validation.audience && <span className="text-xs text-destructive">{validation.audience}</span>}
               </label>
               <label className="space-y-1">
                 <span className="text-xs text-muted-foreground">Leitfrage der Entscheidung</span>
@@ -784,7 +843,10 @@ export function AppDialog({
                   value={leadQuestion}
                   onChange={(event) => setLeadQuestion(event.target.value)}
                   placeholder="z. B. Freigeben oder nachbessern?"
+                  aria-invalid={showValidation && Boolean(validation.leadQuestion)}
+                  className={showValidation && validation.leadQuestion ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                {showValidation && validation.leadQuestion && <span className="text-xs text-destructive">{validation.leadQuestion}</span>}
               </label>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -827,7 +889,14 @@ export function AppDialog({
 
           {/* 4 – Ausliefern */}
           <TabsContent value="deliver" className="space-y-3">
-            <Button onClick={() => void submit()} disabled={saving} className="w-full">
+            <div className={`rounded-lg border p-3 ${validationMessages.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/40"}`}>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {validationMessages.length ? <TriangleAlert className="size-4 text-destructive" /> : <CheckCircle2 className="size-4 text-brand-green-deep" />}
+                {validationMessages.length ? `${validationMessages.length} Punkte vor Veröffentlichung` : "Bereit zur Veröffentlichung"}
+              </div>
+              {validationMessages.length > 0 && <ul className="mt-2 space-y-1 text-xs text-destructive">{validationMessages.map((message) => <li key={message}>• {message}</li>)}</ul>}
+            </div>
+            <Button onClick={() => void submit()} disabled={saving || validationMessages.length > 0} className="w-full">
               {editing ? "Änderungen speichern" : "App ausliefern"}
             </Button>
             <span className="module-eyebrow text-muted-foreground">Aktive Apps</span>
@@ -1086,6 +1155,9 @@ export function AppDialog({
               onDeviceChange={setDevice}
               onChannelChange={setPreviewChannel}
               onModuleLayoutChange={(moduleLayout) => setBranding((value) => ({ ...value, moduleLayout }))}
+              scenario={previewScenario}
+              onScenarioChange={setPreviewScenario}
+              onInteraction={(label) => toast.success(`${label} geöffnet · Vorschau`)}
             />
           </TabsContent>
         </Tabs>
@@ -1105,6 +1177,9 @@ export function AppDialog({
               onDeviceChange={setDevice}
               onChannelChange={setPreviewChannel}
               onModuleLayoutChange={(moduleLayout) => setBranding((value) => ({ ...value, moduleLayout }))}
+              scenario={previewScenario}
+              onScenarioChange={setPreviewScenario}
+              onInteraction={(label) => toast.success(`${label} geöffnet · Vorschau`)}
             />
           </div>
         </div>
