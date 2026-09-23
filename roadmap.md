@@ -23,6 +23,6 @@
 - [x] Globale Suche über alle Scopes (Karten, Felder, Verbindungen, Texte) mit Sprung zum Modul
 - [x] Vollständige Sicherung und Wiederherstellung eines Scopes als JSON-Datei
 - [x] Echtzeit-Abgleich von Modulen, Verbindungen und Positionen ohne Neuladen
-- [ ] Rollenbasierte Rechte für bereitgestellte Apps: Ansehen, Daten aktualisieren, Konfiguration verwalten
-- [ ] Öffentliche Schreibwege der Apps serverseitig absichern
-- [ ] Rechteverwaltung und rollenabhängige App-Oberfläche prüfen
+- [x] Rollenbasierte Rechte für bereitgestellte Apps: Ansehen, Daten aktualisieren, Konfiguration verwalten
+- [x] Öffentliche Schreibwege der Apps serverseitig absichern
+- [x] Rechteverwaltung und rollenabhängige App-Oberfläche prüfen
