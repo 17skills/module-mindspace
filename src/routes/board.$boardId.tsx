@@ -3203,7 +3203,11 @@ function BoardPage() {
             }}
             onNodeContextMenu={(event, node) => {
               event.preventDefault();
-              if (!canEdit) return;
+              if (!canEdit) {
+                // Lesen und Kommentieren: nur das Rechte- und Kommentarfenster
+                setAccessFor(node.id);
+                return;
+              }
               const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
               setMenu({
                 x: event.clientX,
