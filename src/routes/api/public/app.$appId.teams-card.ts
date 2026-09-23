@@ -2,8 +2,8 @@
 // GET  → Adaptive Card als JSON (Schlüssel der App nötig).
 // POST → dieselbe Karte an einen eingehenden Teams-Webhook senden.
 import { createFileRoute } from "@tanstack/react-router";
-import { authorizeAppMcp } from "@/lib/app-data.server";
-import { buildAdaptiveCard, buildWebhookPayload } from "@/lib/app-teams";
+import { admin, authorizeAppMcp } from "@/lib/app-data.server";
+import { buildAdaptiveCard, buildWebhookPayload, type TeamsCardInput } from "@/lib/app-teams";
 import { appSummary } from "@/lib/app-summary.server";
 
 function appIdFromRequest(request: Request): string | null {
@@ -20,23 +20,22 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function cardFor(request: Request, appId: string) {
+async function cardInputFor(request: Request, appId: string): Promise<TeamsCardInput> {
   const url = new URL(request.url);
   const summary = await appSummary(appId);
-  const origin = `${url.protocol}//${url.host}`;
-  const { data: app } = await (await import("@/lib/app-data.server")).admin()
-    .then((db) => db.from("apps").select("lead_question").eq("id", appId).maybeSingle());
-  return buildAdaptiveCard({
+  const db = await admin();
+  const { data } = await db.from("apps").select("lead_question").eq("id", appId).maybeSingle();
+  return {
     title: summary.title,
     headline: summary.headline,
     signal: summary.signal,
     description: summary.description,
     boardTitle: summary.boardTitle,
-    leadQuestion: String((app as { lead_question?: string } | null)?.lead_question ?? ""),
+    leadQuestion: String((data as { lead_question?: string } | null)?.lead_question ?? ""),
     metrics: summary.metrics,
-    appUrl: `${origin}/app/${appId}`,
+    appUrl: `${url.protocol}//${url.host}/app/${appId}`,
     updatedAt: summary.updatedAt,
-  });
+  };
 }
 
 async function handle(ctx: { request: Request }) {
@@ -57,7 +56,7 @@ async function handle(ctx: { request: Request }) {
     );
   }
 
-  const card = await cardFor(ctx.request, appId);
+  const input = await cardInputFor(ctx.request, appId);
 
   if (ctx.request.method === "POST") {
     let webhook = "";
@@ -67,14 +66,13 @@ async function handle(ctx: { request: Request }) {
     } catch {
       webhook = "";
     }
-    if (!/^https:\/\/[^\s]+$/.test(webhook)) {
+    if (!/^https:\/\/\S+$/.test(webhook)) {
       return json({ error: "invalid_webhook", message: "Bitte eine https-Adresse senden." }, 400);
     }
-    const payload = buildWebhookPayload({ ...cardInput(card), ...{} });
     const response = await fetch(webhook, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(buildWebhookPayload(input)),
     });
     if (!response.ok) {
       const text = await response.text();
@@ -83,12 +81,7 @@ async function handle(ctx: { request: Request }) {
     return json({ ok: true });
   }
 
-  return json(card);
-}
-
-/** Karte wieder in die Webhook-Hülle packen, ohne sie neu zu berechnen. */
-function cardInput(card: unknown) {
-  return card as never;
+  return json(buildAdaptiveCard(input));
 }
 
 export const Route = createFileRoute("/api/public/app/$appId/teams-card")({
