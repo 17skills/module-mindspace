@@ -23,6 +23,22 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
 import { exportBoard } from "@/lib/backup.functions";
+import {
+  cacheBoard,
+  readBoardCache,
+  saveOp,
+  startOfflineSync,
+  useOfflineState,
+} from "@/lib/board-offline";
+import {
+  addConflicts,
+  isLocallyEdited,
+  markLocalEdit,
+  mergeRemoteNode,
+  type Conflict,
+} from "@/lib/board-conflict";
+import { ConflictBar } from "@/components/canvas/ConflictBar";
+import { VersionDialog } from "@/components/canvas/VersionDialog";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { runMcpTool } from "@/lib/mcp-client.functions";
 import { appendMcpRun, readMcp, readMcpHistory } from "@/lib/mcp-module";
