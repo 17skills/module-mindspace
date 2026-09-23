@@ -28,9 +28,12 @@ export async function appRoleOf(userId: string | null, appId: string): Promise<A
     .select("user_id,org_id,access_mode,is_public,access_revoked_at,access_expires_at")
     .eq("id", appId)
     .maybeSingle();
-  if (!app || !app.is_public || app.access_revoked_at) return null;
-  if (app.access_expires_at && new Date(app.access_expires_at).getTime() <= Date.now()) return null;
-  if (!userId) return app.access_mode === "public" ? "viewer" : null;
+  if (!app) return null;
+  if (!userId) {
+    if (!app.is_public || app.access_mode !== "public" || app.access_revoked_at) return null;
+    if (app.access_expires_at && new Date(app.access_expires_at).getTime() <= Date.now()) return null;
+    return "viewer";
+  }
   if (app.user_id === userId) return "config_admin";
 
   let orgMember = false;
@@ -65,6 +68,8 @@ export async function appRoleOf(userId: string | null, appId: string): Promise<A
         .in("subject_id", teamIds)
     : { data: [] as { role: string }[] };
 
+  if (!app.is_public || app.access_revoked_at) return null;
+  if (app.access_expires_at && new Date(app.access_expires_at).getTime() <= Date.now()) return null;
   let best = app.access_mode === "public" || (app.access_mode === "org" && orgMember) ? 1 : 0;
   for (const grant of [direct, ...(teamGrants ?? [])]) {
     const role = grant?.role as AppRole | undefined;
