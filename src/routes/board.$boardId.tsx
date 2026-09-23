@@ -54,6 +54,10 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBoardPresence } from "@/lib/presence";
+import { PresenceLayer } from "@/components/canvas/PresenceLayer";
+import { PresenceBar } from "@/components/canvas/PresenceBar";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
