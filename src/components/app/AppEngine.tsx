@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { MODULE_TYPE_LABEL } from "@/lib/apps";
 import { executiveView } from "@/lib/app-executive";
+import type { Executive } from "@/lib/app-executive";
 import { formatValue, readFormat, valueOfNode } from "@/lib/calc";
 import { readFactor } from "@/lib/factor-score";
 import { pointsFromSources, readMapConfig } from "@/lib/geo";
@@ -327,17 +328,23 @@ export function AppModule({
   nodes,
   actions,
   className = "",
+  onOpen,
 }: {
   node: NodeRecord;
   nodes: NodeRecord[];
   actions?: ModuleAction | undefined;
   className?: string;
+  onOpen?: (() => void) | undefined;
 }) {
   const title = node.title?.trim() || MODULE_TYPE_LABEL[node.type] || "Modul";
   if (node.type === "map") {
     return (
       <section
-        className={`overflow-hidden rounded-xl border border-border/70 bg-card shadow-[var(--shadow-card)] ${className}`}
+        className={`overflow-hidden rounded-xl border border-border/70 bg-card shadow-[var(--shadow-card)] ${onOpen ? "cursor-pointer transition-colors hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""} ${className}`}
+        onClick={onOpen}
+        onKeyDown={(event) => { if (onOpen && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onOpen(); } }}
+        role={onOpen ? "button" : undefined}
+        tabIndex={onOpen ? 0 : undefined}
       >
         <div className="px-4 pt-3">
           <span className="module-eyebrow text-muted-foreground">{title}</span>
@@ -349,6 +356,13 @@ export function AppModule({
     );
   }
   return (
+    <div
+      className={onOpen ? "h-full cursor-pointer transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "h-full"}
+      onClick={onOpen}
+      onKeyDown={(event) => { if (onOpen && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onOpen(); } }}
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+    >
     <Card title={title} kind={node.type} className={className}>
       {TILE_TYPES.has(node.type) ? (
         <Value node={node} nodes={nodes} />
@@ -362,6 +376,7 @@ export function AppModule({
         <TextCard node={node} />
       )}
     </Card>
+    </div>
   );
 }
 
@@ -374,6 +389,8 @@ export function AppEngine({
   editable = false,
   compactPreview = false,
   onModuleLayoutChange,
+  executiveOverride,
+  onModuleClick,
 }: {
   nodes: NodeRecord[];
   layout: AppLayout;
@@ -382,6 +399,8 @@ export function AppEngine({
   editable?: boolean;
   compactPreview?: boolean;
   onModuleLayoutChange?: (layout: AppGridItem[]) => void;
+  executiveOverride?: Executive | undefined;
+  onModuleClick?: ((nodeId: string) => void) | undefined;
 }) {
   const mode = resolveLayout(layout, nodes.map((node) => node.type));
   if (!nodes.length) {
@@ -408,7 +427,7 @@ export function AppEngine({
   }
 
   if (mode === "executive") {
-    return <ExecutiveLayout nodes={nodes} actions={actions} />;
+    return <ExecutiveLayout nodes={nodes} actions={actions} viewOverride={executiveOverride} onModuleClick={onModuleClick} />;
   }
 
 
@@ -735,11 +754,16 @@ const SIGNAL_STYLE: Record<
 function ExecutiveLayout({
   nodes,
   actions,
+  viewOverride,
+  onModuleClick,
 }: {
   nodes: NodeRecord[];
   actions?: ModuleAction | undefined;
+  viewOverride?: Executive | undefined;
+  onModuleClick?: ((nodeId: string) => void) | undefined;
 }) {
-  const view = useMemo(() => executiveView(nodes), [nodes]);
+  const calculated = useMemo(() => executiveView(nodes), [nodes]);
+  const view = viewOverride ?? calculated;
   const look = SIGNAL_STYLE[view.signal];
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-5 p-4">
@@ -764,9 +788,11 @@ function ExecutiveLayout({
           <span className="module-eyebrow text-muted-foreground">Entscheidungstreiber</span>
           <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {view.drivers.map((driver) => (
-              <div
+              <button
+                type="button"
                 key={driver.id}
-                className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]"
+                className="rounded-xl border border-border/70 bg-card p-4 text-left shadow-[var(--shadow-card)] transition-colors hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => onModuleClick?.(driver.id)}
               >
                 <div className="flex items-center gap-2">
                   <span
@@ -778,7 +804,7 @@ function ExecutiveLayout({
                 </div>
                 <p className="mt-1 font-mono text-xl">{driver.value}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{driver.hint}</p>
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -786,7 +812,7 @@ function ExecutiveLayout({
 
       <section className="space-y-4">
         {nodes.map((node) => (
-          <AppModule key={node.id} node={node} nodes={nodes} actions={actions} />
+          <AppModule key={node.id} node={node} nodes={nodes} actions={actions} onOpen={onModuleClick ? () => onModuleClick(node.id) : undefined} />
         ))}
       </section>
     </main>

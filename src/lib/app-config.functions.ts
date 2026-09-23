@@ -16,14 +16,14 @@ async function audit(actorId: string, action: string, appId: string) {
 }
 
 const AppPayload = z.object({
-  title: z.string().trim().min(1).max(160),
+  title: z.string().trim().min(1, "Titel fehlt").max(160),
   description: z.string().max(2000),
   kind: z.enum(["capture", "cockpit"]),
   nodeIds: z.array(z.string().uuid()).min(1).max(5),
   mcpScope: z.enum(["read", "write"]),
   channels: z.object({ web: z.boolean(), teams: z.boolean(), mcp: z.boolean() }),
-  audience: z.string().max(200),
-  leadQuestion: z.string().max(500),
+  audience: z.string().trim().min(1, "Zielgruppe fehlt").max(200),
+  leadQuestion: z.string().trim().min(1, "Leitfrage fehlt").max(500),
   branding: z.record(z.string(), z.unknown()),
 });
 
