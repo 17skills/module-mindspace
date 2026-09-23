@@ -146,6 +146,26 @@ import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
 import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste } from "lucide-react";
 import { AppDialog } from "@/components/canvas/AppDialog";
+import {
+  HISTORY_LIMIT,
+  describe,
+  invert,
+  movedItems,
+  pushHistory,
+  type EdgeSnapshot,
+  type HistoryEntry,
+} from "@/lib/canvas-history";
+
+/** Verbindung auf die Felder reduzieren, die zum Wiederherstellen nötig sind. */
+function snapEdge(edge: { id: string; source: string; target: string; label?: unknown }): EdgeSnapshot {
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    label: typeof edge.label === "string" ? edge.label : null,
+  };
+}
+
 import { MAX_APP_MODULES } from "@/lib/apps";
 import { capture, readPayload, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
