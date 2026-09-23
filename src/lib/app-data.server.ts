@@ -107,7 +107,7 @@ export async function loadAppNodes(appId: string) {
 
 /** Findet das Inspektionsmodul der App und legt die Befundliste offen. */
 export async function appFindingStore(appId: string, nodeId?: string) {
-  const { db, ids } = await loadPublicApp(appId);
+  const { db, app, ids } = await loadPublicApp(appId);
   const { data: rows, error } = await db
     .from("nodes")
     .select("id,type,metadata,content")
@@ -119,7 +119,7 @@ export async function appFindingStore(appId: string, nodeId?: string) {
   if (!target) throw new Error("Diese App hat kein Inspektionsmodul");
   const meta = (target.metadata ?? {}) as Record<string, unknown>;
   const findings = Array.isArray(meta["findings"]) ? [...(meta["findings"] as Record<string, unknown>[])] : [];
-  return { db, target, meta, findings };
+  return { db, app, target, meta, findings };
 }
 
 export type FindingWrite = {
@@ -134,15 +134,48 @@ export type FindingWrite = {
   confidence: number;
   reason: string;
   thumb: string | null;
+  /** Vollbild als Data-URL; wird in den Bildspeicher ausgelagert. */
+  photo?: string | null;
   source: string;
 };
 
+/**
+ * Legt das Vollbild im Bildspeicher ab, damit die Moduldaten klein bleiben.
+ * Schlägt der Upload fehl, zählt nur das kleine Vorschaubild.
+ */
+async function storePhoto(
+  db: Db,
+  boardId: string,
+  findingId: string,
+  dataUrl: string | null | undefined,
+): Promise<string | null> {
+  const match = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUrl ?? "");
+  if (!match) return null;
+  try {
+    const binary = atob(match[2]!);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const path = `${boardId}/${findingId}.jpg`;
+    const { error } = await db.storage
+      .from("field-photos")
+      .upload(path, bytes, { contentType: match[1]!, upsert: true });
+    if (error) return null;
+    return path;
+  } catch {
+    return null;
+  }
+}
+
 /** Hängt einen Befund an das Inspektionsmodul der App an. */
 export async function insertFinding(appId: string, write: FindingWrite) {
-  const { db, target, meta, findings } = await appFindingStore(appId);
+  const { db, app, target, meta, findings } = await appFindingStore(appId);
+  const id = `finding-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const { photo, ...rest } = write;
+  const photoPath = await storePhoto(db, app.board_id, id, photo ?? write.thumb);
   const entry = {
-    ...write,
-    id: `finding-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    ...rest,
+    id,
+    photoPath,
     priority: Math.min(10, Math.max(1, Math.round(write.priority))),
     createdAt: new Date().toISOString(),
     prevPriority: null,
@@ -156,7 +189,7 @@ export async function insertFinding(appId: string, write: FindingWrite) {
     .update({ metadata: { ...meta, findings: next } as never })
     .eq("id", target.id);
   if (error) throw new Error(error.message);
-  return { id: String(entry.id), count: next.length };
+  return { id, count: next.length };
 }
 
 const STATUSES = ["offen", "beauftragt", "in arbeit", "erledigt"] as const;
