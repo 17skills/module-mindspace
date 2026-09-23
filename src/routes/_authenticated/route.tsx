@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated")({
       .maybeSingle();
     if (profile?.blocked_at) {
       await supabase.auth.signOut();
-      throw redirect({ to: "/auth", search: { blocked: "1" } });
+      throw redirect({ to: "/auth" });
     }
 
     return { user: data.user };
