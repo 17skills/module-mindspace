@@ -2228,12 +2228,49 @@ export function LabeledEdge(props: EdgeProps) {
     },
     (a, b) => a.text === b.text && a.bad === b.bad && a.raw === b.raw,
   );
+  /**
+   * Zustand einer Quelle, die in dieses Kabel speist: grün = geprüfter Fluss,
+   * gelb = Lücken, rot = Regelverstoß. Die Kante zeigt den echten Zustand.
+   */
+  const sourceSignal = useStore(
+    (store) => {
+      const stored = readSource(
+        (store.nodeLookup.get(props.source)?.data as Data | undefined)?.record,
+      );
+      if (!stored) return null;
+      let ontology = null;
+      for (const edge of store.edges) {
+        if (edge.target !== props.source) continue;
+        const found = readOntology(
+          (store.nodeLookup.get(edge.source)?.data as Data | undefined)?.record,
+        );
+        if (found) {
+          ontology = found;
+          break;
+        }
+      }
+      const signal = evaluateSignal({ envelope: stored.envelope, ontology });
+      return { status: signal.status, display: signal.display, headline: signal.explanation.headline };
+    },
+    (a, b) => a?.status === b?.status && a?.display === b?.display && a?.headline === b?.headline,
+  );
+
+  const SIGNAL_STROKE: Record<string, string> = {
+    positive: "#598381",
+    caution: "#e0a03a",
+    critical: "#de5a3a",
+    muted: "var(--edge)",
+  };
+
   const problem = flow.bad ? edgeProblem(label, flow.raw) : null;
   const stroke = props.selected
     ? "var(--ring)"
     : flow.bad
       ? "#de5a3a"
-      : "var(--edge)";
+      : sourceSignal
+        ? SIGNAL_STROKE[signalTone(sourceSignal.status)] ?? "var(--edge)"
+        : "var(--edge)";
+
 
   return (
     <>
