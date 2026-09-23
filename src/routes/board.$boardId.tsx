@@ -2942,15 +2942,21 @@ function BoardPage() {
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
-            deleteKeyCode={["Backspace", "Delete"]}
+            nodesDraggable={canEdit}
+            nodesConnectable={canEdit}
+            nodesDeletable={canEdit}
+            edgesReconnectable={canEdit}
+            deleteKeyCode={canEdit ? ["Backspace", "Delete"] : null}
             onPaneContextMenu={(event) => {
               event.preventDefault();
+              if (!canEdit) return;
               const mouse = event as unknown as MouseEvent;
               const flow = screenToFlowPosition({ x: mouse.clientX, y: mouse.clientY });
               setMenu({ x: mouse.clientX, y: mouse.clientY, flowX: flow.x, flowY: flow.y });
             }}
             onNodeContextMenu={(event, node) => {
               event.preventDefault();
+              if (!canEdit) return;
               const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
               setMenu({
                 x: event.clientX,
