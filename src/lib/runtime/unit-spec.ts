@@ -144,6 +144,10 @@ export function runEvaluate<TOutput, TState>(
     );
   }
   const result = spec.evaluate(input, state);
+  // Nur angeschlossene Eingänge dürfen den Zustand verschlechtern; ein
+  // offener optionaler Eingang gräut ein gerechnetes Ergebnis nicht aus.
+  const connected = spec.inputs.some((port) => input.ports[port.id]);
+  if (!connected) return result;
   const incoming = inputSignal(spec as unknown as UnitSpec<unknown, never>, input);
   return { ...result, status: worstStatus([result.status, incoming.status]) };
 }

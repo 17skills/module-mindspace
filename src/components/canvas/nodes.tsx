@@ -27,6 +27,16 @@ import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 import { readOntology, readSource } from "@/lib/source-node";
 import { riskRowsFromSource, type SourceRiskRow } from "@/lib/runtime/source-bridge";
 import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
+import { runEvaluate } from "@/lib/runtime/unit-spec";
+import { decisionUnit, riskUnit } from "@/lib/runtime/units";
+
+/** Ampelfarben der Modul-Verträge: grün, bernstein, rot, grau. */
+const UNIT_TONE: Record<string, string> = {
+  positive: "var(--sage, #598381)",
+  caution: "var(--warning, #E0682B)",
+  critical: "var(--destructive)",
+  muted: "var(--muted-foreground)",
+};
 
 import { Plug } from "lucide-react";
 import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
@@ -3210,13 +3220,32 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), questions: next } });
   }
 
+  /** Auch diese Karte urteilt über ihren Modul-Vertrag. */
+  const unit = runEvaluate(
+    decisionUnit(),
+    { ports: {} },
+    {
+      questions: questions.length,
+      answered: answered.length,
+      review: reviewCount,
+      confidence,
+    },
+  );
+
   return (
     <div
       className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
       data-selected={Boolean(selected)}
-      style={{ borderTop: `3px solid ${NODE_ACCENT["decision"] ?? "var(--primary)"}` }}
+      style={{
+        borderTop: `3px solid ${
+          unit.status === "idle"
+            ? NODE_ACCENT["decision"] ?? "var(--primary)"
+            : UNIT_TONE[signalTone(unit.status)]
+        }`,
+      }}
+      title={unit.signal.explanation.headline}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={220} />
       <SignalHandle type="target" position={Position.Left} />
@@ -4363,7 +4392,22 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     return [...fields, ...derived];
   }, [fields, sourceRows]);
 
-  const result = useMemo(() => evaluate(allFields), [allFields]);
+  /** Die Karte rechnet über ihren Modul-Vertrag: Ergebnis samt Ampel. */
+  const unit = useMemo(
+    () =>
+      runEvaluate(
+        riskUnit(),
+        { ports: {} },
+        {
+          fields: allFields,
+          gaps: sourceGaps.map(
+            (row) => `${row.label}: ${row.missing.join(", ")} fehlt · ${row.sourceName}, Zeile ${row.row}`,
+          ),
+        },
+      ),
+    [allFields, sourceGaps],
+  );
+  const result = useMemo(() => unit.output ?? evaluate(allFields), [unit, allFields]);
   const summary = useMemo(() => {
     const assessment = isoText(result);
     const parts = [assessment];
@@ -4524,6 +4568,8 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
       data-selected={Boolean(selected)}
+      style={{ borderTop: `3px solid ${UNIT_TONE[signalTone(unit.status)]}` }}
+      title={unit.signal.explanation.headline}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={360} minHeight={320} />
       <SignalHandle type="target" position={Position.Left} />
