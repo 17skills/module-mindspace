@@ -745,20 +745,9 @@ function BoardPage() {
         return next;
       });
       markSelfWrite(...list);
-      trackSave(
-        supabase
-          .from("nodes")
-          .delete()
-          .in("id", list)
-          .then(({ error }) => {
-            if (error) {
-              toast.error(error.message);
-              throw error;
-            }
-          }),
-      );
+      saveOp(boardId, { kind: "node.delete", ids: list });
     },
-    [setNodes, setEdges],
+    [setNodes, setEdges, boardId],
   );
 
   const createRecord = useCallback(
@@ -778,6 +767,7 @@ function BoardPage() {
               absoluteZones(Object.values(recordsRef.current)),
             );
       const payload = {
+        id: crypto.randomUUID(),
         board_id: boardId,
         user_id: user.id,
         type: input.type,
@@ -798,14 +788,10 @@ function BoardPage() {
           ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
         },
       };
-      // a Supabase builder fires a new request on every await — resolve it once
-      const insertPromise = Promise.resolve(
-        supabase.from("nodes").insert(payload as never).select("id,board_id,user_id,parent_id,type,title,position_x,position_y,width,height,color,source_url,storage_path,mime_type,content,status,error,metadata,created_at,updated_at").single(),
-      );
-      trackSave(insertPromise);
-      const { data, error } = await insertPromise;
-      if (error) throw error;
-      const record = data as unknown as NodeRecord;
+      // Das Modul erscheint sofort; das Speichern läuft über die Warteschlange
+      // und geht ohne Netz später automatisch raus.
+      saveOp(boardId, { kind: "node.insert", row: payload });
+      const record = { ...payload, error: null } as unknown as NodeRecord;
       markSelfWrite(record.id);
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
@@ -840,24 +826,17 @@ function BoardPage() {
         },
       ]);
       markSelfWrite(id);
-      trackSave(
-        supabase
-          .from("edges")
-          .insert({
-            id,
-            board_id: boardId,
-            user_id: user.id,
-            source_id: sourceId,
-            target_id: targetId,
-            label: text || null,
-          } as never)
-          .then(({ error }) => {
-            if (error) {
-              toast.error(error.message);
-              throw error;
-            }
-          }),
-      );
+      saveOp(boardId, {
+        kind: "edge.insert",
+        row: {
+          id,
+          board_id: boardId,
+          user_id: user.id,
+          source_id: sourceId,
+          target_id: targetId,
+          label: text || null,
+        },
+      });
     },
     [boardId, setEdges, user],
   );
@@ -872,18 +851,18 @@ function BoardPage() {
         ),
       );
       markSelfWrite(id);
-      trackSave(supabase.from("edges").update({ label: value || null }).eq("id", id));
+      saveOp(boardId, { kind: "edge.update", id, label: value || null });
     },
-    [setEdges],
+    [setEdges, boardId],
   );
 
   const deleteEdge = useCallback(
     (id: string) => {
       setEdges((current) => current.filter((edge) => edge.id !== id));
       markSelfWrite(id);
-      trackSave(supabase.from("edges").delete().eq("id", id));
+      saveOp(boardId, { kind: "edge.delete", ids: [id] });
     },
-    [setEdges],
+    [setEdges, boardId],
   );
 
   const collectContext = useCallback((id: string) => {
