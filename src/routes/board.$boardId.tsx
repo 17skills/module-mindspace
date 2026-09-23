@@ -144,8 +144,28 @@ import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
-import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste } from "lucide-react";
+import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste, Undo2, Redo2 } from "lucide-react";
 import { AppDialog } from "@/components/canvas/AppDialog";
+import {
+  HISTORY_LIMIT,
+  describe,
+  invert,
+  movedItems,
+  pushHistory,
+  type EdgeSnapshot,
+  type HistoryEntry,
+} from "@/lib/canvas-history";
+
+/** Verbindung auf die Felder reduzieren, die zum Wiederherstellen nötig sind. */
+function snapEdge(edge: { id: string; source: string; target: string; label?: unknown }): EdgeSnapshot {
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    label: typeof edge.label === "string" ? edge.label : null,
+  };
+}
+
 import { MAX_APP_MODULES } from "@/lib/apps";
 import { capture, readPayload, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
 
@@ -764,6 +784,47 @@ function BoardPage() {
     removeEdge: (id) => setEdges((current) => current.filter((edge) => edge.id !== id)),
   });
 
+  /* ---- Rückgängig / Wiederholen ---- */
+  const pastRef = useRef<HistoryEntry[]>([]);
+  const futureRef = useRef<HistoryEntry[]>([]);
+  const historyBusy = useRef(false);
+  const [historyTick, setHistoryTick] = useState(0);
+  const recordHistory = useCallback((entry: HistoryEntry) => {
+    if (historyBusy.current) return;
+    pastRef.current = pushHistory(pastRef.current, entry);
+    futureRef.current = [];
+    setHistoryTick((tick) => tick + 1);
+  }, []);
+
+  /** Startpositionen merken, damit ein Verschieben rückgängig gemacht werden kann. */
+  const dragStartRef = useRef<Record<string, { x: number; y: number }>>({});
+  const captureDragStart = useCallback((ids: string[]) => {
+    const wanted = new Set(ids);
+    const map: Record<string, { x: number; y: number }> = {};
+    for (const node of nodesRef.current) {
+      if (wanted.has(node.id) || node.selected) {
+        map[node.id] = { x: node.position.x, y: node.position.y };
+      }
+    }
+    dragStartRef.current = map;
+  }, []);
+
+  const recordMove = useCallback(
+    (dragged: { id: string; position: { x: number; y: number } }[]) => {
+      const items = movedItems(
+        dragged
+          .map((node) => {
+            const from = dragStartRef.current[node.id];
+            return from ? { id: node.id, from, to: { ...node.position } } : null;
+          })
+          .filter(Boolean) as { id: string; from: { x: number; y: number }; to: { x: number; y: number } }[],
+      );
+      if (items.length) recordHistory({ kind: "move", items });
+      dragStartRef.current = {};
+    },
+    [recordHistory],
+  );
+
   const patchRecord = useCallback((id: string, patch: Partial<NodeRecord>) => {
     setRecords((current) => {
       const existing = current[id];
@@ -803,6 +864,13 @@ function BoardPage() {
         if (ids.size === before) break;
       }
       const list = [...ids];
+      recordHistory({
+        kind: "nodes.remove",
+        rows: list.map((key) => recordsRef.current[key]).filter(Boolean) as NodeRecord[],
+        edges: edgesRef.current
+          .filter((e) => ids.has(e.source) || ids.has(e.target))
+          .map(snapEdge),
+      });
       setNodes((current) => current.filter((n) => !ids.has(n.id)));
       setEdges((current) => current.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
       setRecords((current) => {
@@ -813,7 +881,7 @@ function BoardPage() {
       markSelfWrite(...list);
       saveOp(boardId, { kind: "node.delete", ids: list });
     },
-    [setNodes, setEdges, boardId, canEditNode],
+    [setNodes, setEdges, boardId, canEditNode, recordHistory],
   );
 
   const createRecord = useCallback(
@@ -865,9 +933,10 @@ function BoardPage() {
           ? [toFlowNode(record), ...current]
           : [...current, toFlowNode(record)],
       );
+      recordHistory({ kind: "nodes.add", rows: [record], edges: [] });
       return record;
     },
-    [boardId, user, setNodes],
+    [boardId, user, setNodes, recordHistory],
   );
 
   const createEdge = useCallback(
@@ -892,6 +961,10 @@ function BoardPage() {
         },
       ]);
       markSelfWrite(id);
+      recordHistory({
+        kind: "edges.add",
+        edges: [{ id, source: sourceId, target: targetId, label: text || null }],
+      });
       saveOp(boardId, {
         kind: "edge.insert",
         row: {
@@ -924,12 +997,147 @@ function BoardPage() {
 
   const deleteEdge = useCallback(
     (id: string) => {
+      const existing = edgesRef.current.find((edge) => edge.id === id);
+      if (existing) recordHistory({ kind: "edges.remove", edges: [snapEdge(existing)] });
       setEdges((current) => current.filter((edge) => edge.id !== id));
       markSelfWrite(id);
       saveOp(boardId, { kind: "edge.delete", ids: [id] });
     },
-    [setEdges, boardId],
+    [setEdges, boardId, recordHistory],
   );
+
+  /** Einen Historien-Schritt tatsächlich auf den Canvas anwenden. */
+  const applyHistory = useCallback(
+    (entry: HistoryEntry) => {
+      historyBusy.current = true;
+      try {
+        if (entry.kind === "move") {
+          for (const item of entry.items) {
+            patchRecord(item.id, { position_x: item.to.x, position_y: item.to.y });
+            markSelfWrite(item.id);
+            saveOp(boardId, {
+              kind: "node.update",
+              id: item.id,
+              patch: { position_x: item.to.x, position_y: item.to.y },
+            });
+          }
+          setNodes((current) =>
+            current.map((node) => {
+              const item = entry.items.find((candidate) => candidate.id === node.id);
+              return item ? { ...node, position: { x: item.to.x, y: item.to.y } } : node;
+            }),
+          );
+          return;
+        }
+
+        if (entry.kind === "nodes.add" || entry.kind === "edges.add") {
+          if (entry.kind === "nodes.add") {
+            const rows = entry.rows;
+            setRecords((current) => {
+              const next = { ...current };
+              for (const row of rows) next[row.id] = row;
+              return next;
+            });
+            setNodes((current) => {
+              const known = new Set(current.map((node) => node.id));
+              const added = rows.filter((row) => !known.has(row.id)).map((row) => toFlowNode(row));
+              return [...current, ...added];
+            });
+            for (const row of rows) {
+              const { error: _error, ...payload } = row as NodeRecord & { error?: unknown };
+              markSelfWrite(row.id);
+              saveOp(boardId, { kind: "node.insert", row: payload as Record<string, unknown> });
+            }
+          }
+          const edges = entry.edges;
+          if (edges.length && user) {
+            setEdges((current) => {
+              const known = new Set(current.map((edge) => edge.id));
+              return [
+                ...current,
+                ...edges
+                  .filter((edge) => !known.has(edge.id))
+                  .map((edge) => ({
+                    id: edge.id,
+                    source: edge.source,
+                    target: edge.target,
+                    type: "labeled",
+                    ...(edge.label ? { label: edge.label } : {}),
+                  })),
+              ];
+            });
+            for (const edge of edges) {
+              markSelfWrite(edge.id);
+              saveOp(boardId, {
+                kind: "edge.insert",
+                row: {
+                  id: edge.id,
+                  board_id: boardId,
+                  user_id: user.id,
+                  source_id: edge.source,
+                  target_id: edge.target,
+                  label: edge.label,
+                },
+              });
+            }
+          }
+          return;
+        }
+
+        // Entfernen von Modulen und/oder Verbindungen
+        const edgeIds = new Set(entry.edges.map((edge) => edge.id));
+        const nodeIds = new Set(entry.kind === "nodes.remove" ? entry.rows.map((row) => row.id) : []);
+        if (nodeIds.size) {
+          setRecords((current) => {
+            const next = { ...current };
+            for (const id of nodeIds) delete next[id];
+            return next;
+          });
+          setNodes((current) => current.filter((node) => !nodeIds.has(node.id)));
+          markSelfWrite(...nodeIds);
+          saveOp(boardId, { kind: "node.delete", ids: [...nodeIds] });
+        }
+        setEdges((current) =>
+          current.filter(
+            (edge) =>
+              !edgeIds.has(edge.id) && !nodeIds.has(edge.source) && !nodeIds.has(edge.target),
+          ),
+        );
+        if (edgeIds.size) {
+          markSelfWrite(...edgeIds);
+          saveOp(boardId, { kind: "edge.delete", ids: [...edgeIds] });
+        }
+      } finally {
+        historyBusy.current = false;
+      }
+    },
+    [boardId, patchRecord, setEdges, setNodes, user],
+  );
+
+  const undo = useCallback(() => {
+    const entry = pastRef.current.at(-1);
+    if (!entry) return;
+    pastRef.current = pastRef.current.slice(0, -1);
+    futureRef.current = [...futureRef.current, entry].slice(-HISTORY_LIMIT);
+    applyHistory(invert(entry));
+    setHistoryTick((tick) => tick + 1);
+    toast.success(`Rückgängig: ${describe(entry)}`);
+  }, [applyHistory]);
+
+  const redo = useCallback(() => {
+    const entry = futureRef.current.at(-1);
+    if (!entry) return;
+    futureRef.current = futureRef.current.slice(0, -1);
+    pastRef.current = pushHistory(pastRef.current, entry);
+    applyHistory(entry);
+    setHistoryTick((tick) => tick + 1);
+    toast.success(`Wiederholt: ${describe(entry)}`);
+  }, [applyHistory]);
+
+  // historyTick sorgt dafür, dass die Knöpfe nach jedem Schritt neu bewertet werden.
+  const canUndo = useMemo(() => pastRef.current.length > 0, [historyTick]);
+  const canRedo = useMemo(() => futureRef.current.length > 0, [historyTick]);
+
 
   /** Entscheidung bei gleichzeitiger Änderung: eigene Fassung halten oder fremde übernehmen. */
   const resolveWith = useCallback(
@@ -1927,6 +2135,7 @@ function BoardPage() {
               decideRunning: false,
               answers: result.answers,
               decidedAt: result.at,
+              decideEngine: result.model || "typesafe/jev-latest",
             },
           });
         })
@@ -2633,6 +2842,16 @@ function BoardPage() {
       if (target?.isContentEditable) return;
       if (!(event.metaKey || event.ctrlKey)) return;
       const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        if (canEdit) undo();
+        return;
+      }
+      if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        if (canEdit) redo();
+        return;
+      }
       if (key === "g") {
         event.preventDefault();
         void groupSelection();
@@ -2655,7 +2874,7 @@ function BoardPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [groupSelection, copyModules, duplicateModules, pasteModules]);
+  }, [groupSelection, copyModules, duplicateModules, pasteModules, undo, redo, canEdit]);
 
   // Module mit engeren Rechten lassen sich weder ziehen noch löschen
   const guardedNodes = useMemo(
@@ -3175,24 +3394,28 @@ function BoardPage() {
               ensureReadableLayout(node.id);
               scheduleAutoHeight(node.id);
             }}
-            onNodeDragStart={() => {
+            onNodeDragStart={(_, node) => {
               interacting.current = true;
               suppressMeasure.current = Date.now() + 800;
+              captureDragStart([node.id]);
               setMenu(null);
             }}
             onNodeDragStop={(_, node) => {
               interacting.current = false;
               suppressMeasure.current = Date.now() + 500;
+              recordMove([node]);
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
               syncZone(node.id, node.position.x, node.position.y);
             }}
-            onSelectionDragStart={() => {
+            onSelectionDragStart={(_, dragged) => {
               interacting.current = true;
               suppressMeasure.current = Date.now() + 800;
+              captureDragStart(dragged.map((node) => node.id));
             }}
             onSelectionDragStop={(_, dragged) => {
               interacting.current = false;
               suppressMeasure.current = Date.now() + 500;
+              recordMove(dragged);
               for (const node of dragged) {
                 updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
                 syncZone(node.id, node.position.x, node.position.y);
@@ -3200,6 +3423,9 @@ function BoardPage() {
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
+              if (deleted.length) {
+                recordHistory({ kind: "edges.remove", edges: deleted.map(snapEdge) });
+              }
               deleted.forEach((e) => {
                 markSelfWrite(e.id);
                 saveOp(boardId, { kind: "edge.delete", ids: [e.id] });
@@ -3361,6 +3587,38 @@ function BoardPage() {
                     ? ` · ${Math.min(selectedModuleCount, MAX_APP_MODULES)}/${MAX_APP_MODULES} gewählt`
                     : ""}
                 </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Rückgängig"
+                    disabled={!canEdit || !canUndo}
+                    onClick={() => undo()}
+                  >
+                    <Undo2 className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Rückgängig (⌘Z)</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Wiederholen"
+                    disabled={!canEdit || !canRedo}
+                    onClick={() => redo()}
+                  >
+                    <Redo2 className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Wiederholen (⌘⇧Z)</TooltipContent>
               </Tooltip>
 
 

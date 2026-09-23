@@ -3191,6 +3191,11 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
             {confidence === null ? "–" : `${confidence} % sicher`}
           </span>
         </div>
+        {typeof meta["decideEngine"] === "string" && meta["decideEngine"] ? (
+          <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+            Engine: {meta["decideEngine"] as string}
+          </p>
+        ) : null}
       </div>
 
       <div className="nowheel flex-1 overflow-auto px-3 py-2">
