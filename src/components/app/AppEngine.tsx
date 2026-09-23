@@ -406,6 +406,12 @@ export function AppEngine({
     );
   }
 
+  if (mode === "executive") {
+    return <ExecutiveLayout nodes={nodes} actions={actions} />;
+  }
+
+
+
   if (mode === "feed") {
     return (
       <main className="mx-auto w-full max-w-xl flex-1 space-y-3 p-4">
