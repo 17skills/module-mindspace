@@ -4541,6 +4541,8 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
       data-selected={Boolean(selected)}
+      style={{ borderTop: `3px solid ${UNIT_TONE[signalTone(unit.status)]}` }}
+      title={unit.signal.explanation.headline}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={360} minHeight={320} />
       <SignalHandle type="target" position={Position.Left} />
