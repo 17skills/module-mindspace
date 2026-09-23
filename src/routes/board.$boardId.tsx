@@ -3150,6 +3150,8 @@ function BoardPage() {
 
           </ReactFlow>
 
+          <ConflictBar onChoose={resolveWith} />
+
           <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
             <div
               className={cn(
@@ -3650,6 +3652,35 @@ function fileToBase64(file: File) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+/** Zeigt, ob eine Verbindung besteht und wie viel noch auf Übertragung wartet. */
+function OfflineIndicator() {
+  const { online, pending } = useOfflineState();
+  if (online && pending === 0) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium",
+            online ? "text-muted-foreground" : "bg-[#E0682B]/10 text-[#E0682B]",
+          )}
+        >
+          <CloudOff className="size-3.5" />
+          {online
+            ? `${pending} wird übertragen`
+            : pending
+              ? `Ohne Netz · ${pending} gespeichert`
+              : "Ohne Netz"}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        Änderungen bleiben im Browser und gehen automatisch raus, sobald die Verbindung wieder da
+        ist.
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 function SaveIndicator() {
