@@ -4363,7 +4363,22 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     return [...fields, ...derived];
   }, [fields, sourceRows]);
 
-  const result = useMemo(() => evaluate(allFields), [allFields]);
+  /** Die Karte rechnet über ihren Modul-Vertrag: Ergebnis samt Ampel. */
+  const unit = useMemo(
+    () =>
+      runEvaluate(
+        riskUnit(),
+        { ports: {} },
+        {
+          fields: allFields,
+          gaps: sourceGaps.map(
+            (row) => `${row.label}: ${row.missing.join(", ")} fehlt · ${row.sourceName}, Zeile ${row.row}`,
+          ),
+        },
+      ),
+    [allFields, sourceGaps],
+  );
+  const result = useMemo(() => unit.output ?? evaluate(allFields), [unit, allFields]);
   const summary = useMemo(() => {
     const assessment = isoText(result);
     const parts = [assessment];
