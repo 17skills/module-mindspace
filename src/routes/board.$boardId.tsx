@@ -1927,6 +1927,7 @@ function BoardPage() {
               decideRunning: false,
               answers: result.answers,
               decidedAt: result.at,
+              decideEngine: result.model || "typesafe/jev-latest",
             },
           });
         })
