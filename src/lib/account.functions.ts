@@ -330,7 +330,7 @@ export const listMyAppAccess = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("apps")
-      .select("id,title,is_public,mcp_token,mcp_scope,updated_at,board_id")
+      .select("id,title,is_public,mcp_token,mcp_scope,updated_at,board_id,access_mode")
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -350,6 +350,8 @@ export const updateAppAccess = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { assertAppRole } = await import("@/lib/app-permissions.server");
+    await assertAppRole(context.userId, data.appId, "config_admin");
     const patch: {
       updated_at: string;
       mcp_token?: string;
@@ -362,11 +364,11 @@ export const updateAppAccess = createServerFn({ method: "POST" })
     if (data.scope) patch['mcp_scope'] = data.scope;
     if (typeof data.isPublic === "boolean") patch['is_public'] = data.isPublic;
 
-    const { data: row, error } = await context.supabase
+    const db = await admin();
+    const { data: row, error } = await db
       .from("apps")
       .update(patch)
       .eq("id", data.appId)
-      .eq("user_id", context.userId)
       .select("id,mcp_token,mcp_scope,is_public")
       .maybeSingle();
     if (error) throw new Error(error.message);

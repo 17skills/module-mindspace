@@ -5,6 +5,7 @@ import { Copy, KeyRound } from "lucide-react";
 import { listMyAppAccess, updateAppAccess } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AppAccessManager } from "@/components/app/AppAccessManager";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -120,6 +121,9 @@ function AppAccessPage() {
                   <KeyRound className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   Schlüssel neu erzeugen
                 </Button>
+              </div>
+              <div className="mt-4">
+                <AppAccessManager appId={app.id} />
               </div>
             </li>
           );

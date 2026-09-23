@@ -64,9 +64,48 @@ export type Database = {
           },
         ]
       }
+      app_permissions: {
+        Row: {
+          app_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          role: string
+          subject_id: string
+          subject_type: string
+        }
+        Insert: {
+          app_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role: string
+          subject_id: string
+          subject_type: string
+        }
+        Update: {
+          app_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: string
+          subject_id?: string
+          subject_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_permissions_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apps: {
         Row: {
           access_expires_at: string | null
+          access_mode: string
           access_revoked_at: string | null
           audience: string
           board_id: string
@@ -89,6 +128,7 @@ export type Database = {
         }
         Insert: {
           access_expires_at?: string | null
+          access_mode?: string
           access_revoked_at?: string | null
           audience?: string
           board_id: string
@@ -111,6 +151,7 @@ export type Database = {
         }
         Update: {
           access_expires_at?: string | null
+          access_mode?: string
           access_revoked_at?: string | null
           audience?: string
           board_id?: string

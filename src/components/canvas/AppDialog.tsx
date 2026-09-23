@@ -32,9 +32,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { AppEngine } from "@/components/app/AppEngine";
+import { AppAccessManager } from "@/components/app/AppAccessManager";
 import { executiveView } from "@/lib/app-executive";
 import { APP_LAYOUTS, buildFreeLayout, resolveLayout } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
+import { deleteDeliveredApp, saveDeliveredApp, setDeliveredAppPublished } from "@/lib/app-config.functions";
 import {
   APP_DESIGN_PRESETS,
   DEFAULT_APP_BRANDING,
@@ -268,7 +270,6 @@ export function AppDialog({
   open,
   onOpenChange,
   boardId,
-  userId,
   candidates,
   preselected,
 }: {
@@ -403,41 +404,27 @@ export function AppDialog({
       title: name,
       description: description.trim(),
       kind,
-      node_ids: picked,
-      mcp_scope: scope,
+      nodeIds: picked,
+      mcpScope: scope,
       channels,
       audience: audience.trim(),
-      lead_question: leadQuestion.trim(),
+      leadQuestion: leadQuestion.trim(),
       branding: { ...branding, title: title.trim() },
     };
-    if (editing) {
-      const { error } = await supabase
-        .from("apps")
-        .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq("id", editing);
+    try {
+      const saved = await saveDeliveredApp({ data: { appId: editing, boardId, app: payload } });
       setSaving(false);
-      if (error) {
-        toast.error(error.message);
-        return;
+      if (editing) toast.success("App aktualisiert – Link und KI-Anschluss bleiben gleich");
+      else {
+        toast.success("App ausgeliefert");
+        resetForm([]);
+        void showQr(saved.id);
       }
-      toast.success("App aktualisiert – Link und KI-Anschluss bleiben gleich");
       await reload();
-      return;
+    } catch (error) {
+      setSaving(false);
+      toast.error(error instanceof Error ? error.message : "App konnte nicht gespeichert werden");
     }
-    const { data, error } = await supabase
-      .from("apps")
-      .insert({ user_id: userId, board_id: boardId, ...payload })
-      .select("id")
-      .single();
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("App ausgeliefert");
-    resetForm([]);
-    await reload();
-    void showQr(String(data.id));
   };
 
   const edit = (app: Row) => {
@@ -455,9 +442,10 @@ export function AppDialog({
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("apps").delete().eq("id", id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await deleteDeliveredApp({ data: { appId: id } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "App konnte nicht gelöscht werden");
       return;
     }
     if (qr?.id === id) setQr(null);
@@ -468,12 +456,10 @@ export function AppDialog({
   /** App veröffentlichen oder wieder abschalten – der Link bleibt erhalten. */
   const togglePublic = async (app: Row) => {
     const next = !app.is_public;
-    const { error } = await supabase
-      .from("apps")
-      .update({ is_public: next, updated_at: new Date().toISOString() })
-      .eq("id", app.id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await setDeliveredAppPublished({ data: { appId: app.id, published: next } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Veröffentlichung konnte nicht geändert werden");
       return;
     }
     toast.success(next ? "App ist jetzt öffentlich erreichbar" : "App ist abgeschaltet");
@@ -802,9 +788,14 @@ export function AppDialog({
               </label>
             </div>
             <p className="text-sm text-muted-foreground">
-              Menschen öffnen die App über den Link – ohne Konto. KI-Assistenten brauchen zusätzlich
-              den Schlüssel dieser App.
+              Lege getrennt fest, wer ansehen, operative Daten aktualisieren oder die Konfiguration ändern darf.
             </p>
+            {editing ? (
+              <AppAccessManager appId={editing} />
+            ) : (
+              <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Personen- und Teamrollen kannst du nach dem ersten Ausliefern festlegen.</p>
+            )}
+            <span className="module-eyebrow text-muted-foreground">KI-Schlüssel</span>
             <div className="grid gap-2 sm:grid-cols-2">
               {(
                 [

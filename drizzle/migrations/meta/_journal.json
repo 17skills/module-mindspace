@@ -155,6 +155,27 @@
       "when": 1790148122071,
       "tag": "0021_app_delivery_channels",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790151097757,
+      "tag": "0022_app_role_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790151129794,
+      "tag": "0023_app_permission_policy_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790151219395,
+      "tag": "0024_protect_app_credentials_from_viewers",
+      "breakpoints": true
     }
   ]
 }

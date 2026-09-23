@@ -8,13 +8,30 @@ import {
   loadPublicApp,
   type FindingWrite,
 } from "@/lib/app-data.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { appRoleOf, assertAppRole, optionalRequestUserId } from "@/lib/app-permissions.server";
 
 type Json = Record<string, unknown>;
+
+async function auditDataChange(actorId: string, appId: string, action: string, detail?: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin.from("audit_log").insert({
+    actor_id: actorId,
+    subject_user_id: actorId,
+    action,
+    object_type: "app",
+    object_id: appId,
+    detail: detail ?? null,
+  });
+}
 
 /** Öffentliche Bühne: App-Einstellungen plus die zugehörigen Module. */
 export const getPublicApp = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ appId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
+    const userId = await optionalRequestUserId();
+    const role = await appRoleOf(userId, data.appId);
+    if (!role) throw new Error("Diese App ist nur für freigegebene Personen verfügbar.");
     const { app, nodes, boardTitle } = await loadAppNodes(data.appId);
     return {
       app: {
@@ -26,11 +43,13 @@ export const getPublicApp = createServerFn({ method: "POST" })
       },
       boardTitle,
       nodesJson: JSON.stringify(nodes),
+      role,
     };
   });
 
 /** Bewertet ein vor Ort aufgenommenes Foto für eine freigegebene App. */
 export const appAssessPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
     z
       .object({
@@ -42,7 +61,8 @@ export const appAssessPhoto = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertAppRole(context.userId, data.appId, "data_editor");
     const { app } = await loadPublicApp(data.appId);
     const { assessPhoto } = await import("@/lib/inspection-vision.server");
     const { loadAiKeyConfigForOwner } = await import("@/lib/ai-keys.server");
@@ -77,10 +97,12 @@ const FindingInput = z.object({
 
 /** Neuen Befund aus der mobilen Erfassung in das Inspektionsmodul schreiben. */
 export const appAddFinding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
     z.object({ appId: z.string().uuid(), finding: FindingInput }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertAppRole(context.userId, data.appId, "data_editor");
     const write: FindingWrite = {
       ...data.finding,
       lat: data.finding.lat,
@@ -88,11 +110,14 @@ export const appAddFinding = createServerFn({ method: "POST" })
       thumb: data.finding.thumb,
       photo: data.finding.photo,
     };
-    return insertFinding(data.appId, write);
+    const result = await insertFinding(data.appId, write);
+    await auditDataChange(context.userId, data.appId, "app.data.finding_added", result.id);
+    return result;
   });
 
 /** Status einer Maßnahme aus dem Cockpit heraus ändern. */
 export const appSetFindingStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
     z
       .object({
@@ -103,4 +128,9 @@ export const appSetFindingStatus = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => changeFinding(data.appId, data.findingId, { status: data.status }));
+  .handler(async ({ data, context }) => {
+    await assertAppRole(context.userId, data.appId, "data_editor");
+    const result = await changeFinding(data.appId, data.findingId, { status: data.status }, data.nodeId);
+    await auditDataChange(context.userId, data.appId, "app.data.finding_status_changed", `${data.findingId}:${data.status}`);
+    return result;
+  });
