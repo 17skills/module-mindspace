@@ -139,9 +139,8 @@ import {
 } from "@/lib/ingest.functions";
 
 export const Route = createFileRoute("/board/$boardId")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    focus: typeof search["focus"] === "string" ? (search["focus"] as string) : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { focus?: string } =>
+    typeof search["focus"] === "string" ? { focus: search["focus"] } : {},
   head: () => ({
     meta: [
       { title: "Scope – scopebuilder" },
@@ -491,11 +490,11 @@ function BoardPage() {
   const downloadBackup = useCallback(async () => {
     try {
       const backup = await exportBoard({ data: { boardId } });
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const blob = new Blob([backup.json], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${(backup.board.title || "scope").replace(/[^\w-]+/g, "-").toLowerCase()}-sicherung.json`;
+      link.download = `${(backup.title || "scope").replace(/[^\w-]+/g, "-").toLowerCase()}-sicherung.json`;
       link.click();
       URL.revokeObjectURL(url);
       toast.success("Sicherung heruntergeladen");

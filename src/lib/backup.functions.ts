@@ -65,15 +65,18 @@ export const exportBoard = createServerFn({ method: "POST" })
     }
 
     return {
-      version: BACKUP_VERSION,
-      exportedAt: new Date().toISOString(),
-      board: {
-        title: boardRes.data.title,
-        description: boardRes.data.description ?? null,
-      },
-      nodes,
-      edges: (edgeRes.data ?? []) as unknown as Record<string, unknown>[],
-      mcpServers,
+      title: String(boardRes.data.title ?? "scope"),
+      json: JSON.stringify({
+        version: BACKUP_VERSION,
+        exportedAt: new Date().toISOString(),
+        board: {
+          title: boardRes.data.title,
+          description: boardRes.data.description ?? null,
+        },
+        nodes,
+        edges: (edgeRes.data ?? []) as unknown as Record<string, unknown>[],
+        mcpServers,
+      }),
     };
   });
 
@@ -109,11 +112,17 @@ function remapMetadata(
 export const importBoard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
-    z.object({ backup: BackupSchema, title: z.string().max(200).optional() }).parse(input),
+    z.object({ backupJson: z.string().max(20_000_000), title: z.string().max(200).optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertActiveUser(context.userId);
-    if (data.backup.version > BACKUP_VERSION) {
+    let backup: z.infer<typeof BackupSchema>;
+    try {
+      backup = BackupSchema.parse(JSON.parse(data.backupJson));
+    } catch {
+      throw new Error("Diese Datei ist keine gültige scopebuilder-Sicherung");
+    }
+    if (backup.version > BACKUP_VERSION) {
       throw new Error("Diese Sicherung stammt aus einer neueren Version");
     }
     const db = await admin();
@@ -125,8 +134,8 @@ export const importBoard = createServerFn({ method: "POST" })
       .insert({
         user_id: context.userId,
         org_id: (orgId as { id?: string } | null)?.id ?? null,
-        title: data.title?.trim() || data.backup.board.title,
-        description: data.backup.board.description,
+        title: data.title?.trim() || backup.board.title,
+        description: backup.board.description,
       })
       .select("id")
       .single();
@@ -134,24 +143,24 @@ export const importBoard = createServerFn({ method: "POST" })
 
     // MCP-Server der Sicherung auf eigene Server mit gleicher Adresse abbilden.
     const serverMap = new Map<string, string>();
-    if (data.backup.mcpServers.length) {
+    if (backup.mcpServers.length) {
       const { data: mine } = await db
         .from("mcp_servers")
         .select("id,url")
         .eq("user_id", context.userId);
       const byUrl = new Map((mine ?? []).map((row) => [String(row.url), String(row.id)]));
-      for (const server of data.backup.mcpServers) {
+      for (const server of backup.mcpServers) {
         const target = byUrl.get(String(server["url"] ?? ""));
         if (target) serverMap.set(String(server["id"]), target);
       }
     }
 
     const idMap = new Map<string, string>();
-    for (const node of data.backup.nodes) {
+    for (const node of backup.nodes) {
       idMap.set(String(node["id"]), crypto.randomUUID());
     }
 
-    const rows = data.backup.nodes.map((node) => {
+    const rows = backup.nodes.map((node) => {
       const oldParent = node["parent_id"];
       return {
         id: idMap.get(String(node["id"]))!,
@@ -180,7 +189,7 @@ export const importBoard = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    const edgeRows = data.backup.edges
+    const edgeRows = backup.edges
       .map((edge) => {
         const source = idMap.get(String(edge["source_id"]));
         const target = idMap.get(String(edge["target_id"]));
@@ -199,7 +208,7 @@ export const importBoard = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    const missingServers = data.backup.mcpServers.filter(
+    const missingServers = backup.mcpServers.filter(
       (server) => !serverMap.has(String(server["id"])),
     ).length;
 

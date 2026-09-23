@@ -55,8 +55,7 @@ function LibraryPage() {
 
   const restoreBackup = useMutation({
     mutationFn: async (file: File) => {
-      const backup = JSON.parse(await file.text()) as unknown;
-      return importBoard({ data: { backup: backup as never } });
+      return importBoard({ data: { backupJson: await file.text() } });
     },
     onSuccess: (result) => {
       toast.success(
