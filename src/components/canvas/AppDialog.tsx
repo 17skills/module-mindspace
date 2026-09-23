@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { AppEngine } from "@/components/app/AppEngine";
+import { executiveView } from "@/lib/app-executive";
 import { APP_LAYOUTS, buildFreeLayout, resolveLayout } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
 import {
@@ -95,6 +96,174 @@ const PROMPTS = [
   "Setze den Befund mit der höchsten Dringlichkeit auf „beauftragt“ und trage Team West als zuständig ein.",
 ];
 
+type PreviewChannel = "cockpit" | "teams";
+
+const PREVIEW_SIGNAL = {
+  ok: { label: "Grün", dot: "bg-brand-green-deep", text: "text-brand-green-deep" },
+  warn: { label: "Bernstein", dot: "bg-brand-orange", text: "text-brand-orange" },
+  alert: { label: "Rot", dot: "bg-destructive", text: "text-destructive" },
+} as const;
+
+function TeamsCardPreview({
+  nodes,
+  title,
+  description,
+  leadQuestion,
+}: {
+  nodes: NodeRecord[];
+  title: string;
+  description: string;
+  leadQuestion: string;
+}) {
+  const view = useMemo(() => executiveView(nodes), [nodes]);
+  const signal = PREVIEW_SIGNAL[view.signal];
+  return (
+    <div className="mx-auto w-full max-w-[430px] rounded-lg border border-border bg-card p-5 shadow-[var(--shadow-card)]">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4">
+        <div className="min-w-0">
+          <p className="font-display text-lg font-semibold leading-tight">
+            {title.trim() || "Titel der App"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">scopebuilder · Entscheidungskarte</p>
+        </div>
+        <div className={`flex items-center gap-1.5 text-xs font-semibold ${signal.text}`}>
+          <span className={`size-2.5 rounded-full ${signal.dot}`} aria-hidden />
+          {signal.label}
+        </div>
+      </div>
+      <p className={`mt-5 text-base font-semibold ${signal.text}`}>{view.headline}</p>
+      {(leadQuestion.trim() || description.trim()) && (
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          {leadQuestion.trim() || description.trim()}
+        </p>
+      )}
+      {view.drivers.length > 0 ? (
+        <dl className="mt-5 divide-y divide-border border-y border-border">
+          {view.drivers.map((driver) => (
+            <div key={driver.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-2.5">
+              <dt className="min-w-0 text-xs text-muted-foreground">
+                <span className="block truncate font-medium text-foreground">{driver.label}</span>
+                <span className="line-clamp-1">{driver.hint}</span>
+              </dt>
+              <dd className="self-center text-right font-mono text-sm font-medium">{driver.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="mt-5 border-y border-border py-4 text-sm text-muted-foreground">
+          Wähle Module, damit Kennzahlen und Entscheidungstreiber erscheinen.
+        </p>
+      )}
+      <p className="mt-3 text-[11px] text-muted-foreground">Stand: Vorschau · Änderungen noch nicht veröffentlicht</p>
+      <Button className="mt-4 w-full" size="sm" disabled>
+        Entscheider-Cockpit öffnen
+      </Button>
+    </div>
+  );
+}
+
+function DeploymentPreview({
+  nodes,
+  title,
+  description,
+  leadQuestion,
+  kind,
+  branding,
+  device,
+  channel,
+  channels,
+  onDeviceChange,
+  onChannelChange,
+  onModuleLayoutChange,
+}: {
+  nodes: NodeRecord[];
+  title: string;
+  description: string;
+  leadQuestion: string;
+  kind: "capture" | "cockpit";
+  branding: AppBranding;
+  device: "desktop" | "mobile";
+  channel: PreviewChannel;
+  channels: Channels;
+  onDeviceChange: (device: "desktop" | "mobile") => void;
+  onChannelChange: (channel: PreviewChannel) => void;
+  onModuleLayoutChange: (moduleLayout: AppBranding["moduleLayout"]) => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2">
+        <div className="flex rounded-lg border border-border bg-background p-0.5">
+          <Button size="sm" variant={channel === "cockpit" ? "secondary" : "ghost"} onClick={() => onChannelChange("cockpit")}>
+            <Monitor className="size-3.5" />
+            Cockpit
+          </Button>
+          <Button size="sm" variant={channel === "teams" ? "secondary" : "ghost"} onClick={() => onChannelChange("teams")}>
+            <MessageSquare className="size-3.5" />
+            Teams-Karte
+          </Button>
+        </div>
+        {!channels[channel === "cockpit" ? "web" : "teams"] && (
+          <span className="text-[11px] text-muted-foreground">Kanal nicht ausgewählt</span>
+        )}
+        {channel === "cockpit" && (
+          <div className="ml-auto flex gap-1">
+            <Button size="icon" variant={device === "desktop" ? "secondary" : "ghost"} aria-label="Desktop-Vorschau" title="Desktop-Vorschau" onClick={() => onDeviceChange("desktop")}>
+              <Monitor className="size-3.5" />
+            </Button>
+            <Button size="icon" variant={device === "mobile" ? "secondary" : "ghost"} aria-label="Mobile Vorschau" title="Mobile Vorschau" onClick={() => onDeviceChange("mobile")}>
+              <Smartphone className="size-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
+        {channel === "teams" ? (
+          <TeamsCardPreview nodes={nodes} title={title} description={description} leadQuestion={leadQuestion} />
+        ) : (
+          <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${device === "mobile" ? "w-full max-w-[390px]" : "w-full"}`}>
+            <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}>
+              <header className="app-header grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-2.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  {branding.logo ? (
+                    <img src={branding.logo} alt="" className="app-brand-logo shrink-0 rounded-md bg-card object-contain p-1" style={{ width: branding.logoSize, height: branding.logoSize }} />
+                  ) : (
+                    <div className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
+                  )}
+                  <div className="min-w-0">
+                    <span className="module-eyebrow block text-muted-foreground">Entscheider-Cockpit</span>
+                    <span className="block truncate font-display text-base font-semibold">{title.trim() || "Titel der App"}</span>
+                  </div>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">Live</span>
+              </header>
+              {leadQuestion.trim() && (
+                <div className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground">
+                  {leadQuestion.trim()}
+                </div>
+              )}
+              {kind === "capture" ? (
+                <div className="flex-1 space-y-3 p-4">
+                  <div className="flex aspect-[4/3] w-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">Kamera-Fläche</div>
+                  <div className="h-12 rounded-lg bg-primary/90" />
+                  <p className="text-xs text-muted-foreground">Foto, Standort und KI-Bewertung – so sieht die Erfassung auf dem Handy aus.</p>
+                </div>
+              ) : (
+                <AppEngine
+                  nodes={nodes}
+                  layout="executive"
+                  moduleLayout={branding.moduleLayout}
+                  compactPreview={device === "mobile"}
+                  onModuleLayoutChange={onModuleLayoutChange}
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AppDialog({
   open,
   onOpenChange,
@@ -115,6 +284,7 @@ export function AppDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewChannel, setPreviewChannel] = useState<PreviewChannel>("cockpit");
   const [scope, setScope] = useState<"read" | "write">("read");
   const [channels, setChannels] = useState<Channels>(DEFAULT_CHANNELS);
   const [audience, setAudience] = useState("");
@@ -417,12 +587,13 @@ export function AppDialog({
           <div className="min-h-0 overflow-auto border-border/70 px-6 py-4 lg:border-r">
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full justify-start">
+          <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="module">1 · Module</TabsTrigger>
             <TabsTrigger value="design">2 · Gestaltung</TabsTrigger>
             <TabsTrigger value="access">3 · Zugriff</TabsTrigger>
             <TabsTrigger value="deliver">4 · Ausliefern</TabsTrigger>
             <TabsTrigger value="docs">5 · KI</TabsTrigger>
+            <TabsTrigger value="preview" className="lg:hidden">6 · Vorschau</TabsTrigger>
           </TabsList>
 
 
@@ -909,88 +1080,41 @@ export function AppDialog({
               );
             })()}
           </TabsContent>
+
+          <TabsContent value="preview" className="-mx-6 -mb-4 lg:hidden">
+            <DeploymentPreview
+              nodes={pickedNodes}
+              title={title}
+              description={description}
+              leadQuestion={leadQuestion}
+              kind={kind}
+              branding={branding}
+              device={device}
+              channel={previewChannel}
+              channels={channels}
+              onDeviceChange={setDevice}
+              onChannelChange={setPreviewChannel}
+              onModuleLayoutChange={(moduleLayout) => setBranding((value) => ({ ...value, moduleLayout }))}
+            />
+          </TabsContent>
         </Tabs>
           </div>
 
-          <div className="hidden min-h-0 flex-col bg-muted/40 lg:flex">
-            <div className="flex items-center gap-2 border-b border-border/70 px-4 py-2">
-              <span className="module-eyebrow text-muted-foreground">Live-Vorschau</span>
-              <div className="ml-auto flex gap-1">
-                <Button
-                  size="sm"
-                  variant={device === "desktop" ? "secondary" : "ghost"}
-                  onClick={() => setDevice("desktop")}
-                >
-                  <Monitor className="size-3.5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant={device === "mobile" ? "secondary" : "ghost"}
-                  onClick={() => setDevice("mobile")}
-                >
-                  <Smartphone className="size-3.5" />
-                </Button>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-auto p-4">
-              <div
-                className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${
-                  device === "mobile" ? "w-[390px]" : "w-full"
-                }`}
-              >
-                <div
-                  className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}
-                >
-                  <header className="app-header grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-2.5">
-                    <div className="flex min-w-0 items-center gap-3">
-                      {branding.logo ? (
-                        <img
-                          src={branding.logo}
-                          alt=""
-                          className="app-brand-logo shrink-0 rounded-md bg-card object-contain p-1"
-                          style={{ width: branding.logoSize, height: branding.logoSize }}
-                        />
-                      ) : (
-                        <div className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
-                      )}
-                      <div className="min-w-0">
-                        <span className="module-eyebrow block text-muted-foreground">
-                          {kind === "capture" ? "Vor-Ort-Erfassung" : "Scope-App"}
-                        </span>
-                        <span className="block truncate font-display text-base font-semibold">
-                          {title.trim() || "Titel der App"}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {APP_LAYOUTS.find((item) => item.id === branding.layout)?.label}
-                    </span>
-                  </header>
-                  {kind === "capture" ? (
-                    <div className="flex-1 space-y-3 p-4">
-                      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-                        Kamera-Fläche
-                      </div>
-                      <div className="h-12 rounded-lg bg-primary/90" />
-                      <p className="text-xs text-muted-foreground">
-                        Foto, Standort und KI-Bewertung – so sieht die Erfassung auf dem Handy aus.
-                      </p>
-                    </div>
-                  ) : (
-                    <AppEngine
-                      nodes={pickedNodes}
-                      layout={branding.layout}
-                      moduleLayout={branding.moduleLayout}
-                      editable={branding.layout === "free"}
-                      compactPreview={device === "mobile"}
-                      onModuleLayoutChange={(moduleLayout) =>
-                        setBranding((value) => ({ ...value, moduleLayout }))
-                      }
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="hidden min-h-0 flex-col lg:flex">
+            <DeploymentPreview
+              nodes={pickedNodes}
+              title={title}
+              description={description}
+              leadQuestion={leadQuestion}
+              kind={kind}
+              branding={branding}
+              device={device}
+              channel={previewChannel}
+              channels={channels}
+              onDeviceChange={setDevice}
+              onChannelChange={setPreviewChannel}
+              onModuleLayoutChange={(moduleLayout) => setBranding((value) => ({ ...value, moduleLayout }))}
+            />
           </div>
         </div>
       </DialogContent>
