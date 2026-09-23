@@ -7,7 +7,7 @@ import type { SourceFormat } from "@/lib/runtime/source-protocol";
 
 export interface SniffInput {
   name?: string;
-  mediaType?: string | null;
+  mediaType?: string | null | undefined;
   bytes?: Uint8Array;
   text?: string;
 }

@@ -27,12 +27,12 @@ import {
 export interface IngestOptions {
   /** Name shown to the user: file name, endpoint, "Notiz". */
   sourceName: string;
-  originKind?: SourceOriginKind;
-  mediaType?: string | null;
+  originKind?: SourceOriginKind | undefined;
+  mediaType?: string | null | undefined;
   /** Sheet, endpoint or section the payload came from. */
-  container?: string | null;
-  id?: string;
-  ingestedAt?: string;
+  container?: string | null | undefined;
+  id?: string | undefined;
+  ingestedAt?: string | undefined;
 }
 
 function envelopeOf(
@@ -108,7 +108,7 @@ function facetsFromJson(text: string): SourceFacets {
 /** Binary input: workbooks are parsed, images/blobs stay a storage pointer. */
 export function ingestBytes(
   bytes: Uint8Array,
-  options: IngestOptions & { storageKey?: string },
+  options: IngestOptions & { storageKey?: string | undefined },
 ): SourceEnvelope {
   const format = detectFormat({
     name: options.sourceName,
@@ -151,9 +151,9 @@ export function ingestBytes(
 /** Browser drop: one call for every file the user throws on the canvas. */
 export async function ingestFile(
   file: File,
-  options?: Partial<IngestOptions> & { storageKey?: string },
+  options?: Partial<IngestOptions> & { storageKey?: string | undefined },
 ): Promise<SourceEnvelope> {
-  const base: IngestOptions & { storageKey?: string } = {
+  const base: IngestOptions & { storageKey?: string | undefined } = {
     sourceName: options?.sourceName ?? file.name,
     originKind: options?.originKind ?? "file",
     mediaType: options?.mediaType ?? file.type ?? null,
