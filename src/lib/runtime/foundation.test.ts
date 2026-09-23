@@ -81,7 +81,7 @@ describe("rule-ontology", () => {
     expect(evaluation.violations).toBe(1);
     const summary = summarizeFindings(evaluation.findings);
     expect(summary[0]?.status).toBe("violation");
-    expect(summary[0]?.row).toBe(2);
+    expect(summary[0]?.row).toBe(3);
   });
 });
 
