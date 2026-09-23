@@ -2869,7 +2869,7 @@ function BoardPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [groupSelection, copyModules, duplicateModules, pasteModules]);
+  }, [groupSelection, copyModules, duplicateModules, pasteModules, undo, redo, canEdit]);
 
   // Module mit engeren Rechten lassen sich weder ziehen noch löschen
   const guardedNodes = useMemo(
