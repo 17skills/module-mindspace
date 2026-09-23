@@ -68,14 +68,17 @@ export type Database = {
         Row: {
           access_expires_at: string | null
           access_revoked_at: string | null
+          audience: string
           board_id: string
           branding: Json
+          channels: Json
           created_at: string
           description: string
           id: string
           is_public: boolean
           kind: string
           last_access_at: string | null
+          lead_question: string
           mcp_scope: string
           mcp_token: string
           node_ids: Json
@@ -87,14 +90,17 @@ export type Database = {
         Insert: {
           access_expires_at?: string | null
           access_revoked_at?: string | null
+          audience?: string
           board_id: string
           branding?: Json
+          channels?: Json
           created_at?: string
           description?: string
           id?: string
           is_public?: boolean
           kind?: string
           last_access_at?: string | null
+          lead_question?: string
           mcp_scope?: string
           mcp_token?: string
           node_ids?: Json
@@ -106,14 +112,17 @@ export type Database = {
         Update: {
           access_expires_at?: string | null
           access_revoked_at?: string | null
+          audience?: string
           board_id?: string
           branding?: Json
+          channels?: Json
           created_at?: string
           description?: string
           id?: string
           is_public?: boolean
           kind?: string
           last_access_at?: string | null
+          lead_question?: string
           mcp_scope?: string
           mcp_token?: string
           node_ids?: Json
