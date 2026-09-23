@@ -642,7 +642,14 @@ function BoardPage() {
       setTitle(boardRes.data.title);
       const owner = boardRes.data.user_id === userId;
       setIsOwner(owner);
-      setRole(owner ? "owner" : memberRes.data?.role === "editor" ? "editor" : "viewer");
+      const memberRole = memberRes.data?.role;
+      setRole(
+        owner
+          ? "owner"
+          : memberRole === "editor" || memberRole === "commenter" || memberRole === "viewer"
+            ? memberRole
+            : "viewer",
+      );
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
@@ -752,12 +759,16 @@ function BoardPage() {
 
   const updateNode = useCallback(
     (id: string, patch: Partial<NodeRecord>) => {
+      if (!canEditNode(id)) {
+        toast.error("Dieses Modul darfst du nicht bearbeiten");
+        return;
+      }
       patchRecord(id, patch);
       markSelfWrite(id);
       markLocalEdit(id, Object.keys(patch));
       saveOp(boardId, { kind: "node.update", id, patch: patch as Record<string, unknown> });
     },
-    [patchRecord, boardId],
+    [patchRecord, boardId, canEditNode],
   );
 
   const deleteNode = useCallback(
