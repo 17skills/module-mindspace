@@ -33,6 +33,7 @@ import { Route as AuthenticatedKontoKiSchluesselRouteImport } from './routes/_au
 import { Route as AuthenticatedKontoMcpRouteImport } from './routes/_authenticated/konto.mcp'
 import { Route as AuthenticatedKontoMitgliederRouteImport } from './routes/_authenticated/konto.mitglieder'
 import { Route as AuthenticatedKontoOrganisationRouteImport } from './routes/_authenticated/konto.organisation'
+import { Route as AuthenticatedKontoSitzungenRouteImport } from './routes/_authenticated/konto.sitzungen'
 import { Route as AuthenticatedKontoTeamsRouteImport } from './routes/_authenticated/konto.teams'
 import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
@@ -162,6 +163,12 @@ const AuthenticatedKontoOrganisationRoute =
     path: '/organisation',
     getParentRoute: () => AuthenticatedKontoRoute,
   } as any)
+const AuthenticatedKontoSitzungenRoute =
+  AuthenticatedKontoSitzungenRouteImport.update({
+    id: '/sitzungen',
+    path: '/sitzungen',
+    getParentRoute: () => AuthenticatedKontoRoute,
+  } as any)
 const AuthenticatedKontoTeamsRoute = AuthenticatedKontoTeamsRouteImport.update({
   id: '/teams',
   path: '/teams',
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto/': typeof AuthenticatedKontoIndexRoute
@@ -228,6 +236,7 @@ export interface FileRoutesByTo {
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto': typeof AuthenticatedKontoIndexRoute
@@ -258,6 +267,7 @@ export interface FileRoutesById {
   '/_authenticated/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/_authenticated/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/_authenticated/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/_authenticated/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/_authenticated/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/_authenticated/konto/': typeof AuthenticatedKontoIndexRoute
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/konto/mcp'
     | '/konto/mitglieder'
     | '/konto/organisation'
+    | '/konto/sitzungen'
     | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto/'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/konto/mcp'
     | '/konto/mitglieder'
     | '/konto/organisation'
+    | '/konto/sitzungen'
     | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto'
@@ -344,6 +356,7 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/mcp'
     | '/_authenticated/konto/mitglieder'
     | '/_authenticated/konto/organisation'
+    | '/_authenticated/konto/sitzungen'
     | '/_authenticated/konto/teams'
     | '/embed/zone/$zoneId'
     | '/_authenticated/konto/'
@@ -539,6 +552,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKontoOrganisationRouteImport
       parentRoute: typeof AuthenticatedKontoRoute
     }
+    '/_authenticated/konto/sitzungen': {
+      id: '/_authenticated/konto/sitzungen'
+      path: '/sitzungen'
+      fullPath: '/konto/sitzungen'
+      preLoaderRoute: typeof AuthenticatedKontoSitzungenRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
     '/_authenticated/konto/teams': {
       id: '/_authenticated/konto/teams'
       path: '/teams'
@@ -572,6 +592,7 @@ interface AuthenticatedKontoRouteChildren {
   AuthenticatedKontoMcpRoute: typeof AuthenticatedKontoMcpRoute
   AuthenticatedKontoMitgliederRoute: typeof AuthenticatedKontoMitgliederRoute
   AuthenticatedKontoOrganisationRoute: typeof AuthenticatedKontoOrganisationRoute
+  AuthenticatedKontoSitzungenRoute: typeof AuthenticatedKontoSitzungenRoute
   AuthenticatedKontoTeamsRoute: typeof AuthenticatedKontoTeamsRoute
   AuthenticatedKontoIndexRoute: typeof AuthenticatedKontoIndexRoute
 }
@@ -585,6 +606,7 @@ const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
   AuthenticatedKontoMcpRoute: AuthenticatedKontoMcpRoute,
   AuthenticatedKontoMitgliederRoute: AuthenticatedKontoMitgliederRoute,
   AuthenticatedKontoOrganisationRoute: AuthenticatedKontoOrganisationRoute,
+  AuthenticatedKontoSitzungenRoute: AuthenticatedKontoSitzungenRoute,
   AuthenticatedKontoTeamsRoute: AuthenticatedKontoTeamsRoute,
   AuthenticatedKontoIndexRoute: AuthenticatedKontoIndexRoute,
 }
