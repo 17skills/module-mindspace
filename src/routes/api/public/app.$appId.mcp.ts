@@ -37,6 +37,12 @@ async function handle(ctx: { request: Request }) {
   const access = await authorizeAppMcp(appId, ctx.request);
   if (!access.ok) {
     if (access.status === 404) return new Response("Not found", { status: 404 });
+    if (access.status === 429) {
+      return new Response(
+        JSON.stringify({ error: "rate_limited", message: "Too many requests. Try again later." }),
+        { status: 429, headers: { "content-type": "application/json", "retry-after": "60" } },
+      );
+    }
     return new Response(
       JSON.stringify({
         error: "unauthorized",
