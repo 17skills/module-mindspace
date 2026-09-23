@@ -718,20 +718,10 @@ function BoardPage() {
     (id: string, patch: Partial<NodeRecord>) => {
       patchRecord(id, patch);
       markSelfWrite(id);
-      trackSave(
-        supabase
-          .from("nodes")
-          .update(patch as never)
-          .eq("id", id)
-          .then(({ error }) => {
-            if (error) {
-              toast.error(error.message);
-              throw error;
-            }
-          }),
-      );
+      markLocalEdit(id, Object.keys(patch));
+      saveOp(boardId, { kind: "node.update", id, patch: patch as Record<string, unknown> });
     },
-    [patchRecord],
+    [patchRecord, boardId],
   );
 
   const deleteNode = useCallback(
