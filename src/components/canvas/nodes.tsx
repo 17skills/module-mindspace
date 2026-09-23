@@ -27,6 +27,8 @@ import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
 import { readOntology, readSource } from "@/lib/source-node";
 import { riskRowsFromSource, type SourceRiskRow } from "@/lib/runtime/source-bridge";
 import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
+import { runEvaluate } from "@/lib/runtime/unit-spec";
+import { decisionUnit, riskUnit } from "@/lib/runtime/units";
 
 import { Plug } from "lucide-react";
 import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
