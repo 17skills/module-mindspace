@@ -519,6 +519,24 @@ function BoardPage() {
     }
   }, [boardId]);
 
+  // Offline: Warteschlange starten und bei Netz automatisch übertragen
+  useEffect(
+    () =>
+      startOfflineSync((count) =>
+        toast.success(`${count} Änderung${count === 1 ? "" : "en"} nachträglich übertragen`),
+      ),
+    [],
+  );
+
+  // Automatischer Stand für den Versionsverlauf, höchstens einer je Stunde
+  useEffect(() => {
+    if (!ready || !canEdit) return;
+    const timer = setTimeout(() => {
+      void createBoardVersion({ data: { boardId, kind: "automatisch" } }).catch(() => undefined);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [ready, canEdit, boardId]);
+
   // Bearbeitungshinweis: welches Modul hat die Person gerade ausgewählt
   useEffect(() => {
     const selected = nodes.find((node) => node.selected);
