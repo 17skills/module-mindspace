@@ -4273,7 +4273,42 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     [config.fields, liveWeather, liveAge, factors],
   );
 
-  const result = useMemo(() => evaluate(fields), [fields]);
+  /**
+   * Source → Logic: Zeilen aus verbundenen Datenquellen. Vollständige Zeilen
+   * rechnen mit (S = E × A), unvollständige bleiben sichtbar als Lücke —
+   * sie werden nie stillschweigend verworfen.
+   */
+  const sourceRows = useMemo(() => {
+    const byId = Object.fromEntries(
+      flowNodes.map((node) => [node.id, (node.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    const rows: SourceRiskRow[] = [];
+    for (const edge of edges) {
+      if (edge.target !== id) continue;
+      const stored = readSource(byId[edge.source]);
+      if (stored) rows.push(...riskRowsFromSource(stored));
+    }
+    return rows;
+  }, [edges, flowNodes, id]);
+
+  const sourceGaps = useMemo(() => sourceRows.filter((row) => row.missing.length), [sourceRows]);
+
+  const allFields = useMemo<RiskField[]>(() => {
+    const derived = sourceRows
+      .filter((row) => row.chance != null && row.impact != null)
+      .map<RiskField>((row, index) => ({
+        id: row.id,
+        code: `Q${index + 1}`,
+        name: row.label,
+        note: `${row.sourceName}, Zeile ${row.row}`,
+        chance: row.chance ?? 1,
+        impact: row.impact ?? 1,
+        auto: "none",
+      }));
+    return [...fields, ...derived];
+  }, [fields, sourceRows]);
+
+  const result = useMemo(() => evaluate(allFields), [allFields]);
   const summary = useMemo(() => {
     const assessment = isoText(result);
     const parts = [assessment];
