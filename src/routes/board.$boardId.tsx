@@ -483,10 +483,16 @@ function BoardPage() {
     let active = true;
     let done = false;
     void (async () => {
-      const [boardRes, nodeRes, edgeRes] = await Promise.all([
+      const [boardRes, nodeRes, edgeRes, memberRes] = await Promise.all([
         supabase.from("boards").select("title,user_id").eq("id", boardId).single(),
         supabase.from("nodes").select("*").eq("board_id", boardId),
         supabase.from("edges").select("*").eq("board_id", boardId),
+        supabase
+          .from("board_members")
+          .select("role")
+          .eq("board_id", boardId)
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
       if (!active) return;
       if (boardRes.error) {
@@ -495,7 +501,9 @@ function BoardPage() {
         return;
       }
       setTitle(boardRes.data.title);
-      setIsOwner(boardRes.data.user_id === userId);
+      const owner = boardRes.data.user_id === userId;
+      setIsOwner(owner);
+      setRole(owner ? "owner" : memberRes.data?.role === "editor" ? "editor" : "viewer");
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
