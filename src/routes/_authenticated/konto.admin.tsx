@@ -25,10 +25,19 @@ export const Route = createFileRoute("/_authenticated/konto/admin")({
   component: AdminPage,
 });
 
+const PAGE_SIZE = 25;
+
 function AdminPage() {
   const client = useQueryClient();
-  const users = useQuery({ queryKey: ["admin-users"], queryFn: () => adminListUsers() });
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [offset, setOffset] = useState(0);
+  const users = useQuery({
+    queryKey: ["admin-users", query, offset],
+    queryFn: () => adminListUsers({ data: { search: query, limit: PAGE_SIZE, offset } }),
+  });
   const log = useQuery({ queryKey: ["admin-audit"], queryFn: () => adminListAuditLog() });
+  const total = users.data?.total ?? 0;
 
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["admin-users"] });
