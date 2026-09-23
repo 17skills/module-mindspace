@@ -24,6 +24,9 @@ import {
   type RiskField,
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
+import { readOntology, readSource } from "@/lib/source-node";
+import { riskRowsFromSource, type SourceRiskRow } from "@/lib/runtime/source-bridge";
+import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
 
 import { Plug } from "lucide-react";
 import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
