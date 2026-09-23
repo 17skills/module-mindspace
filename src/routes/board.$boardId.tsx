@@ -665,7 +665,15 @@ function BoardPage() {
 
   // Echtzeit: fremde Änderungen an Modulen und Verbindungen sofort übernehmen
   useBoardSync(boardId, ready, {
-    upsertNode: (record) => {
+    upsertNode: (incoming) => {
+      // Feld für Feld zusammenführen: nur echte Kollisionen bleiben offen
+      const { merged, conflicts } = mergeRemoteNode(
+        recordsRef.current[incoming.id],
+        incoming,
+        (field) => isLocallyEdited(incoming.id, field),
+      );
+      addConflicts(conflicts);
+      const record = merged;
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
         current.some((node) => node.id === record.id)
