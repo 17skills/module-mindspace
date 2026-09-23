@@ -2948,8 +2948,7 @@ function BoardPage() {
             onMoveStart={() => setMenu(null)}
             nodesDraggable={canEdit}
             nodesConnectable={canEdit}
-            nodesDeletable={canEdit}
-            edgesReconnectable={canEdit}
+            elementsSelectable={canEdit}
             deleteKeyCode={canEdit ? ["Backspace", "Delete"] : null}
             onPaneContextMenu={(event) => {
               event.preventDefault();
