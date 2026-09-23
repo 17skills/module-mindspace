@@ -256,7 +256,9 @@ function DeploymentPreview({
                     <span className="block truncate font-display text-base font-semibold">{title.trim() || "Titel der App"}</span>
                   </div>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">Live</span>
+                <Button size="sm" variant="ghost" className="shrink-0" onClick={() => onInteraction("Direktlink zur veröffentlichten App")}>
+                  Live <ExternalLink className="size-3.5" />
+                </Button>
               </header>
               {leadQuestion.trim() && (
                 <div className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground">
@@ -371,6 +373,7 @@ export function AppDialog({
     setAudience("");
     setLeadQuestion("");
     setPicked(start);
+    setShowValidation(false);
   };
 
 
@@ -466,6 +469,7 @@ export function AppDialog({
     setLeadQuestion(app.lead_question ?? "");
     setPicked(Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : []);
     setBranding(brandingFrom(app.branding));
+    setShowValidation(false);
     setTab("module");
   };
 
