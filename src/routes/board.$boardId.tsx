@@ -54,6 +54,10 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBoardPresence } from "@/lib/presence";
+import { PresenceLayer } from "@/components/canvas/PresenceLayer";
+import { PresenceBar } from "@/components/canvas/PresenceBar";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -447,6 +451,26 @@ function BoardPage() {
   /** Rolle in diesem Scope: Inhaber, Bearbeiten oder nur Lesen. */
   const [role, setRole] = useState<"owner" | "editor" | "viewer">("editor");
   const canEdit = role !== "viewer";
+  const myName =
+    (user?.user_metadata?.["full_name"] as string | undefined) ||
+    (user?.user_metadata?.["name"] as string | undefined) ||
+
+    user?.email ||
+    "Gast";
+  const { peers, sendCursor, setEditing, myColor } = useBoardPresence({
+    boardId,
+    userId: user?.id ?? null,
+    name: myName,
+  });
+
+  // Bearbeitungshinweis: welches Modul hat die Person gerade ausgewählt
+  useEffect(() => {
+    const selected = nodes.find((node) => node.selected);
+    setEditing(canEdit ? (selected?.id ?? null) : null);
+  }, [nodes, setEditing, canEdit]);
+
+
+
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
@@ -2788,7 +2812,9 @@ function BoardPage() {
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
         <SaveIndicator />
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-3">
+          <PresenceBar peers={peers} myColor={myColor} myName={myName} />
+
           {isOwner ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2898,6 +2924,11 @@ function BoardPage() {
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            onMouseMove={(event) => {
+              const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+              sendCursor(Math.round(flow.x), Math.round(flow.y));
+            }}
+
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             defaultEdgeOptions={{
@@ -2989,6 +3020,8 @@ function BoardPage() {
             />
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable className="!bg-card" />
+            <PresenceLayer peers={peers} nodes={nodes} />
+
           </ReactFlow>
 
           <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
