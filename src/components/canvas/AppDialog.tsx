@@ -4,7 +4,9 @@ import QRCode from "qrcode";
 import {
   Bot,
   Copy,
+  Download,
   ExternalLink,
+  MessageSquare,
   Key,
   Maximize2,
   Minimize2,
