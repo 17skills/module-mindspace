@@ -40,6 +40,7 @@ import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId
 import { Route as AuthenticatedKontoNutzerUserIdRouteImport } from './routes/_authenticated/konto.nutzer.$userId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
 import { Route as ApiPublicAppAppIdTeamsCardRouteImport } from './routes/api/public/app.$appId.teams-card'
+import { Route as ApiPublicAppAppIdTeamsManifestRouteImport } from './routes/api/public/app.$appId.teams-manifest'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -204,6 +205,12 @@ const ApiPublicAppAppIdTeamsCardRoute =
     path: '/api/public/app/$appId/teams-card',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAppAppIdTeamsManifestRoute =
+  ApiPublicAppAppIdTeamsManifestRouteImport.update({
+    id: '/api/public/app/$appId/teams-manifest',
+    path: '/api/public/app/$appId/teams-manifest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
+  '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -267,6 +275,7 @@ export interface FileRoutesByTo {
   '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
+  '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -301,6 +310,7 @@ export interface FileRoutesById {
   '/_authenticated/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
+  '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
+    | '/api/public/app/$appId/teams-manifest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
+    | '/api/public/app/$appId/teams-manifest'
   id:
     | '__root__'
     | '/'
@@ -399,6 +411,7 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
+    | '/api/public/app/$appId/teams-manifest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -420,6 +433,7 @@ export interface RootRouteChildren {
   EmbedZoneZoneIdRoute: typeof EmbedZoneZoneIdRoute
   ApiPublicAppAppIdMcpRoute: typeof ApiPublicAppAppIdMcpRoute
   ApiPublicAppAppIdTeamsCardRoute: typeof ApiPublicAppAppIdTeamsCardRoute
+  ApiPublicAppAppIdTeamsManifestRoute: typeof ApiPublicAppAppIdTeamsManifestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -641,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAppAppIdTeamsCardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/app/$appId/teams-manifest': {
+      id: '/api/public/app/$appId/teams-manifest'
+      path: '/api/public/app/$appId/teams-manifest'
+      fullPath: '/api/public/app/$appId/teams-manifest'
+      preLoaderRoute: typeof ApiPublicAppAppIdTeamsManifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -708,6 +729,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmbedZoneZoneIdRoute: EmbedZoneZoneIdRoute,
   ApiPublicAppAppIdMcpRoute: ApiPublicAppAppIdMcpRoute,
   ApiPublicAppAppIdTeamsCardRoute: ApiPublicAppAppIdTeamsCardRoute,
+  ApiPublicAppAppIdTeamsManifestRoute: ApiPublicAppAppIdTeamsManifestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
