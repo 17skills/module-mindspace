@@ -14,6 +14,8 @@ export type FactorParam = {
   score: number;
   /** Where the value comes from: manual entry, table, metric, API. */
   source: string;
+  /** Bewertung durch JEV — erst wirksam, wenn der Entscheider sie übernimmt. */
+  jev?: { weight: number; score: number; reason: string } | undefined;
 };
 
 export type FactorScore = {
@@ -84,6 +86,17 @@ export function readFactor(record: NodeRecord | null | undefined): FactorScore {
           weight: clampWeight(row["weight"]),
           score: clampScore(row["score"]),
           source: typeof row["source"] === "string" ? (row["source"] as string) : "manuell",
+          jev:
+            row["jev"] && typeof row["jev"] === "object"
+              ? (() => {
+                  const j = row["jev"] as Record<string, unknown>;
+                  return {
+                    weight: clampWeight(j["weight"]),
+                    score: clampScore(j["score"]),
+                    reason: typeof j["reason"] === "string" ? j["reason"] : "",
+                  };
+                })()
+              : undefined,
         };
       })
     : paramsFromText(record?.content);

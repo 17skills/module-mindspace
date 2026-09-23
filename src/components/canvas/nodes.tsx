@@ -671,6 +671,20 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
     saveParams(factor.params.map((param) => (param.id === id ? { ...param, ...change } : param)));
   }
 
+  /** Offen: JEV hat bewertet, der Entscheider hat noch nicht übernommen oder überschrieben. */
+  const pending = (param: FactorParam) =>
+    Boolean(param.jev) && param.source !== "JEV" && param.source !== "Entscheider";
+
+  function accept(ids?: string[]) {
+    saveParams(
+      factor.params.map((param) =>
+        param.jev && (!ids || ids.includes(param.id))
+          ? { ...param, weight: param.jev.weight, score: param.jev.score, source: "JEV" }
+          : param,
+      ),
+    );
+  }
+
   async function askForWeights() {
     if (!factor.params.length) return;
     setBusy(true);
@@ -691,13 +705,15 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
         if (!hit) return param;
         return {
           ...param,
-          weight: Math.max(0, Math.min(100, Math.round(hit.weight * 10) / 10)),
-          score: Math.max(1, Math.min(10, Math.round(hit.score * 2) / 2)),
-          source: "JEV-Vorschlag",
+          jev: {
+            weight: Math.max(0, Math.min(100, Math.round(hit.weight * 10) / 10)),
+            score: Math.max(1, Math.min(10, Math.round(hit.score * 2) / 2)),
+            reason: hit.reason,
+          },
         };
       });
-      saveParams(normalizeWeights(next));
-      toast.success("Gewichtung vorgeschlagen", { description: result.reason });
+      saveParams(next);
+      toast.success("JEV hat bewertet", { description: result.reason });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gewichtung fehlgeschlagen");
     } finally {
@@ -762,122 +778,88 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                   <thead>
                     <tr className="text-muted-foreground">
                       <th className="px-1 py-1 text-left font-medium">Parameter</th>
-                      <th className="w-12 px-1 py-1 text-right font-medium">%</th>
-                      <th className="w-12 px-1 py-1 text-right font-medium">1–10</th>
-                      <th className="w-10 px-1 py-1 text-right font-medium">Anteil</th>
-                      <th className="w-4" />
+                      <th className="w-16 px-1 py-1 text-right font-medium">JEV</th>
+                      <th className="w-24 px-1 py-1 text-right font-medium">Entscheider</th>
                     </tr>
                   </thead>
                   <tbody>
                     {factor.params.map((param) => (
-                      <tr key={param.id} className="border-t border-border/60">
-                        <td className="px-1 py-1">
-                          <input
-                            defaultValue={param.label}
-                            aria-label="Parameter"
-                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent outline-none hover:border-border focus:border-ring"
-                            onBlur={(e) => patchParam(param.id, { label: e.target.value.trim() })}
-                          />
+                      <tr key={param.id} className="border-t border-border/60 align-middle">
+                        <td className="truncate px-1 py-1" title={param.jev?.reason || param.label}>
+                          {param.label}
                         </td>
-                        <td className="px-1 py-1">
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={0.5}
-                            defaultValue={param.weight}
-                            aria-label={`Gewicht ${param.label}`}
-                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
-                            onBlur={(e) => patchParam(param.id, { weight: Number(e.target.value) })}
-                          />
-                        </td>
-                        <td className="px-1 py-1">
-                          <input
-                            type="number"
-                            min={1}
-                            max={10}
-                            step={0.5}
-                            defaultValue={param.score}
-                            aria-label={`Zustand ${param.label}`}
-                            className="nodrag h-5 w-full rounded border border-transparent bg-transparent text-right font-mono tabular-nums outline-none hover:border-border focus:border-ring"
-                            onBlur={(e) => patchParam(param.id, { score: Number(e.target.value) })}
-                          />
-                        </td>
-                        <td className="px-1 py-1 text-right font-mono tabular-nums text-muted-foreground">
-                          {((param.weight * param.score) / 100).toFixed(2)}
+                        <td className="px-1 py-1 text-right font-mono tabular-nums text-muted-foreground" title={param.jev?.reason}>
+                          {param.jev ? `${param.jev.weight} % · ${param.jev.score}` : "–"}
                         </td>
                         <td className="px-1 py-1 text-right">
-                          <button
-                            type="button"
-                            aria-label="Parameter entfernen"
-                            className="nodrag text-muted-foreground hover:text-destructive"
-                            onClick={() =>
-                              saveParams(factor.params.filter((item) => item.id !== param.id))
-                            }
-                          >
-                            ✕
-                          </button>
+                          {pending(param) ? (
+                            <button
+                              type="button"
+                              className="nodrag rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground"
+                              onClick={() => accept([param.id])}
+                            >
+                              Übernehmen
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 font-mono tabular-nums">
+                              <input
+                                key={`${param.id}-w-${param.weight}`}
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.5}
+                                defaultValue={param.weight}
+                                aria-label={`Gewicht ${param.label}`}
+                                className="nodrag h-5 w-9 rounded border border-transparent bg-transparent text-right outline-none hover:border-border focus:border-ring"
+                                onBlur={(e) =>
+                                  Number(e.target.value) !== param.weight &&
+                                  patchParam(param.id, { weight: Number(e.target.value), source: "Entscheider" })
+                                }
+                              />
+                              %
+                              <input
+                                key={`${param.id}-s-${param.score}`}
+                                type="number"
+                                min={1}
+                                max={10}
+                                step={0.5}
+                                defaultValue={param.score}
+                                aria-label={`Zustand ${param.label}`}
+                                className="nodrag h-5 w-8 rounded border border-transparent bg-transparent text-right outline-none hover:border-border focus:border-ring"
+                                onBlur={(e) =>
+                                  Number(e.target.value) !== param.score &&
+                                  patchParam(param.id, { score: Number(e.target.value), source: "Entscheider" })
+                                }
+                              />
+                            </span>
+                          )}
+                          {param.source === "Entscheider" && (
+                            <div className="text-[9px] text-muted-foreground">überschrieben</div>
+                          )}
                         </td>
                       </tr>
                     ))}
-                    <tr className="border-t-2 border-border font-medium">
-                      <td className="px-1 py-1">Summe</td>
-                      <td
-                        className={`px-1 py-1 text-right font-mono tabular-nums ${
-                          factor.balanced ? "text-foreground" : "text-destructive"
-                        }`}
-                      >
-                        {factor.weightSum}
-                      </td>
-                      <td className="px-1 py-1 text-right font-mono tabular-nums" colSpan={2}>
-                        {factor.score.toFixed(1)} / 10
-                      </td>
-                      <td />
-                    </tr>
                   </tbody>
                 </table>
               )}
               <div className="mt-2 flex flex-wrap gap-1">
                 <button
                   type="button"
-                  className="nodrag rounded-full border border-border/70 px-2 py-0.5 text-[10px] hover:bg-accent"
-                  onClick={() =>
-                    saveParams([
-                      ...factor.params,
-                      {
-                        id: `p${Date.now()}`,
-                        label: "Neuer Parameter",
-                        weight: 0,
-                        score: 5,
-                        source: "manuell",
-                      },
-                    ])
-                  }
-                >
-                  + Parameter
-                </button>
-                <button
-                  type="button"
-                  className="nodrag rounded-full border border-border/70 px-2 py-0.5 text-[10px] hover:bg-accent"
-                  onClick={() => saveParams(normalizeWeights(factor.params))}
-                >
-                  Auf 100 % ausgleichen
-                </button>
-                <button
-                  type="button"
-                  className="nodrag rounded-full border border-border/70 px-2 py-0.5 text-[10px] hover:bg-accent"
-                  onClick={() => saveParams(paramsFromText(record.content))}
-                >
-                  Aus Text übernehmen
-                </button>
-                <button
-                  type="button"
                   disabled={busy || !factor.params.length}
                   className="nodrag rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground disabled:opacity-50"
                   onClick={() => void askForWeights()}
                 >
-                  {busy ? "JEV rechnet …" : "Gewichtung mit JEV vorschlagen"}
+                  {busy ? "JEV bewertet …" : "Von JEV bewerten lassen"}
                 </button>
+                {factor.params.some(pending) && (
+                  <button
+                    type="button"
+                    className="nodrag rounded-full border border-border/70 px-2 py-0.5 text-[10px] hover:bg-accent"
+                    onClick={() => accept(factor.params.filter(pending).map((p) => p.id))}
+                  >
+                    Alle übernehmen
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -3202,7 +3184,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
   /** Was der Mensch als „bestätigt“ gelten lässt — Festlegung auf dieser Karte. */
-  const basis = meta["calibrationBasis"] === "followed" ? "followed" : "release";
+  const basis = "followed" as const;
   /** Von Hand eingetragene Sicherheiten, falls das Urteil keine liefert. */
   const humanConfidence = (meta["humanConfidence"] ?? {}) as Record<string, number>;
   const confidenceOf = (answer: (typeof answers)[number] | undefined) => {
@@ -3465,28 +3447,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                       {low ? "zur Prüfung · " : ""}
                       {Math.round(answer.confidence * 100)} % sicher
                     </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      Sicherheit selbst eintragen
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={5}
-                        key={question.id + "human"}
-                        defaultValue={
-                          typeof humanConfidence[question.id] === "number"
-                            ? Math.round((humanConfidence[question.id] ?? 0) * 100)
-                            : ""
-                        }
-                        placeholder="–"
-                        aria-label={`Sicherheit der Frage ${index + 1} selbst eintragen`}
-                        className="nodrag w-14 rounded-md border border-border/70 bg-background px-1 py-0.5 text-right text-[10px]"
-                        onBlur={(e) => setHumanConfidence(question.id, e.target.value)}
-                      />
-                      %
-                    </span>
-                  )}
+                  ) : null}
+
                 </p>
               )}
               </div>
@@ -3510,23 +3472,6 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
             Mindest-Sicherheit
             <span><input type="number" min={0} max={100} step={5} key={record.id + "minconf"} defaultValue={threshold} aria-label="Mindest-Sicherheit in Prozent" className="nodrag w-14 rounded-md border bg-background px-1 py-0.5 text-right" onBlur={(e) => { const value = Number(e.target.value); updateNode(record.id, { metadata: { ...(record.metadata ?? {}), minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80 } }); }} /> %</span>
-          </label>
-          <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-            Bestätigt heißt
-            <select
-              value={basis}
-              aria-label="Was als bestätigt zählt"
-              title="Legt fest, woran die Bewährung dieser Karte gemessen wird."
-              className="nodrag cursor-pointer rounded-md border bg-background px-1 py-0.5 text-[10px]"
-              onChange={(e) =>
-                updateNode(record.id, {
-                  metadata: { ...(record.metadata ?? {}), calibrationBasis: e.target.value },
-                })
-              }
-            >
-              <option value="release">Wirkung wurde freigegeben</option>
-              <option value="followed">Mensch ist dem Urteil gefolgt</option>
-            </select>
           </label>
           <button className="nodrag flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground" onClick={() => writeQuestions([...questions, { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] }])}>
             <Plus className="size-3" /> Frage hinzufügen
