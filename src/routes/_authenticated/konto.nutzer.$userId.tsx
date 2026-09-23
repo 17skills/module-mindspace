@@ -41,9 +41,6 @@ function UserDetailPage() {
     void client.invalidateQueries({ queryKey: ["admin-users"] });
   };
 
-  const run = <T,>(fn: (input: T) => Promise<unknown>, message: string) =>
-    useMutationLike(fn, message, refresh);
-
   const block = useMutation({
     mutationFn: (blocked: boolean) => adminSetBlocked({ data: { userId, blocked } }),
     onSuccess: () => {

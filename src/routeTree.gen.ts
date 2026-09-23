@@ -36,6 +36,7 @@ import { Route as AuthenticatedKontoOrganisationRouteImport } from './routes/_au
 import { Route as AuthenticatedKontoSitzungenRouteImport } from './routes/_authenticated/konto.sitzungen'
 import { Route as AuthenticatedKontoTeamsRouteImport } from './routes/_authenticated/konto.teams'
 import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
+import { Route as AuthenticatedKontoNutzerUserIdRouteImport } from './routes/_authenticated/konto.nutzer.$userId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
 
 const IndexRoute = IndexRouteImport.update({
@@ -179,6 +180,12 @@ const EmbedZoneZoneIdRoute = EmbedZoneZoneIdRouteImport.update({
   path: '/embed/zone/$zoneId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedKontoNutzerUserIdRoute =
+  AuthenticatedKontoNutzerUserIdRouteImport.update({
+    id: '/nutzer/$userId',
+    path: '/nutzer/$userId',
+    getParentRoute: () => AuthenticatedKontoRoute,
+  } as any)
 const ApiPublicAppAppIdMcpRoute = ApiPublicAppAppIdMcpRouteImport.update({
   id: '/api/public/app/$appId/mcp',
   path: '/api/public/app/$appId/mcp',
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto/': typeof AuthenticatedKontoIndexRoute
+  '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
 }
 export interface FileRoutesByTo {
@@ -240,6 +248,7 @@ export interface FileRoutesByTo {
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto': typeof AuthenticatedKontoIndexRoute
+  '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
 }
 export interface FileRoutesById {
@@ -271,6 +280,7 @@ export interface FileRoutesById {
   '/_authenticated/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/_authenticated/konto/': typeof AuthenticatedKontoIndexRoute
+  '/_authenticated/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
 }
 export interface FileRouteTypes {
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
     | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto/'
+    | '/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto'
+    | '/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
   id:
     | '__root__'
@@ -360,6 +372,7 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/teams'
     | '/embed/zone/$zoneId'
     | '/_authenticated/konto/'
+    | '/_authenticated/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
   fileRoutesById: FileRoutesById
 }
@@ -573,6 +586,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmbedZoneZoneIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/konto/nutzer/$userId': {
+      id: '/_authenticated/konto/nutzer/$userId'
+      path: '/nutzer/$userId'
+      fullPath: '/konto/nutzer/$userId'
+      preLoaderRoute: typeof AuthenticatedKontoNutzerUserIdRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
     '/api/public/app/$appId/mcp': {
       id: '/api/public/app/$appId/mcp'
       path: '/api/public/app/$appId/mcp'
@@ -595,6 +615,7 @@ interface AuthenticatedKontoRouteChildren {
   AuthenticatedKontoSitzungenRoute: typeof AuthenticatedKontoSitzungenRoute
   AuthenticatedKontoTeamsRoute: typeof AuthenticatedKontoTeamsRoute
   AuthenticatedKontoIndexRoute: typeof AuthenticatedKontoIndexRoute
+  AuthenticatedKontoNutzerUserIdRoute: typeof AuthenticatedKontoNutzerUserIdRoute
 }
 
 const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
@@ -609,6 +630,7 @@ const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
   AuthenticatedKontoSitzungenRoute: AuthenticatedKontoSitzungenRoute,
   AuthenticatedKontoTeamsRoute: AuthenticatedKontoTeamsRoute,
   AuthenticatedKontoIndexRoute: AuthenticatedKontoIndexRoute,
+  AuthenticatedKontoNutzerUserIdRoute: AuthenticatedKontoNutzerUserIdRoute,
 }
 
 const AuthenticatedKontoRouteWithChildren =
