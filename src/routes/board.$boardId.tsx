@@ -426,6 +426,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "risk" ||
     record.type === "inspect" ||
     record.type === "quotes" ||
+    record.type === "source" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
