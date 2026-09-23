@@ -64,12 +64,14 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
   const ontologies = useUpstreamOntologies(id);
   const ownOntology = readOntology(record);
 
+  /** Die Karte rechnet über ihren Modul-Vertrag — nicht an ihm vorbei. */
   const signal = useMemo(
     () =>
-      evaluateSignal({
-        envelope: stored?.envelope ?? null,
-        ontology: ontologies[0] ?? null,
-      }),
+      runEvaluate(
+        sourceUnit(),
+        { ports: {} },
+        { envelope: stored?.envelope ?? null, ontology: ontologies[0] ?? null },
+      ).signal,
     [stored, ontologies],
   );
 
