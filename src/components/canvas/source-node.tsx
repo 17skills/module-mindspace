@@ -14,7 +14,9 @@ import { useBoard, type NodeRecord } from "./board-context";
 import { SignalHandle } from "./nodes";
 import { ingestFile, ingestText } from "@/lib/runtime/ingestion";
 import { primaryFacet } from "@/lib/runtime/source-protocol";
-import { evaluateSignal, signalTone, type SignalStatus } from "@/lib/runtime/signal-engine";
+import { signalTone, type SignalStatus } from "@/lib/runtime/signal-engine";
+import { runEvaluate } from "@/lib/runtime/unit-spec";
+import { sourceUnit } from "@/lib/runtime/units";
 import { FACET_LABEL, readOntology, readSource, sourceSummary, trimEnvelope } from "@/lib/source-node";
 import { sourceBrief } from "@/lib/runtime/source-bridge";
 
