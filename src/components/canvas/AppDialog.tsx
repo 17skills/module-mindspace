@@ -52,8 +52,25 @@ type Row = {
   mcp_token: string;
   mcp_scope: string;
   is_public: boolean;
+  channels: unknown;
+  audience: string | null;
+  lead_question: string | null;
   updated_at: string;
 };
+
+export type Channels = { web: boolean; teams: boolean; mcp: boolean };
+
+const DEFAULT_CHANNELS: Channels = { web: true, teams: false, mcp: true };
+
+/** Kanäle aus der Datenbank lesen – fehlende Angaben werden ergänzt. */
+function channelsFrom(raw: unknown): Channels {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    web: value["web"] !== false,
+    teams: value["teams"] === true,
+    mcp: value["mcp"] !== false,
+  };
+}
 
 
 const ACCENTS: { id: AppAccent; label: string; color: string }[] = [
@@ -97,6 +114,9 @@ export function AppDialog({
   const [description, setDescription] = useState("");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [scope, setScope] = useState<"read" | "write">("read");
+  const [channels, setChannels] = useState<Channels>(DEFAULT_CHANNELS);
+  const [audience, setAudience] = useState("");
+  const [leadQuestion, setLeadQuestion] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [branding, setBranding] = useState<AppBranding>(DEFAULT_APP_BRANDING);
   const [saving, setSaving] = useState(false);
@@ -130,7 +150,9 @@ export function AppDialog({
   const reload = async () => {
     const { data, error } = await supabase
       .from("apps")
-      .select("id,title,description,kind,node_ids,branding,mcp_token,mcp_scope,is_public,updated_at")
+      .select(
+        "id,title,description,kind,node_ids,branding,mcp_token,mcp_scope,is_public,channels,audience,lead_question,updated_at",
+      )
       .eq("board_id", boardId)
       .order("updated_at", { ascending: false });
     if (error) {
@@ -146,6 +168,9 @@ export function AppDialog({
     setDescription("");
     setBranding(DEFAULT_APP_BRANDING);
     setScope("read");
+    setChannels(DEFAULT_CHANNELS);
+    setAudience("");
+    setLeadQuestion("");
     setPicked(start);
   };
 
@@ -208,6 +233,9 @@ export function AppDialog({
       kind,
       node_ids: picked,
       mcp_scope: scope,
+      channels,
+      audience: audience.trim(),
+      lead_question: leadQuestion.trim(),
       branding: { ...branding, title: title.trim() },
     };
     if (editing) {
@@ -246,6 +274,9 @@ export function AppDialog({
     setDescription(app.description ?? "");
     setDevice("desktop");
     setScope(app.mcp_scope === "write" ? "write" : "read");
+    setChannels(channelsFrom(app.channels));
+    setAudience(app.audience ?? "");
+    setLeadQuestion(app.lead_question ?? "");
     setPicked(Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : []);
     setBranding(brandingFrom(app.branding));
     setTab("module");
@@ -278,6 +309,10 @@ export function AppDialog({
   };
 
   const urlFor = (id: string) => `${window.location.origin}/app/${id}`;
+  const teamsCardFor = (app: Row) =>
+    `${window.location.origin}/api/public/app/${app.id}/teams-card?token=${app.mcp_token}`;
+  const teamsManifestFor = (app: Row) =>
+    `${window.location.origin}/api/public/app/${app.id}/teams-manifest`;
   const mcpFor = (app: Row) =>
     `${window.location.origin}/api/public/app/${app.id}/mcp?token=${app.mcp_token}`;
   const copy = (text: string, note: string) => {
