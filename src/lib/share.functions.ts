@@ -302,7 +302,10 @@ export const updateShareSettings = createServerFn({ method: "POST" })
       }
     }
 
-    const { error } = await db.from("boards").update(patch).eq("id", data.boardId);
+    const { error } = await db
+      .from("boards")
+      .update(patch as never)
+      .eq("id", data.boardId);
     if (error) throw new Error(error.message);
     await audit({
       actorId: context.userId,
