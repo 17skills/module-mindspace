@@ -58,10 +58,29 @@ export function UserMenu() {
           <span className="block truncate text-xs font-normal text-muted-foreground">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {(orgs.data?.orgs.length ?? 0) > 1
+          ? (orgs.data?.orgs ?? []).map((org) => (
+              <DropdownMenuItem key={org.id} onSelect={() => switchOrg.mutate(org.id)}>
+                {org.id === orgs.data?.activeOrgId ? (
+                  <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Building2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                )}
+                <span className="truncate">{org.name}</span>
+              </DropdownMenuItem>
+            ))
+          : null}
+        {(orgs.data?.orgs.length ?? 0) > 1 ? <DropdownMenuSeparator /> : null}
         <DropdownMenuItem asChild>
           <Link to="/konto">
             <User className="mr-2 h-4 w-4" aria-hidden="true" />
             Profil
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/konto/organisation">
+            <Building2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            Organisation
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
