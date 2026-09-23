@@ -96,14 +96,59 @@ export const closeJournal = createServerFn({ method: "POST" })
     return { closed: (updated ?? []).length };
   });
 
+/**
+ * Trägt eine fehlende Sicherheit von Hand nach — genau einmal, für das
+ * jüngste Urteil dieser Frage. Das Urteil selbst bleibt unangetastet.
+ */
+export const rateJournal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        nodeId: z.string().uuid(),
+        questionId: z.string().min(1),
+        confidence: z.number(),
+        by: z.string().default(""),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error: readError } = await context.supabase
+      .from("decision_journal")
+      .select("id")
+      .eq("node_id", data.nodeId)
+      .eq("question_id", data.questionId)
+      .is("human_confidence", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!row) return { rated: 0 };
+
+    const value = Math.min(1, Math.max(0, data.confidence));
+    const { error } = await context.supabase
+      .from("decision_journal")
+      .update({ human_confidence: value, human_confidence_by: data.by.slice(0, 200) })
+      .eq("id", row.id);
+    if (error) throw new Error(error.message);
+    return { rated: 1 };
+  });
+
 /** Kalibrierung einer Entscheidungskarte: Urteil gegen tatsächlichen Ausgang. */
 export const loadCalibration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => z.object({ nodeId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) =>
+    z
+      .object({
+        nodeId: z.string().uuid(),
+        basis: z.enum(["release", "followed"]).default("release"),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }): Promise<Calibration> => {
     const { data: rows, error } = await context.supabase
       .from("decision_journal")
-      .select("confidence, probability, outcome")
+      .select("confidence, human_confidence, probability, question_type, outcome")
       .eq("node_id", data.nodeId)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -111,8 +156,13 @@ export const loadCalibration = createServerFn({ method: "POST" })
 
     const points: JournalPoint[] = (rows ?? []).map((row) => ({
       confidence: row.confidence === null ? null : Number(row.confidence),
+      humanConfidence: row.human_confidence === null ? null : Number(row.human_confidence),
       probability: row.probability === null ? null : Number(row.probability),
+      yes:
+        row.question_type === "noul" && row.probability !== null
+          ? Number(row.probability) >= 0.5
+          : null,
       outcome: (row.outcome as JournalPoint["outcome"]) ?? null,
     }));
-    return calibrate(points);
+    return calibrate(points, { basis: data.basis });
   });

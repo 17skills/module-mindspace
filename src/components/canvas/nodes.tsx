@@ -29,7 +29,7 @@ import { riskRowsFromSource, type SourceRiskRow } from "@/lib/runtime/source-bri
 import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
 import { runEvaluate } from "@/lib/runtime/unit-spec";
 import { decisionUnit, riskUnit } from "@/lib/runtime/units";
-import { loadCalibration } from "@/lib/decision-journal.functions";
+import { loadCalibration, rateJournal } from "@/lib/decision-journal.functions";
 
 /** Ampelfarben der Modul-Verträge: grün, bernstein, rot, grau. */
 const UNIT_TONE: Record<string, string> = {
@@ -3201,10 +3201,31 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
   const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
+  /** Was der Mensch als „bestätigt“ gelten lässt — Festlegung auf dieser Karte. */
+  const basis = meta["calibrationBasis"] === "followed" ? "followed" : "release";
+  /** Von Hand eingetragene Sicherheiten, falls das Urteil keine liefert. */
+  const humanConfidence = (meta["humanConfidence"] ?? {}) as Record<string, number>;
   const confidenceOf = (answer: (typeof answers)[number] | undefined) => {
     const value = Number(answer?.confidence);
-    return Number.isFinite(value) ? value : null;
+    if (Number.isFinite(value)) return value;
+    const own = answer ? humanConfidence[answer.id] : undefined;
+    return typeof own === "number" && Number.isFinite(own) ? own : null;
   };
+
+  /** Sicherheit selbst setzen: auf der Karte und einmalig im Journal. */
+  function setHumanConfidence(questionId: string, raw: string) {
+    const value = Number(raw);
+    const next = { ...humanConfidence };
+    if (raw.trim() === "" || !Number.isFinite(value)) delete next[questionId];
+    else next[questionId] = Math.min(1, Math.max(0, value / 100));
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), humanConfidence: next } });
+    const stored = next[questionId];
+    if (typeof stored === "number") {
+      void rateJournal({ data: { nodeId: record.id, questionId, confidence: stored } }).catch(
+        () => undefined,
+      );
+    }
+  }
   const answered = answers.filter((answer) => answerLabel(answer) !== "–");
   const ratedAnswers = answers.filter((answer) => confidenceOf(answer) !== null);
   const confidence = ratedAnswers.length
@@ -3223,8 +3244,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
 
   /** Kalibrierung: Urteil gegen den Ausgang, den Menschen danach gesetzt haben. */
   const calibration = useQuery({
-    queryKey: ["calibration", record.id, meta["decidedAt"] ?? ""],
-    queryFn: () => loadCalibration({ data: { nodeId: record.id } }),
+    queryKey: ["calibration", record.id, meta["decidedAt"] ?? "", basis, JSON.stringify(humanConfidence)],
+    queryFn: () => loadCalibration({ data: { nodeId: record.id, basis } }),
     staleTime: 60_000,
     retry: false,
   });
@@ -3437,12 +3458,33 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                 <span className="shrink-0 text-[10px] text-muted-foreground">%</span>
               </div>
               {answer && (
-                <p className="mt-1 text-xs">
+                <p className="mt-1 flex flex-wrap items-center gap-1 text-xs">
                   <span className="font-medium">{answerLabel(answer)}</span>
-                  {typeof answer.confidence === "number" && (
-                    <span className={`ml-1 text-[10px] ${low ? "text-destructive" : "text-muted-foreground"}`}>
+                  {typeof answer.confidence === "number" ? (
+                    <span className={`text-[10px] ${low ? "text-destructive" : "text-muted-foreground"}`}>
                       {low ? "zur Prüfung · " : ""}
                       {Math.round(answer.confidence * 100)} % sicher
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      Sicherheit selbst eintragen
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={5}
+                        key={question.id + "human"}
+                        defaultValue={
+                          typeof humanConfidence[question.id] === "number"
+                            ? Math.round((humanConfidence[question.id] ?? 0) * 100)
+                            : ""
+                        }
+                        placeholder="–"
+                        aria-label={`Sicherheit der Frage ${index + 1} selbst eintragen`}
+                        className="nodrag w-14 rounded-md border border-border/70 bg-background px-1 py-0.5 text-right text-[10px]"
+                        onBlur={(e) => setHumanConfidence(question.id, e.target.value)}
+                      />
+                      %
                     </span>
                   )}
                 </p>
@@ -3468,6 +3510,23 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
             Mindest-Sicherheit
             <span><input type="number" min={0} max={100} step={5} key={record.id + "minconf"} defaultValue={threshold} aria-label="Mindest-Sicherheit in Prozent" className="nodrag w-14 rounded-md border bg-background px-1 py-0.5 text-right" onBlur={(e) => { const value = Number(e.target.value); updateNode(record.id, { metadata: { ...(record.metadata ?? {}), minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80 } }); }} /> %</span>
+          </label>
+          <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            Bestätigt heißt
+            <select
+              value={basis}
+              aria-label="Was als bestätigt zählt"
+              title="Legt fest, woran die Bewährung dieser Karte gemessen wird."
+              className="nodrag cursor-pointer rounded-md border bg-background px-1 py-0.5 text-[10px]"
+              onChange={(e) =>
+                updateNode(record.id, {
+                  metadata: { ...(record.metadata ?? {}), calibrationBasis: e.target.value },
+                })
+              }
+            >
+              <option value="release">Wirkung wurde freigegeben</option>
+              <option value="followed">Mensch ist dem Urteil gefolgt</option>
+            </select>
           </label>
           <button className="nodrag flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground" onClick={() => writeQuestions([...questions, { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] }])}>
             <Plus className="size-3" /> Frage hinzufügen
