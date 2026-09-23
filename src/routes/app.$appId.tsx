@@ -348,10 +348,6 @@ function CaptureApp({
       setBusy("");
     }
   };
-    } finally {
-      setBusy("");
-    }
-  };
 
 
   if (!inspect) {
