@@ -128,6 +128,17 @@ function AdminPage() {
           <Button type="submit" variant="outline" size="sm">
             Suchen
           </Button>
+          <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
+            <SelectTrigger className="w-48" aria-label="Filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Konten</SelectItem>
+              <SelectItem value="admin">Administratoren</SelectItem>
+              <SelectItem value="blocked">Gesperrt</SelectItem>
+              <SelectItem value="deletion">Löschung vorgemerkt</SelectItem>
+            </SelectContent>
+          </Select>
         </form>
         <div className="mt-4 overflow-x-auto">
           <Table>
@@ -138,10 +149,21 @@ function AdminPage() {
                 <TableHead>Dabei seit</TableHead>
                 <TableHead>Administrator</TableHead>
                 <TableHead>Gesperrt</TableHead>
+                <TableHead>Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(users.data?.users ?? []).map((user) => (
+              {(users.data?.users ?? [])
+                .filter((user) =>
+                  filter === "admin"
+                    ? user.isAdmin
+                    : filter === "blocked"
+                      ? user.blocked
+                      : filter === "deletion"
+                        ? Boolean(user.deletionRequestedAt)
+                        : true,
+                )
+                .map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
