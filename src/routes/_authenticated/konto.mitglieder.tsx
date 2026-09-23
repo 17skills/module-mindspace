@@ -122,7 +122,7 @@ function MembersPage() {
         </div>
 
         <ul className="mt-6 divide-y rounded-xl border">
-          {(members.data ?? []).map((member) => (
+          {(members.data?.members ?? []).map((member) => (
             <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <span className="text-sm">{member.email}</span>
               <div className="flex items-center gap-2">
