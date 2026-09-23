@@ -798,7 +798,7 @@ function BoardPage() {
       markSelfWrite(...list);
       saveOp(boardId, { kind: "node.delete", ids: list });
     },
-    [setNodes, setEdges, boardId],
+    [setNodes, setEdges, boardId, canEditNode],
   );
 
   const createRecord = useCallback(
