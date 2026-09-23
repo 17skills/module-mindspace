@@ -3584,6 +3584,38 @@ function BoardPage() {
                 </TooltipContent>
               </Tooltip>
 
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Rückgängig"
+                    disabled={!canEdit || pastRef.current.length === 0}
+                    onClick={() => undo()}
+                  >
+                    <Undo2 className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Rückgängig (⌘Z)</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={toolBtn()}
+                    aria-label="Wiederholen"
+                    disabled={!canEdit || futureRef.current.length === 0}
+                    onClick={() => redo()}
+                  >
+                    <Redo2 className="size-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Wiederholen (⌘⇧Z)</TooltipContent>
+              </Tooltip>
+
 
               <DropdownMenu>
                 <Tooltip>
