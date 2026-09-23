@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Background,
   BackgroundVariant,
@@ -153,13 +155,21 @@ function SharedBoardPage() {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [locked, setLocked] = useState(false);
+  const [password, setPassword] = useState("");
 
-  useEffect(() => {
-    let active = true;
-    void getSharedBoard({ data: { token } })
-      .then((result) => {
-        if (!active) return;
-        setTitle(result.board.title);
+  const load = useCallback(
+    async (password?: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await getSharedBoard({ data: { token, ...(password ? { password } : {}) } });
+        if (result.locked) {
+          setLocked(true);
+          return;
+        }
+        setLocked(false);
+        setTitle(result.board?.title ?? "");
         setRecords(result.nodes as unknown as NodeRecord[]);
         setEdges(
           result.edges.map((edge) => ({
@@ -170,15 +180,18 @@ function SharedBoardPage() {
             label: (edge.label as string | null) ?? undefined,
           })),
         );
-      })
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "Scope nicht verfügbar"),
-      )
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [token]);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Scope nicht verfügbar");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const nodes = useMemo(
     () => [...records].sort((a, b) => layer(a) - layer(b)).map(toFlowNode),
@@ -219,6 +232,39 @@ function SharedBoardPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>
+    );
+  }
+
+  if (locked) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+        <h1 className="font-display text-xl font-semibold text-brand-navy">
+          Dieser Scope ist mit einem Passwort geschützt
+        </h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Gib das Passwort ein, das du mit dem Link erhalten hast.
+        </p>
+        <form
+          className="flex w-full max-w-sm items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void load(password);
+          }}
+        >
+          <Input
+            type="password"
+            value={password}
+            autoFocus
+            aria-label="Passwort"
+            onChange={(event) => setPassword(event.target.value)}
+            className="rounded-xl"
+          />
+          <Button type="submit" className="rounded-full" disabled={!password.trim()}>
+            Öffnen
+          </Button>
+        </form>
+        {error ? <p className="text-sm text-[var(--error)]">{error}</p> : null}
+      </div>
     );
   }
 

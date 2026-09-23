@@ -16,17 +16,35 @@ async function admin() {
   return supabaseAdmin;
 }
 
-/** Alle Konten mit Rolle, Sperre und Nutzungskennzahlen. */
+/** Konten mit Rolle, Sperre und Nutzungskennzahlen – mit Suche und Seitenweise. */
 export const adminListUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .validator((input: unknown) =>
+    z
+      .object({
+        search: z.string().max(120).optional(),
+        limit: z.number().int().min(1).max(100).default(25),
+        offset: z.number().int().min(0).default(0),
+      })
+      .default({ limit: 25, offset: 0 })
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
     await assertAdmin(context as never);
     const db = await admin();
+    let query = db
+      .from("profiles")
+      .select(
+        "id,email,display_name,avatar_url,blocked_at,deletion_requested_at,created_at,updated_at",
+        { count: "exact" },
+      )
+      .order("created_at", { ascending: true })
+      .range(data.offset, data.offset + data.limit - 1);
+    const search = data.search?.trim();
+    if (search) query = query.or(`email.ilike.%${search}%,display_name.ilike.%${search}%`);
+
     const [profiles, roles, boards] = await Promise.all([
-      db
-        .from("profiles")
-        .select("id,email,display_name,avatar_url,blocked_at,deletion_requested_at,created_at,updated_at")
-        .order("created_at", { ascending: true }),
+      query,
       db.from("user_roles").select("user_id,role"),
       db.from("boards").select("user_id"),
     ]);
@@ -37,18 +55,23 @@ export const adminListUsers = createServerFn({ method: "POST" })
     }
     const adminIds = new Set((roles.data ?? []).filter((r) => r.role === "admin").map((r) => r.user_id));
 
-    return (profiles.data ?? []).map((profile) => ({
-      id: profile.id,
-      email: profile.email ?? "",
-      displayName: profile.display_name ?? "",
-      avatarUrl: profile.avatar_url ?? null,
-      blocked: Boolean(profile.blocked_at),
-      deletionRequestedAt: profile.deletion_requested_at,
-      createdAt: profile.created_at,
-      lastActive: profile.updated_at,
-      scopes: scopeCount.get(profile.id) ?? 0,
-      isAdmin: adminIds.has(profile.id),
-    }));
+    return {
+      total: profiles.count ?? 0,
+      offset: data.offset,
+      limit: data.limit,
+      users: (profiles.data ?? []).map((profile) => ({
+        id: profile.id,
+        email: profile.email ?? "",
+        displayName: profile.display_name ?? "",
+        avatarUrl: profile.avatar_url ?? null,
+        blocked: Boolean(profile.blocked_at),
+        deletionRequestedAt: profile.deletion_requested_at,
+        createdAt: profile.created_at,
+        lastActive: profile.updated_at,
+        scopes: scopeCount.get(profile.id) ?? 0,
+        isAdmin: adminIds.has(profile.id),
+      })),
+    };
   });
 
 /** Administratorrolle vergeben oder entziehen. */

@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ShieldCheck, Trash2 } from "lucide-react";
 import {
@@ -25,10 +27,19 @@ export const Route = createFileRoute("/_authenticated/konto/admin")({
   component: AdminPage,
 });
 
+const PAGE_SIZE = 25;
+
 function AdminPage() {
   const client = useQueryClient();
-  const users = useQuery({ queryKey: ["admin-users"], queryFn: () => adminListUsers() });
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [offset, setOffset] = useState(0);
+  const users = useQuery({
+    queryKey: ["admin-users", query, offset],
+    queryFn: () => adminListUsers({ data: { search: query, limit: PAGE_SIZE, offset } }),
+  });
   const log = useQuery({ queryKey: ["admin-audit"], queryFn: () => adminListAuditLog() });
+  const total = users.data?.total ?? 0;
 
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["admin-users"] });
@@ -71,6 +82,24 @@ function AdminPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Gesperrte Konten werden beim nächsten Seitenaufruf abgemeldet.
         </p>
+        <form
+          className="mt-4 flex max-w-md items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setOffset(0);
+            setQuery(search.trim());
+          }}
+        >
+          <Input
+            value={search}
+            aria-label="Konten suchen"
+            placeholder="Nach E-Mail oder Name suchen"
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <Button type="submit" variant="outline" size="sm">
+            Suchen
+          </Button>
+        </form>
         <div className="mt-4 overflow-x-auto">
           <Table>
             <TableHeader>
@@ -83,7 +112,7 @@ function AdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(users.data ?? []).map((user) => (
+              {(users.data?.users ?? []).map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -115,6 +144,31 @@ function AdminPage() {
               ))}
             </TableBody>
           </Table>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>
+            {total === 0
+              ? "Keine Konten gefunden"
+              : `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} von ${total}`}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+            >
+              Zurück
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={offset + PAGE_SIZE >= total}
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+            >
+              Weiter
+            </Button>
+          </div>
         </div>
       </section>
 

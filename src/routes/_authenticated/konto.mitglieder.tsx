@@ -122,7 +122,7 @@ function MembersPage() {
         </div>
 
         <ul className="mt-6 divide-y rounded-xl border">
-          {(members.data ?? []).map((member) => (
+          {(members.data?.members ?? []).map((member) => (
             <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <span className="text-sm">{member.email}</span>
               <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ function MembersPage() {
               </div>
             </li>
           ))}
-          {members.data && members.data.length === 0 ? (
+          {members.data && members.data.members.length === 0 ? (
             <li className="px-4 py-6 text-sm text-muted-foreground">
               Noch keine weiteren Mitglieder in diesem Scope.
             </li>

@@ -55,6 +55,8 @@ export type Database = {
       }
       apps: {
         Row: {
+          access_expires_at: string | null
+          access_revoked_at: string | null
           board_id: string
           branding: Json
           created_at: string
@@ -62,6 +64,7 @@ export type Database = {
           id: string
           is_public: boolean
           kind: string
+          last_access_at: string | null
           mcp_scope: string
           mcp_token: string
           node_ids: Json
@@ -70,6 +73,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_expires_at?: string | null
+          access_revoked_at?: string | null
           board_id: string
           branding?: Json
           created_at?: string
@@ -77,6 +82,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           kind?: string
+          last_access_at?: string | null
           mcp_scope?: string
           mcp_token?: string
           node_ids?: Json
@@ -85,6 +91,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_expires_at?: string | null
+          access_revoked_at?: string | null
           board_id?: string
           branding?: Json
           created_at?: string
@@ -92,6 +100,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           kind?: string
+          last_access_at?: string | null
           mcp_scope?: string
           mcp_token?: string
           node_ids?: Json
@@ -224,6 +233,10 @@ export type Database = {
           description: string | null
           id: string
           is_public: boolean
+          share_expires_at: string | null
+          share_last_used_at: string | null
+          share_password_hash: string | null
+          share_revoked_at: string | null
           share_token: string
           title: string
           updated_at: string
@@ -234,6 +247,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          share_expires_at?: string | null
+          share_last_used_at?: string | null
+          share_password_hash?: string | null
+          share_revoked_at?: string | null
           share_token?: string
           title?: string
           updated_at?: string
@@ -244,6 +261,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          share_expires_at?: string | null
+          share_last_used_at?: string | null
+          share_password_hash?: string | null
+          share_revoked_at?: string | null
           share_token?: string
           title?: string
           updated_at?: string

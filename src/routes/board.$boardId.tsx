@@ -444,6 +444,9 @@ function BoardPage() {
   const [appOpen, setAppOpen] = useState(false);
   const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
+  /** Rolle in diesem Scope: Inhaber, Bearbeiten oder nur Lesen. */
+  const [role, setRole] = useState<"owner" | "editor" | "viewer">("editor");
+  const canEdit = role !== "viewer";
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
@@ -480,10 +483,16 @@ function BoardPage() {
     let active = true;
     let done = false;
     void (async () => {
-      const [boardRes, nodeRes, edgeRes] = await Promise.all([
+      const [boardRes, nodeRes, edgeRes, memberRes] = await Promise.all([
         supabase.from("boards").select("title,user_id").eq("id", boardId).single(),
         supabase.from("nodes").select("*").eq("board_id", boardId),
         supabase.from("edges").select("*").eq("board_id", boardId),
+        supabase
+          .from("board_members")
+          .select("role")
+          .eq("board_id", boardId)
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
       if (!active) return;
       if (boardRes.error) {
@@ -492,7 +501,9 @@ function BoardPage() {
         return;
       }
       setTitle(boardRes.data.title);
-      setIsOwner(boardRes.data.user_id === userId);
+      const owner = boardRes.data.user_id === userId;
+      setIsOwner(owner);
+      setRole(owner ? "owner" : memberRes.data?.role === "editor" ? "editor" : "viewer");
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
@@ -2767,8 +2778,12 @@ function BoardPage() {
         <div className="h-5 w-px bg-border/70" />
         <Input
           value={title}
+          readOnly={!canEdit}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => trackSave(supabase.from("boards").update({ title }).eq("id", boardId))}
+          onBlur={() => {
+            if (!canEdit) return;
+            trackSave(supabase.from("boards").update({ title }).eq("id", boardId));
+          }}
           aria-label="Scope-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
@@ -2791,7 +2806,7 @@ function BoardPage() {
             </Tooltip>
           ) : (
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              Geteilter Scope
+              {canEdit ? "Geteilter Scope · Bearbeiten" : "Nur Leserecht"}
             </span>
           )}
         </div>
@@ -2931,15 +2946,20 @@ function BoardPage() {
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
             onMoveStart={() => setMenu(null)}
-            deleteKeyCode={["Backspace", "Delete"]}
+            nodesDraggable={canEdit}
+            nodesConnectable={canEdit}
+            elementsSelectable={canEdit}
+            deleteKeyCode={canEdit ? ["Backspace", "Delete"] : null}
             onPaneContextMenu={(event) => {
               event.preventDefault();
+              if (!canEdit) return;
               const mouse = event as unknown as MouseEvent;
               const flow = screenToFlowPosition({ x: mouse.clientX, y: mouse.clientY });
               setMenu({ x: mouse.clientX, y: mouse.clientY, flowX: flow.x, flowY: flow.y });
             }}
             onNodeContextMenu={(event, node) => {
               event.preventDefault();
+              if (!canEdit) return;
               const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
               setMenu({
                 x: event.clientX,
@@ -2972,7 +2992,12 @@ function BoardPage() {
           </ReactFlow>
 
           <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
-            <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur">
+            <div
+              className={cn(
+                "pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur",
+                !canEdit && "hidden",
+              )}
+            >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
