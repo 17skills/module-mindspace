@@ -444,6 +444,9 @@ function BoardPage() {
   const [appOpen, setAppOpen] = useState(false);
   const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
+  /** Rolle in diesem Scope: Inhaber, Bearbeiten oder nur Lesen. */
+  const [role, setRole] = useState<"owner" | "editor" | "viewer">("editor");
+  const canEdit = role !== "viewer";
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
