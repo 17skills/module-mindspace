@@ -21,7 +21,7 @@ async function audit(entry: {
   subjectUserId?: string | null;
   action: string;
   objectType?: string;
-  objectId?: string;
+  objectId?: string | null;
   detail?: string;
 }) {
   const db = await admin();
@@ -195,7 +195,7 @@ export const adminEndSessions = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context as never);
     const db = await admin();
-    const { error } = await db.rpc("end_user_sessions", { _user: data.userId, _session: data.sessionId });
+    const { error } = await db.rpc("end_user_sessions", { _user: data.userId, _session: data.sessionId ?? undefined });
     if (error) throw new Error(error.message);
     await audit({
       actorId: context.userId,
@@ -224,7 +224,7 @@ export const endMySessions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const db = await admin();
-    const { error } = await db.rpc("end_user_sessions", { _user: context.userId, _session: data.sessionId });
+    const { error } = await db.rpc("end_user_sessions", { _user: context.userId, _session: data.sessionId ?? undefined });
     if (error) throw new Error(error.message);
     await audit({
       actorId: context.userId,

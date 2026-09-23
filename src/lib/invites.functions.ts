@@ -12,7 +12,7 @@ async function audit(entry: {
   action: string;
   subjectUserId?: string | null;
   objectType?: string;
-  objectId?: string;
+  objectId?: string | null;
   detail?: string;
 }) {
   const db = await admin();
