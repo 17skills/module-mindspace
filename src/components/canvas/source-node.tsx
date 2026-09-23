@@ -82,7 +82,8 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
         title: envelope.meta.sourceName,
         metadata: { ...(record.metadata ?? {}), source },
       });
-    } catch {
+    } catch (error) {
+      console.error("Quelle konnte nicht gelesen werden", error);
       toast.error("Inhalt konnte nicht gelesen werden.");
     } finally {
       setBusy(false);
