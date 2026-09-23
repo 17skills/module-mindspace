@@ -3244,8 +3244,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
 
   /** Kalibrierung: Urteil gegen den Ausgang, den Menschen danach gesetzt haben. */
   const calibration = useQuery({
-    queryKey: ["calibration", record.id, meta["decidedAt"] ?? ""],
-    queryFn: () => loadCalibration({ data: { nodeId: record.id } }),
+    queryKey: ["calibration", record.id, meta["decidedAt"] ?? "", basis, JSON.stringify(humanConfidence)],
+    queryFn: () => loadCalibration({ data: { nodeId: record.id, basis } }),
     staleTime: 60_000,
     retry: false,
   });
