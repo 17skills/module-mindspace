@@ -71,6 +71,7 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
   );
 
   async function take(input: File | string) {
+    console.log("[Quelle] take", typeof input === "string" ? "text" : input.name);
     setBusy(true);
     try {
       const envelope =
