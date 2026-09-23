@@ -2135,8 +2135,47 @@ function BoardPage() {
       const policy = typeof meta["policy"] === "string" ? meta["policy"] : "";
       updateNode(id, { metadata: { ...(record.metadata ?? {}), decideRunning: true } });
       void runDecision({ data: { context, questions, ...(policy.trim() ? { policy } : {}) } })
-        .then((result) => {
+        .then(async (result) => {
           const current = recordsRef.current[id];
+          // Jedes Urteil wird unveränderlich im Entscheidungs-Journal festgehalten.
+          let journal: Record<string, string> = {};
+          try {
+            const written = await appendJournal({
+              data: {
+                boardId,
+                nodeId: id,
+                contextChecksum: checksum(context),
+                ontologyDigest: policy.trim() ? checksum(policy.trim()) : "",
+                engine: result.model || "typesafe/jev-latest",
+                provider: result.provider ?? "",
+                entries: result.answers.map((answer) => {
+                  const question = questions.find((item) => item.id === answer.id);
+                  return {
+                    questionId: answer.id,
+                    questionText: question?.instructions ?? "",
+                    questionType: answer.type,
+                    verdict: answerLabel(answer),
+                    probability:
+                      typeof answer.noul === "number"
+                        ? answer.noul
+                        : typeof answer.score === "number"
+                          ? answer.score
+                          : null,
+                    confidence: typeof answer.confidence === "number" ? answer.confidence : null,
+                    minConfidence:
+                      typeof question?.minConfidence === "number"
+                        ? question.minConfidence
+                        : typeof meta["minConfidence"] === "number"
+                          ? (meta["minConfidence"] as number)
+                          : 80,
+                  };
+                }),
+              },
+            });
+            journal = written.ids;
+          } catch {
+            /* Das Journal darf das Urteil nie blockieren. */
+          }
           updateNode(id, {
             metadata: {
               ...(current?.metadata ?? {}),
@@ -2144,6 +2183,7 @@ function BoardPage() {
               answers: result.answers,
               decidedAt: result.at,
               decideEngine: result.model || "typesafe/jev-latest",
+              journal,
             },
           });
         })
