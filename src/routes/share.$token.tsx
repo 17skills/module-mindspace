@@ -235,6 +235,39 @@ function SharedBoardPage() {
     );
   }
 
+  if (locked) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+        <h1 className="font-display text-xl font-semibold text-brand-navy">
+          Dieser Scope ist mit einem Passwort geschützt
+        </h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Gib das Passwort ein, das du mit dem Link erhalten hast.
+        </p>
+        <form
+          className="flex w-full max-w-sm items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void load(password);
+          }}
+        >
+          <Input
+            type="password"
+            value={password}
+            autoFocus
+            aria-label="Passwort"
+            onChange={(event) => setPassword(event.target.value)}
+            className="rounded-xl"
+          />
+          <Button type="submit" className="rounded-full" disabled={!password.trim()}>
+            Öffnen
+          </Button>
+        </form>
+        {error ? <p className="text-sm text-[var(--error)]">{error}</p> : null}
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-6 text-center">
