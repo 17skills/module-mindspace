@@ -26,11 +26,14 @@ export const Route = createFileRoute("/_authenticated/konto")({
 
 const TABS = [
   { to: "/konto", label: "Profil", exact: true },
+  { to: "/konto/organisation", label: "Organisation" },
+  { to: "/konto/teams", label: "Teams" },
   { to: "/konto/einstellungen", label: "Einstellungen" },
   { to: "/konto/ki-schluessel", label: "KI-Schlüssel" },
   { to: "/konto/mcp", label: "MCP-Server" },
   { to: "/konto/mitglieder", label: "Mitglieder" },
   { to: "/konto/apps", label: "App-Zugänge" },
+  { to: "/konto/sitzungen", label: "Anmeldungen" },
   { to: "/konto/datenschutz", label: "Datenschutz" },
 ] as const;
 
