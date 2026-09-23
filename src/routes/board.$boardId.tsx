@@ -3674,8 +3674,34 @@ function BoardPage() {
                 </button>
               );
             })}
+            {menu.nodeId ? (
+              <button
+                className="mt-1 flex w-full items-center gap-2.5 rounded-md border-t border-border/60 px-2.5 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  const id = menu.nodeId!;
+                  setMenu(null);
+                  setAccessFor(id);
+                }}
+              >
+                <span className="flex-1">Rechte &amp; Kommentare …</span>
+              </button>
+            ) : null}
           </div>
         )}
+
+        {accessFor ? (
+          <NodeAccessDialog
+            boardId={boardId}
+            nodeId={accessFor}
+            nodeTitle={accessRecord?.title ?? "Modul"}
+            isFrame={accessRecord?.type === "zone"}
+            open
+            onOpenChange={(value) => {
+              if (!value) setAccessFor(null);
+            }}
+            onChanged={reloadAccess}
+          />
+        ) : null}
 
         {linkPrompt && (
           <div className="absolute inset-0 z-50 flex items-start justify-center bg-background/40 pt-32">
