@@ -233,6 +233,73 @@ function AdminPage() {
       </section>
 
       <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
+        <h2 className="font-display text-xl font-semibold text-brand-navy">Konto anlegen</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Für Personen ohne E-Mail-Einladung. Das Passwort bitte sicher weitergeben.
+        </p>
+        <form
+          className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            create.mutate();
+          }}
+        >
+          <div>
+            <Label htmlFor="new-email">E-Mail</Label>
+            <Input
+              id="new-email"
+              type="email"
+              className="mt-1.5"
+              value={newEmail}
+              onChange={(event) => setNewEmail(event.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="new-name">Name</Label>
+            <Input
+              id="new-name"
+              className="mt-1.5"
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="new-pass">Passwort (mind. 10 Zeichen)</Label>
+            <Input
+              id="new-pass"
+              type="text"
+              className="mt-1.5"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          </div>
+          <Button type="submit" className="self-end" disabled={create.isPending}>
+            Anlegen
+          </Button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
+        <h2 className="font-display text-xl font-semibold text-brand-navy">KI-Nutzung (30 Tage)</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Geschätzte Kosten gesamt: {(usage.data?.totalCost ?? 0).toFixed(2)} USD
+        </p>
+        <ul className="mt-4 divide-y rounded-xl border text-sm">
+          {(usage.data?.users ?? []).slice(0, 15).map((row) => (
+            <li key={row.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+              <span className="min-w-0 flex-1 truncate">{row.name}</span>
+              <span className="text-xs text-muted-foreground">{row.calls} Aufrufe</span>
+              <span className="text-xs text-muted-foreground">{row.tokens.toLocaleString("de-DE")} Token</span>
+              <span className="font-medium">{row.cost.toFixed(2)} USD</span>
+            </li>
+          ))}
+          {!(usage.data?.users ?? []).length ? (
+            <li className="px-4 py-3 text-muted-foreground">Keine Nutzung im Zeitraum.</li>
+          ) : null}
+        </ul>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-xl font-semibold text-brand-navy">Protokoll</h2>
