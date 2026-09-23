@@ -15,6 +15,11 @@ export const APP_LAYOUTS: { id: AppLayout; label: string; hint: string }[] = [
     hint: "Passt sich den gewählten Modulen an.",
   },
   {
+    id: "executive",
+    label: "Entscheider-Cockpit",
+    hint: "Ampel, Kernaussage und die wichtigsten Treiber – für Leitung und Vorstand.",
+  },
+  {
     id: "free",
     label: "Freie Fläche",
     hint: "Module direkt in der Vorschau verschieben und vergrößern.",
