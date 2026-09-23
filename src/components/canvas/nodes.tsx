@@ -260,7 +260,7 @@ const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
  */
 
 
-function SignalHandle(props: React.ComponentProps<typeof Handle>) {
+export function SignalHandle(props: React.ComponentProps<typeof Handle>) {
   const nodeId = useNodeId();
   const kind = props.type;
   const state = useStore(

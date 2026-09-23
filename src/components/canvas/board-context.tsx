@@ -125,6 +125,7 @@ export const NODE_ACCENT: Record<string, string> = {
   inspect: "var(--doc)",
   mcp: "var(--chat)",
   mcphub: "var(--chat)",
+  source: "var(--doc)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -153,4 +154,5 @@ export const NODE_LABEL: Record<string, string> = {
   inspect: "Inspektion",
   mcp: "MCP-Werkzeug",
   mcphub: "MCP-Hub",
+  source: "Quelle",
 };
