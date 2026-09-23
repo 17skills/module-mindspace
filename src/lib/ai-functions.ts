@@ -27,12 +27,21 @@ export const AI_FUNCTIONS = [
     kind: "structured",
   },
   {
+    id: "decision",
+    label: "JEV-Entscheidungen",
+    hint: "Typisierte Entscheidungen: Auswahl, Bewertung, Ja/Nein mit Sicherheitswert",
+    kind: "structured",
+  },
+  {
     id: "transcription",
     label: "Audio-Transkription",
     hint: "Sprache zu Text",
     kind: "transcription",
   },
 ] as const;
+
+/** Modell des mitgelieferten Zugangs für typisierte Entscheidungen. */
+export const JEV_MODEL = "typesafe/jev-latest";
 
 export type AiFunctionId = (typeof AI_FUNCTIONS)[number]["id"];
 

@@ -440,7 +440,7 @@ export function resolveRoute(
 }
 
 /** Schreibt einen Nutzungs-Datensatz; Fehler dabei dürfen die Anfrage nie stoppen. */
-async function recordUsage(entry: {
+export async function recordUsage(entry: {
   userId: string;
   provider: AiRouteProvider;
   fn: string;
