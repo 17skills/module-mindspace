@@ -3469,6 +3469,23 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
             Mindest-Sicherheit
             <span><input type="number" min={0} max={100} step={5} key={record.id + "minconf"} defaultValue={threshold} aria-label="Mindest-Sicherheit in Prozent" className="nodrag w-14 rounded-md border bg-background px-1 py-0.5 text-right" onBlur={(e) => { const value = Number(e.target.value); updateNode(record.id, { metadata: { ...(record.metadata ?? {}), minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80 } }); }} /> %</span>
           </label>
+          <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            Bestätigt heißt
+            <select
+              value={basis}
+              aria-label="Was als bestätigt zählt"
+              title="Legt fest, woran die Bewährung dieser Karte gemessen wird."
+              className="nodrag cursor-pointer rounded-md border bg-background px-1 py-0.5 text-[10px]"
+              onChange={(e) =>
+                updateNode(record.id, {
+                  metadata: { ...(record.metadata ?? {}), calibrationBasis: e.target.value },
+                })
+              }
+            >
+              <option value="release">Wirkung wurde freigegeben</option>
+              <option value="followed">Mensch ist dem Urteil gefolgt</option>
+            </select>
+          </label>
           <button className="nodrag flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground" onClick={() => writeQuestions([...questions, { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] }])}>
             <Plus className="size-3" /> Frage hinzufügen
           </button>
