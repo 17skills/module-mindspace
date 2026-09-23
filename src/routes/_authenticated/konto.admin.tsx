@@ -82,6 +82,24 @@ function AdminPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Gesperrte Konten werden beim nächsten Seitenaufruf abgemeldet.
         </p>
+        <form
+          className="mt-4 flex max-w-md items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setOffset(0);
+            setQuery(search.trim());
+          }}
+        >
+          <Input
+            value={search}
+            aria-label="Konten suchen"
+            placeholder="Nach E-Mail oder Name suchen"
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <Button type="submit" variant="outline" size="sm">
+            Suchen
+          </Button>
+        </form>
         <div className="mt-4 overflow-x-auto">
           <Table>
             <TableHeader>
