@@ -74,18 +74,18 @@ export async function appSummary(appId: string): Promise<AppSummary> {
   // Risikomatrix: Klasse bestimmt die Ampel der Gesamtlage.
   for (const row of nodes.filter((item) => item.type === "risk")) {
     const risk = safe(() => readIsoRisk(asRecord(row)), null);
-    if (!risk) continue;
-    const result = safe(() => evaluate(risk), null);
+    if (!risk?.fields.length) continue;
+    const result = safe(() => evaluate(risk.fields), null);
     if (!result) continue;
-    const klass = safe(() => classOf(result.score), "A");
+    const klass = classOf(result.highest);
     metrics.push({
       id: row.id,
       label: row.title ?? "Risiko",
-      value: `Klasse ${klass} · ${result.score}`,
-      hint: "Eintritt × Auswirkung nach ISO 55001",
+      value: `${klass.label} · Score ${result.highest}`,
+      hint: `${klass.action} · Portfolio-Index ${result.index}`,
     });
-    if (klass === "D") raise("alert");
-    else if (klass === "C") raise("warn");
+    if (klass.key === "D") raise("alert");
+    else if (klass.key === "C") raise("warn");
   }
 
   // Gewichtete Faktoren: 1–10, ab 7 kritisch.
