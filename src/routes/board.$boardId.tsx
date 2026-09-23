@@ -2923,6 +2923,11 @@ function BoardPage() {
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            onMouseMove={(event) => {
+              const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+              sendCursor(Math.round(flow.x), Math.round(flow.y));
+            }}
+
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             defaultEdgeOptions={{
