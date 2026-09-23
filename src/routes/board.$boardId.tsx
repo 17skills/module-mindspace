@@ -2665,6 +2665,7 @@ function BoardPage() {
   }
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
+  const accessRecord = accessFor ? records[accessFor] : undefined;
   const selectedModuleCount = nodes.filter((node) => {
     const record = records[node.id];
     return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
@@ -3030,7 +3031,7 @@ function BoardPage() {
             </Tooltip>
           ) : (
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              {canEdit ? "Geteilter Scope · Bearbeiten" : "Nur Leserecht"}
+              {canEdit ? "Geteilter Scope · Bearbeiten" : `Geteilter Scope · ${ROLE_LABEL[role]}`}
             </span>
           )}
         </div>
@@ -3120,7 +3121,7 @@ function BoardPage() {
         <BoardContext.Provider value={api}>
           <div ref={flowWrapRef} className="relative min-w-0 flex-1">
           <ReactFlow
-            nodes={nodes}
+            nodes={guardedNodes}
             edges={edges}
             onMouseMove={(event) => {
               const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
