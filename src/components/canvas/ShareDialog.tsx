@@ -87,7 +87,12 @@ export function ShareDialog({
   const expired = share?.expiresAt ? new Date(share.expiresAt).getTime() < Date.now() : false;
   const active = Boolean(share?.isPublic) && !share?.revokedAt && !expired;
 
-  async function patch(input: Parameters<typeof updateShareSettings>[0]["data"]) {
+  async function patch(input: {
+    boardId: string;
+    isPublic?: boolean;
+    expiresInDays?: number | null;
+    password?: string | null;
+  }) {
     setBusy(true);
     try {
       await updateShareSettings({ data: input });
