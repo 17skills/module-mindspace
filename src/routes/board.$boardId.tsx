@@ -23,6 +23,23 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
 import { exportBoard } from "@/lib/backup.functions";
+import { createBoardVersion } from "@/lib/versions.functions";
+import {
+  cacheBoard,
+  readBoardCache,
+  saveOp,
+  startOfflineSync,
+  useOfflineState,
+} from "@/lib/board-offline";
+import {
+  addConflicts,
+  isLocallyEdited,
+  markLocalEdit,
+  mergeRemoteNode,
+  type Conflict,
+} from "@/lib/board-conflict";
+import { ConflictBar } from "@/components/canvas/ConflictBar";
+import { VersionDialog } from "@/components/canvas/VersionDialog";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { runMcpTool } from "@/lib/mcp-client.functions";
 import { appendMcpRun, readMcp, readMcpHistory } from "@/lib/mcp-module";
@@ -503,6 +520,24 @@ function BoardPage() {
     }
   }, [boardId]);
 
+  // Offline: Warteschlange starten und bei Netz automatisch übertragen
+  useEffect(
+    () =>
+      startOfflineSync((count) =>
+        toast.success(`${count} Änderung${count === 1 ? "" : "en"} nachträglich übertragen`),
+      ),
+    [],
+  );
+
+  // Automatischer Stand für den Versionsverlauf, höchstens einer je Stunde
+  useEffect(() => {
+    if (!ready || !canEdit) return;
+    const timer = setTimeout(() => {
+      void createBoardVersion({ data: { boardId, kind: "automatisch" } }).catch(() => undefined);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [ready, canEdit, boardId]);
+
   // Bearbeitungshinweis: welches Modul hat die Person gerade ausgewählt
   useEffect(() => {
     const selected = nodes.find((node) => node.selected);
@@ -546,8 +581,21 @@ function BoardPage() {
     loadedKey.current = key;
     let active = true;
     let done = false;
+    /** Ohne Netz: den zuletzt gesehenen Stand aus dem Browser zeigen. */
+    const useCache = () => {
+      const cache = readBoardCache(boardId);
+      if (!cache) return false;
+      setTitle(cache.title);
+      setRecords(Object.fromEntries(cache.nodes.map((r) => [r.id, r])));
+      setNodes(sortNodes(cache.nodes).map(toFlowNode));
+      setEdges(cache.edges);
+      setReady(true);
+      toast.warning("Ohne Verbindung – gespeicherter Stand wird angezeigt");
+      return true;
+    };
+
     void (async () => {
-      const [boardRes, nodeRes, edgeRes, memberRes] = await Promise.all([
+      const result = await Promise.all([
         supabase.from("boards").select("title,user_id").eq("id", boardId).single(),
         supabase.from("nodes").select("*").eq("board_id", boardId),
         supabase.from("edges").select("*").eq("board_id", boardId),
@@ -557,9 +605,19 @@ function BoardPage() {
           .eq("board_id", boardId)
           .eq("user_id", userId)
           .maybeSingle(),
-      ]);
+      ]).catch(() => null);
       if (!active) return;
+      if (!result) {
+        if (useCache()) done = true;
+        else toast.error("Scope konnte nicht geladen werden");
+        return;
+      }
+      const [boardRes, nodeRes, edgeRes, memberRes] = result;
       if (boardRes.error) {
+        if (!navigator.onLine && useCache()) {
+          done = true;
+          return;
+        }
         toast.error("Scope nicht gefunden");
         void navigate({ to: "/" });
         return;
@@ -599,6 +657,7 @@ function BoardPage() {
       }
       if (drop.length) trackSave(supabase.from("edges").delete().in("id", drop));
       setEdges(keep);
+      cacheBoard(boardId, { title: boardRes.data.title, nodes: list, edges: keep });
       setReady(true);
       done = true;
     })();
@@ -625,7 +684,15 @@ function BoardPage() {
 
   // Echtzeit: fremde Änderungen an Modulen und Verbindungen sofort übernehmen
   useBoardSync(boardId, ready, {
-    upsertNode: (record) => {
+    upsertNode: (incoming) => {
+      // Feld für Feld zusammenführen: nur echte Kollisionen bleiben offen
+      const { merged, conflicts } = mergeRemoteNode(
+        recordsRef.current[incoming.id],
+        incoming,
+        (field) => isLocallyEdited(incoming.id, field),
+      );
+      addConflicts(conflicts);
+      const record = merged;
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
         current.some((node) => node.id === record.id)
@@ -670,20 +737,10 @@ function BoardPage() {
     (id: string, patch: Partial<NodeRecord>) => {
       patchRecord(id, patch);
       markSelfWrite(id);
-      trackSave(
-        supabase
-          .from("nodes")
-          .update(patch as never)
-          .eq("id", id)
-          .then(({ error }) => {
-            if (error) {
-              toast.error(error.message);
-              throw error;
-            }
-          }),
-      );
+      markLocalEdit(id, Object.keys(patch));
+      saveOp(boardId, { kind: "node.update", id, patch: patch as Record<string, unknown> });
     },
-    [patchRecord],
+    [patchRecord, boardId],
   );
 
   const deleteNode = useCallback(
@@ -707,20 +764,9 @@ function BoardPage() {
         return next;
       });
       markSelfWrite(...list);
-      trackSave(
-        supabase
-          .from("nodes")
-          .delete()
-          .in("id", list)
-          .then(({ error }) => {
-            if (error) {
-              toast.error(error.message);
-              throw error;
-            }
-          }),
-      );
+      saveOp(boardId, { kind: "node.delete", ids: list });
     },
-    [setNodes, setEdges],
+    [setNodes, setEdges, boardId],
   );
 
   const createRecord = useCallback(
@@ -740,6 +786,7 @@ function BoardPage() {
               absoluteZones(Object.values(recordsRef.current)),
             );
       const payload = {
+        id: crypto.randomUUID(),
         board_id: boardId,
         user_id: user.id,
         type: input.type,
@@ -760,14 +807,10 @@ function BoardPage() {
           ...(zone ? { zoneId: zone.id, zoneRole: ZONE_ROLES[0] } : {}),
         },
       };
-      // a Supabase builder fires a new request on every await — resolve it once
-      const insertPromise = Promise.resolve(
-        supabase.from("nodes").insert(payload as never).select("id,board_id,user_id,parent_id,type,title,position_x,position_y,width,height,color,source_url,storage_path,mime_type,content,status,error,metadata,created_at,updated_at").single(),
-      );
-      trackSave(insertPromise);
-      const { data, error } = await insertPromise;
-      if (error) throw error;
-      const record = data as unknown as NodeRecord;
+      // Das Modul erscheint sofort; das Speichern läuft über die Warteschlange
+      // und geht ohne Netz später automatisch raus.
+      saveOp(boardId, { kind: "node.insert", row: payload });
+      const record = { ...payload, error: null } as unknown as NodeRecord;
       markSelfWrite(record.id);
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
@@ -802,24 +845,17 @@ function BoardPage() {
         },
       ]);
       markSelfWrite(id);
-      trackSave(
-        supabase
-          .from("edges")
-          .insert({
-            id,
-            board_id: boardId,
-            user_id: user.id,
-            source_id: sourceId,
-            target_id: targetId,
-            label: text || null,
-          } as never)
-          .then(({ error }) => {
-            if (error) {
-              toast.error(error.message);
-              throw error;
-            }
-          }),
-      );
+      saveOp(boardId, {
+        kind: "edge.insert",
+        row: {
+          id,
+          board_id: boardId,
+          user_id: user.id,
+          source_id: sourceId,
+          target_id: targetId,
+          label: text || null,
+        },
+      });
     },
     [boardId, setEdges, user],
   );
@@ -834,18 +870,27 @@ function BoardPage() {
         ),
       );
       markSelfWrite(id);
-      trackSave(supabase.from("edges").update({ label: value || null }).eq("id", id));
+      saveOp(boardId, { kind: "edge.update", id, label: value || null });
     },
-    [setEdges],
+    [setEdges, boardId],
   );
 
   const deleteEdge = useCallback(
     (id: string) => {
       setEdges((current) => current.filter((edge) => edge.id !== id));
       markSelfWrite(id);
-      trackSave(supabase.from("edges").delete().eq("id", id));
+      saveOp(boardId, { kind: "edge.delete", ids: [id] });
     },
-    [setEdges],
+    [setEdges, boardId],
+  );
+
+  /** Entscheidung bei gleichzeitiger Änderung: eigene Fassung halten oder fremde übernehmen. */
+  const resolveWith = useCallback(
+    (conflict: Conflict, keep: "mine" | "theirs") => {
+      const value = keep === "mine" ? conflict.mine : conflict.theirs;
+      updateNode(conflict.nodeId, { [conflict.field]: value } as Partial<NodeRecord>);
+    },
+    [updateNode],
   );
 
   const collectContext = useCallback((id: string) => {
@@ -1305,10 +1350,10 @@ function BoardPage() {
       const ids = stale.map((e) => e.id);
       setEdges((current) => current.filter((e) => !ids.includes(e.id)));
       markSelfWrite(...ids);
-      trackSave(supabase.from("edges").delete().in("id", ids));
+      saveOp(boardId, { kind: "edge.delete", ids });
     }
     for (const otherId of outside) createEdge(frame.id, otherId);
-  }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
+  }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge, boardId]);
 
   /** Arrange selected content modules into compact grids without changing their sizes. */
   const arrangeSelection = useCallback(() => {
@@ -2894,10 +2939,17 @@ function BoardPage() {
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
         <SaveIndicator />
+        <OfflineIndicator />
         <div className="ml-auto flex items-center gap-3">
           <PresenceBar peers={peers} myColor={myColor} myName={myName} />
 
           <GlobalSearch />
+
+          <VersionDialog
+            boardId={boardId}
+            canEdit={canEdit}
+            onRestored={() => window.location.reload()}
+          />
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -3073,7 +3125,7 @@ function BoardPage() {
             onEdgesDelete={(deleted) => {
               deleted.forEach((e) => {
                 markSelfWrite(e.id);
-                trackSave(supabase.from("edges").delete().eq("id", e.id));
+                saveOp(boardId, { kind: "edge.delete", ids: [e.id] });
               });
             }}
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
@@ -3125,6 +3177,8 @@ function BoardPage() {
             <PresenceLayer peers={peers} nodes={nodes} />
 
           </ReactFlow>
+
+          <ConflictBar onChoose={resolveWith} />
 
           <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
             <div
@@ -3626,6 +3680,35 @@ function fileToBase64(file: File) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+/** Zeigt, ob eine Verbindung besteht und wie viel noch auf Übertragung wartet. */
+function OfflineIndicator() {
+  const { online, pending } = useOfflineState();
+  if (online && pending === 0) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium",
+            online ? "text-muted-foreground" : "bg-[#E0682B]/10 text-[#E0682B]",
+          )}
+        >
+          <CloudOff className="size-3.5" />
+          {online
+            ? `${pending} wird übertragen`
+            : pending
+              ? `Ohne Netz · ${pending} gespeichert`
+              : "Ohne Netz"}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        Änderungen bleiben im Browser und gehen automatisch raus, sobald die Verbindung wieder da
+        ist.
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 function SaveIndicator() {
