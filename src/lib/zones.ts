@@ -131,7 +131,15 @@ export type AppLayoutEntry = { id: string; view: AppView; hidden?: boolean };
 export type AppAccent = "forest" | "sage" | "terracotta" | "cobalt";
 export type AppBackground = "stone" | "paper" | "grid";
 /** Aufbau der ausgelieferten App – bestimmt, wie die Module angeordnet werden. */
-export type AppLayout = "auto" | "free" | "split" | "dashboard" | "feed" | "report" | "capture";
+export type AppLayout =
+  | "auto"
+  | "free"
+  | "split"
+  | "dashboard"
+  | "feed"
+  | "report"
+  | "capture"
+  | "executive";
 export type AppGridItem = {
   id: string;
   col: number;
@@ -255,7 +263,8 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
       value["layout"] === "dashboard" ||
       value["layout"] === "feed" ||
       value["layout"] === "report" ||
-      value["layout"] === "capture"
+      value["layout"] === "capture" ||
+      value["layout"] === "executive"
         ? value["layout"]
         : "auto",
     moduleLayout,

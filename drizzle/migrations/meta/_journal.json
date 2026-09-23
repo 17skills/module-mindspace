@@ -148,6 +148,13 @@
       "when": 1790140618409,
       "tag": "0020_granular_node_permissions_and_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790148122071,
+      "tag": "0021_app_delivery_channels",
+      "breakpoints": true
     }
   ]
 }

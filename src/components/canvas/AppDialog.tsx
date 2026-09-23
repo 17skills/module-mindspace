@@ -4,7 +4,9 @@ import QRCode from "qrcode";
 import {
   Bot,
   Copy,
+  Download,
   ExternalLink,
+  MessageSquare,
   Key,
   Maximize2,
   Minimize2,
@@ -52,8 +54,25 @@ type Row = {
   mcp_token: string;
   mcp_scope: string;
   is_public: boolean;
+  channels: unknown;
+  audience: string | null;
+  lead_question: string | null;
   updated_at: string;
 };
+
+export type Channels = { web: boolean; teams: boolean; mcp: boolean };
+
+const DEFAULT_CHANNELS: Channels = { web: true, teams: false, mcp: true };
+
+/** Kanäle aus der Datenbank lesen – fehlende Angaben werden ergänzt. */
+function channelsFrom(raw: unknown): Channels {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    web: value["web"] !== false,
+    teams: value["teams"] === true,
+    mcp: value["mcp"] !== false,
+  };
+}
 
 
 const ACCENTS: { id: AppAccent; label: string; color: string }[] = [
@@ -97,6 +116,9 @@ export function AppDialog({
   const [description, setDescription] = useState("");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [scope, setScope] = useState<"read" | "write">("read");
+  const [channels, setChannels] = useState<Channels>(DEFAULT_CHANNELS);
+  const [audience, setAudience] = useState("");
+  const [leadQuestion, setLeadQuestion] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [branding, setBranding] = useState<AppBranding>(DEFAULT_APP_BRANDING);
   const [saving, setSaving] = useState(false);
@@ -130,7 +152,9 @@ export function AppDialog({
   const reload = async () => {
     const { data, error } = await supabase
       .from("apps")
-      .select("id,title,description,kind,node_ids,branding,mcp_token,mcp_scope,is_public,updated_at")
+      .select(
+        "id,title,description,kind,node_ids,branding,mcp_token,mcp_scope,is_public,channels,audience,lead_question,updated_at",
+      )
       .eq("board_id", boardId)
       .order("updated_at", { ascending: false });
     if (error) {
@@ -146,6 +170,9 @@ export function AppDialog({
     setDescription("");
     setBranding(DEFAULT_APP_BRANDING);
     setScope("read");
+    setChannels(DEFAULT_CHANNELS);
+    setAudience("");
+    setLeadQuestion("");
     setPicked(start);
   };
 
@@ -208,6 +235,9 @@ export function AppDialog({
       kind,
       node_ids: picked,
       mcp_scope: scope,
+      channels,
+      audience: audience.trim(),
+      lead_question: leadQuestion.trim(),
       branding: { ...branding, title: title.trim() },
     };
     if (editing) {
@@ -246,6 +276,9 @@ export function AppDialog({
     setDescription(app.description ?? "");
     setDevice("desktop");
     setScope(app.mcp_scope === "write" ? "write" : "read");
+    setChannels(channelsFrom(app.channels));
+    setAudience(app.audience ?? "");
+    setLeadQuestion(app.lead_question ?? "");
     setPicked(Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : []);
     setBranding(brandingFrom(app.branding));
     setTab("module");
@@ -278,6 +311,10 @@ export function AppDialog({
   };
 
   const urlFor = (id: string) => `${window.location.origin}/app/${id}`;
+  const teamsCardFor = (app: Row) =>
+    `${window.location.origin}/api/public/app/${app.id}/teams-card?token=${app.mcp_token}`;
+  const teamsManifestFor = (app: Row) =>
+    `${window.location.origin}/api/public/app/${app.id}/teams-manifest`;
   const mcpFor = (app: Row) =>
     `${window.location.origin}/api/public/app/${app.id}/mcp?token=${app.mcp_token}`;
   const copy = (text: string, note: string) => {
@@ -552,6 +589,47 @@ export function AppDialog({
 
           {/* 3 – Zugriff */}
           <TabsContent value="access" className="space-y-3">
+            <span className="module-eyebrow text-muted-foreground">Wo wird entschieden?</span>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {(
+                [
+                  { id: "web" as const, label: "Web-Cockpit", hint: "Link und QR-Code für den Browser." },
+                  { id: "teams" as const, label: "Microsoft Teams", hint: "Registerkarte und Entscheidungskarte." },
+                  { id: "mcp" as const, label: "KI-Anschluss", hint: "Copilot und andere Assistenten." },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setChannels({ ...channels, [option.id]: !channels[option.id] })}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    channels[option.id]
+                      ? "border-ring bg-accent/40"
+                      : "border-border/70 hover:bg-accent/20"
+                  }`}
+                >
+                  <p className="text-sm font-medium">{option.label}</p>
+                  <p className="text-xs text-muted-foreground">{option.hint}</p>
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-xs text-muted-foreground">Zielgruppe</span>
+                <Input
+                  value={audience}
+                  onChange={(event) => setAudience(event.target.value)}
+                  placeholder="z. B. Betriebsleitung"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-muted-foreground">Leitfrage der Entscheidung</span>
+                <Input
+                  value={leadQuestion}
+                  onChange={(event) => setLeadQuestion(event.target.value)}
+                  placeholder="z. B. Freigeben oder nachbessern?"
+                />
+              </label>
+            </div>
             <p className="text-sm text-muted-foreground">
               Menschen öffnen die App über den Link – ohne Konto. KI-Assistenten brauchen zusätzlich
               den Schlüssel dieser App.
@@ -642,6 +720,22 @@ export function AppDialog({
                           onClick={() => copy(urlFor(app.id), "App-Link kopiert")}
                         >
                           <Copy className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Teams-Entscheidungskarte kopieren"
+                          onClick={() => copy(teamsCardFor(app), "Adresse der Teams-Karte kopiert")}
+                        >
+                          <MessageSquare className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Teams-Manifest herunterladen"
+                          onClick={() => window.open(teamsManifestFor(app), "_blank")}
+                        >
+                          <Download className="size-3.5" />
                         </Button>
                         <Button
                           size="sm"

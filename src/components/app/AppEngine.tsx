@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { MODULE_TYPE_LABEL } from "@/lib/apps";
+import { executiveView } from "@/lib/app-executive";
 import { formatValue, readFormat, valueOfNode } from "@/lib/calc";
 import { readFactor } from "@/lib/factor-score";
 import { pointsFromSources, readMapConfig } from "@/lib/geo";
@@ -406,6 +407,12 @@ export function AppEngine({
     );
   }
 
+  if (mode === "executive") {
+    return <ExecutiveLayout nodes={nodes} actions={actions} />;
+  }
+
+
+
   if (mode === "feed") {
     return (
       <main className="mx-auto w-full max-w-xl flex-1 space-y-3 p-4">
@@ -707,6 +714,80 @@ function FreeAppLayout({
           </div>
         );
       })}
+      </section>
+    </main>
+  );
+}
+
+const SIGNAL_STYLE: Record<
+  "ok" | "warn" | "alert",
+  { dot: string; text: string; ring: string; label: string }
+> = {
+  ok: { dot: "#4f8a5b", text: "#1C2321", ring: "border-[#4f8a5b]/40", label: "Grün" },
+  warn: { dot: "#E0682B", text: "#1C2321", ring: "border-[#E0682B]/40", label: "Bernstein" },
+  alert: { dot: "#DE5A3A", text: "#1C2321", ring: "border-[#DE5A3A]/50", label: "Rot" },
+};
+
+/**
+ * Entscheider-Cockpit: Ampel und Kernaussage oben, darunter die wichtigsten
+ * Treiber – erst danach die vollständigen Module.
+ */
+function ExecutiveLayout({
+  nodes,
+  actions,
+}: {
+  nodes: NodeRecord[];
+  actions?: ModuleAction | undefined;
+}) {
+  const view = useMemo(() => executiveView(nodes), [nodes]);
+  const look = SIGNAL_STYLE[view.signal];
+  return (
+    <main className="mx-auto w-full max-w-5xl flex-1 space-y-5 p-4">
+      <section
+        className={`rounded-2xl border bg-card p-5 shadow-[var(--shadow-card)] ${look.ring}`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="size-3 rounded-full" style={{ background: look.dot }} aria-hidden />
+          <span className="module-eyebrow text-muted-foreground">Gesamtlage · {look.label}</span>
+        </div>
+        <p className="mt-2 font-display text-2xl font-semibold">{view.headline}</p>
+        {view.openFindings > 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {view.openFindings} offene Befunde · {view.urgentFindings} dringend ·{" "}
+            {view.openCost.toLocaleString("de-DE")} € offen
+          </p>
+        ) : null}
+      </section>
+
+      {view.drivers.length > 0 && (
+        <section>
+          <span className="module-eyebrow text-muted-foreground">Entscheidungstreiber</span>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {view.drivers.map((driver) => (
+              <div
+                key={driver.id}
+                className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ background: SIGNAL_STYLE[driver.signal].dot }}
+                    aria-hidden
+                  />
+                  <span className="truncate text-xs text-muted-foreground">{driver.label}</span>
+                </div>
+                <p className="mt-1 font-mono text-xl">{driver.value}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{driver.hint}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-4">
+        {nodes.map((node) => (
+          <AppModule key={node.id} node={node} nodes={nodes} actions={actions} />
+        ))}
       </section>
     </main>
   );

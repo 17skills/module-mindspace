@@ -2792,6 +2792,18 @@ function BoardPage() {
           active: (menuRecord.color ?? ZONE_WHITE) === zoneColor.value,
           run: () => updateNode(menuRecord.id, { color: zoneColor.value }),
         })),
+        {
+          label: "Als App bereitstellen …",
+          icon: AppWindow,
+          run: () => {
+            const ids = zoneMembers(menuRecord.id, Object.values(records))
+              .filter((item) => !NON_BLOCKING_TYPES.has(item.type))
+              .map((item) => item.id)
+              .slice(0, MAX_APP_MODULES);
+            setAppPreselect(ids);
+            setAppOpen(true);
+          },
+        },
         { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
       ]
     : menu?.nodeId
