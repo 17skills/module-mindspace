@@ -13,34 +13,31 @@ type Handlers = {
   removeEdge: (id: string) => void;
 };
 
-export type RemoteEcho = { mark: (id: string) => void };
+const echo = new Map<string, number>();
+
+/** Eigene Schreibvorgänge merken, damit sie nicht als fremde Änderung zurückkommen. */
+export function markSelfWrite(...ids: (string | null | undefined)[]) {
+  const now = Date.now();
+  for (const id of ids) if (id) echo.set(id, now);
+}
+
+function isEcho(id: string) {
+  const at = echo.get(id);
+  if (at && Date.now() - at < ECHO_MS) return true;
+  if (at) echo.delete(id);
+  return false;
+}
 
 /**
  * Hält den Scope bei allen Beteiligten gleich: neue, geänderte und gelöschte
  * Module und Verbindungen kommen ohne Neuladen an.
  */
-export function useBoardSync(
-  boardId: string,
-  enabled: boolean,
-  handlers: Handlers,
-): RemoteEcho {
-  const echo = useRef(new Map<string, number>());
+export function useBoardSync(boardId: string, enabled: boolean, handlers: Handlers): void {
   const ref = useRef(handlers);
   ref.current = handlers;
 
-  const mark = useRef((id: string) => {
-    echo.current.set(id, Date.now());
-  }).current;
-
   useEffect(() => {
     if (!enabled) return;
-    const mine = (id: string) => {
-      const at = echo.current.get(id);
-      if (at && Date.now() - at < ECHO_MS) return true;
-      if (at) echo.current.delete(id);
-      return false;
-    };
-
     const channel = supabase
       .channel(`board-sync:${boardId}`)
       .on(
@@ -49,7 +46,7 @@ export function useBoardSync(
         (payload) => {
           const row = (payload.new ?? payload.old) as Record<string, unknown>;
           const id = String(row?.["id"] ?? "");
-          if (!id || mine(id)) return;
+          if (!id || isEcho(id)) return;
           if (payload.eventType === "DELETE") ref.current.removeNode(id);
           else ref.current.upsertNode(payload.new as unknown as NodeRecord);
         },
@@ -60,7 +57,7 @@ export function useBoardSync(
         (payload) => {
           const row = (payload.new ?? payload.old) as Record<string, unknown>;
           const id = String(row?.["id"] ?? "");
-          if (!id || mine(id)) return;
+          if (!id || isEcho(id)) return;
           if (payload.eventType === "DELETE") {
             ref.current.removeEdge(id);
             return;
@@ -81,6 +78,4 @@ export function useBoardSync(
       void supabase.removeChannel(channel);
     };
   }, [boardId, enabled]);
-
-  return { mark };
 }
