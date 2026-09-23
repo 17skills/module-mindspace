@@ -127,6 +127,13 @@
       "when": 1790133285525,
       "tag": "0017_realtime_nodes_edges",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790136263121,
+      "tag": "0018_board_versions",
+      "breakpoints": true
     }
   ]
 }

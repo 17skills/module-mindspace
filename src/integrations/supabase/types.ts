@@ -287,6 +287,50 @@ export type Database = {
           },
         ]
       }
+      board_versions: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          edge_count: number
+          id: string
+          kind: string
+          label: string | null
+          node_count: number
+          snapshot: Json
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          edge_count?: number
+          id?: string
+          kind?: string
+          label?: string | null
+          node_count?: number
+          snapshot: Json
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          edge_count?: number
+          id?: string
+          kind?: string
+          label?: string | null
+          node_count?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_versions_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boards: {
         Row: {
           created_at: string
