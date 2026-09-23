@@ -1322,7 +1322,7 @@ function BoardPage() {
       const ids = stale.map((e) => e.id);
       setEdges((current) => current.filter((e) => !ids.includes(e.id)));
       markSelfWrite(...ids);
-      trackSave(supabase.from("edges").delete().in("id", ids));
+      saveOp(boardId, { kind: "edge.delete", ids });
     }
     for (const otherId of outside) createEdge(frame.id, otherId);
   }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
@@ -3090,7 +3090,7 @@ function BoardPage() {
             onEdgesDelete={(deleted) => {
               deleted.forEach((e) => {
                 markSelfWrite(e.id);
-                trackSave(supabase.from("edges").delete().eq("id", e.id));
+                saveOp(boardId, { kind: "edge.delete", ids: [e.id] });
               });
             }}
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
