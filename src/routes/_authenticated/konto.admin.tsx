@@ -112,7 +112,7 @@ function AdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(users.data ?? []).map((user) => (
+              {(users.data?.users ?? []).map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
