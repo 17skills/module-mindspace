@@ -42,9 +42,11 @@ import { ConflictBar } from "@/components/canvas/ConflictBar";
 import { VersionDialog } from "@/components/canvas/VersionDialog";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { runMcpTool } from "@/lib/mcp-client.functions";
+import { appendJournal } from "@/lib/decision-journal.functions";
+import { checksum } from "@/lib/runtime/source-protocol";
 import { appendMcpRun, readMcp, readMcpHistory } from "@/lib/mcp-module";
 import { valueOfNode } from "@/lib/calc";
-import { readApi, readQuestions } from "@/lib/api-module";
+import { answerLabel, readApi, readQuestions } from "@/lib/api-module";
 import {
   DropdownMenu,
   DropdownMenuContent,
