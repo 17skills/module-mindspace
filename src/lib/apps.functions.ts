@@ -13,6 +13,18 @@ import { appRoleOf, assertAppRole, optionalRequestUserId } from "@/lib/app-permi
 
 type Json = Record<string, unknown>;
 
+async function auditDataChange(actorId: string, appId: string, action: string, detail?: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin.from("audit_log").insert({
+    actor_id: actorId,
+    subject_user_id: actorId,
+    action,
+    object_type: "app",
+    object_id: appId,
+    detail: detail ?? null,
+  });
+}
+
 /** Öffentliche Bühne: App-Einstellungen plus die zugehörigen Module. */
 export const getPublicApp = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ appId: z.string().uuid() }).parse(input))
@@ -98,7 +110,9 @@ export const appAddFinding = createServerFn({ method: "POST" })
       thumb: data.finding.thumb,
       photo: data.finding.photo,
     };
-    return insertFinding(data.appId, write);
+    const result = await insertFinding(data.appId, write);
+    await auditDataChange(context.userId, data.appId, "app.data.finding_added", result.id);
+    return result;
   });
 
 /** Status einer Maßnahme aus dem Cockpit heraus ändern. */
@@ -116,5 +130,7 @@ export const appSetFindingStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAppRole(context.userId, data.appId, "data_editor");
-    return changeFinding(data.appId, data.findingId, { status: data.status }, data.nodeId);
+    const result = await changeFinding(data.appId, data.findingId, { status: data.status }, data.nodeId);
+    await auditDataChange(context.userId, data.appId, "app.data.finding_status_changed", `${data.findingId}:${data.status}`);
+    return result;
   });
