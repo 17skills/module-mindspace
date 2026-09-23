@@ -892,6 +892,10 @@ function BoardPage() {
         },
       ]);
       markSelfWrite(id);
+      recordHistory({
+        kind: "edges.add",
+        edges: [{ id, source: sourceId, target: targetId, label: text || null }],
+      });
       saveOp(boardId, {
         kind: "edge.insert",
         row: {
