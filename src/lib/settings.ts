@@ -34,6 +34,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   byokProvider: "openai",
   aiRouting: defaultRouting(),
   aiBudgets: {},
+  activeOrgId: null,
 };
 
 function budgetsFrom(value: unknown): AiBudgets {
