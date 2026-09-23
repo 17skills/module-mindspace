@@ -138,12 +138,12 @@ export async function appSummary(appId: string): Promise<AppSummary> {
     });
   }
 
-  const headline =
-    signal === "alert"
-      ? "Sofortiger Handlungsbedarf"
-      : signal === "warn"
-        ? "Beobachten und einplanen"
-        : "Lage stabil";
+  const HEADLINE: Record<AppSummary["signal"], string> = {
+    alert: "Sofortiger Handlungsbedarf",
+    warn: "Beobachten und einplanen",
+    ok: "Lage stabil",
+  };
+  const headline = HEADLINE[signal as AppSummary["signal"]];
 
   return {
     appId: app.id,
