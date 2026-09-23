@@ -71,7 +71,6 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
   );
 
   async function take(input: File | string) {
-    console.log("[Quelle] take", typeof input === "string" ? "text" : input.name);
     setBusy(true);
     try {
       const envelope =
@@ -186,7 +185,7 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
               </span>
               {ownOntology ? (
                 <span className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
-                  {ownOntology.rules.length} Regeln
+                  {ownOntology.rules.length === 1 ? "1 Regel" : `${ownOntology.rules.length} Regeln`}
                 </span>
               ) : null}
             </div>
