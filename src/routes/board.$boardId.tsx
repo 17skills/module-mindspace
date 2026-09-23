@@ -18,7 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Download, Globe, LayoutGrid, Plug, Plus, Scale, Server, Shapes, Tag } from "lucide-react";
+import { Download, Globe, LayoutGrid, Plug, Plus, Scale, Send, Server, Shapes, Tag } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
@@ -120,6 +120,7 @@ import {
   ZoneNode,
 } from "@/components/canvas/nodes";
 import { SourceNode } from "@/components/canvas/source-node";
+import { ActionNode } from "@/components/canvas/action-node";
 import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { NodeAccessDialog } from "@/components/canvas/NodeAccessDialog";
 import { canEditRole, ROLE_LABEL, type AccessRole } from "@/lib/permissions";
@@ -209,6 +210,7 @@ export const Route = createFileRoute("/board/$boardId")({
 const nodeTypes = {
   content: ContentNode,
   source: SourceNode,
+  action: ActionNode,
   note: NoteNode,
   chat: ChatNode,
   frame: FrameNode,
@@ -256,6 +258,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   risk: { width: 760, height: 720 },
   inspect: { width: 520, height: 560 },
   source: { width: 340, height: 300 },
+  action: { width: 380, height: 420 },
   table: { width: 520, height: 300 },
   list: { width: 300, height: 280 },
   chart: { width: 400, height: 320 },
@@ -427,6 +430,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "inspect" ||
     record.type === "quotes" ||
     record.type === "source" ||
+    record.type === "action" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -3658,6 +3662,12 @@ function BoardPage() {
                     void createRecord({ type: "source", title: "Quelle", position_x: at.x, position_y: at.y });
                   }}>
                     <FileUp className="size-4" /> Datenquelle
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => {
+                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                    void createRecord({ type: "action", title: "Aktion", position_x: at.x, position_y: at.y });
+                  }}>
+                    <Send className="size-4" /> Aktion (Ablagefach)
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => {
                     const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });

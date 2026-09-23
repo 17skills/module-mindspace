@@ -126,6 +126,7 @@ export const NODE_ACCENT: Record<string, string> = {
   mcp: "var(--chat)",
   mcphub: "var(--chat)",
   source: "var(--doc)",
+  action: "var(--warning, #E0682B)",
 };
 
 export const NODE_LABEL: Record<string, string> = {
@@ -155,4 +156,5 @@ export const NODE_LABEL: Record<string, string> = {
   mcp: "MCP-Werkzeug",
   mcphub: "MCP-Hub",
   source: "Quelle",
+  action: "Aktion",
 };
