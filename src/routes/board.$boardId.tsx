@@ -452,8 +452,9 @@ function BoardPage() {
   const [role, setRole] = useState<"owner" | "editor" | "viewer">("editor");
   const canEdit = role !== "viewer";
   const myName =
-    (user?.user_metadata?.full_name as string | undefined) ||
-    (user?.user_metadata?.name as string | undefined) ||
+    (user?.user_metadata?.["full_name"] as string | undefined) ||
+    (user?.user_metadata?.["name"] as string | undefined) ||
+
     user?.email ||
     "Gast";
   const { peers, sendCursor, setEditing, myColor } = useBoardPresence({
