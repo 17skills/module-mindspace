@@ -290,6 +290,7 @@ function CaptureApp({
 
   const clear = () => {
     setPhoto(null);
+    setThumb(null);
     setLabel("");
     setReport("");
     setLat(null);
@@ -304,7 +305,7 @@ function CaptureApp({
       return;
     }
     if (!online) {
-      enqueueFinding({ appId, label, report, lat, lon, source, photo, assessment: null });
+      enqueueFinding({ appId, label, report, lat, lon, source, photo, thumb, assessment: null });
       setQueue(queuedFor(appId));
       toast.success("Ohne Netz gespeichert – wird später übertragen");
       clear();
@@ -329,7 +330,8 @@ function CaptureApp({
             cost: assessment.cost,
             confidence: assessment.confidence,
             reason: assessment.reason,
-            thumb: photo,
+            thumb: thumb ?? photo,
+            photo,
             source,
           },
         },
@@ -338,10 +340,14 @@ function CaptureApp({
       clear();
       onSaved();
     } catch {
-      enqueueFinding({ appId, label, report, lat, lon, source, photo, assessment: null });
+      enqueueFinding({ appId, label, report, lat, lon, source, photo, thumb, assessment: null });
       setQueue(queuedFor(appId));
       toast.warning("Keine Verbindung – Befund liegt in der Warteschlange");
       clear();
+    } finally {
+      setBusy("");
+    }
+  };
     } finally {
       setBusy("");
     }
