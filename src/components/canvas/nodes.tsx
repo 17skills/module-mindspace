@@ -2394,6 +2394,21 @@ export function LabeledEdge(props: EdgeProps) {
                 </div>
               </div>
             </div>
+          ) : sourceSignal && labelsVisible ? (
+            <span
+              title={sourceSignal.headline}
+              className="flex items-center gap-1 rounded-full border bg-card px-2 py-0.5 text-[10px] leading-tight shadow-[var(--shadow-card)]"
+              style={{ borderColor: stroke, color: stroke }}
+            >
+              <span className="inline-block size-1.5 rounded-full" style={{ background: stroke }} />
+              {sourceSignal.status === "violation"
+                ? "Regelverstoß"
+                : sourceSignal.status === "warn"
+                  ? "Mit Lücken"
+                  : sourceSignal.status === "idle"
+                    ? "Keine Daten"
+                    : sourceSignal.display}
+            </span>
           ) : labelsVisible && (label || flow.text) ? (
             <span
               title="Aktueller Wert auf dieser Verbindung"
