@@ -98,8 +98,8 @@ describe("Modul-Vertrag", () => {
   });
 
   it("gibt ohne prepareEffect nichts nach außen", () => {
-    const pure: UnitSpec<number, null> = { ...sumUnit, prepareEffect: undefined } as never;
-    const result = runEvaluate(pure, { ports: { data: table } }, null);
-    expect(stageEffect(pure, result, null)).toBeNull();
+    const pure: UnitSpec<number, { factor: number }> = { ...sumUnit, prepareEffect: undefined };
+    const result = runEvaluate(pure, { ports: { data: table } }, { factor: 1 });
+    expect(stageEffect(pure, result, { factor: 1 })).toBeNull();
   });
 });
