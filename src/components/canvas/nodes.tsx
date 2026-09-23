@@ -5015,6 +5015,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
           confidence: Math.min(100, Math.max(0, Math.round(result.confidence))),
           reason: result.reason,
           thumb,
+          photoPath: null,
           createdAt: new Date().toISOString(),
           prevPriority: previous ? previous.priority : null,
           status: "offen",
