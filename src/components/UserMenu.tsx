@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LogOut, Settings, ShieldCheck, User } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Building2, Check, LogOut, Settings, ShieldCheck, User } from "lucide-react";
 import { getAccount } from "@/lib/account.functions";
+import { listMyOrgs, setActiveOrg } from "@/lib/org.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
