@@ -2983,7 +2983,12 @@ function BoardPage() {
           </ReactFlow>
 
           <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
-            <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur">
+            <div
+              className={cn(
+                "pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur",
+                !canEdit && "hidden",
+              )}
+            >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
