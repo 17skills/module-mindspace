@@ -55,18 +55,23 @@ export const adminListUsers = createServerFn({ method: "POST" })
     }
     const adminIds = new Set((roles.data ?? []).filter((r) => r.role === "admin").map((r) => r.user_id));
 
-    return (profiles.data ?? []).map((profile) => ({
-      id: profile.id,
-      email: profile.email ?? "",
-      displayName: profile.display_name ?? "",
-      avatarUrl: profile.avatar_url ?? null,
-      blocked: Boolean(profile.blocked_at),
-      deletionRequestedAt: profile.deletion_requested_at,
-      createdAt: profile.created_at,
-      lastActive: profile.updated_at,
-      scopes: scopeCount.get(profile.id) ?? 0,
-      isAdmin: adminIds.has(profile.id),
-    }));
+    return {
+      total: profiles.count ?? 0,
+      offset: data.offset,
+      limit: data.limit,
+      users: (profiles.data ?? []).map((profile) => ({
+        id: profile.id,
+        email: profile.email ?? "",
+        displayName: profile.display_name ?? "",
+        avatarUrl: profile.avatar_url ?? null,
+        blocked: Boolean(profile.blocked_at),
+        deletionRequestedAt: profile.deletion_requested_at,
+        createdAt: profile.created_at,
+        lastActive: profile.updated_at,
+        scopes: scopeCount.get(profile.id) ?? 0,
+        isAdmin: adminIds.has(profile.id),
+      })),
+    };
   });
 
 /** Administratorrolle vergeben oder entziehen. */
