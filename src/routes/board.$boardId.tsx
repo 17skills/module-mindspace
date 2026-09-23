@@ -2778,8 +2778,12 @@ function BoardPage() {
         <div className="h-5 w-px bg-border/70" />
         <Input
           value={title}
+          readOnly={!canEdit}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => trackSave(supabase.from("boards").update({ title }).eq("id", boardId))}
+          onBlur={() => {
+            if (!canEdit) return;
+            trackSave(supabase.from("boards").update({ title }).eq("id", boardId));
+          }}
           aria-label="Scope-Titel"
           className="h-9 min-w-0 max-w-72 border-transparent bg-transparent font-display text-base font-semibold shadow-none focus-visible:border-input"
         />
