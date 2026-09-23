@@ -1325,7 +1325,7 @@ function BoardPage() {
       saveOp(boardId, { kind: "edge.delete", ids });
     }
     for (const otherId of outside) createEdge(frame.id, otherId);
-  }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge]);
+  }, [nodes, createRecord, updateNode, setNodes, setEdges, createEdge, boardId]);
 
   /** Arrange selected content modules into compact grids without changing their sizes. */
   const arrangeSelection = useCallback(() => {
