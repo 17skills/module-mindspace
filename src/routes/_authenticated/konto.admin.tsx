@@ -48,7 +48,12 @@ function AdminPage() {
     queryFn: () => adminListUsers({ data: { search: query, limit: PAGE_SIZE, offset } }),
   });
   const log = useQuery({ queryKey: ["admin-audit"], queryFn: () => adminListAuditLog() });
+  const usage = useQuery({ queryKey: ["admin-usage"], queryFn: () => adminUsageSummary({ data: { days: 30 } }) });
   const total = users.data?.total ?? 0;
+  const [filter, setFilter] = useState<"all" | "admin" | "blocked" | "deletion">("all");
+  const [newEmail, setNewEmail] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["admin-users"] });
