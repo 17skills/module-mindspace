@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScopePreview } from "@/components/ScopePreview";
 import { UserMenu } from "@/components/UserMenu";
+import { GlobalSearch } from "@/components/GlobalSearch";
+import { importBoard } from "@/lib/backup.functions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +51,24 @@ function LibraryPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<{ kind: "scope" | "app"; id: string } | null>(null);
   const [draft, setDraft] = useState("");
+  const restoreRef = useRef<HTMLInputElement>(null);
+
+  const restoreBackup = useMutation({
+    mutationFn: async (file: File) => {
+      const backup = JSON.parse(await file.text()) as unknown;
+      return importBoard({ data: { backup: backup as never } });
+    },
+    onSuccess: (result) => {
+      toast.success(
+        `Wiederhergestellt: ${result.nodes} Module, ${result.edges} Verbindungen` +
+          (result.missingServers
+            ? ` – ${result.missingServers} MCP-Zugang fehlt noch`
+            : ""),
+      );
+      void navigate({ to: "/board/$boardId", params: { boardId: result.boardId } });
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
@@ -170,6 +190,7 @@ function LibraryPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <GlobalSearch />
             <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
             <UserMenu />
           </div>
@@ -187,9 +208,29 @@ function LibraryPage() {
               deine Apps.
             </p>
           </div>
-          <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
-            Neuer Scope
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={restoreRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) restoreBackup.mutate(file);
+                event.target.value = "";
+              }}
+            />
+            <Button
+              variant="outline"
+              onClick={() => restoreRef.current?.click()}
+              disabled={restoreBackup.isPending}
+            >
+              Sicherung einspielen
+            </Button>
+            <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
+              Neuer Scope
+            </Button>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
