@@ -18,8 +18,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, LayoutGrid, Plug, Scale, Server, Shapes, Tag } from "lucide-react";
+import { Download, Globe, LayoutGrid, Plug, Scale, Server, Shapes, Tag } from "lucide-react";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
+import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
+import { exportBoard } from "@/lib/backup.functions";
 import { runApiModule, runDecision } from "@/lib/api-module.functions";
 import { runMcpTool } from "@/lib/mcp-client.functions";
 import { appendMcpRun, readMcp, readMcpHistory } from "@/lib/mcp-module";
@@ -136,6 +139,8 @@ import {
 } from "@/lib/ingest.functions";
 
 export const Route = createFileRoute("/board/$boardId")({
+  validateSearch: (search: Record<string, unknown>): { focus?: string } =>
+    typeof search["focus"] === "string" ? { focus: search["focus"] } : {},
   head: () => ({
     meta: [
       { title: "Scope – scopebuilder" },
@@ -426,6 +431,7 @@ type Menu = { x: number; y: number; flowX: number; flowY: number; nodeId?: strin
 
 function BoardPage() {
   const { boardId } = Route.useParams();
+  const { focus: focusParam } = Route.useSearch();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { screenToFlowPosition, setCenter } = useReactFlow();
@@ -462,6 +468,40 @@ function BoardPage() {
     userId: user?.id ?? null,
     name: myName,
   });
+
+  const focusDone = useRef<string | null>(null);
+
+  // Aus der globalen Suche kommend: passendes Modul mittig zeigen und auswählen
+  useEffect(() => {
+    if (!ready || !focusParam || focusDone.current === focusParam) return;
+    const record = recordsRef.current[focusParam];
+    if (!record) return;
+    focusDone.current = focusParam;
+    setCenter(
+      record.position_x + (record.width ?? 320) / 2,
+      record.position_y + (record.height ?? 240) / 2,
+      { zoom: 1, duration: 500 },
+    );
+    setNodes((current) =>
+      current.map((node) => ({ ...node, selected: node.id === focusParam })),
+    );
+  }, [ready, focusParam, setCenter, setNodes]);
+
+  const downloadBackup = useCallback(async () => {
+    try {
+      const backup = await exportBoard({ data: { boardId } });
+      const blob = new Blob([backup.json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${(backup.title || "scope").replace(/[^\w-]+/g, "-").toLowerCase()}-sicherung.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Sicherung heruntergeladen");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Sicherung fehlgeschlagen");
+    }
+  }, [boardId]);
 
   // Bearbeitungshinweis: welches Modul hat die Person gerade ausgewählt
   useEffect(() => {
@@ -583,6 +623,41 @@ function BoardPage() {
     );
   }, [records, setNodes]);
 
+  // Echtzeit: fremde Änderungen an Modulen und Verbindungen sofort übernehmen
+  useBoardSync(boardId, ready, {
+    upsertNode: (record) => {
+      setRecords((current) => ({ ...current, [record.id]: record }));
+      setNodes((current) =>
+        current.some((node) => node.id === record.id)
+          ? current.map((node) =>
+              node.id === record.id
+                ? { ...node, position: { x: record.position_x, y: record.position_y }, data: { record } }
+                : node,
+            )
+          : (record.type === "frame" || record.type === "zone") && !record.parent_id
+            ? [toFlowNode(record), ...current]
+            : [...current, toFlowNode(record)],
+      );
+    },
+    removeNode: (id) => {
+      setRecords((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      setNodes((current) => current.filter((node) => node.id !== id));
+      setEdges((current) => current.filter((edge) => edge.source !== id && edge.target !== id));
+    },
+    upsertEdge: (edge) => {
+      setEdges((current) =>
+        current.some((item) => item.id === edge.id)
+          ? current.map((item) => (item.id === edge.id ? { ...item, ...edge } : item))
+          : [...current, edge],
+      );
+    },
+    removeEdge: (id) => setEdges((current) => current.filter((edge) => edge.id !== id)),
+  });
+
   const patchRecord = useCallback((id: string, patch: Partial<NodeRecord>) => {
     setRecords((current) => {
       const existing = current[id];
@@ -594,6 +669,7 @@ function BoardPage() {
   const updateNode = useCallback(
     (id: string, patch: Partial<NodeRecord>) => {
       patchRecord(id, patch);
+      markSelfWrite(id);
       trackSave(
         supabase
           .from("nodes")
@@ -630,6 +706,7 @@ function BoardPage() {
         for (const key of list) delete next[key];
         return next;
       });
+      markSelfWrite(...list);
       trackSave(
         supabase
           .from("nodes")
@@ -685,12 +762,13 @@ function BoardPage() {
       };
       // a Supabase builder fires a new request on every await — resolve it once
       const insertPromise = Promise.resolve(
-        supabase.from("nodes").insert(payload as never).select("*").single(),
+        supabase.from("nodes").insert(payload as never).select("id,board_id,user_id,parent_id,type,title,position_x,position_y,width,height,color,source_url,storage_path,mime_type,content,status,error,metadata,created_at,updated_at").single(),
       );
       trackSave(insertPromise);
       const { data, error } = await insertPromise;
       if (error) throw error;
       const record = data as unknown as NodeRecord;
+      markSelfWrite(record.id);
       setRecords((current) => ({ ...current, [record.id]: record }));
       setNodes((current) =>
         (record.type === "frame" || record.type === "zone") && !record.parent_id
@@ -723,6 +801,7 @@ function BoardPage() {
           ...(text ? { label: text } : {}),
         },
       ]);
+      markSelfWrite(id);
       trackSave(
         supabase
           .from("edges")
@@ -754,6 +833,7 @@ function BoardPage() {
           edge.id === id ? { ...edge, label: value || undefined } : edge,
         ),
       );
+      markSelfWrite(id);
       trackSave(supabase.from("edges").update({ label: value || null }).eq("id", id));
     },
     [setEdges],
@@ -762,6 +842,7 @@ function BoardPage() {
   const deleteEdge = useCallback(
     (id: string) => {
       setEdges((current) => current.filter((edge) => edge.id !== id));
+      markSelfWrite(id);
       trackSave(supabase.from("edges").delete().eq("id", id));
     },
     [setEdges],
@@ -1223,6 +1304,7 @@ function BoardPage() {
     if (stale.length) {
       const ids = stale.map((e) => e.id);
       setEdges((current) => current.filter((e) => !ids.includes(e.id)));
+      markSelfWrite(...ids);
       trackSave(supabase.from("edges").delete().in("id", ids));
     }
     for (const otherId of outside) createEdge(frame.id, otherId);
@@ -2815,6 +2897,23 @@ function BoardPage() {
         <div className="ml-auto flex items-center gap-3">
           <PresenceBar peers={peers} myColor={myColor} myName={myName} />
 
+          <GlobalSearch />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-9 rounded-lg"
+                aria-label="Sicherung herunterladen"
+                onClick={() => void downloadBackup()}
+              >
+                <Download className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Sicherung herunterladen</TooltipContent>
+          </Tooltip>
+
           {isOwner ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2972,7 +3071,10 @@ function BoardPage() {
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
-              deleted.forEach((e) => trackSave(supabase.from("edges").delete().eq("id", e.id)));
+              deleted.forEach((e) => {
+                markSelfWrite(e.id);
+                trackSave(supabase.from("edges").delete().eq("id", e.id));
+              });
             }}
             onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
             onPaneClick={() => setMenu(null)}
