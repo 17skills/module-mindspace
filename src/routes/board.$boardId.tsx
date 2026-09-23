@@ -773,6 +773,10 @@ function BoardPage() {
 
   const deleteNode = useCallback(
     (id: string) => {
+      if (!canEditNode(id)) {
+        toast.error("Dieses Modul darfst du nicht löschen");
+        return;
+      }
       // children keep living in the database (parent_id is set to null there),
       // so collect the whole subtree and remove it explicitly
       const ids = new Set<string>([id]);
