@@ -4513,6 +4513,33 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         <span className="font-mono">{evidence.length} fachliche Einträge verbunden</span>
       </div>
 
+      {sourceRows.length ? (
+        <div className="border-b bg-secondary/10 px-3 py-1.5 text-[10px]">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="font-semibold">Aus Datenquellen</span>
+            <span className="font-mono">
+              {sourceRows.length - sourceGaps.length} von {sourceRows.length} Zeilen gerechnet
+            </span>
+          </div>
+          {sourceGaps.length ? (
+            <ul className="mt-1 space-y-0.5">
+              {sourceGaps.slice(0, 3).map((row) => (
+                <li key={row.id} className="flex items-start gap-1 text-[#8a5a12]">
+                  <span className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-[#e0a03a]" />
+                  <span>
+                    {row.label}: {row.missing.join(" und ")} fehlt · {row.sourceName}, Zeile {row.row}
+                  </span>
+                </li>
+              ))}
+              {sourceGaps.length > 3 ? (
+                <li className="text-muted-foreground">… {sourceGaps.length - 3} weitere Zeilen mit Lücken</li>
+              ) : null}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
+
       <div className="nowheel flex-1 overflow-auto p-2">
         <section>
           <div className="module-eyebrow mb-1">Tabelle</div>
