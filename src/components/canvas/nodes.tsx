@@ -3437,12 +3437,33 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
                 <span className="shrink-0 text-[10px] text-muted-foreground">%</span>
               </div>
               {answer && (
-                <p className="mt-1 text-xs">
+                <p className="mt-1 flex flex-wrap items-center gap-1 text-xs">
                   <span className="font-medium">{answerLabel(answer)}</span>
-                  {typeof answer.confidence === "number" && (
-                    <span className={`ml-1 text-[10px] ${low ? "text-destructive" : "text-muted-foreground"}`}>
+                  {typeof answer.confidence === "number" ? (
+                    <span className={`text-[10px] ${low ? "text-destructive" : "text-muted-foreground"}`}>
                       {low ? "zur Prüfung · " : ""}
                       {Math.round(answer.confidence * 100)} % sicher
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      Sicherheit selbst eintragen
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={5}
+                        key={question.id + "human"}
+                        defaultValue={
+                          typeof humanConfidence[question.id] === "number"
+                            ? Math.round((humanConfidence[question.id] ?? 0) * 100)
+                            : ""
+                        }
+                        placeholder="–"
+                        aria-label={`Sicherheit der Frage ${index + 1} selbst eintragen`}
+                        className="nodrag w-14 rounded-md border border-border/70 bg-background px-1 py-0.5 text-right text-[10px]"
+                        onBlur={(e) => setHumanConfidence(question.id, e.target.value)}
+                      />
+                      %
                     </span>
                   )}
                 </p>
