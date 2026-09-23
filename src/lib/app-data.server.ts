@@ -58,6 +58,13 @@ export async function authorizeAppMcp(
   appId: string,
   request: Request,
 ): Promise<{ ok: true; scope: McpScope } | { ok: false; status: number }> {
+  const { rateLimit, callerKey } = await import("@/lib/rate-limit.server");
+  const caller = await callerKey(request);
+  // Begrenzt Rateversuche und Massenabfragen je Aufrufer und App.
+  if (!rateLimit(`app-mcp:${appId}:${caller}`, 120, 60_000).ok) {
+    return { ok: false, status: 429 };
+  }
+
   let app: AppRow;
   try {
     app = (await loadPublicApp(appId)).app;
@@ -68,7 +75,12 @@ export async function authorizeAppMcp(
   const bearer = /^bearer\s+(.+)$/i.exec(header.trim())?.[1]?.trim() ?? "";
   const query = new URL(request.url).searchParams.get("token")?.trim() ?? "";
   const presented = bearer || query;
-  if (!presented || presented !== String(app.mcp_token)) return { ok: false, status: 401 };
+  if (!presented || presented !== String(app.mcp_token)) {
+    if (!rateLimit(`app-mcp-fail:${appId}:${caller}`, 10, 60_000).ok) {
+      return { ok: false, status: 429 };
+    }
+    return { ok: false, status: 401 };
+  }
   return { ok: true, scope: app.mcp_scope === "write" ? "write" : "read" };
 }
 
