@@ -986,12 +986,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      end_user_sessions: {
+        Args: { _session?: string; _user: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      list_user_sessions: {
+        Args: { _user: string }
+        Returns: {
+          created_at: string
+          id: string
+          refreshed_at: string
+          user_agent: string
+        }[]
       }
       purge_audit_log: { Args: never; Returns: undefined }
     }
