@@ -2837,6 +2837,16 @@ function BoardPage() {
       if (target?.isContentEditable) return;
       if (!(event.metaKey || event.ctrlKey)) return;
       const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        if (canEdit) undo();
+        return;
+      }
+      if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        if (canEdit) redo();
+        return;
+      }
       if (key === "g") {
         event.preventDefault();
         void groupSelection();
