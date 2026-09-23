@@ -23,6 +23,7 @@ export type Database = {
           input_tokens: number
           model: string
           ok: boolean
+          org_id: string | null
           output_tokens: number
           provider: string
           user_id: string
@@ -35,6 +36,7 @@ export type Database = {
           input_tokens?: number
           model?: string
           ok?: boolean
+          org_id?: string | null
           output_tokens?: number
           provider: string
           user_id: string
@@ -47,11 +49,20 @@ export type Database = {
           input_tokens?: number
           model?: string
           ok?: boolean
+          org_id?: string | null
           output_tokens?: number
           provider?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       apps: {
         Row: {
@@ -68,6 +79,7 @@ export type Database = {
           mcp_scope: string
           mcp_token: string
           node_ids: Json
+          org_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -86,6 +98,7 @@ export type Database = {
           mcp_scope?: string
           mcp_token?: string
           node_ids?: Json
+          org_id?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -104,6 +117,7 @@ export type Database = {
           mcp_scope?: string
           mcp_token?: string
           node_ids?: Json
+          org_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -114,6 +128,13 @@ export type Database = {
             columns: ["board_id"]
             isOneToOne: false
             referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "apps_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -227,12 +248,52 @@ export type Database = {
           },
         ]
       }
+      board_team_access: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          role: string
+          team_id: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          team_id: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_team_access_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_team_access_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boards: {
         Row: {
           created_at: string
           description: string | null
           id: string
           is_public: boolean
+          org_id: string | null
           share_expires_at: string | null
           share_last_used_at: string | null
           share_password_hash: string | null
@@ -247,6 +308,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          org_id?: string | null
           share_expires_at?: string | null
           share_last_used_at?: string | null
           share_password_hash?: string | null
@@ -261,6 +323,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          org_id?: string | null
           share_expires_at?: string | null
           share_last_used_at?: string | null
           share_password_hash?: string | null
@@ -270,7 +333,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "boards_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_messages: {
         Row: {
@@ -359,6 +430,76 @@ export type Database = {
           },
         ]
       }
+      invites: {
+        Row: {
+          board_id: string | null
+          board_role: string
+          created_at: string
+          email: string
+          email_sent_at: string | null
+          expires_at: string
+          id: string
+          invited_by: string
+          org_id: string | null
+          org_role: Database["public"]["Enums"]["org_role"]
+          status: string
+          team_id: string | null
+          token: string
+        }
+        Insert: {
+          board_id?: string | null
+          board_role?: string
+          created_at?: string
+          email: string
+          email_sent_at?: string | null
+          expires_at?: string
+          id?: string
+          invited_by: string
+          org_id?: string | null
+          org_role?: Database["public"]["Enums"]["org_role"]
+          status?: string
+          team_id?: string | null
+          token?: string
+        }
+        Update: {
+          board_id?: string | null
+          board_role?: string
+          created_at?: string
+          email?: string
+          email_sent_at?: string | null
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          org_id?: string | null
+          org_role?: Database["public"]["Enums"]["org_role"]
+          status?: string
+          team_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mcp_servers: {
         Row: {
           auth_kind: string
@@ -413,6 +554,7 @@ export type Database = {
           description: string | null
           id: string
           is_public: boolean
+          org_id: string | null
           payload: Json
           scope: string
           share_token: string
@@ -426,6 +568,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          org_id?: string | null
           payload?: Json
           scope?: string
           share_token?: string
@@ -439,6 +582,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          org_id?: string | null
           payload?: Json
           scope?: string
           share_token?: string
@@ -447,7 +591,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "module_library_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       module_library_shares: {
         Row: {
@@ -565,6 +717,62 @@ export type Database = {
           },
         ]
       }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -600,6 +808,67 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       templates: {
         Row: {
@@ -729,6 +998,7 @@ export type Database = {
     Enums: {
       ai_provider: "openai" | "anthropic" | "google" | "openrouter"
       app_role: "admin" | "user"
+      org_role: "owner" | "admin" | "member" | "guest"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -858,6 +1128,7 @@ export const Constants = {
     Enums: {
       ai_provider: ["openai", "anthropic", "google", "openrouter"],
       app_role: ["admin", "user"],
+      org_role: ["owner", "admin", "member", "guest"],
     },
   },
 } as const
