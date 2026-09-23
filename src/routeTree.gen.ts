@@ -33,6 +33,7 @@ import { Route as AuthenticatedKontoKiSchluesselRouteImport } from './routes/_au
 import { Route as AuthenticatedKontoMcpRouteImport } from './routes/_authenticated/konto.mcp'
 import { Route as AuthenticatedKontoMitgliederRouteImport } from './routes/_authenticated/konto.mitglieder'
 import { Route as AuthenticatedKontoOrganisationRouteImport } from './routes/_authenticated/konto.organisation'
+import { Route as AuthenticatedKontoTeamsRouteImport } from './routes/_authenticated/konto.teams'
 import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
 
@@ -161,6 +162,11 @@ const AuthenticatedKontoOrganisationRoute =
     path: '/organisation',
     getParentRoute: () => AuthenticatedKontoRoute,
   } as any)
+const AuthenticatedKontoTeamsRoute = AuthenticatedKontoTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => AuthenticatedKontoRoute,
+} as any)
 const EmbedZoneZoneIdRoute = EmbedZoneZoneIdRouteImport.update({
   id: '/embed/zone/$zoneId',
   path: '/embed/zone/$zoneId',
@@ -195,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto/': typeof AuthenticatedKontoIndexRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto': typeof AuthenticatedKontoIndexRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/_authenticated/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/_authenticated/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
   '/_authenticated/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/_authenticated/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/_authenticated/konto/': typeof AuthenticatedKontoIndexRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
@@ -279,6 +288,7 @@ export interface FileRouteTypes {
     | '/konto/mcp'
     | '/konto/mitglieder'
     | '/konto/organisation'
+    | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto/'
     | '/api/public/app/$appId/mcp'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/konto/mcp'
     | '/konto/mitglieder'
     | '/konto/organisation'
+    | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto'
     | '/api/public/app/$appId/mcp'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/mcp'
     | '/_authenticated/konto/mitglieder'
     | '/_authenticated/konto/organisation'
+    | '/_authenticated/konto/teams'
     | '/embed/zone/$zoneId'
     | '/_authenticated/konto/'
     | '/api/public/app/$appId/mcp'
@@ -527,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKontoOrganisationRouteImport
       parentRoute: typeof AuthenticatedKontoRoute
     }
+    '/_authenticated/konto/teams': {
+      id: '/_authenticated/konto/teams'
+      path: '/teams'
+      fullPath: '/konto/teams'
+      preLoaderRoute: typeof AuthenticatedKontoTeamsRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
     '/embed/zone/$zoneId': {
       id: '/embed/zone/$zoneId'
       path: '/embed/zone/$zoneId'
@@ -553,6 +572,7 @@ interface AuthenticatedKontoRouteChildren {
   AuthenticatedKontoMcpRoute: typeof AuthenticatedKontoMcpRoute
   AuthenticatedKontoMitgliederRoute: typeof AuthenticatedKontoMitgliederRoute
   AuthenticatedKontoOrganisationRoute: typeof AuthenticatedKontoOrganisationRoute
+  AuthenticatedKontoTeamsRoute: typeof AuthenticatedKontoTeamsRoute
   AuthenticatedKontoIndexRoute: typeof AuthenticatedKontoIndexRoute
 }
 
@@ -565,6 +585,7 @@ const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
   AuthenticatedKontoMcpRoute: AuthenticatedKontoMcpRoute,
   AuthenticatedKontoMitgliederRoute: AuthenticatedKontoMitgliederRoute,
   AuthenticatedKontoOrganisationRoute: AuthenticatedKontoOrganisationRoute,
+  AuthenticatedKontoTeamsRoute: AuthenticatedKontoTeamsRoute,
   AuthenticatedKontoIndexRoute: AuthenticatedKontoIndexRoute,
 }
 
