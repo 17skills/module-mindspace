@@ -72,6 +72,21 @@ function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const create = useMutation({
+    mutationFn: () =>
+      adminCreateUser({
+        data: { email: newEmail.trim(), displayName: newName.trim(), password: newPassword },
+      }),
+    onSuccess: () => {
+      toast.success("Konto angelegt");
+      setNewEmail("");
+      setNewName("");
+      setNewPassword("");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const purge = useMutation({
     mutationFn: () => adminPurgeAuditLog(),
     onSuccess: () => {
