@@ -18,7 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Download, Globe, LayoutGrid, Plug, Scale, Server, Shapes, Tag } from "lucide-react";
+import { Download, Globe, LayoutGrid, Plug, Plus, Scale, Server, Shapes, Tag } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
@@ -2141,7 +2141,7 @@ function BoardPage() {
           const last = appliedHeights.current.get(nodeId);
           if (last != null && Math.abs(height - last) < 12) return;
           ensureReadableLayout(nodeId, height);
-        }, 200);
+        }, 320);
         heightTimers.current.set(nodeId, timer);
       }
     },
@@ -2668,6 +2668,15 @@ function BoardPage() {
     [nodes, nodeAccess, role],
   );
 
+  const selectedModuleCount = useMemo(
+    () =>
+      nodes.filter((node) => {
+        const record = records[node.id];
+        return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
+      }).length,
+    [nodes, records],
+  );
+
 
   if (loading || !user) {
     return (
@@ -2677,10 +2686,6 @@ function BoardPage() {
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
   const accessRecord = accessFor ? records[accessFor] : undefined;
-  const selectedModuleCount = nodes.filter((node) => {
-    const record = records[node.id];
-    return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
-  }).length;
 
   const menuItems = menuRecord?.type === "text"
     ? [
@@ -3147,6 +3152,7 @@ function BoardPage() {
             nodes={guardedNodes}
             edges={edges}
             onMouseMove={(event) => {
+              if (peers.length === 0) return;
               const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
               sendCursor(Math.round(flow.x), Math.round(flow.y));
             }}
@@ -3230,6 +3236,7 @@ function BoardPage() {
               });
             }}
             fitView={ready}
+            onlyRenderVisibleElements
             minZoom={0.15}
             maxZoom={2.5}
             selectionOnDrag
@@ -3248,7 +3255,7 @@ function BoardPage() {
               color="var(--canvas-dot)"
             />
             <Controls showInteractive={false} />
-            <MiniMap pannable zoomable className="!bg-card" />
+            <MiniMap pannable zoomable className="!hidden !bg-card lg:!block" />
             <PresenceLayer peers={peers} nodes={nodes} />
 
           </ReactFlow>
@@ -3320,6 +3327,12 @@ function BoardPage() {
                 </Tooltip>
               ) : null}
 
+              {selectedModuleCount > 0 ? (
+                <span className="mx-1 flex h-8 shrink-0 items-center rounded-lg bg-secondary px-2.5 text-xs font-medium text-secondary-foreground">
+                  {selectedModuleCount} ausgewählt
+                </span>
+              ) : null}
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -3351,41 +3364,47 @@ function BoardPage() {
               </Tooltip>
 
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Link einfügen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      setLinkPrompt(at);
-                    }}
-                  >
-                    <Link2 className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Link einfügen</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Datei hochladen"
-                    onClick={() => {
-                      filePosition.current = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      fileRef.current?.click();
-                    }}
-                  >
-                    <FileUp className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Datei hochladen</TooltipContent>
-              </Tooltip>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" className={toolBtn()} aria-label="Inhalt hinzufügen">
+                        <Plus className="size-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Inhalt hinzufügen</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent side="top" align="center">
+                  <DropdownMenuItem onSelect={() => setLinkPrompt(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }))}>
+                    <Link2 className="size-4" /> Link einfügen
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => {
+                    filePosition.current = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                    fileRef.current?.click();
+                  }}>
+                    <FileUp className="size-4" /> Datei hochladen
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => {
+                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                    void createRecord({ type: "text", title: "Text", content: "", position_x: at.x, position_y: at.y });
+                  }}>
+                    <Type className="size-4" /> Text
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => {
+                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                    void createRecord({ type: "note", title: "Notiz", content: "", position_x: at.x, position_y: at.y });
+                  }}>
+                    <StickyNote className="size-4" /> Notiz
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => {
+                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                    void createRecord({ type: "chat", title: "Chat", position_x: at.x, position_y: at.y, metadata: { model: "openai/gpt-6-astra" } });
+                  }}>
+                    <MessageSquare className="size-4" /> Chat
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <Tooltip>
@@ -3429,65 +3448,6 @@ function BoardPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Text einfügen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({ type: "text", title: "Text", content: "", position_x: at.x, position_y: at.y });
-                    }}
-                  >
-                    <Type className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Text einfügen</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Faktor anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({ type: "note", title: "Faktor", content: "", position_x: at.x, position_y: at.y });
-                    }}
-                  >
-                    <StickyNote className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Faktor anlegen</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Chat-Modul anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({
-                        type: "chat",
-                        title: "Chat",
-                        position_x: at.x,
-                        position_y: at.y,
-                        metadata: { model: "openai/gpt-6-astra" },
-                      });
-                    }}
-                  >
-                    <MessageSquare className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Chat-Modul anlegen</TooltipContent>
-              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -3759,11 +3719,22 @@ function BoardPage() {
         )}
 
         {ready && nodes.length === 0 && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <p className="max-w-sm rounded-2xl border border-dashed bg-card/80 px-6 py-5 text-center text-sm text-muted-foreground">
-              Rechtsklick auf die Fläche öffnet das Menü – oder füge einen Link mit Strg+V ein und
-              ziehe Dateien direkt hierher.
-            </p>
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+            <div className="pointer-events-auto w-full max-w-md rounded-xl border border-dashed bg-card/90 p-6 text-center shadow-[var(--shadow-card)]">
+              <p className="font-display text-lg font-semibold">Ersten Inhalt hinzufügen</p>
+              <p className="mt-1 text-sm text-muted-foreground">Starte mit einer Notiz, einem Link oder einer Datei.</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                <Button size="sm" onClick={() => {
+                  const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                  void createRecord({ type: "note", title: "Notiz", content: "", position_x: at.x, position_y: at.y });
+                }}><StickyNote className="size-4" />Notiz</Button>
+                <Button size="sm" variant="outline" onClick={() => setLinkPrompt(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }))}><Link2 className="size-4" />Link</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  filePosition.current = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                  fileRef.current?.click();
+                }}><FileUp className="size-4" />Datei</Button>
+              </div>
+            </div>
           </div>
         )}
       </div>

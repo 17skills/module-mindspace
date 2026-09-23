@@ -30,3 +30,6 @@
 - [x] Live-Vorschauen mit realistischen grünen, gelben und roten Kennzahlzuständen
 - [x] Klickbare Module, Kennzahlen und Direktlinks in Cockpit- und Teams-Vorschau
 - [x] Veröffentlichungsvalidierung für Titel, Leitfrage, Zielgruppe und Kennzahlen
+- [x] Canvas-Rendering auf sichtbare Module begrenzen und Zusammenarbeit entlasten
+- [x] Schnelle Moduländerungen beim Speichern bündeln
+- [x] Canvas-Werkzeugleiste, Auswahlstatus und leeren Scope vereinfachen
