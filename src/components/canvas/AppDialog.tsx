@@ -110,7 +110,6 @@ const PREVIEW_SIGNAL = {
 } as const;
 
 function TeamsCardPreview({
-  nodes,
   title,
   description,
   leadQuestion,
@@ -118,7 +117,6 @@ function TeamsCardPreview({
   onOpen,
   onDriverOpen,
 }: {
-  nodes: NodeRecord[];
   title: string;
   description: string;
   leadQuestion: string;
@@ -242,7 +240,7 @@ function DeploymentPreview({
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
         {channel === "teams" ? (
-          <TeamsCardPreview nodes={nodes} title={title} description={description} leadQuestion={leadQuestion} view={previewView} onOpen={() => onInteraction("Direktlink zum Cockpit")} onDriverOpen={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? "Kennzahl")} />
+          <TeamsCardPreview title={title} description={description} leadQuestion={leadQuestion} view={previewView} onOpen={() => onInteraction("Direktlink zum Cockpit")} onDriverOpen={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? "Kennzahl")} />
         ) : (
           <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${device === "mobile" ? "w-full max-w-[390px]" : "w-full"}`}>
             <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}>
@@ -623,7 +621,7 @@ export function AppDialog({
                 </button>
               </p>
             )}
-            <div className="grid max-h-60 gap-1 overflow-auto rounded-lg border border-border/70 p-2">
+            <div className={`grid max-h-60 gap-1 overflow-auto rounded-lg border p-2 ${showValidation && validation.metrics ? "border-destructive" : "border-border/70"}`}>
               {candidates.map((item) => (
                 <label key={item.id} className="flex items-center gap-2 text-sm">
                   <input
@@ -642,6 +640,7 @@ export function AppDialog({
               {picked.length} / {MAX_APP_MODULES} gewählt
               {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
             </p>
+            {showValidation && validation.metrics && <p className="text-xs text-destructive">{validation.metrics}</p>}
             {pickedNodes.length > 0 && (
               <ul className="space-y-1 rounded-lg border border-border/70 p-2">
                 {pickedNodes.map((node, index) => (
