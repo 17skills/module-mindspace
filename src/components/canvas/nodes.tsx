@@ -3201,10 +3201,31 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
   const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
+  /** Was der Mensch als „bestätigt“ gelten lässt — Festlegung auf dieser Karte. */
+  const basis = meta["calibrationBasis"] === "followed" ? "followed" : "release";
+  /** Von Hand eingetragene Sicherheiten, falls das Urteil keine liefert. */
+  const humanConfidence = (meta["humanConfidence"] ?? {}) as Record<string, number>;
   const confidenceOf = (answer: (typeof answers)[number] | undefined) => {
     const value = Number(answer?.confidence);
-    return Number.isFinite(value) ? value : null;
+    if (Number.isFinite(value)) return value;
+    const own = answer ? humanConfidence[answer.id] : undefined;
+    return typeof own === "number" && Number.isFinite(own) ? own : null;
   };
+
+  /** Sicherheit selbst setzen: auf der Karte und einmalig im Journal. */
+  function setHumanConfidence(questionId: string, raw: string) {
+    const value = Number(raw);
+    const next = { ...humanConfidence };
+    if (raw.trim() === "" || !Number.isFinite(value)) delete next[questionId];
+    else next[questionId] = Math.min(1, Math.max(0, value / 100));
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), humanConfidence: next } });
+    const stored = next[questionId];
+    if (typeof stored === "number") {
+      void rateJournal({ data: { nodeId: record.id, questionId, confidence: stored } }).catch(
+        () => undefined,
+      );
+    }
+  }
   const answered = answers.filter((answer) => answerLabel(answer) !== "–");
   const ratedAnswers = answers.filter((answer) => confidenceOf(answer) !== null);
   const confidence = ratedAnswers.length
