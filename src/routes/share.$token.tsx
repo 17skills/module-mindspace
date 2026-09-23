@@ -153,6 +153,8 @@ function SharedBoardPage() {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [locked, setLocked] = useState(false);
+  const [password, setPassword] = useState("");
 
   const load = useCallback(
     async (password?: string) => {
