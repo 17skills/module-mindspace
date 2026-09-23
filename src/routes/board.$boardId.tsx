@@ -1134,6 +1134,11 @@ function BoardPage() {
     toast.success(`Wiederholt: ${describe(entry)}`);
   }, [applyHistory]);
 
+  // historyTick sorgt dafür, dass die Knöpfe nach jedem Schritt neu bewertet werden.
+  const canUndo = useMemo(() => pastRef.current.length > 0, [historyTick]);
+  const canRedo = useMemo(() => futureRef.current.length > 0, [historyTick]);
+
+
   /** Entscheidung bei gleichzeitiger Änderung: eigene Fassung halten oder fremde übernehmen. */
   const resolveWith = useCallback(
     (conflict: Conflict, keep: "mine" | "theirs") => {
