@@ -2657,6 +2657,17 @@ function BoardPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [groupSelection, copyModules, duplicateModules, pasteModules]);
 
+  // Module mit engeren Rechten lassen sich weder ziehen noch löschen
+  const guardedNodes = useMemo(
+    () =>
+      nodes.map((node) =>
+        canEditRole(nodeAccess[node.id] ?? role)
+          ? node
+          : { ...node, draggable: false, deletable: false, connectable: false },
+      ),
+    [nodes, nodeAccess, role],
+  );
+
 
   if (loading || !user) {
     return (
