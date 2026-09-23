@@ -71,6 +71,7 @@ const FindingInput = z.object({
   confidence: z.number().default(0),
   reason: z.string().default(""),
   thumb: z.string().nullable().default(null),
+  photo: z.string().nullable().default(null),
   source: z.enum(["exif", "manuell", "unbekannt"]).default("unbekannt"),
 });
 
@@ -85,6 +86,7 @@ export const appAddFinding = createServerFn({ method: "POST" })
       lat: data.finding.lat,
       lon: data.finding.lon,
       thumb: data.finding.thumb,
+      photo: data.finding.photo,
     };
     return insertFinding(data.appId, write);
   });

@@ -160,6 +160,7 @@ function CaptureApp({
   const findings = inspect ? readInspection(inspect).findings : [];
   const fileRef = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [thumb, setThumb] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [report, setReport] = useState("");
   const [lat, setLat] = useState<number | null>(null);
