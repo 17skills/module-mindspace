@@ -3350,24 +3350,28 @@ function BoardPage() {
               ensureReadableLayout(node.id);
               scheduleAutoHeight(node.id);
             }}
-            onNodeDragStart={() => {
+            onNodeDragStart={(_, node) => {
               interacting.current = true;
               suppressMeasure.current = Date.now() + 800;
+              captureDragStart([node.id]);
               setMenu(null);
             }}
             onNodeDragStop={(_, node) => {
               interacting.current = false;
               suppressMeasure.current = Date.now() + 500;
+              recordMove([node]);
               updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
               syncZone(node.id, node.position.x, node.position.y);
             }}
-            onSelectionDragStart={() => {
+            onSelectionDragStart={(_, dragged) => {
               interacting.current = true;
               suppressMeasure.current = Date.now() + 800;
+              captureDragStart(dragged.map((node) => node.id));
             }}
             onSelectionDragStop={(_, dragged) => {
               interacting.current = false;
               suppressMeasure.current = Date.now() + 500;
+              recordMove(dragged);
               for (const node of dragged) {
                 updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
                 syncZone(node.id, node.position.x, node.position.y);
@@ -3375,6 +3379,9 @@ function BoardPage() {
             }}
             onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
             onEdgesDelete={(deleted) => {
+              if (deleted.length) {
+                recordHistory({ kind: "edges.remove", edges: deleted.map(snapEdge) });
+              }
               deleted.forEach((e) => {
                 markSelfWrite(e.id);
                 saveOp(boardId, { kind: "edge.delete", ids: [e.id] });
