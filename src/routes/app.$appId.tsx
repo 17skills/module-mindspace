@@ -204,7 +204,8 @@ function CaptureApp({
           cost: assessment.cost,
           confidence: assessment.confidence,
           reason: assessment.reason,
-          thumb: entry.photo,
+          thumb: entry.thumb ?? entry.photo,
+          photo: entry.photo,
           source: entry.source,
         },
       },
@@ -266,8 +267,13 @@ function CaptureApp({
   const pick = async (file: File | undefined) => {
     if (!file) return;
     try {
-      const thumb = await downscale(file, 720, 0.7);
-      setPhoto(thumb);
+      // Großes Bild für die Bewertung, kleines Bild für die Anzeige im Scope
+      const [full, small] = await Promise.all([
+        downscale(file, 720, 0.7),
+        downscale(file, 200, 0.6),
+      ]);
+      setPhoto(full);
+      setThumb(small);
       if (!label) setLabel(labelFromFile(file.name));
       const gps = await exifLocation(file);
       if (gps) {
