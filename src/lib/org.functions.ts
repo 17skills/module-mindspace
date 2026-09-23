@@ -360,7 +360,7 @@ export const setBoardTeamAccess = createServerFn({ method: "POST" })
       .object({
         boardId: z.string().uuid(),
         teamId: z.string().uuid(),
-        role: z.enum(["viewer", "editor", "none"]),
+        role: z.enum(["viewer", "commenter", "editor", "none"]),
       })
       .parse(input),
   )

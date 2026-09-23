@@ -149,7 +149,7 @@ export const addMember = createServerFn({ method: "POST" })
       .object({
         boardId: z.string().uuid(),
         email: z.string().email(),
-        role: z.enum(["viewer", "editor"]).default("viewer"),
+        role: z.enum(["viewer", "commenter", "editor"]).default("viewer"),
       })
       .parse(input),
   )
@@ -189,7 +189,7 @@ export const setMemberRole = createServerFn({ method: "POST" })
       .object({
         boardId: z.string().uuid(),
         memberId: z.string().uuid(),
-        role: z.enum(["viewer", "editor"]),
+        role: z.enum(["viewer", "commenter", "editor"]),
       })
       .parse(input),
   )

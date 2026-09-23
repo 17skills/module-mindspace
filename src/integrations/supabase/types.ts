@@ -677,6 +677,99 @@ export type Database = {
           },
         ]
       }
+      node_comments: {
+        Row: {
+          board_id: string
+          body: string
+          created_at: string
+          id: string
+          node_id: string
+          resolved_at: string | null
+          user_id: string
+        }
+        Insert: {
+          board_id: string
+          body: string
+          created_at?: string
+          id?: string
+          node_id: string
+          resolved_at?: string | null
+          user_id: string
+        }
+        Update: {
+          board_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          node_id?: string
+          resolved_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_comments_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_comments_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_permissions: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          node_id: string
+          role: string
+          subject_id: string | null
+          subject_type: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          node_id: string
+          role: string
+          subject_id?: string | null
+          subject_type: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          node_id?: string
+          role?: string
+          subject_id?: string | null
+          subject_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_permissions_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_permissions_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nodes: {
         Row: {
           board_id: string

@@ -120,6 +120,9 @@ import {
   ZoneNode,
 } from "@/components/canvas/nodes";
 import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
+import { NodeAccessDialog } from "@/components/canvas/NodeAccessDialog";
+import { canEditRole, ROLE_LABEL, type AccessRole } from "@/lib/permissions";
+import { getBoardAccess } from "@/lib/permissions.functions";
 import { extractFileText, isAudioFile, youtubeId } from "@/lib/extract";
 import { filePreview } from "@/lib/preview";
 import { itemToPatch } from "@/lib/structure";
@@ -471,9 +474,23 @@ function BoardPage() {
   const [appOpen, setAppOpen] = useState(false);
   const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
-  /** Rolle in diesem Scope: Inhaber, Bearbeiten oder nur Lesen. */
-  const [role, setRole] = useState<"owner" | "editor" | "viewer">("editor");
-  const canEdit = role !== "viewer";
+  /** Rolle in diesem Scope: Inhaber, Bearbeiten, Kommentieren oder nur Lesen. */
+  const [role, setRole] = useState<AccessRole>("editor");
+  /** Module mit abweichender (engerer) Regel: Modul-Id → tatsächliches Recht. */
+  const [nodeAccess, setNodeAccess] = useState<Record<string, AccessRole>>({});
+  const [accessFor, setAccessFor] = useState<string | null>(null);
+  const canEdit = canEditRole(role);
+  const nodeAccessRef = useRef(nodeAccess);
+  nodeAccessRef.current = nodeAccess;
+  /** Recht an einem einzelnen Modul – die Modulregel schlägt die Scope-Rolle. */
+  const roleForNode = useCallback(
+    (id: string): AccessRole => nodeAccessRef.current[id] ?? role,
+    [role],
+  );
+  const canEditNode = useCallback(
+    (id: string) => canEditRole(nodeAccessRef.current[id] ?? role),
+    [role],
+  );
   const myName =
     (user?.user_metadata?.["full_name"] as string | undefined) ||
     (user?.user_metadata?.["name"] as string | undefined) ||
@@ -543,6 +560,21 @@ function BoardPage() {
     const selected = nodes.find((node) => node.selected);
     setEditing(canEdit ? (selected?.id ?? null) : null);
   }, [nodes, setEditing, canEdit]);
+
+  // Feine Rechte je Modul und Hintergrundfeld nachladen
+  const reloadAccess = useCallback(() => {
+    void getBoardAccess({ data: { boardId } })
+      .then((result) => {
+        setRole(result.role);
+        setNodeAccess(result.nodes as Record<string, AccessRole>);
+      })
+      .catch(() => undefined);
+  }, [boardId]);
+
+  useEffect(() => {
+    if (!ready) return;
+    reloadAccess();
+  }, [ready, reloadAccess]);
 
 
 
@@ -625,7 +657,14 @@ function BoardPage() {
       setTitle(boardRes.data.title);
       const owner = boardRes.data.user_id === userId;
       setIsOwner(owner);
-      setRole(owner ? "owner" : memberRes.data?.role === "editor" ? "editor" : "viewer");
+      const memberRole = memberRes.data?.role;
+      setRole(
+        owner
+          ? "owner"
+          : memberRole === "editor" || memberRole === "commenter" || memberRole === "viewer"
+            ? memberRole
+            : "viewer",
+      );
       const list = (nodeRes.data ?? []) as unknown as NodeRecord[];
       setRecords(Object.fromEntries(list.map((r) => [r.id, r])));
       setNodes(sortNodes(list).map(toFlowNode));
@@ -735,16 +774,24 @@ function BoardPage() {
 
   const updateNode = useCallback(
     (id: string, patch: Partial<NodeRecord>) => {
+      if (!canEditNode(id)) {
+        toast.error("Dieses Modul darfst du nicht bearbeiten");
+        return;
+      }
       patchRecord(id, patch);
       markSelfWrite(id);
       markLocalEdit(id, Object.keys(patch));
       saveOp(boardId, { kind: "node.update", id, patch: patch as Record<string, unknown> });
     },
-    [patchRecord, boardId],
+    [patchRecord, boardId, canEditNode],
   );
 
   const deleteNode = useCallback(
     (id: string) => {
+      if (!canEditNode(id)) {
+        toast.error("Dieses Modul darfst du nicht löschen");
+        return;
+      }
       // children keep living in the database (parent_id is set to null there),
       // so collect the whole subtree and remove it explicitly
       const ids = new Set<string>([id]);
@@ -766,7 +813,7 @@ function BoardPage() {
       markSelfWrite(...list);
       saveOp(boardId, { kind: "node.delete", ids: list });
     },
-    [setNodes, setEdges, boardId],
+    [setNodes, setEdges, boardId, canEditNode],
   );
 
   const createRecord = useCallback(
@@ -2610,6 +2657,17 @@ function BoardPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [groupSelection, copyModules, duplicateModules, pasteModules]);
 
+  // Module mit engeren Rechten lassen sich weder ziehen noch löschen
+  const guardedNodes = useMemo(
+    () =>
+      nodes.map((node) =>
+        canEditRole(nodeAccess[node.id] ?? role)
+          ? node
+          : { ...node, draggable: false, deletable: false, connectable: false },
+      ),
+    [nodes, nodeAccess, role],
+  );
+
 
   if (loading || !user) {
     return (
@@ -2618,6 +2676,7 @@ function BoardPage() {
   }
 
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
+  const accessRecord = accessFor ? records[accessFor] : undefined;
   const selectedModuleCount = nodes.filter((node) => {
     const record = records[node.id];
     return node.selected && Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? "");
@@ -2983,7 +3042,7 @@ function BoardPage() {
             </Tooltip>
           ) : (
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              {canEdit ? "Geteilter Scope · Bearbeiten" : "Nur Leserecht"}
+              {canEdit ? "Geteilter Scope · Bearbeiten" : `Geteilter Scope · ${ROLE_LABEL[role]}`}
             </span>
           )}
         </div>
@@ -3073,7 +3132,7 @@ function BoardPage() {
         <BoardContext.Provider value={api}>
           <div ref={flowWrapRef} className="relative min-w-0 flex-1">
           <ReactFlow
-            nodes={nodes}
+            nodes={guardedNodes}
             edges={edges}
             onMouseMove={(event) => {
               const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -3144,7 +3203,11 @@ function BoardPage() {
             }}
             onNodeContextMenu={(event, node) => {
               event.preventDefault();
-              if (!canEdit) return;
+              if (!canEdit) {
+                // Lesen und Kommentieren: nur das Rechte- und Kommentarfenster
+                setAccessFor(node.id);
+                return;
+              }
               const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
               setMenu({
                 x: event.clientX,
@@ -3615,8 +3678,34 @@ function BoardPage() {
                 </button>
               );
             })}
+            {menu.nodeId ? (
+              <button
+                className="mt-1 flex w-full items-center gap-2.5 rounded-md border-t border-border/60 px-2.5 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  const id = menu.nodeId!;
+                  setMenu(null);
+                  setAccessFor(id);
+                }}
+              >
+                <span className="flex-1">Rechte &amp; Kommentare …</span>
+              </button>
+            ) : null}
           </div>
         )}
+
+        {accessFor ? (
+          <NodeAccessDialog
+            boardId={boardId}
+            nodeId={accessFor}
+            nodeTitle={accessRecord?.title ?? "Modul"}
+            isFrame={accessRecord?.type === "zone"}
+            open
+            onOpenChange={(value) => {
+              if (!value) setAccessFor(null);
+            }}
+            onChanged={reloadAccess}
+          />
+        ) : null}
 
         {linkPrompt && (
           <div className="absolute inset-0 z-50 flex items-start justify-center bg-background/40 pt-32">
