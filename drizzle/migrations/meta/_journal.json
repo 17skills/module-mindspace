@@ -169,6 +169,13 @@
       "when": 1790151129794,
       "tag": "0023_app_permission_policy_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790151219395,
+      "tag": "0024_protect_app_credentials_from_viewers",
+      "breakpoints": true
     }
   ]
 }
