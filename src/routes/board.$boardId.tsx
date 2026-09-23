@@ -447,6 +447,17 @@ function BoardPage() {
   /** Rolle in diesem Scope: Inhaber, Bearbeiten oder nur Lesen. */
   const [role, setRole] = useState<"owner" | "editor" | "viewer">("editor");
   const canEdit = role !== "viewer";
+  const myName =
+    (user?.user_metadata?.full_name as string | undefined) ||
+    (user?.user_metadata?.name as string | undefined) ||
+    user?.email ||
+    "Gast";
+  const { peers, sendCursor, setEditing, myColor } = useBoardPresence({
+    boardId,
+    userId: user?.id ?? null,
+    name: myName,
+  });
+
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
   const templatePosition = useRef<{ x: number; y: number } | null>(null);
