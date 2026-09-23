@@ -803,6 +803,13 @@ function BoardPage() {
         if (ids.size === before) break;
       }
       const list = [...ids];
+      recordHistory({
+        kind: "nodes.remove",
+        rows: list.map((key) => recordsRef.current[key]).filter(Boolean) as NodeRecord[],
+        edges: edgesRef.current
+          .filter((e) => ids.has(e.source) || ids.has(e.target))
+          .map(snapEdge),
+      });
       setNodes((current) => current.filter((n) => !ids.has(n.id)));
       setEdges((current) => current.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
       setRecords((current) => {
@@ -813,7 +820,7 @@ function BoardPage() {
       markSelfWrite(...list);
       saveOp(boardId, { kind: "node.delete", ids: list });
     },
-    [setNodes, setEdges, boardId, canEditNode],
+    [setNodes, setEdges, boardId, canEditNode, recordHistory],
   );
 
   const createRecord = useCallback(
