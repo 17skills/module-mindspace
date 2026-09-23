@@ -162,6 +162,13 @@
       "when": 1790151097757,
       "tag": "0022_app_role_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790151129794,
+      "tag": "0023_app_permission_policy_fix",
+      "breakpoints": true
     }
   ]
 }
