@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { loadAiKeyConfig, recordUsage, resolveRoute, runStructured } from "@/lib/ai-keys.server";
+import { JEV_MODEL } from "@/lib/ai-functions";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 const MAX_BODY = 200_000;
