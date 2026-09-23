@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LogOut, Settings, ShieldCheck, User } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Building2, Check, LogOut, Settings, ShieldCheck, User } from "lucide-react";
 import { getAccount } from "@/lib/account.functions";
+import { listMyOrgs, setActiveOrg } from "@/lib/org.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,14 @@ export function UserMenu() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const account = useQuery({ queryKey: ["account"], queryFn: () => getAccount() });
+  const orgs = useQuery({ queryKey: ["my-orgs"], queryFn: () => listMyOrgs() });
+
+  const switchOrg = useMutation({
+    mutationFn: (orgId: string) => setActiveOrg({ data: { orgId } }),
+    onSuccess: () => {
+      void client.invalidateQueries();
+    },
+  });
 
   const email = account.data?.email ?? "";
   const name = account.data?.displayName || email.split("@")[0] || "Konto";
@@ -49,10 +58,29 @@ export function UserMenu() {
           <span className="block truncate text-xs font-normal text-muted-foreground">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {(orgs.data?.orgs.length ?? 0) > 1
+          ? (orgs.data?.orgs ?? []).map((org) => (
+              <DropdownMenuItem key={org.id} onSelect={() => switchOrg.mutate(org.id)}>
+                {org.id === orgs.data?.activeOrgId ? (
+                  <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Building2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                )}
+                <span className="truncate">{org.name}</span>
+              </DropdownMenuItem>
+            ))
+          : null}
+        {(orgs.data?.orgs.length ?? 0) > 1 ? <DropdownMenuSeparator /> : null}
         <DropdownMenuItem asChild>
           <Link to="/konto">
             <User className="mr-2 h-4 w-4" aria-hidden="true" />
             Profil
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/konto/organisation">
+            <Building2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            Organisation
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

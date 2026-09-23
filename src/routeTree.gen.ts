@@ -21,6 +21,7 @@ import { Route as AuthenticatedKontoRouteImport } from './routes/_authenticated/
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppAppIdRouteImport } from './routes/app.$appId'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
+import { Route as EinladungTokenRouteImport } from './routes/einladung.$token'
 import { Route as LibraryTokenRouteImport } from './routes/library.$token'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -32,7 +33,11 @@ import { Route as AuthenticatedKontoEinstellungenRouteImport } from './routes/_a
 import { Route as AuthenticatedKontoKiSchluesselRouteImport } from './routes/_authenticated/konto.ki-schluessel'
 import { Route as AuthenticatedKontoMcpRouteImport } from './routes/_authenticated/konto.mcp'
 import { Route as AuthenticatedKontoMitgliederRouteImport } from './routes/_authenticated/konto.mitglieder'
+import { Route as AuthenticatedKontoOrganisationRouteImport } from './routes/_authenticated/konto.organisation'
+import { Route as AuthenticatedKontoSitzungenRouteImport } from './routes/_authenticated/konto.sitzungen'
+import { Route as AuthenticatedKontoTeamsRouteImport } from './routes/_authenticated/konto.teams'
 import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
+import { Route as AuthenticatedKontoNutzerUserIdRouteImport } from './routes/_authenticated/konto.nutzer.$userId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
 
 const IndexRoute = IndexRouteImport.update({
@@ -95,6 +100,11 @@ const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
   path: '/board/$boardId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EinladungTokenRoute = EinladungTokenRouteImport.update({
+  id: '/einladung/$token',
+  path: '/einladung/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LibraryTokenRoute = LibraryTokenRouteImport.update({
   id: '/library/$token',
   path: '/library/$token',
@@ -154,11 +164,34 @@ const AuthenticatedKontoMitgliederRoute =
     path: '/mitglieder',
     getParentRoute: () => AuthenticatedKontoRoute,
   } as any)
+const AuthenticatedKontoOrganisationRoute =
+  AuthenticatedKontoOrganisationRouteImport.update({
+    id: '/organisation',
+    path: '/organisation',
+    getParentRoute: () => AuthenticatedKontoRoute,
+  } as any)
+const AuthenticatedKontoSitzungenRoute =
+  AuthenticatedKontoSitzungenRouteImport.update({
+    id: '/sitzungen',
+    path: '/sitzungen',
+    getParentRoute: () => AuthenticatedKontoRoute,
+  } as any)
+const AuthenticatedKontoTeamsRoute = AuthenticatedKontoTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => AuthenticatedKontoRoute,
+} as any)
 const EmbedZoneZoneIdRoute = EmbedZoneZoneIdRouteImport.update({
   id: '/embed/zone/$zoneId',
   path: '/embed/zone/$zoneId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedKontoNutzerUserIdRoute =
+  AuthenticatedKontoNutzerUserIdRouteImport.update({
+    id: '/nutzer/$userId',
+    path: '/nutzer/$userId',
+    getParentRoute: () => AuthenticatedKontoRoute,
+  } as any)
 const ApiPublicAppAppIdMcpRoute = ApiPublicAppAppIdMcpRouteImport.update({
   id: '/api/public/app/$appId/mcp',
   path: '/api/public/app/$appId/mcp',
@@ -177,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/einladung/$token': typeof EinladungTokenRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -187,8 +221,12 @@ export interface FileRoutesByFullPath {
   '/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
+  '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
+  '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto/': typeof AuthenticatedKontoIndexRoute
+  '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
 }
 export interface FileRoutesByTo {
@@ -202,6 +240,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/einladung/$token': typeof EinladungTokenRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -212,8 +251,12 @@ export interface FileRoutesByTo {
   '/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
+  '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
+  '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto': typeof AuthenticatedKontoIndexRoute
+  '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
 }
 export interface FileRoutesById {
@@ -230,6 +273,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
+  '/einladung/$token': typeof EinladungTokenRoute
   '/library/$token': typeof LibraryTokenRoute
   '/share/$token': typeof ShareTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -240,8 +284,12 @@ export interface FileRoutesById {
   '/_authenticated/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
   '/_authenticated/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/_authenticated/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
+  '/_authenticated/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
+  '/_authenticated/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
+  '/_authenticated/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/_authenticated/konto/': typeof AuthenticatedKontoIndexRoute
+  '/_authenticated/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
 }
 export interface FileRouteTypes {
@@ -258,6 +306,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/app/$appId'
     | '/board/$boardId'
+    | '/einladung/$token'
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
@@ -268,8 +317,12 @@ export interface FileRouteTypes {
     | '/konto/ki-schluessel'
     | '/konto/mcp'
     | '/konto/mitglieder'
+    | '/konto/organisation'
+    | '/konto/sitzungen'
+    | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto/'
+    | '/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -283,6 +336,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/app/$appId'
     | '/board/$boardId'
+    | '/einladung/$token'
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
@@ -293,8 +347,12 @@ export interface FileRouteTypes {
     | '/konto/ki-schluessel'
     | '/konto/mcp'
     | '/konto/mitglieder'
+    | '/konto/organisation'
+    | '/konto/sitzungen'
+    | '/konto/teams'
     | '/embed/zone/$zoneId'
     | '/konto'
+    | '/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
   id:
     | '__root__'
@@ -310,6 +368,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/app/$appId'
     | '/board/$boardId'
+    | '/einladung/$token'
     | '/library/$token'
     | '/share/$token'
     | '/.lovable/oauth/consent'
@@ -320,8 +379,12 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/ki-schluessel'
     | '/_authenticated/konto/mcp'
     | '/_authenticated/konto/mitglieder'
+    | '/_authenticated/konto/organisation'
+    | '/_authenticated/konto/sitzungen'
+    | '/_authenticated/konto/teams'
     | '/embed/zone/$zoneId'
     | '/_authenticated/konto/'
+    | '/_authenticated/konto/nutzer/$userId'
     | '/api/public/app/$appId/mcp'
   fileRoutesById: FileRoutesById
 }
@@ -337,6 +400,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   AppAppIdRoute: typeof AppAppIdRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
+  EinladungTokenRoute: typeof EinladungTokenRoute
   LibraryTokenRoute: typeof LibraryTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
@@ -430,6 +494,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoardBoardIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/einladung/$token': {
+      id: '/einladung/$token'
+      path: '/einladung/$token'
+      fullPath: '/einladung/$token'
+      preLoaderRoute: typeof EinladungTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/library/$token': {
       id: '/library/$token'
       path: '/library/$token'
@@ -507,12 +578,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKontoMitgliederRouteImport
       parentRoute: typeof AuthenticatedKontoRoute
     }
+    '/_authenticated/konto/organisation': {
+      id: '/_authenticated/konto/organisation'
+      path: '/organisation'
+      fullPath: '/konto/organisation'
+      preLoaderRoute: typeof AuthenticatedKontoOrganisationRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
+    '/_authenticated/konto/sitzungen': {
+      id: '/_authenticated/konto/sitzungen'
+      path: '/sitzungen'
+      fullPath: '/konto/sitzungen'
+      preLoaderRoute: typeof AuthenticatedKontoSitzungenRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
+    '/_authenticated/konto/teams': {
+      id: '/_authenticated/konto/teams'
+      path: '/teams'
+      fullPath: '/konto/teams'
+      preLoaderRoute: typeof AuthenticatedKontoTeamsRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
     '/embed/zone/$zoneId': {
       id: '/embed/zone/$zoneId'
       path: '/embed/zone/$zoneId'
       fullPath: '/embed/zone/$zoneId'
       preLoaderRoute: typeof EmbedZoneZoneIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/konto/nutzer/$userId': {
+      id: '/_authenticated/konto/nutzer/$userId'
+      path: '/nutzer/$userId'
+      fullPath: '/konto/nutzer/$userId'
+      preLoaderRoute: typeof AuthenticatedKontoNutzerUserIdRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
     }
     '/api/public/app/$appId/mcp': {
       id: '/api/public/app/$appId/mcp'
@@ -532,7 +631,11 @@ interface AuthenticatedKontoRouteChildren {
   AuthenticatedKontoKiSchluesselRoute: typeof AuthenticatedKontoKiSchluesselRoute
   AuthenticatedKontoMcpRoute: typeof AuthenticatedKontoMcpRoute
   AuthenticatedKontoMitgliederRoute: typeof AuthenticatedKontoMitgliederRoute
+  AuthenticatedKontoOrganisationRoute: typeof AuthenticatedKontoOrganisationRoute
+  AuthenticatedKontoSitzungenRoute: typeof AuthenticatedKontoSitzungenRoute
+  AuthenticatedKontoTeamsRoute: typeof AuthenticatedKontoTeamsRoute
   AuthenticatedKontoIndexRoute: typeof AuthenticatedKontoIndexRoute
+  AuthenticatedKontoNutzerUserIdRoute: typeof AuthenticatedKontoNutzerUserIdRoute
 }
 
 const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
@@ -543,7 +646,11 @@ const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
   AuthenticatedKontoKiSchluesselRoute: AuthenticatedKontoKiSchluesselRoute,
   AuthenticatedKontoMcpRoute: AuthenticatedKontoMcpRoute,
   AuthenticatedKontoMitgliederRoute: AuthenticatedKontoMitgliederRoute,
+  AuthenticatedKontoOrganisationRoute: AuthenticatedKontoOrganisationRoute,
+  AuthenticatedKontoSitzungenRoute: AuthenticatedKontoSitzungenRoute,
+  AuthenticatedKontoTeamsRoute: AuthenticatedKontoTeamsRoute,
   AuthenticatedKontoIndexRoute: AuthenticatedKontoIndexRoute,
+  AuthenticatedKontoNutzerUserIdRoute: AuthenticatedKontoNutzerUserIdRoute,
 }
 
 const AuthenticatedKontoRouteWithChildren =
@@ -573,6 +680,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   AppAppIdRoute: AppAppIdRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
+  EinladungTokenRoute: EinladungTokenRoute,
   LibraryTokenRoute: LibraryTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,

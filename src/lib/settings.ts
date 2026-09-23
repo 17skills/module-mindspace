@@ -18,6 +18,7 @@ export type UserSettings = {
   byokProvider: AiProvider;
   aiRouting: AiRouting;
   aiBudgets: AiBudgets;
+  activeOrgId: string | null;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   byokProvider: "openai",
   aiRouting: defaultRouting(),
   aiBudgets: {},
+  activeOrgId: null,
 };
 
 function budgetsFrom(value: unknown): AiBudgets {
@@ -60,6 +62,7 @@ export function settingsFrom(value: unknown): UserSettings {
     byokProvider: raw.byokProvider ?? DEFAULT_SETTINGS.byokProvider,
     aiRouting: routingFrom((raw as { aiRouting?: unknown }).aiRouting),
     aiBudgets: budgetsFrom((raw as { aiBudgets?: unknown }).aiBudgets),
+    activeOrgId: typeof raw.activeOrgId === "string" ? raw.activeOrgId : null,
   };
 }
 

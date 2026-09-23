@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,18 @@ import {
   adminSetBlocked,
   adminSetRole,
 } from "@/lib/admin.functions";
+import { adminCreateUser, adminUsageSummary } from "@/lib/admin-users.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -39,7 +48,12 @@ function AdminPage() {
     queryFn: () => adminListUsers({ data: { search: query, limit: PAGE_SIZE, offset } }),
   });
   const log = useQuery({ queryKey: ["admin-audit"], queryFn: () => adminListAuditLog() });
+  const usage = useQuery({ queryKey: ["admin-usage"], queryFn: () => adminUsageSummary({ data: { days: 30 } }) });
   const total = users.data?.total ?? 0;
+  const [filter, setFilter] = useState<"all" | "admin" | "blocked" | "deletion">("all");
+  const [newEmail, setNewEmail] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["admin-users"] });
@@ -55,6 +69,21 @@ function AdminPage() {
   const blocked = useMutation({
     mutationFn: (input: { userId: string; blocked: boolean }) => adminSetBlocked({ data: input }),
     onSuccess: refresh,
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const create = useMutation({
+    mutationFn: () =>
+      adminCreateUser({
+        data: { email: newEmail.trim(), displayName: newName.trim(), password: newPassword },
+      }),
+    onSuccess: () => {
+      toast.success("Konto angelegt");
+      setNewEmail("");
+      setNewName("");
+      setNewPassword("");
+      refresh();
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -99,6 +128,17 @@ function AdminPage() {
           <Button type="submit" variant="outline" size="sm">
             Suchen
           </Button>
+          <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
+            <SelectTrigger className="w-48" aria-label="Filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Konten</SelectItem>
+              <SelectItem value="admin">Administratoren</SelectItem>
+              <SelectItem value="blocked">Gesperrt</SelectItem>
+              <SelectItem value="deletion">Löschung vorgemerkt</SelectItem>
+            </SelectContent>
+          </Select>
         </form>
         <div className="mt-4 overflow-x-auto">
           <Table>
@@ -109,10 +149,21 @@ function AdminPage() {
                 <TableHead>Dabei seit</TableHead>
                 <TableHead>Administrator</TableHead>
                 <TableHead>Gesperrt</TableHead>
+                <TableHead>Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(users.data?.users ?? []).map((user) => (
+              {(users.data?.users ?? [])
+                .filter((user) =>
+                  filter === "admin"
+                    ? user.isAdmin
+                    : filter === "blocked"
+                      ? user.blocked
+                      : filter === "deletion"
+                        ? Boolean(user.deletionRequestedAt)
+                        : true,
+                )
+                .map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -139,6 +190,15 @@ function AdminPage() {
                       aria-label={`Konto ${user.email} sperren`}
                       onCheckedChange={(next) => blocked.mutate({ userId: user.id, blocked: next })}
                     />
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      to="/konto/nutzer/$userId"
+                      params={{ userId: user.id }}
+                      className="text-sm underline underline-offset-4"
+                    >
+                      Öffnen
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))}
@@ -170,6 +230,73 @@ function AdminPage() {
             </Button>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
+        <h2 className="font-display text-xl font-semibold text-brand-navy">Konto anlegen</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Für Personen ohne E-Mail-Einladung. Das Passwort bitte sicher weitergeben.
+        </p>
+        <form
+          className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            create.mutate();
+          }}
+        >
+          <div>
+            <Label htmlFor="new-email">E-Mail</Label>
+            <Input
+              id="new-email"
+              type="email"
+              className="mt-1.5"
+              value={newEmail}
+              onChange={(event) => setNewEmail(event.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="new-name">Name</Label>
+            <Input
+              id="new-name"
+              className="mt-1.5"
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="new-pass">Passwort (mind. 10 Zeichen)</Label>
+            <Input
+              id="new-pass"
+              type="text"
+              className="mt-1.5"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          </div>
+          <Button type="submit" className="self-end" disabled={create.isPending}>
+            Anlegen
+          </Button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
+        <h2 className="font-display text-xl font-semibold text-brand-navy">KI-Nutzung (30 Tage)</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Geschätzte Kosten gesamt: {(usage.data?.totalCost ?? 0).toFixed(2)} USD
+        </p>
+        <ul className="mt-4 divide-y rounded-xl border text-sm">
+          {(usage.data?.users ?? []).slice(0, 15).map((row) => (
+            <li key={row.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+              <span className="min-w-0 flex-1 truncate">{row.name}</span>
+              <span className="text-xs text-muted-foreground">{row.calls} Aufrufe</span>
+              <span className="text-xs text-muted-foreground">{row.tokens.toLocaleString("de-DE")} Token</span>
+              <span className="font-medium">{row.cost.toFixed(2)} USD</span>
+            </li>
+          ))}
+          {!(usage.data?.users ?? []).length ? (
+            <li className="px-4 py-3 text-muted-foreground">Keine Nutzung im Zeitraum.</li>
+          ) : null}
+        </ul>
       </section>
 
       <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
