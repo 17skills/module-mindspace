@@ -145,6 +145,31 @@ function AdminPage() {
             </TableBody>
           </Table>
         </div>
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>
+            {total === 0
+              ? "Keine Konten gefunden"
+              : `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} von ${total}`}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+            >
+              Zurück
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={offset + PAGE_SIZE >= total}
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+            >
+              Weiter
+            </Button>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
