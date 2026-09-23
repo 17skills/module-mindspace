@@ -160,6 +160,7 @@ function CaptureApp({
   const findings = inspect ? readInspection(inspect).findings : [];
   const fileRef = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [thumb, setThumb] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [report, setReport] = useState("");
   const [lat, setLat] = useState<number | null>(null);
@@ -203,7 +204,8 @@ function CaptureApp({
           cost: assessment.cost,
           confidence: assessment.confidence,
           reason: assessment.reason,
-          thumb: entry.photo,
+          thumb: entry.thumb ?? entry.photo,
+          photo: entry.photo,
           source: entry.source,
         },
       },
@@ -265,8 +267,13 @@ function CaptureApp({
   const pick = async (file: File | undefined) => {
     if (!file) return;
     try {
-      const thumb = await downscale(file, 720, 0.7);
-      setPhoto(thumb);
+      // Großes Bild für die Bewertung, kleines Bild für die Anzeige im Scope
+      const [full, small] = await Promise.all([
+        downscale(file, 720, 0.7),
+        downscale(file, 200, 0.6),
+      ]);
+      setPhoto(full);
+      setThumb(small);
       if (!label) setLabel(labelFromFile(file.name));
       const gps = await exifLocation(file);
       if (gps) {
@@ -283,6 +290,7 @@ function CaptureApp({
 
   const clear = () => {
     setPhoto(null);
+    setThumb(null);
     setLabel("");
     setReport("");
     setLat(null);
@@ -297,7 +305,7 @@ function CaptureApp({
       return;
     }
     if (!online) {
-      enqueueFinding({ appId, label, report, lat, lon, source, photo, assessment: null });
+      enqueueFinding({ appId, label, report, lat, lon, source, photo, thumb, assessment: null });
       setQueue(queuedFor(appId));
       toast.success("Ohne Netz gespeichert – wird später übertragen");
       clear();
@@ -322,7 +330,8 @@ function CaptureApp({
             cost: assessment.cost,
             confidence: assessment.confidence,
             reason: assessment.reason,
-            thumb: photo,
+            thumb: thumb ?? photo,
+            photo,
             source,
           },
         },
@@ -331,7 +340,7 @@ function CaptureApp({
       clear();
       onSaved();
     } catch {
-      enqueueFinding({ appId, label, report, lat, lon, source, photo, assessment: null });
+      enqueueFinding({ appId, label, report, lat, lon, source, photo, thumb, assessment: null });
       setQueue(queuedFor(appId));
       toast.warning("Keine Verbindung – Befund liegt in der Warteschlange");
       clear();

@@ -5015,6 +5015,7 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
           confidence: Math.min(100, Math.max(0, Math.round(result.confidence))),
           reason: result.reason,
           thumb,
+          photoPath: null,
           createdAt: new Date().toISOString(),
           prevPriority: previous ? previous.priority : null,
           status: "offen",
@@ -5179,11 +5180,25 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                     >
                       <div className="flex items-start gap-2">
                         {finding.thumb ? (
-                          <img
-                            src={finding.thumb}
-                            alt={finding.label}
-                            className="size-12 shrink-0 rounded object-cover"
-                          />
+                          <button
+                            type="button"
+                            title={finding.photoPath ? "Foto in voller Größe öffnen" : undefined}
+                            className="shrink-0"
+                            onClick={async (event) => {
+                              event.stopPropagation();
+                              if (!finding.photoPath) return;
+                              const { data } = await supabase.storage
+                                .from("field-photos")
+                                .createSignedUrl(finding.photoPath, 600);
+                              if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                            }}
+                          >
+                            <img
+                              src={finding.thumb}
+                              alt={finding.label}
+                              className="size-12 rounded object-cover"
+                            />
+                          </button>
                         ) : null}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
