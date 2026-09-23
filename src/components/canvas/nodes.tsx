@@ -3220,13 +3220,32 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), questions: next } });
   }
 
+  /** Auch diese Karte urteilt über ihren Modul-Vertrag. */
+  const unit = runEvaluate(
+    decisionUnit(),
+    { ports: {} },
+    {
+      questions: questions.length,
+      answered: answered.length,
+      review: reviewCount,
+      confidence,
+    },
+  );
+
   return (
     <div
       className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
         selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
       }`}
       data-selected={Boolean(selected)}
-      style={{ borderTop: `3px solid ${NODE_ACCENT["decision"] ?? "var(--primary)"}` }}
+      style={{
+        borderTop: `3px solid ${
+          unit.status === "idle"
+            ? NODE_ACCENT["decision"] ?? "var(--primary)"
+            : UNIT_TONE[signalTone(unit.status)]
+        }`,
+      }}
+      title={unit.signal.explanation.headline}
     >
       <NodeResizer isVisible={Boolean(selected)} minWidth={300} minHeight={220} />
       <SignalHandle type="target" position={Position.Left} />
