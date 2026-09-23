@@ -20,3 +20,6 @@
 - [x] Scope-Freigabe mit Rollen (Lesen / Bearbeiten) inkl. RLS-Trennung
 - [x] App-Module auf einer freien Rasterfläche positionieren, skalieren und dauerhaft speichern
 - [x] Freie App-Layouts mit Raster, Magnet, Hilfslinien, Ausrichtung sowie Rückgängig/Wiederherstellen ergänzen
+- [x] Globale Suche über alle Scopes (Karten, Felder, Verbindungen, Texte) mit Sprung zum Modul
+- [x] Vollständige Sicherung und Wiederherstellung eines Scopes als JSON-Datei
+- [x] Echtzeit-Abgleich von Modulen, Verbindungen und Positionen ohne Neuladen
