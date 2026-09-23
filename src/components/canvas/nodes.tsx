@@ -30,6 +30,14 @@ import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
 import { runEvaluate } from "@/lib/runtime/unit-spec";
 import { decisionUnit, riskUnit } from "@/lib/runtime/units";
 
+/** Ampelfarben der Modul-Verträge: grün, bernstein, rot, grau. */
+const UNIT_TONE: Record<string, string> = {
+  positive: "var(--sage, #598381)",
+  caution: "var(--warning, #E0682B)",
+  critical: "var(--destructive)",
+  muted: "var(--muted-foreground)",
+};
+
 import { Plug } from "lucide-react";
 import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
 import {
