@@ -883,6 +883,15 @@ function BoardPage() {
     [setEdges, boardId],
   );
 
+  /** Entscheidung bei gleichzeitiger Änderung: eigene Fassung halten oder fremde übernehmen. */
+  const resolveWith = useCallback(
+    (conflict: Conflict, keep: "mine" | "theirs") => {
+      const value = keep === "mine" ? conflict.mine : conflict.theirs;
+      updateNode(conflict.nodeId, { [conflict.field]: value } as Partial<NodeRecord>);
+    },
+    [updateNode],
+  );
+
   const collectContext = useCallback((id: string) => {
     const connected = new Set<string>();
     for (const edge of edgesRef.current) {
