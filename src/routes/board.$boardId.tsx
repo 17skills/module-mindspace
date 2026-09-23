@@ -561,6 +561,21 @@ function BoardPage() {
     setEditing(canEdit ? (selected?.id ?? null) : null);
   }, [nodes, setEditing, canEdit]);
 
+  // Feine Rechte je Modul und Hintergrundfeld nachladen
+  const reloadAccess = useCallback(() => {
+    void getBoardAccess({ data: { boardId } })
+      .then((result) => {
+        setRole(result.role);
+        setNodeAccess(result.nodes as Record<string, AccessRole>);
+      })
+      .catch(() => undefined);
+  }, [boardId]);
+
+  useEffect(() => {
+    if (!ready) return;
+    reloadAccess();
+  }, [ready, reloadAccess]);
+
 
 
   const fileRef = useRef<HTMLInputElement>(null);
