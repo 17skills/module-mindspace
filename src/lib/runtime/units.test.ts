@@ -25,7 +25,7 @@ describe("Karten als Modul-Verträge", () => {
       riskUnit(),
       { ports: {} },
       {
-        fields: [{ id: "a", code: "A1", name: "Hochwasser", chance: 5, impact: 5, auto: "none" }],
+        fields: [{ id: "a", code: "A1", name: "Hochwasser", note: "", chance: 5, impact: 5, auto: "none" }],
         gaps: ["Sturm: Eintritt fehlt"],
       },
     );
