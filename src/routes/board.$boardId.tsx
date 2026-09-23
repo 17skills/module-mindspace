@@ -796,6 +796,35 @@ function BoardPage() {
     setHistoryTick((tick) => tick + 1);
   }, []);
 
+  /** Startpositionen merken, damit ein Verschieben rückgängig gemacht werden kann. */
+  const dragStartRef = useRef<Record<string, { x: number; y: number }>>({});
+  const captureDragStart = useCallback((ids: string[]) => {
+    const wanted = new Set(ids);
+    const map: Record<string, { x: number; y: number }> = {};
+    for (const node of nodesRef.current) {
+      if (wanted.has(node.id) || node.selected) {
+        map[node.id] = { x: node.position.x, y: node.position.y };
+      }
+    }
+    dragStartRef.current = map;
+  }, []);
+
+  const recordMove = useCallback(
+    (dragged: { id: string; position: { x: number; y: number } }[]) => {
+      const items = movedItems(
+        dragged
+          .map((node) => {
+            const from = dragStartRef.current[node.id];
+            return from ? { id: node.id, from, to: { ...node.position } } : null;
+          })
+          .filter(Boolean) as { id: string; from: { x: number; y: number }; to: { x: number; y: number } }[],
+      );
+      if (items.length) recordHistory({ kind: "move", items });
+      dragStartRef.current = {};
+    },
+    [recordHistory],
+  );
+
   const patchRecord = useCallback((id: string, patch: Partial<NodeRecord>) => {
     setRecords((current) => {
       const existing = current[id];
