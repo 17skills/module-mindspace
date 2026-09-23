@@ -16,6 +16,7 @@ async function handle(ctx: { request: Request }) {
   let app;
   try {
     ({ app } = await loadPublicApp(appId));
+    if (app.access_mode !== "public") throw new Error("restricted");
   } catch {
     return new Response("Not found", { status: 404 });
   }

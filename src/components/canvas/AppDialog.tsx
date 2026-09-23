@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { AppEngine } from "@/components/app/AppEngine";
+import { AppAccessManager } from "@/components/app/AppAccessManager";
 import { executiveView } from "@/lib/app-executive";
 import { APP_LAYOUTS, buildFreeLayout, resolveLayout } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
@@ -269,7 +270,6 @@ export function AppDialog({
   open,
   onOpenChange,
   boardId,
-  userId,
   candidates,
   preselected,
 }: {
@@ -788,9 +788,14 @@ export function AppDialog({
               </label>
             </div>
             <p className="text-sm text-muted-foreground">
-              Menschen öffnen die App über den Link – ohne Konto. KI-Assistenten brauchen zusätzlich
-              den Schlüssel dieser App.
+              Lege getrennt fest, wer ansehen, operative Daten aktualisieren oder die Konfiguration ändern darf.
             </p>
+            {editing ? (
+              <AppAccessManager appId={editing} />
+            ) : (
+              <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Personen- und Teamrollen kannst du nach dem ersten Ausliefern festlegen.</p>
+            )}
+            <span className="module-eyebrow text-muted-foreground">KI-Schlüssel</span>
             <div className="grid gap-2 sm:grid-cols-2">
               {(
                 [

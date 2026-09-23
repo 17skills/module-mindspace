@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, CloudOff, Crosshair, Loader2, RefreshCw, UploadCloud } from "lucide-react";
+import { Camera, CloudOff, Crosshair, Loader2, LockKeyhole, RefreshCw, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { NodeRecord } from "@/components/canvas/board-context";
@@ -83,6 +83,7 @@ function AppStage() {
   const branding = brandingFrom(data.app.branding);
   const title = branding.title || data.app.title || "App";
   const nodes = JSON.parse(data.nodesJson) as NodeRecord[];
+  const canUpdateData = data.role === "data_editor" || data.role === "config_admin";
 
   return (
     <div
@@ -117,14 +118,14 @@ function AppStage() {
       </header>
 
       {resolveLayout(branding.layout, nodes.map((node) => node.type)) === "capture" ? (
-        <CaptureApp appId={appId} nodes={nodes} onSaved={() => void load()} />
+        <CaptureApp appId={appId} nodes={nodes} canUpdateData={canUpdateData} onSaved={() => void load()} />
       ) : (
         <AppEngine
           nodes={nodes}
           layout={branding.layout}
           moduleLayout={branding.moduleLayout}
           actions={{
-            setStatus: (nodeId, finding, status) => {
+            setStatus: canUpdateData ? (nodeId, finding, status) => {
               void appSetFindingStatus({
                 data: { appId, nodeId, findingId: finding.id, status },
               })
@@ -134,9 +135,14 @@ function AppStage() {
                     err instanceof Error ? err.message : "Status konnte nicht geändert werden",
                   ),
                 );
-            },
+            } : undefined,
           }}
         />
+      )}
+      {!canUpdateData && (
+        <div className="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-card px-4 py-2 text-xs shadow-lg">
+          <LockKeyhole className="size-3.5" /> Nur Ansicht · Für Datenänderungen anmelden und freigeben lassen
+        </div>
       )}
 
     </div>
@@ -151,10 +157,12 @@ function CaptureApp({
   appId,
   nodes,
   onSaved,
+  canUpdateData,
 }: {
   appId: string;
   nodes: NodeRecord[];
   onSaved: () => void;
+  canUpdateData: boolean;
 }) {
   const inspect = nodes.find((node) => node.type === "inspect") ?? null;
   const findings = inspect ? readInspection(inspect).findings : [];
@@ -398,7 +406,7 @@ function CaptureApp({
         )}
       </section>
 
-      <section className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
+      {canUpdateData ? <section className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
         <span className="module-eyebrow text-muted-foreground">Neuer Befund</span>
         {photo ? (
           <img
@@ -470,7 +478,7 @@ function CaptureApp({
         <p className="mt-2 text-xs text-muted-foreground">
           Die Bewertung schätzt Schadensklasse, Dringlichkeit (1–10) und Kosten.
         </p>
-      </section>
+      </section> : <section className="rounded-xl border border-border/70 bg-card p-4 text-sm text-muted-foreground"><p className="font-medium text-foreground">Schreibgeschützte Ansicht</p><p className="mt-1">Zum Erfassen neuer Befunde brauchst du die Rolle „Daten aktualisieren“.</p></section>}
 
       <section className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
         <div className="flex items-center justify-between">
