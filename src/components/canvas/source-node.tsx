@@ -16,6 +16,7 @@ import { ingestFile, ingestText } from "@/lib/runtime/ingestion";
 import { primaryFacet } from "@/lib/runtime/source-protocol";
 import { evaluateSignal, signalTone, type SignalStatus } from "@/lib/runtime/signal-engine";
 import { FACET_LABEL, readOntology, readSource, sourceSummary, trimEnvelope } from "@/lib/source-node";
+import { sourceBrief } from "@/lib/runtime/source-bridge";
 
 const TONE_COLOR: Record<ReturnType<typeof signalTone>, string> = {
   positive: "var(--sage, #598381)",
@@ -89,6 +90,19 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
       setBusy(false);
     }
   }
+
+  /**
+   * Klartext-Grundlage der Quelle als Karteninhalt: so fließt jede Quelle
+   * ohne Sonderweg in Entscheidung (JEV) und Chat.
+   */
+  const brief = useMemo(
+    () => (stored ? sourceBrief(stored, signal.findings) : ""),
+    [stored, signal.findings],
+  );
+  useEffect(() => {
+    if (brief && brief !== record.content) updateNode(record.id, { content: brief });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brief]);
 
   const facet = stored ? primaryFacet(stored.envelope) : null;
   const tone = TONE_COLOR[signalTone(signal.status)];
