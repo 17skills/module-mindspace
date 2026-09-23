@@ -6,7 +6,7 @@
  * Vollständigkeit und – sobald ein Regelwerk angeschlossen ist – Befunde
  * im Klartext. Die Karte warnt, sie blockiert nie.
  */
-import { memo, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { NodeResizer, Position, useStore, type NodeProps } from "@xyflow/react";
 import { FileUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
