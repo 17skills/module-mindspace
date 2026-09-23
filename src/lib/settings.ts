@@ -62,6 +62,7 @@ export function settingsFrom(value: unknown): UserSettings {
     byokProvider: raw.byokProvider ?? DEFAULT_SETTINGS.byokProvider,
     aiRouting: routingFrom((raw as { aiRouting?: unknown }).aiRouting),
     aiBudgets: budgetsFrom((raw as { aiBudgets?: unknown }).aiBudgets),
+    activeOrgId: typeof raw.activeOrgId === "string" ? raw.activeOrgId : null,
   };
 }
 
