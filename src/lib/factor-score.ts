@@ -15,7 +15,7 @@ export type FactorParam = {
   /** Where the value comes from: manual entry, table, metric, API. */
   source: string;
   /** Bewertung durch JEV — erst wirksam, wenn der Entscheider sie übernimmt. */
-  jev?: { weight: number; score: number; reason: string };
+  jev?: { weight: number; score: number; reason: string } | undefined;
 };
 
 export type FactorScore = {
