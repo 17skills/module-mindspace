@@ -13,6 +13,7 @@ export type AppRow = {
   mcp_token: string;
   mcp_scope: string;
   updated_at: string;
+  access_mode: string;
 };
 
 
@@ -37,13 +38,17 @@ export async function loadPublicApp(appId: string) {
   const { data: app, error } = await db
     .from("apps")
     .select(
-      "id,board_id,user_id,title,description,kind,node_ids,branding,is_public,mcp_token,mcp_scope,updated_at",
+      "id,board_id,user_id,title,description,kind,node_ids,branding,is_public,mcp_token,mcp_scope,updated_at,access_mode,access_revoked_at,access_expires_at",
     )
     .eq("id", appId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!app) throw new Error("Diese App gibt es nicht");
   if (!app.is_public) throw new Error("Diese App ist nicht freigegeben");
+  if (app.access_revoked_at) throw new Error("Diese App ist nicht freigegeben");
+  if (app.access_expires_at && new Date(app.access_expires_at).getTime() <= Date.now()) {
+    throw new Error("Diese App ist nicht mehr freigegeben");
+  }
   const ids = Array.isArray(app.node_ids) ? (app.node_ids as unknown[]).map(String) : [];
   return { db, app: app as AppRow, ids };
 }
