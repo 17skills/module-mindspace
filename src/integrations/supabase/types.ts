@@ -479,6 +479,8 @@ export type Database = {
           context_checksum: string
           created_at: string
           engine: string
+          human_confidence: number | null
+          human_confidence_by: string | null
           id: string
           min_confidence: number
           node_id: string
@@ -501,6 +503,8 @@ export type Database = {
           context_checksum?: string
           created_at?: string
           engine?: string
+          human_confidence?: number | null
+          human_confidence_by?: string | null
           id?: string
           min_confidence?: number
           node_id: string
@@ -523,6 +527,8 @@ export type Database = {
           context_checksum?: string
           created_at?: string
           engine?: string
+          human_confidence?: number | null
+          human_confidence_by?: string | null
           id?: string
           min_confidence?: number
           node_id?: string
