@@ -37,6 +37,12 @@ let flushing = false;
 let online = true;
 const listeners = new Set<() => void>();
 let snapshot = { pending: 0, online: true };
+const UPDATE_DELAY = 180;
+type PendingUpdate = {
+  op: QueuedOp & { kind: "node.update" };
+  timer: ReturnType<typeof setTimeout>;
+};
+const pendingUpdates = new Map<string, PendingUpdate>();
 
 function emit() {
   snapshot = { pending: queue.length, online };
@@ -171,6 +177,34 @@ export function saveOp(boardId: string, op: Op): void {
   if (!navigator.onLine || queue.length) {
     enqueue(queued);
     void flushOutbox();
+    return;
+  }
+  // Text-, Größen- und Metadatenänderungen desselben Moduls kommen oft direkt
+  // hintereinander. Kurz sammeln, damit daraus nur ein Schreibvorgang wird.
+  if (queued.kind === "node.update") {
+    const key = `${boardId}:${queued.id}`;
+    const previous = pendingUpdates.get(key);
+    if (previous) clearTimeout(previous.timer);
+    const merged: QueuedOp & { kind: "node.update" } = previous
+      ? {
+          ...previous.op,
+          at: queued.at,
+          patch: { ...previous.op.patch, ...queued.patch },
+        }
+      : queued;
+    const timer = setTimeout(() => {
+      pendingUpdates.delete(key);
+      trackSave(
+        runOp(merged).catch((error: unknown) => {
+          if (isOffline(error)) {
+            enqueue(merged);
+            return;
+          }
+          throw error;
+        }),
+      );
+    }, UPDATE_DELAY);
+    pendingUpdates.set(key, { op: merged, timer });
     return;
   }
   trackSave(

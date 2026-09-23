@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { ViewportPortal, type Node } from "@xyflow/react";
 import { MousePointer2 } from "lucide-react";
 import { initialsOf, type PresencePeer } from "@/lib/presence";
@@ -6,9 +7,16 @@ import { initialsOf, type PresencePeer } from "@/lib/presence";
  * Zeigt die Mauszeiger der anderen Mitglieder und markiert Module,
  * an denen gerade jemand arbeitet – alles in Canvas-Koordinaten.
  */
-export function PresenceLayer({ peers, nodes }: { peers: PresencePeer[]; nodes: Node[] }) {
+export const PresenceLayer = memo(function PresenceLayer({ peers, nodes }: { peers: PresencePeer[]; nodes: Node[] }) {
+  const editingIds = useMemo(
+    () => new Set(peers.flatMap((peer) => (peer.editing ? [peer.editing] : []))),
+    [peers],
+  );
+  const byId = useMemo(
+    () => new Map(nodes.filter((node) => editingIds.has(node.id)).map((node) => [node.id, node])),
+    [nodes, editingIds],
+  );
   if (peers.length === 0) return null;
-  const byId = new Map(nodes.map((node) => [node.id, node]));
 
   return (
     <ViewportPortal>
@@ -63,4 +71,4 @@ export function PresenceLayer({ peers, nodes }: { peers: PresencePeer[]; nodes: 
       )}
     </ViewportPortal>
   );
-}
+});
