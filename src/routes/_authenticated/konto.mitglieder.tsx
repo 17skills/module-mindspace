@@ -151,7 +151,7 @@ function MembersPage() {
               </div>
             </li>
           ))}
-          {members.data && members.data.length === 0 ? (
+          {members.data && members.data.members.length === 0 ? (
             <li className="px-4 py-6 text-sm text-muted-foreground">
               Noch keine weiteren Mitglieder in diesem Scope.
             </li>
