@@ -154,12 +154,18 @@ function SharedBoardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    void getSharedBoard({ data: { token } })
-      .then((result) => {
-        if (!active) return;
-        setTitle(result.board.title);
+  const load = useCallback(
+    async (password?: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await getSharedBoard({ data: { token, ...(password ? { password } : {}) } });
+        if (result.locked) {
+          setLocked(true);
+          return;
+        }
+        setLocked(false);
+        setTitle(result.board?.title ?? "");
         setRecords(result.nodes as unknown as NodeRecord[]);
         setEdges(
           result.edges.map((edge) => ({
@@ -170,15 +176,18 @@ function SharedBoardPage() {
             label: (edge.label as string | null) ?? undefined,
           })),
         );
-      })
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "Scope nicht verfügbar"),
-      )
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [token]);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Scope nicht verfügbar");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const nodes = useMemo(
     () => [...records].sort((a, b) => layer(a) - layer(b)).map(toFlowNode),
