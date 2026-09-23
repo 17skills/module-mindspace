@@ -24,6 +24,9 @@ import {
   type RiskField,
 } from "@/lib/iso-risk";
 import { clearMapFocus, setMapFocus, useMapFocus } from "@/lib/map-focus";
+import { readOntology, readSource } from "@/lib/source-node";
+import { riskRowsFromSource, type SourceRiskRow } from "@/lib/runtime/source-bridge";
+import { evaluateSignal, signalTone } from "@/lib/runtime/signal-engine";
 
 import { Plug } from "lucide-react";
 import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
@@ -2225,12 +2228,49 @@ export function LabeledEdge(props: EdgeProps) {
     },
     (a, b) => a.text === b.text && a.bad === b.bad && a.raw === b.raw,
   );
+  /**
+   * Zustand einer Quelle, die in dieses Kabel speist: grün = geprüfter Fluss,
+   * gelb = Lücken, rot = Regelverstoß. Die Kante zeigt den echten Zustand.
+   */
+  const sourceSignal = useStore(
+    (store) => {
+      const stored = readSource(
+        (store.nodeLookup.get(props.source)?.data as Data | undefined)?.record,
+      );
+      if (!stored) return null;
+      let ontology = null;
+      for (const edge of store.edges) {
+        if (edge.target !== props.source) continue;
+        const found = readOntology(
+          (store.nodeLookup.get(edge.source)?.data as Data | undefined)?.record,
+        );
+        if (found) {
+          ontology = found;
+          break;
+        }
+      }
+      const signal = evaluateSignal({ envelope: stored.envelope, ontology });
+      return { status: signal.status, display: signal.display, headline: signal.explanation.headline };
+    },
+    (a, b) => a?.status === b?.status && a?.display === b?.display && a?.headline === b?.headline,
+  );
+
+  const SIGNAL_STROKE: Record<string, string> = {
+    positive: "#598381",
+    caution: "#e0a03a",
+    critical: "#de5a3a",
+    muted: "var(--edge)",
+  };
+
   const problem = flow.bad ? edgeProblem(label, flow.raw) : null;
   const stroke = props.selected
     ? "var(--ring)"
     : flow.bad
       ? "#de5a3a"
-      : "var(--edge)";
+      : sourceSignal
+        ? SIGNAL_STROKE[signalTone(sourceSignal.status)] ?? "var(--edge)"
+        : "var(--edge)";
+
 
   return (
     <>
@@ -2354,6 +2394,21 @@ export function LabeledEdge(props: EdgeProps) {
                 </div>
               </div>
             </div>
+          ) : sourceSignal && labelsVisible ? (
+            <span
+              title={sourceSignal.headline}
+              className="flex items-center gap-1 rounded-full border bg-card px-2 py-0.5 text-[10px] leading-tight shadow-[var(--shadow-card)]"
+              style={{ borderColor: stroke, color: stroke }}
+            >
+              <span className="inline-block size-1.5 rounded-full" style={{ background: stroke }} />
+              {sourceSignal.status === "violation"
+                ? "Regelverstoß"
+                : sourceSignal.status === "warn"
+                  ? "Mit Lücken"
+                  : sourceSignal.status === "idle"
+                    ? "Keine Daten"
+                    : sourceSignal.display}
+            </span>
           ) : labelsVisible && (label || flow.text) ? (
             <span
               title="Aktueller Wert auf dieser Verbindung"
@@ -4273,7 +4328,42 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     [config.fields, liveWeather, liveAge, factors],
   );
 
-  const result = useMemo(() => evaluate(fields), [fields]);
+  /**
+   * Source → Logic: Zeilen aus verbundenen Datenquellen. Vollständige Zeilen
+   * rechnen mit (S = E × A), unvollständige bleiben sichtbar als Lücke —
+   * sie werden nie stillschweigend verworfen.
+   */
+  const sourceRows = useMemo(() => {
+    const byId = Object.fromEntries(
+      flowNodes.map((node) => [node.id, (node.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    const rows: SourceRiskRow[] = [];
+    for (const edge of edges) {
+      if (edge.target !== id) continue;
+      const stored = readSource(byId[edge.source]);
+      if (stored) rows.push(...riskRowsFromSource(stored));
+    }
+    return rows;
+  }, [edges, flowNodes, id]);
+
+  const sourceGaps = useMemo(() => sourceRows.filter((row) => row.missing.length), [sourceRows]);
+
+  const allFields = useMemo<RiskField[]>(() => {
+    const derived = sourceRows
+      .filter((row) => row.chance != null && row.impact != null)
+      .map<RiskField>((row, index) => ({
+        id: row.id,
+        code: `Q${index + 1}`,
+        name: row.label,
+        note: `${row.sourceName}, Zeile ${row.row}`,
+        chance: row.chance ?? 1,
+        impact: row.impact ?? 1,
+        auto: "none",
+      }));
+    return [...fields, ...derived];
+  }, [fields, sourceRows]);
+
+  const result = useMemo(() => evaluate(allFields), [allFields]);
   const summary = useMemo(() => {
     const assessment = isoText(result);
     const parts = [assessment];
@@ -4474,6 +4564,33 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         <span className="font-semibold">Nachweiskette</span>
         <span className="font-mono">{evidence.length} fachliche Einträge verbunden</span>
       </div>
+
+      {sourceRows.length ? (
+        <div className="border-b bg-secondary/10 px-3 py-1.5 text-[10px]">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="font-semibold">Aus Datenquellen</span>
+            <span className="font-mono">
+              {sourceRows.length - sourceGaps.length} von {sourceRows.length} Zeilen gerechnet
+            </span>
+          </div>
+          {sourceGaps.length ? (
+            <ul className="mt-1 space-y-0.5">
+              {sourceGaps.slice(0, 3).map((row) => (
+                <li key={row.id} className="flex items-start gap-1 text-[#8a5a12]">
+                  <span className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-[#e0a03a]" />
+                  <span>
+                    {row.label}: {row.missing.join(" und ")} fehlt · {row.sourceName}, Zeile {row.row}
+                  </span>
+                </li>
+              ))}
+              {sourceGaps.length > 3 ? (
+                <li className="text-muted-foreground">… {sourceGaps.length - 3} weitere Zeilen mit Lücken</li>
+              ) : null}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
 
       <div className="nowheel flex-1 overflow-auto p-2">
         <section>
