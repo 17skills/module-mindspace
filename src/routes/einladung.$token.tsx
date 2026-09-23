@@ -45,10 +45,11 @@ function InvitePage() {
 
   const accept = useMutation({
     mutationFn: () => acceptInvite({ data: { token } }),
-    onSuccess: (result: { boardId?: string | null }) => {
+    onSuccess: (result) => {
       setDone(true);
       toast.success("Einladung angenommen");
-      void navigate({ to: result?.boardId ? "/board/$boardId" : "/", params: { boardId: result?.boardId ?? "" } });
+      if (result.boardId) void navigate({ to: "/board/$boardId", params: { boardId: result.boardId } });
+      else void navigate({ to: "/" });
     },
     onError: (error: Error) => toast.error(error.message),
   });
