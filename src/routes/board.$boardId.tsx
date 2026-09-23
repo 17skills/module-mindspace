@@ -924,12 +924,142 @@ function BoardPage() {
 
   const deleteEdge = useCallback(
     (id: string) => {
+      const existing = edgesRef.current.find((edge) => edge.id === id);
+      if (existing) recordHistory({ kind: "edges.remove", edges: [snapEdge(existing)] });
       setEdges((current) => current.filter((edge) => edge.id !== id));
       markSelfWrite(id);
       saveOp(boardId, { kind: "edge.delete", ids: [id] });
     },
-    [setEdges, boardId],
+    [setEdges, boardId, recordHistory],
   );
+
+  /** Einen Historien-Schritt tatsächlich auf den Canvas anwenden. */
+  const applyHistory = useCallback(
+    (entry: HistoryEntry) => {
+      historyBusy.current = true;
+      try {
+        if (entry.kind === "move") {
+          for (const item of entry.items) {
+            patchRecord(item.id, { position_x: item.to.x, position_y: item.to.y });
+            markSelfWrite(item.id);
+            saveOp(boardId, {
+              kind: "node.update",
+              id: item.id,
+              patch: { position_x: item.to.x, position_y: item.to.y },
+            });
+          }
+          setNodes((current) =>
+            current.map((node) => {
+              const item = entry.items.find((candidate) => candidate.id === node.id);
+              return item ? { ...node, position: { x: item.to.x, y: item.to.y } } : node;
+            }),
+          );
+          return;
+        }
+
+        if (entry.kind === "nodes.add" || entry.kind === "edges.add") {
+          if (entry.kind === "nodes.add") {
+            const rows = entry.rows;
+            setRecords((current) => {
+              const next = { ...current };
+              for (const row of rows) next[row.id] = row;
+              return next;
+            });
+            setNodes((current) => {
+              const known = new Set(current.map((node) => node.id));
+              const added = rows.filter((row) => !known.has(row.id)).map((row) => toFlowNode(row));
+              return [...current, ...added];
+            });
+            for (const row of rows) {
+              const { error: _error, ...payload } = row as NodeRecord & { error?: unknown };
+              markSelfWrite(row.id);
+              saveOp(boardId, { kind: "node.insert", row: payload as Record<string, unknown> });
+            }
+          }
+          const edges = entry.edges;
+          if (edges.length && user) {
+            setEdges((current) => {
+              const known = new Set(current.map((edge) => edge.id));
+              return [
+                ...current,
+                ...edges
+                  .filter((edge) => !known.has(edge.id))
+                  .map((edge) => ({
+                    id: edge.id,
+                    source: edge.source,
+                    target: edge.target,
+                    type: "labeled",
+                    ...(edge.label ? { label: edge.label } : {}),
+                  })),
+              ];
+            });
+            for (const edge of edges) {
+              markSelfWrite(edge.id);
+              saveOp(boardId, {
+                kind: "edge.insert",
+                row: {
+                  id: edge.id,
+                  board_id: boardId,
+                  user_id: user.id,
+                  source_id: edge.source,
+                  target_id: edge.target,
+                  label: edge.label,
+                },
+              });
+            }
+          }
+          return;
+        }
+
+        // Entfernen von Modulen und/oder Verbindungen
+        const edgeIds = new Set(entry.edges.map((edge) => edge.id));
+        const nodeIds = new Set(entry.kind === "nodes.remove" ? entry.rows.map((row) => row.id) : []);
+        if (nodeIds.size) {
+          setRecords((current) => {
+            const next = { ...current };
+            for (const id of nodeIds) delete next[id];
+            return next;
+          });
+          setNodes((current) => current.filter((node) => !nodeIds.has(node.id)));
+          markSelfWrite(...nodeIds);
+          saveOp(boardId, { kind: "node.delete", ids: [...nodeIds] });
+        }
+        setEdges((current) =>
+          current.filter(
+            (edge) =>
+              !edgeIds.has(edge.id) && !nodeIds.has(edge.source) && !nodeIds.has(edge.target),
+          ),
+        );
+        if (edgeIds.size) {
+          markSelfWrite(...edgeIds);
+          saveOp(boardId, { kind: "edge.delete", ids: [...edgeIds] });
+        }
+      } finally {
+        historyBusy.current = false;
+      }
+    },
+    [boardId, patchRecord, setEdges, setNodes, user],
+  );
+
+  const undo = useCallback(() => {
+    const entry = pastRef.current.at(-1);
+    if (!entry) return;
+    pastRef.current = pastRef.current.slice(0, -1);
+    futureRef.current = [...futureRef.current, entry].slice(-HISTORY_LIMIT);
+    applyHistory(invert(entry));
+    setHistoryTick((tick) => tick + 1);
+    toast.success(`Rückgängig: ${describe(entry)}`);
+  }, [applyHistory]);
+
+  const redo = useCallback(() => {
+    const entry = futureRef.current.at(-1);
+    if (!entry) return;
+    futureRef.current = futureRef.current.slice(0, -1);
+    pastRef.current = pushHistory(pastRef.current, entry);
+    applyHistory(entry);
+    setHistoryTick((tick) => tick + 1);
+    toast.success(`Wiederholt: ${describe(entry)}`);
+  }, [applyHistory]);
 
   /** Entscheidung bei gleichzeitiger Änderung: eigene Fassung halten oder fremde übernehmen. */
   const resolveWith = useCallback(
