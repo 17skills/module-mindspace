@@ -18,7 +18,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Globe, LayoutGrid, Plug, Scale, Server, Shapes, Tag } from "lucide-react";
+import { Download, Globe, LayoutGrid, Plug, Scale, Server, Shapes, Tag } from "lucide-react";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
 import { exportBoard } from "@/lib/backup.functions";
@@ -431,6 +432,7 @@ type Menu = { x: number; y: number; flowX: number; flowY: number; nodeId?: strin
 
 function BoardPage() {
   const { boardId } = Route.useParams();
+  const { focus: focusParam } = Route.useSearch();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { screenToFlowPosition, setCenter } = useReactFlow();
@@ -467,6 +469,40 @@ function BoardPage() {
     userId: user?.id ?? null,
     name: myName,
   });
+
+  const focusDone = useRef<string | null>(null);
+
+  // Aus der globalen Suche kommend: passendes Modul mittig zeigen und auswählen
+  useEffect(() => {
+    if (!ready || !focusParam || focusDone.current === focusParam) return;
+    const record = recordsRef.current[focusParam];
+    if (!record) return;
+    focusDone.current = focusParam;
+    setCenter(
+      record.position_x + (record.width ?? 320) / 2,
+      record.position_y + (record.height ?? 240) / 2,
+      { zoom: 1, duration: 500 },
+    );
+    setNodes((current) =>
+      current.map((node) => ({ ...node, selected: node.id === focusParam })),
+    );
+  }, [ready, focusParam, setCenter, setNodes]);
+
+  const downloadBackup = useCallback(async () => {
+    try {
+      const backup = await exportBoard({ data: { boardId } });
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${(backup.board.title || "scope").replace(/[^\w-]+/g, "-").toLowerCase()}-sicherung.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Sicherung heruntergeladen");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Sicherung fehlgeschlagen");
+    }
+  }, [boardId]);
 
   // Bearbeitungshinweis: welches Modul hat die Person gerade ausgewählt
   useEffect(() => {
@@ -2861,6 +2897,23 @@ function BoardPage() {
         <SaveIndicator />
         <div className="ml-auto flex items-center gap-3">
           <PresenceBar peers={peers} myColor={myColor} myName={myName} />
+
+          <GlobalSearch />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-9 rounded-lg"
+                aria-label="Sicherung herunterladen"
+                onClick={() => void downloadBackup()}
+              >
+                <Download className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Sicherung herunterladen</TooltipContent>
+          </Tooltip>
 
           {isOwner ? (
             <Tooltip>
