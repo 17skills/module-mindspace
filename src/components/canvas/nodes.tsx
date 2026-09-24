@@ -847,8 +847,15 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                             <div className="text-[9px] text-muted-foreground">überschrieben</div>
                           )}
                         </td>
-                      </tr>
-                    ))}
+                      </tr>,
+                      param.jev && pending(param) ? (
+                        <tr key={`${param.id}-why`} className="align-top">
+                          <td colSpan={3} className="px-1 pb-1.5 text-[9px] leading-snug text-muted-foreground">
+                            {param.jev.reason}
+                          </td>
+                        </tr>
+                      ) : null,
+                    ])}
                   </tbody>
                 </table>
               )}
