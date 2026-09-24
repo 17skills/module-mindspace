@@ -7,7 +7,7 @@ import { JEV_MODEL } from "@/lib/ai-functions";
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 
 export type FactorWeightResult = {
-  params: { label: string; weight: number; score: number; reason: string }[];
+  params: { label: string; weight: number; score: number; reason: string; confidence: number | null }[];
   reason: string;
 };
 
@@ -103,7 +103,7 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
     });
 
     let remaining = labels.map((_, index) => index);
-    const ranking: { index: number; confidence: number | null }[] = [];
+    const ranking: { index: number; confidence: number | null; why: string }[] = [];
     let scores: Record<string, JevAnswer> = {};
 
     while (remaining.length > 1) {
@@ -116,11 +116,25 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
       if (!rank || !remaining.includes(winner)) {
         throw new Error("JEV hat keine gültige Auswahl zurückgegeben");
       }
-      ranking.push({ index: winner, confidence: typeof rank.confidence === "number" ? rank.confidence : null });
+      // Begründung: Wie knapp war die Wahl? (Zweitplatzierter aus den Wahrscheinlichkeiten)
+      let runnerUp = "";
+      const probs = rank.probabilities ?? {};
+      const others = Object.entries(probs)
+        .filter(([key]) => key !== rank.choice)
+        .map(([key, p]) => ({ key, p }))
+        .sort((a, b) => b.p - a.p);
+      const second = others[0];
+      if (second) {
+        const secondIndex = Number(second.key.replace(/^p/, ""));
+        const secondLabel = Number.isFinite(secondIndex) ? labels[secondIndex] : second.key;
+        const gap = Math.round(((probs[rank.choice!] ?? 0) - second.p) * 100);
+        runnerUp = gap > 5 ? `deutlich vor ${secondLabel}` : `knapp vor ${secondLabel} (${Math.round(second.p * 100)} %)`;
+      }
+      ranking.push({ index: winner, confidence: typeof rank.confidence === "number" ? rank.confidence : null, why: runnerUp });
       remaining = remaining.filter((index) => index !== winner);
     }
     if (remaining.length === 1) {
-      ranking.push({ index: remaining[0]!, confidence: null });
+      ranking.push({ index: remaining[0]!, confidence: null, why: "übrig geblieben" });
     }
     if (labels.length === 1) {
       scores = await askJev(key, state, first, context.userId);
@@ -137,14 +151,23 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
       const place = ranking.findIndex((item) => item.index === index);
       const item = ranking[place];
       const raw = scores[`s${index}`]?.score;
-      const score = typeof raw === "number" ? Math.round((1 + (raw / 4) * 9) * 2) / 2 : data.params[index]!.score;
-      const sure = item?.confidence != null ? `, gewählt mit ${Math.round(item.confidence * 100)} % Sicherheit` : "";
-      const noScore = typeof raw === "number" ? "" : " · Zustand nicht bewertet, bisheriger Wert bleibt";
+      const level = typeof raw === "number" ? Math.round(raw) : null;
+      const score = level != null ? Math.round((1 + (raw! / 4) * 9) * 2) / 2 : data.params[index]!.score;
+      const confidence = item?.confidence ?? null;
+      const parts = [
+        `Platz ${place + 1} von ${labels.length}`,
+        confidence != null ? `${Math.round(confidence * 100)} % sicher` : null,
+        item?.why || null,
+        level != null
+          ? `Zustand: ${CONDITION_LEVELS[Math.min(4, Math.max(0, level))]?.description.split(":")[0]} (${score} / 10)`
+          : "Zustand nicht bewertet, bisheriger Wert bleibt",
+      ].filter(Boolean);
       return {
         label,
         weight: weights[place] ?? 0,
         score,
-        reason: `Rang ${place + 1} von ${labels.length}${place === labels.length - 1 && labels.length > 1 ? " (übrig geblieben)" : sure}${noScore}`,
+        reason: parts.join(" · "),
+        confidence,
       };
     });
 
