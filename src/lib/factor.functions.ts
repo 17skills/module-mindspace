@@ -151,14 +151,23 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
       const place = ranking.findIndex((item) => item.index === index);
       const item = ranking[place];
       const raw = scores[`s${index}`]?.score;
-      const score = typeof raw === "number" ? Math.round((1 + (raw / 4) * 9) * 2) / 2 : data.params[index]!.score;
-      const sure = item?.confidence != null ? `, gewählt mit ${Math.round(item.confidence * 100)} % Sicherheit` : "";
-      const noScore = typeof raw === "number" ? "" : " · Zustand nicht bewertet, bisheriger Wert bleibt";
+      const level = typeof raw === "number" ? Math.round(raw) : null;
+      const score = level != null ? Math.round((1 + (raw! / 4) * 9) * 2) / 2 : data.params[index]!.score;
+      const confidence = item?.confidence ?? null;
+      const parts = [
+        `Platz ${place + 1} von ${labels.length}`,
+        confidence != null ? `${Math.round(confidence * 100)} % sicher` : null,
+        item?.why || null,
+        level != null
+          ? `Zustand: ${CONDITION_LEVELS[Math.min(4, Math.max(0, level))]?.description.split(":")[0]} (${score} / 10)`
+          : "Zustand nicht bewertet, bisheriger Wert bleibt",
+      ].filter(Boolean);
       return {
         label,
         weight: weights[place] ?? 0,
         score,
-        reason: `Rang ${place + 1} von ${labels.length}${place === labels.length - 1 && labels.length > 1 ? " (übrig geblieben)" : sure}${noScore}`,
+        reason: parts.join(" · "),
+        confidence,
       };
     });
 
