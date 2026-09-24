@@ -7,7 +7,7 @@ import { JEV_MODEL } from "@/lib/ai-functions";
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 
 export type FactorWeightResult = {
-  params: { label: string; weight: number; score: number; reason: string }[];
+  params: { label: string; weight: number; score: number; reason: string; confidence: number | null }[];
   reason: string;
 };
 
