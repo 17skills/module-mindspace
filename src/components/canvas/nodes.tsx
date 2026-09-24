@@ -784,7 +784,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {factor.params.map((param) => (
+                    {factor.params.map((param) => [
                       <tr key={param.id} className="border-t border-border/60 align-middle">
                         <td className="truncate px-1 py-1" title={param.jev?.reason || param.label}>
                           {param.label}
