@@ -103,7 +103,7 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
     });
 
     let remaining = labels.map((_, index) => index);
-    const ranking: { index: number; confidence: number | null }[] = [];
+    const ranking: { index: number; confidence: number | null; why: string }[] = [];
     let scores: Record<string, JevAnswer> = {};
 
     while (remaining.length > 1) {
@@ -116,11 +116,25 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
       if (!rank || !remaining.includes(winner)) {
         throw new Error("JEV hat keine gültige Auswahl zurückgegeben");
       }
-      ranking.push({ index: winner, confidence: typeof rank.confidence === "number" ? rank.confidence : null });
+      // Begründung: Wie knapp war die Wahl? (Zweitplatzierter aus den Wahrscheinlichkeiten)
+      let runnerUp = "";
+      const probs = rank.probabilities ?? {};
+      const others = Object.entries(probs)
+        .filter(([key]) => key !== rank.choice)
+        .map(([key, p]) => ({ key, p }))
+        .sort((a, b) => b.p - a.p);
+      const second = others[0];
+      if (second) {
+        const secondIndex = Number(second.key.replace(/^p/, ""));
+        const secondLabel = Number.isFinite(secondIndex) ? labels[secondIndex] : second.key;
+        const gap = Math.round(((probs[rank.choice!] ?? 0) - second.p) * 100);
+        runnerUp = gap > 5 ? `deutlich vor ${secondLabel}` : `knapp vor ${secondLabel} (${Math.round(second.p * 100)} %)`;
+      }
+      ranking.push({ index: winner, confidence: typeof rank.confidence === "number" ? rank.confidence : null, why: runnerUp });
       remaining = remaining.filter((index) => index !== winner);
     }
     if (remaining.length === 1) {
-      ranking.push({ index: remaining[0]!, confidence: null });
+      ranking.push({ index: remaining[0]!, confidence: null, why: "übrig geblieben" });
     }
     if (labels.length === 1) {
       scores = await askJev(key, state, first, context.userId);
