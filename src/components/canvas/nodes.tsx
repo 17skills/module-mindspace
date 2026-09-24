@@ -709,6 +709,7 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
             weight: Math.max(0, Math.min(100, Math.round(hit.weight * 10) / 10)),
             score: Math.max(1, Math.min(10, Math.round(hit.score * 2) / 2)),
             reason: hit.reason,
+            confidence: hit.confidence,
           },
         };
       });
@@ -789,7 +790,16 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                           {param.label}
                         </td>
                         <td className="px-1 py-1 text-right font-mono tabular-nums text-muted-foreground" title={param.jev?.reason}>
-                          {param.jev ? `${param.jev.weight} % · ${param.jev.score}` : "–"}
+                          {param.jev ? (
+                            <>
+                              {param.jev.weight} % · {param.jev.score}
+                              {param.jev.confidence != null && (
+                                <div className="text-[9px]">{Math.round(param.jev.confidence * 100)} % sicher</div>
+                              )}
+                            </>
+                          ) : (
+                            "–"
+                          )}
                         </td>
                         <td className="px-1 py-1 text-right">
                           {pending(param) ? (
