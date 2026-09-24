@@ -1,49 +1,64 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { loadAiKeyConfig, runStructured } from "@/lib/ai-keys.server";
+import { recordUsage } from "@/lib/ai-keys.server";
+import { JEV_MODEL } from "@/lib/ai-functions";
 
-const WeightResult = z.object({
-  params: z.array(
-    z.object({
-      label: z.string(),
-      weight: z.number(),
-      score: z.number(),
-      reason: z.string(),
-    }),
-  ),
-  reason: z.string(),
-});
+const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 
-export type FactorWeightResult = z.infer<typeof WeightResult>;
+export type FactorWeightResult = {
+  params: { label: string; weight: number; score: number; reason: string }[];
+  reason: string;
+};
 
-const RESULT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    params: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          label: { type: "string" },
-          weight: { type: "number" },
-          score: { type: "number" },
-          reason: { type: "string" },
-        },
-        required: ["label", "weight", "score", "reason"],
-      },
+type JevAnswer = {
+  choice?: string;
+  score?: number;
+  probabilities?: Record<string, number>;
+  confidence?: number;
+};
+
+const CONDITION_LEVELS = [
+  "Unkritisch: kein Hinweis auf Probleme, voll funktionsfähig.",
+  "Leicht auffällig: einzelne Hinweise, aber ohne Handlungsbedarf.",
+  "Beobachten: erkennbare Schwächen, Maßnahme mittelfristig nötig.",
+  "Kritisch: deutliche Mängel, Maßnahme kurzfristig nötig.",
+  "Akut kritisch: Ausfall oder Gefährdung droht unmittelbar.",
+].map((description) => ({ description }));
+
+async function askJev(
+  key: string,
+  state: Record<string, unknown>,
+  questions: Record<string, unknown>,
+  userId: string,
+): Promise<Record<string, JevAnswer>> {
+  const body = JSON.stringify({ model: JEV_MODEL, state, questions });
+  const response = await fetch(`${GATEWAY}/systemone`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${key}`,
+      "X-Lovable-AIG-SDK": "fetch",
     },
-    reason: { type: "string" },
-  },
-  required: ["params", "reason"],
-} as const;
+    body,
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    await recordUsage({ userId, provider: "lovable", fn: "decision", model: JEV_MODEL, inputText: body, outputText: "", ok: false });
+    throw new Error(`JEV-Bewertung fehlgeschlagen [${response.status}]: ${detail.slice(0, 300)}`);
+  }
+  const payload = (await response.json()) as { answers?: Record<string, JevAnswer> };
+  await recordUsage({ userId, provider: "lovable", fn: "decision", model: JEV_MODEL, inputText: body, outputText: JSON.stringify(payload.answers ?? {}), ok: true });
+  return payload.answers ?? {};
+}
 
 /**
- * The decision engine proposes a weighting: every parameter of a factor card
- * gets a share of 100 % and a condition score on the 1..10 scale.
- * Nutzt den eigenen KI-Schlüssel des Nutzers (BYOK), sonst Lovable AI.
+ * JEV bewertet einen Faktor in Runden:
+ * 1. Alle Parameter zur Auswahl — JEV wählt den wichtigsten.
+ * 2. Der Gewählte fällt heraus, die Frage wird mit dem Rest wiederholt.
+ * So entsteht eine Rangfolge; das Gewicht rechnet die App aus dem Rang.
+ * Den Zustand bewertet JEV je Parameter einzeln (Skala 1–10).
+ * Wirksam wird nichts, bevor der Entscheider übernimmt oder überschreibt.
  */
 export const suggestFactorWeights = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -54,41 +69,85 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
         context: z.string().default(""),
         params: z
           .array(z.object({ label: z.string(), weight: z.number(), score: z.number() }))
-          .min(1),
+          .min(1)
+          .max(40),
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
-    const list = data.params
-      .map((param, index) => `${index + 1}. ${param.label} (aktuell ${param.weight} %, Zustand ${param.score}/10)`)
-      .join("\n");
+  .handler(async ({ data, context }): Promise<FactorWeightResult> => {
+    const key = process.env["LOVABLE_API_KEY"];
+    if (!key) throw new Error("LOVABLE_API_KEY fehlt");
 
-    const prompt = `Du bewertest den Risiko-Faktor „${data.title}“ eines Energienetz-Asset-Managements nach ISO 55001 / ISO 31000.
+    const labels = data.params.map((param) => param.label);
+    const state = {
+      faktor: data.title,
+      bereich: "Risiko-Faktor im Asset-Management eines Energienetzes (ISO 55001 / ISO 31000)",
+      parameter: labels,
+      kontext: data.context.slice(0, 40_000),
+    };
 
-Parameter des Faktors:
-${list}
-
-Aufgabe:
-- Vergib jedem Parameter ein Gewicht in Prozent. Die Summe aller Gewichte muss exakt 100 ergeben.
-- Vergib jedem Parameter einen Zustandswert von 1 bis 10 (1 = unkritisch, 10 = akut kritisch). Behalte plausible bestehende Werte bei.
-- "reason" je Parameter: ein kurzer Satz, warum dieses Gewicht fachlich angemessen ist.
-- Das abschließende "reason" fasst die Gesamtgewichtung in zwei Sätzen zusammen.
-- Erfinde keine Parameter und ändere die Reihenfolge nicht. Gib genau ${data.params.length} Parameter zurück.
-
-Weiterer Kontext:
-${data.context.slice(0, 40_000)}`;
-
-    const cfg = await loadAiKeyConfig(context.supabase, context.userId);
-    const text = await runStructured(cfg, {
-      fn: "factor",
-      prompt,
-      schemaName: "factor_weights",
-      schema: RESULT_SCHEMA,
+    const rankQuestion = (remaining: number[]) => ({
+      type: "choice",
+      instructions: `Welcher der folgenden Parameter trägt am stärksten zum Faktor \`faktor\` bei? Nutze \`kontext\`, falls vorhanden.`,
+      criteria: Object.fromEntries(remaining.map((index) => [`p${index}`, labels[index]!])),
     });
 
-    try {
-      return WeightResult.parse(JSON.parse(text));
-    } catch {
-      throw new Error("Es kam keine verwertbare Gewichtung zurück");
+    // Runde 1: erste Rangfrage + alle Zustandsfragen (unabhängig, also gemeinsam).
+    const first: Record<string, unknown> = {};
+    labels.forEach((label, index) => {
+      first[`s${index}`] = {
+        type: "score",
+        instructions: `Wie kritisch ist der Zustand des Parameters „${label}“ für den Faktor \`faktor\`? Stütze dich auf \`kontext\`; ohne Hinweise dort bewerte zurückhaltend.`,
+        criteria: CONDITION_LEVELS,
+      };
+    });
+
+    let remaining = labels.map((_, index) => index);
+    const ranking: { index: number; confidence: number | null }[] = [];
+    let scores: Record<string, JevAnswer> = {};
+
+    while (remaining.length > 1) {
+      const questions: Record<string, unknown> = { rank: rankQuestion(remaining) };
+      if (!ranking.length) Object.assign(questions, first);
+      const answers = await askJev(key, state, questions, context.userId);
+      if (!ranking.length) scores = answers;
+      const rank = answers["rank"];
+      const winner = Number((rank?.choice ?? "").replace(/^p/, ""));
+      if (!rank || !remaining.includes(winner)) {
+        throw new Error("JEV hat keine gültige Auswahl zurückgegeben");
+      }
+      ranking.push({ index: winner, confidence: typeof rank.confidence === "number" ? rank.confidence : null });
+      remaining = remaining.filter((index) => index !== winner);
     }
+    if (remaining.length === 1) {
+      ranking.push({ index: remaining[0]!, confidence: null });
+    }
+    if (labels.length === 1) {
+      scores = await askJev(key, state, first, context.userId);
+    }
+
+    // Gewicht aus dem Rang (Rangsummen-Verfahren): Platz 1 von 4 → 40 %, dann 30, 20, 10.
+    const n = ranking.length;
+    const denom = (n * (n + 1)) / 2;
+    const weights = ranking.map((_, place) => Math.round(((n - place) / denom) * 1000) / 10);
+    const rest = Math.round((100 - weights.reduce((sum, w) => sum + w, 0)) * 10) / 10;
+    if (weights.length) weights[0] = Math.round((weights[0]! + rest) * 10) / 10;
+
+    const params = labels.map((label, index) => {
+      const place = ranking.findIndex((item) => item.index === index);
+      const item = ranking[place];
+      const raw = scores[`s${index}`]?.score;
+      const score = typeof raw === "number" ? Math.round((1 + (raw / 4) * 9) * 2) / 2 : data.params[index]!.score;
+      const sure = item?.confidence != null ? `, gewählt mit ${Math.round(item.confidence * 100)} % Sicherheit` : "";
+      const noScore = typeof raw === "number" ? "" : " · Zustand nicht bewertet, bisheriger Wert bleibt";
+      return {
+        label,
+        weight: weights[place] ?? 0,
+        score,
+        reason: `Rang ${place + 1} von ${labels.length}${place === labels.length - 1 && labels.length > 1 ? " (übrig geblieben)" : sure}${noScore}`,
+      };
+    });
+
+    const order = ranking.map((item, place) => `${place + 1}. ${labels[item.index]}`).join(" · ");
+    return { params, reason: `Rangfolge: ${order}` };
   });
