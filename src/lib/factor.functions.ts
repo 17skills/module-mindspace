@@ -18,12 +18,14 @@ type JevAnswer = {
   confidence?: number;
 };
 
+/** Anzeige (deutsch) – JEV bekommt die englische Fassung. */
+const CONDITION_LABELS = ["Unkritisch", "Leicht auffällig", "Beobachten", "Kritisch", "Akut kritisch"];
 const CONDITION_LEVELS = [
-  "Unkritisch: kein Hinweis auf Probleme, voll funktionsfähig.",
-  "Leicht auffällig: einzelne Hinweise, aber ohne Handlungsbedarf.",
-  "Beobachten: erkennbare Schwächen, Maßnahme mittelfristig nötig.",
-  "Kritisch: deutliche Mängel, Maßnahme kurzfristig nötig.",
-  "Akut kritisch: Ausfall oder Gefährdung droht unmittelbar.",
+  "Not critical: no sign of problems, fully functional.",
+  "Slightly noticeable: isolated indications, no action needed.",
+  "Monitor: visible weaknesses, action needed in the medium term.",
+  "Critical: clear deficiencies, action needed in the short term.",
+  "Acutely critical: failure or hazard is imminent.",
 ].map((description) => ({ description }));
 
 async function askJev(
@@ -80,15 +82,15 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
 
     const labels = data.params.map((param) => param.label);
     const state = {
-      faktor: data.title,
-      bereich: "Risiko-Faktor im Asset-Management eines Energienetzes (ISO 55001 / ISO 31000)",
-      parameter: labels,
-      kontext: data.context.slice(0, 40_000),
+      factor: data.title,
+      domain: "Risk factor in asset management of an energy grid (ISO 55001 / ISO 31000). Names and context may be written in German.",
+      parameters: labels,
+      context: data.context.slice(0, 40_000),
     };
 
     const rankQuestion = (remaining: number[]) => ({
       type: "choice",
-      instructions: `Welcher der folgenden Parameter trägt am stärksten zum Faktor \`faktor\` bei? Nutze \`kontext\`, falls vorhanden.`,
+      instructions: `Which of the following parameters contributes most strongly to the risk factor \`factor\`? Use \`context\` if available.`,
       criteria: Object.fromEntries(remaining.map((index) => [`p${index}`, labels[index]!])),
     });
 
@@ -97,7 +99,7 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
     labels.forEach((label, index) => {
       first[`s${index}`] = {
         type: "score",
-        instructions: `Wie kritisch ist der Zustand des Parameters „${label}“ für den Faktor \`faktor\`? Stütze dich auf \`kontext\`; ohne Hinweise dort bewerte zurückhaltend.`,
+        instructions: `How critical is the condition of the parameter "${label}" for the risk factor \`factor\`? Base it on \`context\`; without evidence there, rate conservatively.`,
         criteria: CONDITION_LEVELS,
       };
     });
@@ -159,7 +161,7 @@ export const suggestFactorWeights = createServerFn({ method: "POST" })
         confidence != null ? `${Math.round(confidence * 100)} % sicher` : null,
         item?.why || null,
         level != null
-          ? `Zustand: ${CONDITION_LEVELS[Math.min(4, Math.max(0, level))]?.description.split(":")[0]} (${score} / 10)`
+          ? `Zustand: ${CONDITION_LABELS[Math.min(4, Math.max(0, level))]} (${score} / 10)`
           : "Zustand nicht bewertet, bisheriger Wert bleibt",
       ].filter(Boolean);
       return {
