@@ -1,0 +1,71 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: output-viewer
+  version: 1.0.0
+  title: Result Output
+  description: >-
+    The fixed exit of a scope. Renders the connected result as an image, video,
+    document, report or list and records every run in the audit trail.
+  category: output
+  tags:
+    - result
+    - audit
+    - gallery
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: output
+spec:
+  ontology:
+    domain: process/result
+    depth: guarded
+    constraints:
+      - id: snapshot-not-live
+        label: Result is a snapshot of the connected module
+        subject: inputs.items
+        severity: info
+        rationale: >-
+          The output keeps a snapshot so that swapping the engine upstream does
+          not change an already recorded result.
+      - id: retention-policy
+        label: Retention period must match the process
+        subject: settings.retentionDays
+        severity: warn
+        rationale: >-
+          Personal data must not be kept longer than the purpose requires;
+          "never delete" is only valid for documented retention obligations.
+        reference: GDPR Art. 5(1)(e)
+        requires: Choose a retention period that matches the legal purpose.
+  inputs:
+    items:
+      semantic: data:list
+      title: Result Items
+      description: List of records shown as the result of the process.
+      required: false
+    artifact:
+      semantic: media:file
+      title: Result Artifact
+      description: A single file rendered as the result, such as an image or PDF.
+      required: false
+  engine:
+    type: none
+    ref: ""
+  outputs:
+    runId:
+      semantic: primitive:string
+      title: Run Identifier
+      description: Identifier of the recorded run in the audit trail.
+  execution:
+    mode: reactive
+    timeoutSeconds: 30
+  resilience:
+    retry:
+      maxAttempts: 1
+      backoff: none
+    onError: continue
+  action:
+    hasSideEffects: false
+    requiresApproval: false
+  requirements: {}
+  settings:
+    retentionDays: 30
