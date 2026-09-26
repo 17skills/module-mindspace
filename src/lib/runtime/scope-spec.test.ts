@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { catalogSummary, coreCatalog, coreModules } from "@/lib/runtime/catalog";
-import { parseScopeModule, portsCompatible, parseModuleRef, scopeModuleToYaml } from "@/lib/runtime/scopem";
+import {
+  parseScopeModule,
+  portsCompatible,
+  parseModuleRef,
+  resolveModuleInheritance,
+  scopeModuleToYaml,
+} from "@/lib/runtime/scopem";
 import {
   parseScopeSpec,
   scopeSpecToManifest,
