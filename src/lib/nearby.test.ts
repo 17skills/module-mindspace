@@ -15,8 +15,8 @@ describe("parsePlaces", () => {
       origin,
     );
     expect(places.map((p) => p.name)).toEqual(["Nah", "Weit"]);
-    expect(places[0].cuisine).toBe("pizza, italian");
-    expect(places[0].url).toBe("https://www.openstreetmap.org/way/2");
+    expect(places[0]?.cuisine).toBe("pizza, italian");
+    expect(places[0]?.url).toBe("https://www.openstreetmap.org/way/2");
   });
   it("übersteht kaputte Antworten", () => {
     expect(parsePlaces(null, origin)).toEqual([]);
