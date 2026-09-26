@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { OutputNode } from "@/components/canvas/output-node";
+import { CameraNode } from "@/components/canvas/camera-node";
 import { useEffect, useMemo, useState } from "react";
 import {
   Background,
@@ -94,6 +95,7 @@ const nodeTypes = {
   risk: RiskNode,
   inspect: InspectNode,
   output: OutputNode,
+  camera: CameraNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
