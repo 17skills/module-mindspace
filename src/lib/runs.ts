@@ -10,7 +10,16 @@ export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   failed: "fehlgeschlagen",
 };
 
-export const RETENTION_CHOICES = [7, 30, 90] as const;
+/** 0 = nie löschen (z. B. interne oder B2B-Prozesse mit Aufbewahrungspflicht). */
+export const RETENTION_CHOICES = [7, 30, 90, 180, 365, 730, 3650, 0] as const;
+export type RetentionChoice = (typeof RETENTION_CHOICES)[number];
+export const NEVER = "9999-12-31T00:00:00.000Z";
+
+export function retentionLabel(days: number): string {
+  if (days === 0) return "nie löschen";
+  if (days >= 365) return `${days / 365} ${days === 365 ? "Jahr" : "Jahre"}`;
+  return `${days} Tage`;
+}
 export const DEFAULT_RETENTION = 30;
 
 /** Löschfrist in Tagen aus den Modul-Einstellungen, nur erlaubte Werte. */
@@ -20,6 +29,7 @@ export function retentionDays(metadata: Record<string, unknown> | null | undefin
 }
 
 export function expiresAt(days: number, from: number = Date.now()): string {
+  if (days === 0) return NEVER;
   return new Date(from + days * 86_400_000).toISOString();
 }
 

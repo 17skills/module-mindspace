@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { RETENTION_CHOICES, expiresAt as expiry } from "@/lib/runs";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -218,7 +219,7 @@ export const createTestRun = createServerFn({ method: "POST" })
 export const setRetention = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
-    z.object({ outputNodeId: z.string().uuid(), days: z.union([z.literal(7), z.literal(30), z.literal(90)]) }).parse(input),
+    z.object({ outputNodeId: z.string().uuid(), days: z.number().int().refine((d) => (RETENTION_CHOICES as readonly number[]).includes(d), "Ungültige Frist") }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { node } = await outputFor(context.userId, data.outputNodeId, "editor");
@@ -238,7 +239,7 @@ export const setRetention = createServerFn({ method: "POST" })
       (open ?? []).map((row) =>
         db
           .from("runs")
-          .update({ expires_at: new Date(new Date(row.created_at).getTime() + data.days * 86_400_000).toISOString() })
+          .update({ expires_at: expiry(data.days, new Date(row.created_at).getTime()) })
           .eq("id", row.id),
       ),
     );
