@@ -28,13 +28,21 @@ describe("Durchlauf-Ablage", () => {
     );
   });
 
-  it("gibt Gästen keine Durchläufe heraus", () => {
+  it("gibt Gästen keine Durchläufe oder Eingabedateien heraus", () => {
     const view = guestView(
-      [{ id: "aus", parent_id: null, metadata: { runs: [{ id: "r1" }], runStats: { count: 3 } } }],
+      [
+        {
+          id: "aus",
+          parent_id: null,
+          metadata: { runs: [{ id: "r1" }], inputPath: "runs/b/r1/foto.jpg", retentionDays: 30 },
+        },
+      ],
       [],
       new Set(),
     );
-    // Gastansicht liefert nur Module; Durchläufe liegen in eigener Tabelle ohne Gastzugang.
-    expect(JSON.stringify(view)).not.toContain("\"input_path\"");
+    const json = JSON.stringify(view);
+    expect(json).not.toContain("r1");
+    expect(json).not.toContain("foto.jpg");
+    expect(json).toContain("retentionDays");
   });
 });

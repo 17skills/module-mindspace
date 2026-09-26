@@ -8,7 +8,7 @@
  * - Interne Kennungen von Personen und Speicherpfade verlassen den Server nicht.
  */
 const SECRET_KEY =
-  /token|secret|password|passwort|api_?key|apikey|credential|authorization|headers?|cookie|journal|staged|released?|effects|mcpserverid|share/i;
+  /token|secret|password|passwort|api_?key|apikey|credential|authorization|headers?|cookie|journal|staged|released?|effects|mcpserverid|share|^runs$|input_?path/i;
 
 export function stripSecrets(value: unknown, depth = 0): unknown {
   if (depth > 12) return null;
