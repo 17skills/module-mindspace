@@ -215,7 +215,7 @@ export const importBoard = createServerFn({ method: "POST" })
       .filter((row): row is NonNullable<typeof row> => row !== null);
     if (edgeRows.length) {
       const { error } = await db.from("edges").insert(edgeRows as never);
-      if (error) throw new Error(error.message);
+      if (error) await fail(error.message);
     }
 
     // Apps: dieselbe Modulauswahl, Kanäle und Gestaltung, neue Kennungen.
