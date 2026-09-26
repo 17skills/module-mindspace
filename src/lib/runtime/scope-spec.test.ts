@@ -198,3 +198,61 @@ spec:
     }
   });
 });
+
+describe("Modul-Vererbung", () => {
+  it("löst Spezialisierungen gegen den Archetyp auf", () => {
+    const catalog = coreCatalog();
+    const restaurants = catalog.get("restaurant-finder");
+    expect(restaurants).toBeTruthy();
+    // Ports und Motor stammen aus http-request über geo-poi-search.
+    expect(restaurants?.spec.engine.type).toBe("api");
+    expect(restaurants?.spec.inputs["location"]?.semantic).toBe("geo:point");
+    expect(restaurants?.spec.outputs["places"]?.semantic).toBe("geo:features");
+    // Presets werden zu festen Vorgaben und sind gesperrt.
+    expect(restaurants?.spec.inputs["category"]?.default).toBe("restaurant");
+    expect(restaurants?.spec.inputs["category"]?.required).toBe(false);
+    expect(restaurants?.spec.locked).toContain("category");
+    // Regeln des Archetyps bleiben erhalten.
+    expect(restaurants?.spec.ontology.constraints.some((c) => c.id === "https-only")).toBe(true);
+    expect(restaurants?.spec.requirements.network).toContain("overpass-api.de");
+  });
+
+  it("kann Sicherheitsregeln nur verschärfen, nie lockern", () => {
+    const hook = coreCatalog().get("webhook-dispatch");
+    expect(hook?.spec.action.hasSideEffects).toBe(true);
+    expect(hook?.spec.action.requiresApproval).toBe(true);
+    expect(hook?.spec.ontology.depth).toBe("strict");
+  });
+
+  it("meldet fehlende oder unpassende Basis-Bausteine", () => {
+    const base = coreCatalog().get("http-request")!;
+    const child = parseScopeModule(`apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: broken-child
+  version: 1.0.0
+  title: Broken
+  category: data-source
+  nodeType: api
+spec:
+  extends:
+    ref: core/missing-base
+`);
+    expect(() => resolveModuleInheritance(child, new Map([["http-request", base]]))).toThrow();
+
+    const wrongVersion = parseScopeModule(`apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: future-child
+  version: 1.0.0
+  title: Future
+  category: data-source
+  nodeType: api
+spec:
+  extends:
+    ref: core/http-request
+    version: ^2.0.0
+`);
+    expect(() => resolveModuleInheritance(wrongVersion, new Map([["http-request", base]]))).toThrow();
+  });
+});
