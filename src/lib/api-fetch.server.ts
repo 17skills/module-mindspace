@@ -36,21 +36,21 @@ export type ApiCall = {
 };
 
 /**
- * Ruft eine https-API auf. Eingabewerte ({{input.x}}) werden zuerst eingesetzt –
- * in Adressen kodiert –, danach die serverseitigen Schlüssel. Host bleibt geprüft.
+ * Ruft eine https-API auf. Erst die serverseitigen Schlüssel, danach die Eingabewerte
+ * ({{input.x}}, in Adressen kodiert) – so kann eine Eingabe nie einen Schlüssel anfordern. Host bleibt geprüft.
  */
 export async function callApi(call: ApiCall, input: FlowInput = {}) {
-  const url = safeUrl(fillSecrets(fillInputs(call.url.trim(), input, "url")));
+  const url = safeUrl(fillInputs(fillSecrets(call.url.trim()), input, "url"));
   for (const pair of call.params) {
     if (!pair.key.trim()) continue;
-    url.searchParams.set(pair.key.trim(), fillSecrets(fillInputs(pair.value, input)));
+    url.searchParams.set(pair.key.trim(), fillInputs(fillSecrets(pair.value), input));
   }
   safeUrl(url.toString());
 
   const headers = new Headers({ accept: "application/json, text/plain;q=0.8, */*;q=0.5" });
   for (const pair of call.headers) {
     if (!pair.key.trim()) continue;
-    headers.set(pair.key.trim(), fillSecrets(fillInputs(pair.value, input)));
+    headers.set(pair.key.trim(), fillInputs(fillSecrets(pair.value), input));
   }
 
   const controller = new AbortController();
@@ -58,7 +58,7 @@ export async function callApi(call: ApiCall, input: FlowInput = {}) {
   try {
     const init: RequestInit = { method: call.method, headers, signal: controller.signal, redirect: "error" };
     if (call.method === "POST" && call.body?.trim()) {
-      init.body = fillSecrets(fillInputs(call.body, input));
+      init.body = fillInputs(fillSecrets(call.body), input);
       if (!headers.has("content-type")) headers.set("content-type", "application/json");
     }
     const response = await fetch(url, init);

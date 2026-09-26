@@ -14,7 +14,7 @@ export function cleanInput(raw: Record<string, unknown>): FlowInput {
     if (!/^[a-zA-Z0-9_]{1,32}$/.test(key)) continue;
     if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
     else if (typeof value === "string") {
-      const text = value.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 200);
+      const text = value.replace(/[\u0000-\u001f\u007f{}]/g, "").slice(0, 200);
       if (text) out[key] = text;
     }
   }
