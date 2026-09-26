@@ -3290,7 +3290,7 @@ function BoardPage() {
           </TooltipTrigger>
           <TooltipContent>Zur Scope-Übersicht</TooltipContent>
         </Tooltip>
-        <div className="h-5 w-px bg-border/70" />
+        <div className="hidden h-5 w-px bg-border/70 sm:block" />
         <Input
           value={title}
           readOnly={!canEdit}
@@ -3304,11 +3304,14 @@ function BoardPage() {
         />
         <SaveIndicator />
         <OfflineIndicator />
-        <div className="ml-auto flex items-center gap-3">
-          <PresenceBar peers={peers} myColor={myColor} myName={myName} />
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-3">
+          <div className="hidden sm:contents">
+            <PresenceBar peers={peers} myColor={myColor} myName={myName} />
+          </div>
 
           <GlobalSearch />
 
+          <div className="hidden sm:contents">
           <VersionDialog
             boardId={boardId}
             canEdit={canEdit}
@@ -3344,6 +3347,7 @@ function BoardPage() {
             </TooltipTrigger>
             <TooltipContent>Bauplan herunterladen (YAML + Markdown)</TooltipContent>
           </Tooltip>
+          </div>
 
           {isOwner ? (
             <Tooltip>
@@ -3361,7 +3365,7 @@ function BoardPage() {
               <TooltipContent>Scope teilen</TooltipContent>
             </Tooltip>
           ) : (
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            <span className="hidden rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground sm:inline">
               {canEdit ? "Geteilter Scope · Bearbeiten" : `Geteilter Scope · ${ROLE_LABEL[role]}`}
             </span>
           )}
