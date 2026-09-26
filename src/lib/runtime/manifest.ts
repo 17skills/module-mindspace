@@ -313,6 +313,18 @@ export function parseManifest(text: string): ParsedManifest {
 }
 
 /** Manifest → Sicherungsform, damit der bewährte Wiederherstellungsweg baut. */
+/** Ein Bauplan darf keine Schlüssel, Freigaben oder Journal-Bezüge mitbringen. */
+const FORBIDDEN_SETTING = /token|secret|password|passwort|api_?key|apikey|credential|journal|staged|released?/i;
+
+export function sanitizeSettings(settings: unknown): Record<string, unknown> {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return {};
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settings as Record<string, unknown>)) {
+    if (!FORBIDDEN_SETTING.test(key)) out[key] = value;
+  }
+  return out;
+}
+
 export function manifestToBackup(manifest: ScopeManifest): BackupShape {
   return {
     version: 1,
@@ -330,7 +342,7 @@ export function manifestToBackup(manifest: ScopeManifest): BackupShape {
       source_url: module.url ?? null,
       content: module.content ?? null,
       status: "ready",
-      metadata: module.settings,
+      metadata: sanitizeSettings(module.settings),
     })),
     edges: manifest.links.map((link) => ({ source_id: link.from, target_id: link.to, label: link.label ?? null })),
     mcpServers: [],
