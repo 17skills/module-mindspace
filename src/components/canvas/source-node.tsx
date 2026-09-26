@@ -19,6 +19,10 @@ import { runEvaluate } from "@/lib/runtime/unit-spec";
 import { sourceUnit } from "@/lib/runtime/units";
 import { FACET_LABEL, readOntology, readSource, sourceSummary, trimEnvelope } from "@/lib/source-node";
 import { sourceBrief } from "@/lib/runtime/source-bridge";
+import { useServerFn } from "@tanstack/react-start";
+import { storeDataset } from "@/lib/datasets.functions";
+import { needsStorage, referenceEnvelope } from "@/lib/datasets";
+import type { SourceEnvelope } from "@/lib/runtime/source-protocol";
 
 const TONE_COLOR: Record<ReturnType<typeof signalTone>, string> = {
   positive: "var(--sage, #598381)",
@@ -75,6 +79,35 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
     [stored, ontologies],
   );
 
+  const store = useServerFn(storeDataset);
+
+  /** Große Tabellen gehen in die Datenablage; auf der Karte bleibt nur der Verweis. */
+  async function externalize(envelope: SourceEnvelope): Promise<SourceEnvelope> {
+    if (!needsStorage(envelope)) return envelope;
+    const dataset = envelope.facets.dataset!;
+    const ref = await store({
+      data: { nodeId: record.id, columns: dataset.columns, rows: dataset.rows, originKind: "upload", sourceUrl: null },
+    });
+    return referenceEnvelope(envelope, ref);
+  }
+
+  // Einmaliger Umzug alter Karten, die Zeilen noch direkt gespeichert haben.
+  const migrated = useRef(false);
+  useEffect(() => {
+    if (migrated.current || !stored || !needsStorage(stored.envelope)) return;
+    migrated.current = true;
+    externalize(stored.envelope)
+      .then((envelope) =>
+        updateNode(record.id, {
+          metadata: { ...(record.metadata ?? {}), source: { envelope, truncated: stored.truncated } },
+        }),
+      )
+      .catch(() => {
+        // Ohne Bearbeitungsrecht bleibt die alte Karte unverändert lesbar.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stored]);
+
   async function take(input: File | string) {
     setBusy(true);
     try {
@@ -82,7 +115,13 @@ export const SourceNode = memo(function SourceNode({ id, data, selected }: NodeP
         typeof input === "string"
           ? ingestText(input, { sourceName: "Eingefügter Inhalt", originKind: "text" })
           : await ingestFile(input);
-      const source = trimEnvelope(envelope);
+      let source;
+      try {
+        source = { envelope: await externalize(envelope), truncated: 0 };
+      } catch {
+        toast.error("Datenablage nicht erreichbar – nur eine Vorschau wird gespeichert.");
+        source = trimEnvelope(envelope);
+      }
       updateNode(record.id, {
         title: envelope.meta.sourceName,
         metadata: { ...(record.metadata ?? {}), source },

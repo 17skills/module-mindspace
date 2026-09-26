@@ -58,5 +58,10 @@ export const FACET_LABEL: Record<FacetName, string> = {
 /** Kurzbeschreibung für die Kompaktansicht. */
 export function sourceSummary(stored: StoredSource): string {
   const base = describeEnvelope(stored.envelope);
+  const ref = stored.envelope.facets.datasetRef;
+  if (ref) {
+    const origin = ref.verified ? "geprüfte Quelle" : `Version ${ref.version}`;
+    return `${base} · ${ref.rowCount.toLocaleString("de-DE")} Zeilen in der Datenablage (${origin})`;
+  }
   return stored.truncated ? `${base} (Vorschau: erste ${STORED_ROWS})` : base;
 }
