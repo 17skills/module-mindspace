@@ -25,3 +25,7 @@ Bewertung: erfüllt / teilweise / offen. Keine pauschale Zusage.
 ## Offen
 - Aufteilen der großen Canvas-Dateien für schnelleres Laden (Tempo, keine Sicherheitslücke).
 - Paket-Updates für js-yaml/esbuild, sobald verfügbar.
+
+## Gastzugänge (Stand)
+- Gastlink, Feld-Einbettung und Bibliothekslink liefern nur gesäuberte Daten (`guestView`/`stripSecrets`): keine Besitzer-IDs, Dateipfade, Zugangsdaten; Karten mit eigener Zugriffsregel bleiben verborgen, Ergebnis-Module reichen verborgene Quellen nicht durch.
+- Feld-Einbettung umgeht Widerruf, Ablauf und Passwort des Gastlinks nicht mehr; gedrosselt.
