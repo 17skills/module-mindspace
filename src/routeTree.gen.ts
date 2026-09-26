@@ -17,6 +17,7 @@ import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AuthenticatedErgebnisseRouteImport } from './routes/_authenticated/ergebnisse'
 import { Route as AuthenticatedKontoRouteImport } from './routes/_authenticated/konto'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppAppIdRouteImport } from './routes/app.$appId'
@@ -83,6 +84,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedErgebnisseRoute = AuthenticatedErgebnisseRouteImport.update({
+  id: '/ergebnisse',
+  path: '/ergebnisse',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKontoRoute = AuthenticatedKontoRouteImport.update({
   id: '/konto',
   path: '/konto',
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/impressum': typeof ImpressumRoute
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/ergebnisse': typeof AuthenticatedErgebnisseRoute
   '/konto': typeof AuthenticatedKontoRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/impressum': typeof ImpressumRoute
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/ergebnisse': typeof AuthenticatedErgebnisseRoute
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
   '/board/$boardId': typeof BoardBoardIdRoute
@@ -295,6 +303,7 @@ export interface FileRoutesById {
   '/impressum': typeof ImpressumRoute
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/_authenticated/ergebnisse': typeof AuthenticatedErgebnisseRoute
   '/_authenticated/konto': typeof AuthenticatedKontoRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/app/$appId': typeof AppAppIdRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/impressum'
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
+    | '/ergebnisse'
     | '/konto'
     | '/api/chat'
     | '/app/$appId'
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/impressum'
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
+    | '/ergebnisse'
     | '/api/chat'
     | '/app/$appId'
     | '/board/$boardId'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/impressum'
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
+    | '/_authenticated/ergebnisse'
     | '/_authenticated/konto'
     | '/api/chat'
     | '/app/$appId'
@@ -506,6 +518,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/.well-known/oauth-protected-resource'
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/ergebnisse': {
+      id: '/_authenticated/ergebnisse'
+      path: '/ergebnisse'
+      fullPath: '/ergebnisse'
+      preLoaderRoute: typeof AuthenticatedErgebnisseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/konto': {
       id: '/_authenticated/konto'
@@ -719,10 +738,12 @@ const AuthenticatedKontoRouteWithChildren =
   AuthenticatedKontoRoute._addFileChildren(AuthenticatedKontoRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedErgebnisseRoute: typeof AuthenticatedErgebnisseRoute
   AuthenticatedKontoRoute: typeof AuthenticatedKontoRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedErgebnisseRoute: AuthenticatedErgebnisseRoute,
   AuthenticatedKontoRoute: AuthenticatedKontoRouteWithChildren,
 }
 

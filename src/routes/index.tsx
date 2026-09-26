@@ -222,6 +222,10 @@ function LibraryPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/ergebnisse">Ergebnisse</Link>
+            </Button>
+
             <input
               ref={restoreRef}
               type="file"
