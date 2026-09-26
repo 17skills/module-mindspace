@@ -1,0 +1,107 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: Scope
+metadata:
+  name: photo-to-restaurants
+  version: 1.0.0
+  title: Photo to Nearby Restaurants
+  description: >-
+    End-to-end process: capture a location with the device camera, query nearby
+    restaurants from OpenStreetMap, and present them on a map and as a result
+    list. Every run is recorded in the audit trail.
+  tags:
+    - mobile
+    - geospatial
+    - hospitality
+  author: scopebuilder
+  license: Apache-2.0
+
+spec:
+  ontology:
+    name: Location-Based Services Standard
+    depth: guarded
+    rules:
+      - id: privacy-gdpr-retention
+        label: GDPR Location Data Retention
+        subject: camera.outputs.location
+        severity: warn
+        rationale: >-
+          Precise coordinates are personal data and must not be retained longer
+          than the documented purpose requires.
+        reference: GDPR Art. 5(1)(e)
+        requires: Set the result retention period to 30 days or less.
+      - id: min-viable-results
+        label: Minimum Viable Results
+        subject: finder.outputs.places
+        operator: gte
+        value: 1
+        severity: info
+        rationale: Warn the user when the chosen radius returns no places at all.
+      - id: free-tier-only
+        label: Community Services Only
+        subject: finder.engine.ref
+        operator: neq
+        value: commercial-metered
+        severity: violation
+        rationale: This scope must run without metered commercial API cost.
+
+  modules:
+    - id: stage
+      ref: catalog:core/supervision-zone@1.0.0
+      title: Process Supervision
+
+    - id: camera
+      ref: catalog:core/camera-input@1.0.0
+      title: Location Capture
+      parent: stage
+
+    - id: finder
+      ref: catalog:core/osm-nearby-places@1.0.0
+      title: Nearby Restaurants
+      parent: stage
+      overrides:
+        inputs:
+          radius: 1200
+          amenity: restaurant
+
+    - id: map
+      ref: catalog:core/interactive-map@1.0.0
+      title: Result Map
+
+    - id: result
+      ref: catalog:core/output-viewer@1.0.0
+      title: Restaurant List
+
+  bindings:
+    - from: camera.outputs.location
+      to: finder.inputs.location
+      label: location
+    - from: camera.outputs.location
+      to: map.inputs.center
+      label: center
+    - from: finder.outputs.places
+      to: map.inputs.markers
+      label: markers
+    - from: finder.outputs.places
+      to: result.inputs.items
+      label: places
+
+  apps:
+    - name: restaurant-radar
+      title: Restaurant Radar
+      description: Capture your location and discover restaurants nearby.
+      channel: mobile
+      access: public
+      modules:
+        - camera
+        - map
+        - result
+      branding:
+        primaryColor: "#f97316"
+
+layout:
+  canvas:
+    stage: { x: 40, y: 40, width: 900, height: 620 }
+    camera: { x: 120, y: 160 }
+    finder: { x: 480, y: 160 }
+    map: { x: 1020, y: 80 }
+    result: { x: 1020, y: 400 }
