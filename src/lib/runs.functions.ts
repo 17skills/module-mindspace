@@ -245,3 +245,139 @@ export const setRetention = createServerFn({ method: "POST" })
     );
     return { ok: true, days: data.days };
   });
+
+/** Scopes, in denen das Konto Rechte hat – mit tatsächlicher Rolle. */
+async function myBoards(userId: string): Promise<Map<string, string>> {
+  const db = await admin();
+  const { boardRoleOf } = await import("@/lib/guard.server");
+  const [own, member, teams, orgs] = await Promise.all([
+    db.from("boards").select("id").eq("user_id", userId),
+    db.from("board_members").select("board_id").eq("user_id", userId),
+    db.from("team_members").select("team_id").eq("user_id", userId),
+    db.from("organization_members").select("org_id,role").eq("user_id", userId),
+  ]);
+  const ids = new Set<string>();
+  for (const row of own.data ?? []) ids.add(row.id);
+  for (const row of member.data ?? []) ids.add(row.board_id);
+  const teamIds = (teams.data ?? []).map((r) => r.team_id);
+  if (teamIds.length) {
+    const { data } = await db.from("board_team_access").select("board_id").in("team_id", teamIds);
+    for (const row of data ?? []) ids.add(row.board_id);
+  }
+  const orgIds = (orgs.data ?? []).filter((r) => r.role === "owner" || r.role === "admin").map((r) => r.org_id);
+  if (orgIds.length) {
+    const { data } = await db.from("boards").select("id").in("org_id", orgIds);
+    for (const row of data ?? []) ids.add(row.id);
+  }
+  const out = new Map<string, string>();
+  await Promise.all(
+    [...ids].slice(0, 300).map(async (id) => {
+      const role = await boardRoleOf(userId, id);
+      if (role) out.set(id, role);
+    }),
+  );
+  return out;
+}
+
+/**
+ * Galerie über alle Scopes: eigene Durchläufe plus – wo man verwaltet – die des Teams.
+ * Modul-eigene Zugriffsregeln werden je Ausgang erneut geprüft.
+ */
+export const myResults = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        status: z.enum(["running", "done", "failed"]).optional(),
+        days: z.number().int().min(1).max(365).optional(),
+        boardId: z.string().uuid().optional(),
+        mineOnly: z.boolean().default(false),
+        page: z.number().int().min(0).max(200).default(0),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { seesAllRuns } = await import("@/lib/runs");
+    const { nodeRoleOf } = await import("@/lib/guard.server");
+    const db = await admin();
+    const boards = await myBoards(context.userId);
+    const managed = [...boards.entries()].filter(([, role]) => seesAllRuns(role)).map(([id]) => id);
+
+    const base = () => {
+      let q = db
+        .from("runs")
+        .select(
+          "id,board_id,output_node_id,user_id,status,input_path,input_mime,engine,provider,model,result,error,created_at,expires_at,purged_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (data.status) q = q.eq("status", data.status);
+      if (data.boardId) q = q.eq("board_id", data.boardId);
+      if (data.days) q = q.gte("created_at", new Date(Date.now() - data.days * 86_400_000).toISOString());
+      return q;
+    };
+
+    const own = await base().eq("user_id", context.userId);
+    if (own.error) throw new Error(own.error.message);
+    let rows = own.data ?? [];
+    if (!data.mineOnly && managed.length) {
+      const team = await base().in("board_id", managed);
+      if (team.error) throw new Error(team.error.message);
+      const seen = new Set(rows.map((r) => r.id));
+      rows = [...rows, ...(team.data ?? []).filter((r) => !seen.has(r.id))];
+    }
+    rows.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+
+    // Zugriffsregeln am einzelnen Ausgang erneut prüfen.
+    const nodeIds = [...new Set(rows.map((r) => r.output_node_id))].slice(0, 60);
+    const allowed = new Set<string>();
+    await Promise.all(
+      nodeIds.map(async (id) => {
+        if (await nodeRoleOf(context.userId, id)) allowed.add(id);
+      }),
+    );
+    rows = rows.filter((r) => allowed.has(r.output_node_id));
+
+    const PAGE_SIZE = 24;
+    const total = rows.length;
+    const pageRows = rows.slice(data.page * PAGE_SIZE, data.page * PAGE_SIZE + PAGE_SIZE);
+
+    const boardIds = [...new Set(pageRows.map((r) => r.board_id))];
+    const outIds = [...new Set(pageRows.map((r) => r.output_node_id))];
+    const [boardRes, nodeRes] = await Promise.all([
+      boardIds.length ? db.from("boards").select("id,title").in("id", boardIds) : Promise.resolve({ data: [] }),
+      outIds.length ? db.from("nodes").select("id,title").in("id", outIds) : Promise.resolve({ data: [] }),
+    ]);
+    const boardTitle = new Map((boardRes.data ?? []).map((b) => [b.id, b.title]));
+    const nodeTitle = new Map((nodeRes.data ?? []).map((n) => [n.id, n.title]));
+
+    const runs = await Promise.all(
+      pageRows.map(async (row) => {
+        let inputUrl: string | null = null;
+        if (row.input_path && !row.purged_at) {
+          const { data: signed } = await db.storage.from("uploads").createSignedUrl(row.input_path, 600);
+          inputUrl = signed?.signedUrl ?? null;
+        }
+        const { input_path: _p, user_id, ...rest } = row;
+        return {
+          ...rest,
+          mine: user_id === context.userId,
+          boardTitle: boardTitle.get(row.board_id) ?? "Scope",
+          outputTitle: nodeTitle.get(row.output_node_id) ?? "Ergebnis",
+          inputUrl,
+        };
+      }),
+    );
+
+    const scopes = [...boards.keys()];
+    const { data: scopeRows } = scopes.length
+      ? await db.from("boards").select("id,title").in("id", scopes).order("title")
+      : { data: [] };
+
+    return {
+      runs,
+      total,
+      pageSize: PAGE_SIZE,
+      scopes: (scopeRows ?? []).map((b) => ({ id: b.id, title: b.title })),
+    };
+  });
