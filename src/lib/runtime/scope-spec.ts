@@ -78,7 +78,22 @@ const BindingSchema = z.object({
   /** `moduleId.inputs.portName` */
   to: z.string().min(1),
   label: z.string().nullable().default(null),
+  /** Port field → dataset column, e.g. `{ lat: "Breite" }`. */
+  mapping: z.record(z.string(), z.string()).default({}),
 });
+
+/** Named data source — only a reference; the scope never carries rows. */
+const DatasetSchema = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "Dataset id must be lowercase letters, digits and dashes"),
+  title: z.string().default(""),
+  kind: z.enum(["upload", "api", "verified"]).default("upload"),
+  /** Column name → type (string | number | boolean | date). */
+  schema: z.record(z.string(), z.enum(["string", "number", "boolean", "date"])).default({}),
+  verified: z.boolean().default(false),
+  sourceUrl: z.string().url().startsWith("https://").nullable().default(null),
+  retention: z.string().nullable().default(null),
+});
+export type ScopeDataset = z.infer<typeof DatasetSchema>;
 
 const AppSchema = z.object({
   name: z.string().min(1),
@@ -120,6 +135,7 @@ export const ScopeSpecSchema = z.object({
   }),
   spec: z.object({
     ontology: ScopeOntologySchema.default({ name: "", depth: "advisory", rules: [] }),
+    datasets: z.array(DatasetSchema).max(200).default([]),
     modules: z.array(InstanceSchema).max(2000).default([]),
     bindings: z.array(BindingSchema).max(4000).default([]),
     apps: z.array(AppSchema).max(50).default([]),
@@ -209,7 +225,53 @@ export function validateScopeSpec(spec: ScopeSpec, catalog: ModuleCatalog): Scop
     }
   }
 
+  const datasets = new Map(spec.spec.datasets.map((d) => [d.id, d]));
+  for (const dataset of spec.spec.datasets) {
+    if (dataset.kind === "verified" && !dataset.sourceUrl) {
+      warnings.push(`Datenquelle „${dataset.id}" ist als geprüft markiert, hat aber keine Adresse.`);
+    }
+  }
+  for (const rule of spec.spec.ontology.rules) {
+    const col = /^datasets\.([^.]+)\.columns\.(.+)$/.exec(rule.subject);
+    if (!col) continue;
+    const dataset = datasets.get(col[1]!);
+    if (!dataset) warnings.push(`Regel „${rule.id}" verweist auf unbekannte Datenquelle „${col[1]}".`);
+    else if (Object.keys(dataset.schema).length && !(col[2]! in dataset.schema)) {
+      warnings.push(`Regel „${rule.id}": Spalte „${col[2]}" fehlt in „${col[1]}".`);
+    }
+  }
+
   for (const binding of spec.spec.bindings) {
+    if (binding.from.startsWith("datasets.")) {
+      const id = binding.from.slice("datasets.".length);
+      const dataset = datasets.get(id);
+      const to = splitPort(binding.to);
+      if (!dataset) {
+        warnings.push(`Verbindung von unbekannter Datenquelle „${id}".`);
+        continue;
+      }
+      const toModule = to ? resolved.get(to.id) : undefined;
+      const toPort = to ? toModule?.spec.inputs[to.port] : undefined;
+      if (!to || !toModule || !toPort) {
+        warnings.push(`Datenquelle „${id}" zeigt auf einen fehlenden Eingang ${binding.to}.`);
+        continue;
+      }
+      if (toPort.semantic !== "data:table-ref" && toPort.semantic !== "data:table" && toPort.semantic !== "primitive:json") {
+        warnings.push(`„${to.id}.${to.port}" (${toPort.semantic}) nimmt keine Tabelle an.`);
+      }
+      const known = Object.keys(dataset.schema);
+      if (known.length) {
+        for (const [field, column] of Object.entries(binding.mapping)) {
+          if (!known.includes(column)) warnings.push(`„${id}": Spalte „${column}" für „${field}" fehlt.`);
+        }
+      }
+      for (const field of Object.keys(toPort.schema)) {
+        if (!(field in binding.mapping) && !known.includes(field)) {
+          warnings.push(`„${to.id}.${to.port}" erwartet eine Zuordnung für „${field}".`);
+        }
+      }
+      continue;
+    }
     const from = splitPort(binding.from);
     const to = splitPort(binding.to);
     if (!from || !to) {
