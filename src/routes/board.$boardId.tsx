@@ -124,6 +124,7 @@ import {
 import { SourceNode } from "@/components/canvas/source-node";
 import { ActionNode } from "@/components/canvas/action-node";
 import { OutputNode } from "@/components/canvas/output-node";
+import { CameraNode } from "@/components/canvas/camera-node";
 import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { NodeAccessDialog } from "@/components/canvas/NodeAccessDialog";
 import { canEditRole, ROLE_LABEL, type AccessRole } from "@/lib/permissions";
@@ -235,6 +236,7 @@ const nodeTypes = {
   map: MapNode,
   risk: RiskNode,
   inspect: InspectNode,
+  camera: CameraNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -303,6 +305,7 @@ const AUTO_HEIGHT_TYPES = new Set([
   "signal",
   "risk",
   "inspect",
+  "camera",
 ]);
 const AUTO_MIN_HEIGHT: Record<string, number> = {
   note: 180,
@@ -371,6 +374,7 @@ const DASHBOARD_MODULES = [
   { id: "map", label: "Karte (GIS)", title: "Karte", metadata: { columns: {}, weather: {}, zoom: 5 } },
   { id: "risk", label: "Risikomatrix (ISO 55001)", title: "Risikomatrix", metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 } },
   { id: "inspect", label: "Inspektion (Fotos)", title: "Trafostations-Inspektion", metadata: { findings: [], rates: {} } },
+  { id: "camera", label: "Kamera (Foto + Ort)", title: "Kamera", metadata: {} },
 ] as const;
 
 /** Space a template group leaves around its fields. */
@@ -437,6 +441,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "source" ||
     record.type === "action" ||
     record.type === "output" ||
+    record.type === "camera" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)

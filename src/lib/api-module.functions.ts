@@ -5,31 +5,6 @@ import { loadAiKeyConfig, recordUsage, resolveRoute, runStructured } from "@/lib
 import { JEV_MODEL } from "@/lib/ai-functions";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
-const MAX_BODY = 200_000;
-
-/** Replaces {{SECRET_NAME}} with the server-side secret; never leaves the server. */
-function fillSecrets(text: string): string {
-  return text.replace(/\{\{\s*([A-Z0-9_]+)\s*\}\}/g, (_match, name: string) => {
-    const value = process.env[name];
-    if (!value) throw new Error(`Der Zugangsschlüssel „${name}“ ist nicht hinterlegt`);
-    return value;
-  });
-}
-
-const PRIVATE_HOST =
-  /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?|.*\.internal|metadata\.google\.internal)/i;
-
-function safeUrl(raw: string): URL {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new Error("Die Adresse ist ungültig");
-  }
-  if (url.protocol !== "https:") throw new Error("Nur https-Adressen sind erlaubt");
-  if (PRIVATE_HOST.test(url.hostname)) throw new Error("Diese Adresse ist nicht erlaubt");
-  return url;
-}
 
 const Pair = z.object({ key: z.string(), value: z.string() });
 
@@ -44,45 +19,14 @@ export const runApiModule = createServerFn({ method: "POST" })
         params: z.array(Pair).default([]),
         headers: z.array(Pair).default([]),
         body: z.string().optional(),
+        input: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const url = safeUrl(fillSecrets(data.url.trim()));
-    for (const pair of data.params) {
-      if (!pair.key.trim()) continue;
-      url.searchParams.set(pair.key.trim(), fillSecrets(pair.value));
-    }
-    safeUrl(url.toString());
-
-    const headers = new Headers({ accept: "application/json, text/plain;q=0.8, */*;q=0.5" });
-    for (const pair of data.headers) {
-      if (!pair.key.trim()) continue;
-      headers.set(pair.key.trim(), fillSecrets(pair.value));
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20_000);
-    try {
-      const init: RequestInit = { method: data.method, headers, signal: controller.signal };
-      if (data.method === "POST" && data.body?.trim()) {
-        init.body = fillSecrets(data.body);
-        if (!headers.has("content-type")) headers.set("content-type", "application/json");
-      }
-      const response = await fetch(url, init);
-      const text = (await response.text()).slice(0, MAX_BODY);
-      return {
-        status: response.status,
-        contentType: response.headers.get("content-type") ?? "",
-        body: text,
-        at: new Date().toISOString(),
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Abruf fehlgeschlagen";
-      throw new Error(message.includes("abort") ? "Zeitüberschreitung beim Abruf" : message);
-    } finally {
-      clearTimeout(timer);
-    }
+    const { callApi } = await import("@/lib/api-fetch.server");
+    const { cleanInput } = await import("@/lib/flow");
+    return callApi(data, cleanInput(data.input ?? {}));
   });
 
 const Question = z.object({
