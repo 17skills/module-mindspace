@@ -1086,6 +1086,127 @@ export type Database = {
         }
         Relationships: []
       }
+      run_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          board_id: string
+          created_at: string
+          detail: string | null
+          id: string
+          run_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          board_id: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          run_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          board_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          run_id?: string
+        }
+        Relationships: []
+      }
+      runs: {
+        Row: {
+          app_id: string | null
+          board_id: string
+          context_checksum: string
+          created_at: string
+          engine: string
+          error: string | null
+          expires_at: string
+          finished_at: string | null
+          id: string
+          input_mime: string | null
+          input_path: string | null
+          input_sha256: string | null
+          model: string
+          output_node_id: string
+          provider: string
+          purged_at: string | null
+          result: Json
+          result_sha256: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          app_id?: string | null
+          board_id: string
+          context_checksum?: string
+          created_at?: string
+          engine?: string
+          error?: string | null
+          expires_at?: string
+          finished_at?: string | null
+          id?: string
+          input_mime?: string | null
+          input_path?: string | null
+          input_sha256?: string | null
+          model?: string
+          output_node_id: string
+          provider?: string
+          purged_at?: string | null
+          result?: Json
+          result_sha256?: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          app_id?: string | null
+          board_id?: string
+          context_checksum?: string
+          created_at?: string
+          engine?: string
+          error?: string | null
+          expires_at?: string
+          finished_at?: string | null
+          id?: string
+          input_mime?: string | null
+          input_path?: string | null
+          input_sha256?: string | null
+          model?: string
+          output_node_id?: string
+          provider?: string
+          purged_at?: string | null
+          result?: Json
+          result_sha256?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runs_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runs_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runs_output_node_id_fkey"
+            columns: ["output_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           created_at: string
