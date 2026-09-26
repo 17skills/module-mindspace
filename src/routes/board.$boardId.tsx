@@ -567,6 +567,24 @@ function BoardPage() {
     }
   }, [boardId]);
 
+  const downloadManifest = useCallback(async () => {
+    try {
+      const backup = await exportBoard({ data: { boardId } });
+      const { backupToManifest, manifestToMarkdown } = await import("@/lib/runtime/manifest");
+      const text = manifestToMarkdown(backupToManifest(JSON.parse(backup.json)));
+      const blob = new Blob([text], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${(backup.title || "scope").replace(/[^\w-]+/g, "-").toLowerCase()}.scope.md`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Bauplan heruntergeladen – mit jedem Texteditor oder KI-Bot bearbeitbar");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bauplan fehlgeschlagen");
+    }
+  }, [boardId]);
+
   // Offline: Warteschlange starten und bei Netz automatisch übertragen
   useEffect(
     () =>
@@ -3309,6 +3327,21 @@ function BoardPage() {
               </Button>
             </TooltipTrigger>
             <TooltipContent>Sicherung herunterladen</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-9 rounded-lg"
+                aria-label="Bauplan herunterladen"
+                onClick={() => void downloadManifest()}
+              >
+                <FileCode2 className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Bauplan herunterladen (YAML + Markdown)</TooltipContent>
           </Tooltip>
 
           {isOwner ? (
