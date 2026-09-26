@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { OutputView } from "@/components/OutputView";
 import { getRunEvents, listRuns, setRetention } from "@/lib/runs.functions";
-import { RETENTION_CHOICES, RUN_STATUS_LABEL, type RunStatus } from "@/lib/runs";
+import { NEVER, RETENTION_CHOICES, RUN_STATUS_LABEL, retentionLabel, type RunStatus } from "@/lib/runs";
 import { readOutput } from "@/lib/output";
 
 type RunRow = Awaited<ReturnType<typeof listRuns>>["runs"][number];
@@ -84,8 +84,9 @@ export function RunsDialog({
         <DialogHeader>
           <DialogTitle>Durchläufe</DialogTitle>
           <DialogDescription>
-            {seesAll ? "Alle Durchläufe an diesem Ausgang." : "Nur deine eigenen Durchläufe."} Eingaben werden nach{" "}
-            {days2} Tagen gelöscht; der Nachweis bleibt ohne Personenbezug.
+            {seesAll ? "Alle Durchläufe an diesem Ausgang." : "Nur deine eigenen Durchläufe."} {days2 === 0
+              ? "Durchläufe werden aufbewahrt und nicht automatisch gelöscht."
+              : `Eingaben werden nach ${retentionLabel(days2)} gelöscht; der Nachweis bleibt ohne Personenbezug.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +112,7 @@ export function RunsDialog({
                     {selected.inputUrl ? <a className="underline" href={selected.inputUrl} target="_blank" rel="noreferrer">Datei öffnen</a> : selected.purged_at ? "gelöscht" : "keine Datei"}
                   </dd>
                   <dt className="text-muted-foreground">Prüfsumme</dt><dd className="truncate font-mono" title={selected.input_sha256 ?? ""}>{selected.input_sha256?.slice(0, 16) ?? "–"}</dd>
-                  <dt className="text-muted-foreground">Löschung</dt><dd>{when(selected.expires_at)}</dd>
+                  <dt className="text-muted-foreground">Löschung</dt><dd>{selected.expires_at === NEVER || selected.expires_at?.startsWith("9999") ? "nie" : when(selected.expires_at)}</dd>
                 </dl>
                 {selected.error ? <p className="mt-2 text-destructive">{selected.error}</p> : null}
               </div>
@@ -205,18 +206,18 @@ export function RunsDialog({
                     className="rounded-full border bg-background px-2 py-1"
                     value={days2}
                     onChange={async (e) => {
-                      const d = Number(e.target.value) as 7 | 30 | 90;
+                      const d = Number(e.target.value);
                       try {
                         await saveRetention({ data: { outputNodeId, days: d } });
                         setDays2(d);
-                        toast.success(`Löschfrist: ${d} Tage`);
+                        toast.success(`Löschfrist: ${retentionLabel(d)}`);
                         void load();
                       } catch (err) {
                         toast.error(err instanceof Error ? err.message : "Nicht gespeichert");
                       }
                     }}
                   >
-                    {RETENTION_CHOICES.map((d) => <option key={d} value={d}>{d} Tage</option>)}
+                    {RETENTION_CHOICES.map((d) => <option key={d} value={d}>{retentionLabel(d)}</option>)}
                   </select>
                 </label>
               ) : null}

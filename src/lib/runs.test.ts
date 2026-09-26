@@ -6,12 +6,15 @@ describe("Durchlauf-Ablage", () => {
   it("nimmt nur erlaubte Löschfristen, sonst 30 Tage", () => {
     expect(retentionDays({ retentionDays: 7 })).toBe(7);
     expect(retentionDays({ retentionDays: 90 })).toBe(90);
-    expect(retentionDays({ retentionDays: 3650 })).toBe(30);
+    expect(retentionDays({ retentionDays: 3650 })).toBe(3650);
+    expect(retentionDays({ retentionDays: 0 })).toBe(0);
+    expect(retentionDays({ retentionDays: 12 })).toBe(30);
     expect(retentionDays(null)).toBe(30);
   });
 
   it("berechnet das Ablaufdatum", () => {
     expect(expiresAt(7, 0)).toBe(new Date(7 * 86_400_000).toISOString());
+    expect(expiresAt(0)).toBe("9999-12-31T00:00:00.000Z");
   });
 
   it("zeigt fremde Durchläufe nur Bearbeitern und Inhabern", () => {
