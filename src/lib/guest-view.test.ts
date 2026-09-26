@@ -27,5 +27,15 @@ describe("Gastansicht", () => {
     expect(view.nodes[0]!["user_id"]).toBe("");
     expect(view.nodes[0]!["storage_path"]).toBeNull();
     expect(view.edges.map((e) => e["id"])).toEqual(["e2"]);
+
+    const leak = guestView(
+      [
+        { id: "geheim", parent_id: null, metadata: {} },
+        { id: "aus", parent_id: null, metadata: { output: { sourceId: "geheim", text: "vertraulich" } } },
+      ],
+      [],
+      new Set(["geheim"]),
+    );
+    expect((leak.nodes[0]!["metadata"] as Record<string, unknown>)["output"]).toBeUndefined();
   });
 });

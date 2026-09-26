@@ -40,7 +40,14 @@ export function guestView(
     .filter((node) => !hidden.has(String(node["id"])))
     .map((node) => {
       const { user_id: _user, storage_path: _path, metadata, ...rest } = node;
-      return { ...rest, user_id: "", storage_path: null, metadata: stripSecrets(metadata ?? {}) };
+      const meta = stripSecrets(metadata ?? {}) as Record<string, unknown>;
+      // Ein Ergebnis-Modul darf den Inhalt einer verborgenen Quelle nicht durchreichen.
+      const output = meta["output"] as { sourceId?: unknown } | undefined;
+      if (output && typeof output.sourceId === "string" && hidden.has(output.sourceId)) {
+        delete meta["output"];
+      }
+      delete meta["output_file_url"];
+      return { ...rest, user_id: "", storage_path: null, metadata: meta };
     });
   const shownEdges = edges
     .filter((edge) => !hidden.has(String(edge["source_id"])) && !hidden.has(String(edge["target_id"])))
