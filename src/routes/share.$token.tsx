@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { OutputNode } from "@/components/canvas/output-node";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +93,7 @@ const nodeTypes = {
   map: MapNode,
   risk: RiskNode,
   inspect: InspectNode,
+  output: OutputNode,
 };
 
 const edgeTypes = { labeled: LabeledEdge };
@@ -106,6 +108,7 @@ const SIZE: Record<string, { width: number; height: number }> = {
 function toFlowNode(record: NodeRecord): Node {
   const size = SIZE[record.type] ?? SIZE["default"]!;
   const kind =
+    record.type === "output" ||
     record.type === "note" ||
     record.type === "chat" ||
     record.type === "frame" ||
