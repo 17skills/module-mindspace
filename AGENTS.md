@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Scope-Manifest `scopebuilder/v1` (src/lib/runtime/manifest.ts, YAML oder Markdown mit YAML-Kopf) ist das austauschbare Format für Export/Import; Canvas und App-Kanäle sind Projektionen, Import läuft über den Sicherungsweg (manifestToBackup → importBoard). Warum: ein Vertrag für Mensch, Bot und Marktplatz, ohne zweiten Wiederherstellungspfad.

@@ -33,3 +33,11 @@
 - [x] Canvas-Rendering auf sichtbare Module begrenzen und Zusammenarbeit entlasten
 - [x] Schnelle Moduländerungen beim Speichern bündeln
 - [x] Canvas-Werkzeugleiste, Auswahlstatus und leeren Scope vereinfachen
+
+## Scope-Manifest (Plan 2026-09-26)
+- [x] Manifest-Format scopebuilder/v1 mit Rollen, Motoren, Verbindungen, Apps + Kanälen
+- [x] Bauplan exportieren (Markdown mit YAML-Kopf) und einspielen (YAML/MD) inkl. Apps
+- [ ] Ergebnis-Modul (Bild, Video, Bericht, Folien, 3D) auf Canvas und in Apps
+- [ ] Motor-Umschalter am Feld (Modell / API / MCP)
+- [ ] Gemeinsamer Runner mit Lauf-Protokoll für alle Kanäle
+- [ ] Kanal „mobil" in App-Einstellungen, MCP-App leitet Werkzeuge aus Auswahl ab

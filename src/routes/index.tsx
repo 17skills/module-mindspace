@@ -231,7 +231,7 @@ function LibraryPage() {
               onClick={() => restoreRef.current?.click()}
               disabled={restoreBackup.isPending}
             >
-              Sicherung einspielen
+              Sicherung oder Bauplan einspielen
             </Button>
             <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
               Neuer Scope
