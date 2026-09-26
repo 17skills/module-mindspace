@@ -72,7 +72,7 @@ layout:
 
 describe("module catalog", () => {
   it("parses every core module", () => {
-    expect(coreModules().length).toBe(5);
+    expect(coreModules().length).toBe(14);
     for (const module of coreModules()) {
       expect(module.metadata.title.length).toBeGreaterThan(0);
       expect(module.metadata.description.length).toBeGreaterThan(0);
