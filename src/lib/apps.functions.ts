@@ -134,3 +134,41 @@ export const appSetFindingStatus = createServerFn({ method: "POST" })
     await auditDataChange(context.userId, data.appId, "app.data.finding_status_changed", `${data.findingId}:${data.status}`);
     return result;
   });
+
+/** Restaurants rund um den Fotostandort (OpenStreetMap, nur lesend, gedrosselt). */
+export const appNearbyRestaurants = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        appId: z.string().uuid(),
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
+        radius: z.number().int().min(100).max(3000).default(1000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const role = await appRoleOf(context.userId, data.appId);
+    if (!role) throw new Error("Kein Zugriff auf diese App.");
+    const { assertRate } = await import("@/lib/rate-limit.server");
+    assertRate(`nearby:${context.userId}`, 20, 60_000);
+    const { parsePlaces } = await import("@/lib/nearby");
+    const query = `[out:json][timeout:15];(node["amenity"="restaurant"](around:${data.radius},${data.lat},${data.lon});way["amenity"="restaurant"](around:${data.radius},${data.lat},${data.lon}););out center 60;`;
+    try {
+      const response = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "scopebuilder/1.0" },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!response.ok) {
+        console.error("overpass", response.status);
+        return { places: [], error: "Kartendienst gerade nicht erreichbar" };
+      }
+      return { places: parsePlaces(await response.json(), data), error: null as string | null };
+    } catch (err) {
+      console.error("overpass", err);
+      return { places: [], error: "Kartendienst gerade nicht erreichbar" };
+    }
+  });
