@@ -35,6 +35,37 @@ export type NodeRow = {
   metadata: Record<string, unknown> | null;
 };
 
+/**
+ * Signiert Dateien von Ergebnis-Modulen für die App (1 h).
+ * Der Pfad kommt nie aus dem Modul selbst, sondern von der Quellkarte desselben Scopes –
+ * so kann ein Modul keine fremden Dateien freischalten.
+ */
+async function signOutputFiles(db: Awaited<ReturnType<typeof admin>>, boardId: string, nodes: NodeRow[]) {
+  const outputs = nodes.filter((node) => node.type === "output");
+  const sourceIds = outputs
+    .map((node) => (node.metadata?.["output"] as { sourceId?: unknown; hasFile?: unknown } | undefined))
+    .filter((o) => o?.hasFile === true && typeof o.sourceId === "string")
+    .map((o) => String(o!.sourceId));
+  if (!sourceIds.length) return;
+  const { data } = await db
+    .from("nodes")
+    .select("id,storage_path")
+    .eq("board_id", boardId)
+    .in("id", sourceIds);
+  const paths = new Map(
+    (data ?? []).filter((row) => row.storage_path).map((row) => [String(row.id), String(row.storage_path)]),
+  );
+  await Promise.all(
+    outputs.map(async (node) => {
+      const sourceId = (node.metadata?.["output"] as { sourceId?: string } | undefined)?.sourceId;
+      const path = sourceId ? paths.get(sourceId) : undefined;
+      if (!path) return;
+      const { data: signed } = await db.storage.from("uploads").createSignedUrl(path, 3600);
+      if (signed?.signedUrl) node.metadata = { ...(node.metadata ?? {}), output_file_url: signed.signedUrl };
+    }),
+  );
+}
+
 export async function admin(): Promise<typeof import("@/integrations/supabase/client.server")["supabaseAdmin"]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -110,6 +141,7 @@ export async function loadAppNodes(appId: string) {
   const nodes = ((nodeRes.data ?? []) as NodeRow[])
     .filter((row) => order.has(String(row.id)))
     .sort((a, b) => (order.get(String(a.id)) ?? 0) - (order.get(String(b.id)) ?? 0));
+  await signOutputFiles(db, String(app.board_id), nodes);
   return {
     db,
     app,

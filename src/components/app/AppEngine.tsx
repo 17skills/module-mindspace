@@ -22,6 +22,8 @@ import {
 import { Button } from "@/components/ui/button";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { MODULE_TYPE_LABEL } from "@/lib/apps";
+import { OutputView } from "@/components/OutputView";
+import { readOutput } from "@/lib/output";
 import { executiveView } from "@/lib/app-executive";
 import type { Executive } from "@/lib/app-executive";
 import { formatValue, readFormat, valueOfNode } from "@/lib/calc";
@@ -372,6 +374,11 @@ export function AppModule({
         <RiskCard node={node} />
       ) : node.type === "inspect" ? (
         <InspectCard node={node} actions={actions} />
+      ) : node.type === "output" ? (
+        <OutputView
+          artifact={readOutput(node.metadata)}
+          fileUrl={typeof node.metadata?.["output_file_url"] === "string" ? (node.metadata["output_file_url"] as string) : null}
+        />
       ) : (
         <TextCard node={node} />
       )}

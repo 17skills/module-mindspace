@@ -123,6 +123,7 @@ import {
 } from "@/components/canvas/nodes";
 import { SourceNode } from "@/components/canvas/source-node";
 import { ActionNode } from "@/components/canvas/action-node";
+import { OutputNode } from "@/components/canvas/output-node";
 import { InspectorPanel } from "@/components/canvas/inspector/InspectorPanel";
 import { NodeAccessDialog } from "@/components/canvas/NodeAccessDialog";
 import { canEditRole, ROLE_LABEL, type AccessRole } from "@/lib/permissions";
@@ -213,6 +214,7 @@ const nodeTypes = {
   content: ContentNode,
   source: SourceNode,
   action: ActionNode,
+  output: OutputNode,
   note: NoteNode,
   chat: ChatNode,
   frame: FrameNode,
@@ -259,6 +261,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   map: { width: 520, height: 420 },
   risk: { width: 760, height: 720 },
   inspect: { width: 520, height: 560 },
+  output: { width: 420, height: 380 },
   source: { width: 340, height: 300 },
   action: { width: 380, height: 420 },
   table: { width: 520, height: 300 },
@@ -433,6 +436,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "quotes" ||
     record.type === "source" ||
     record.type === "action" ||
+    record.type === "output" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
@@ -3740,6 +3744,12 @@ function BoardPage() {
                     void createRecord({ type: "action", title: "Aktion", position_x: at.x, position_y: at.y });
                   }}>
                     <Send className="size-4" /> Aktion (Ablagefach)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => {
+                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                    void createRecord({ type: "output", title: "Ergebnis", position_x: at.x, position_y: at.y });
+                  }}>
+                    <Download className="size-4" /> Ergebnis (Ausgang)
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => {
                     const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });

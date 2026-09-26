@@ -37,7 +37,11 @@
 ## Scope-Manifest (Plan 2026-09-26)
 - [x] Manifest-Format scopebuilder/v1 mit Rollen, Motoren, Verbindungen, Apps + Kanälen
 - [x] Bauplan exportieren (Markdown mit YAML-Kopf) und einspielen (YAML/MD) inkl. Apps
-- [ ] Ergebnis-Modul (Bild, Video, Bericht, Folien, 3D) auf Canvas und in Apps
+- [x] Ergebnis-Modul (Bild, Video, Audio, PDF, Bericht; Folien/3D als Download) auf Canvas und in Apps
+- [ ] Browser-Vorschau für Folien und 3D im Ergebnis-Modul
+- [ ] Mobiler App-Eingang (Foto rein → Agent → Ergebnis)
+- [ ] Gastansicht geteilter Scopes sicherheitlich prüfen
+- [ ] Tempo: große Programmteile aufteilen, vorher/nachher messen
 - [ ] Motor-Umschalter am Feld (Modell / API / MCP)
 - [ ] Gemeinsamer Runner mit Lauf-Protokoll für alle Kanäle
 - [ ] Kanal „mobil" in App-Einstellungen, MCP-App leitet Werkzeuge aus Auswahl ab

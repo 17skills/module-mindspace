@@ -40,6 +40,7 @@ export const MODULE_TYPE_LABEL: Record<string, string> = {
   risk: "Risikomatrix",
   map: "Karte",
   inspect: "Inspektion",
+  output: "Ergebnis",
   decision: "Entscheidung (JEV)",
   api: "API-Modul",
   mcp: "MCP-Werkzeug",
