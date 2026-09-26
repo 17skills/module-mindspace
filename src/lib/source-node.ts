@@ -59,6 +59,9 @@ export const FACET_LABEL: Record<FacetName, string> = {
 export function sourceSummary(stored: StoredSource): string {
   const base = describeEnvelope(stored.envelope);
   const ref = stored.envelope.facets.datasetRef;
+  if (ref && !ref.datasetId && !ref.verified) {
+    return `${base} · Datenquelle neu verbinden: Datei erneut auf die Karte ziehen`;
+  }
   if (ref) {
     const origin = ref.verified ? "geprüfte Quelle" : `Version ${ref.version}`;
     return `${base} · ${ref.rowCount.toLocaleString("de-DE")} Zeilen in der Datenablage (${origin})`;
