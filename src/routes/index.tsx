@@ -56,15 +56,22 @@ function LibraryPage() {
   const restoreBackup = useMutation({
     mutationFn: async (file: File) => {
       const text = await file.text();
-      const { isManifestText, parseManifest, manifestToBackup } = await import("@/lib/runtime/manifest");
+      const { isManifestText, parseManifest, manifestToBackup, summarizeManifest } = await import(
+        "@/lib/runtime/manifest"
+      );
       if (isManifestText(text)) {
         const { manifest, warnings } = parseManifest(text);
-        if (warnings.length) toast.warning(warnings.slice(0, 3).join(" "));
+        const hint = warnings.length ? `\n\nHinweise: ${warnings.slice(0, 3).join(" ")}` : "";
+        const ok = window.confirm(
+          `Bauplan „${manifest.scope.title}“ einspielen?\n\nEs wird ein neuer Scope angelegt: ${summarizeManifest(manifest)}.\nSchlüssel, Passwörter und Freigaben aus der Datei werden nicht übernommen.${hint}`,
+        );
+        if (!ok) return null;
         return importBoard({ data: { backupJson: JSON.stringify(manifestToBackup(manifest)) } });
       }
       return importBoard({ data: { backupJson: text } });
     },
     onSuccess: (result) => {
+      if (!result) return;
       toast.success(
         `Aufgebaut: ${result.nodes} Module, ${result.edges} Verbindungen, ${result.apps} Apps` +
           (result.missingServers
