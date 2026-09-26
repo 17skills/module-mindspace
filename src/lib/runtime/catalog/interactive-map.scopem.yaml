@@ -1,0 +1,56 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: interactive-map
+  version: 1.0.0
+  title: Interactive Map
+  description: >-
+    Renders a pannable map showing a center location and any markers supplied
+    by an upstream module.
+  category: visualization
+  tags:
+    - map
+    - geospatial
+    - leaflet
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: map
+spec:
+  ontology:
+    domain: visualization/geospatial
+    depth: advisory
+    constraints:
+      - id: tiles-third-party
+        label: Map tiles are loaded from a third party
+        subject: engine.ref
+        severity: info
+        rationale: >-
+          Tile requests reveal the approximate viewport to the tile provider.
+  inputs:
+    center:
+      semantic: geo:point
+      title: Map Center
+      description: Coordinates the map is centered on.
+      required: false
+    markers:
+      semantic: geo:features
+      title: Map Markers
+      description: Points rendered on the map, each with coordinates and a label.
+      required: false
+  engine:
+    type: none
+    ref: openstreetmap-tiles
+  outputs:
+    selection:
+      semantic: primitive:json
+      title: Selected Marker
+      description: The marker the user last tapped, if any.
+  execution:
+    mode: reactive
+    timeoutSeconds: 15
+  action:
+    hasSideEffects: false
+    requiresApproval: false
+  requirements: {}
+  settings:
+    zoom: 15
