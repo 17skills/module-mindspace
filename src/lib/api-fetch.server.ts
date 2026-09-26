@@ -43,7 +43,7 @@ export async function callApi(call: ApiCall, input: FlowInput = {}) {
   const url = safeUrl(fillInputs(fillSecrets(call.url.trim()), input, "url"));
   for (const pair of call.params) {
     if (!pair.key.trim()) continue;
-    url.searchParams.set(pair.key.trim(), fillInputs(fillSecrets(pair.value), input));
+    url.searchParams.set(pair.key.trim(), fillInputs(fillSecrets(pair.value), input, "raw"));
   }
   safeUrl(url.toString());
 
