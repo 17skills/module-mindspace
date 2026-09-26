@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { wrapUntrusted } from "@/lib/untrusted";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { recordUsage } from "@/lib/ai-keys.server";
