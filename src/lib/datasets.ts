@@ -269,3 +269,19 @@ export function agentBrief(dataset: TabularDataset, ref: DatasetRef | null): str
     "Weitere Zeilen nur über das Lese-Werkzeug dataset.query abrufen.",
   ].join("\n");
 }
+
+/** Verweis einer Karte für den Durchlauf-Nachweis (nur Id, Version, Prüfsumme). */
+export function datasetRefOf(
+  metadata: unknown,
+): { datasetId: string | null; version: number; checksum: string; verified: boolean; sourceUrl: string | null } | null {
+  const ref = (metadata as { source?: { envelope?: SourceEnvelope } } | null | undefined)?.source?.envelope?.facets
+    ?.datasetRef;
+  if (!ref) return null;
+  return {
+    datasetId: ref.datasetId,
+    version: ref.version,
+    checksum: ref.checksum,
+    verified: ref.verified,
+    sourceUrl: ref.sourceUrl,
+  };
+}
