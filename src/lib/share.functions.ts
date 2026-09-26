@@ -63,7 +63,7 @@ export const getSharedBoard = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const { shareLinkOpen } = await import("@/lib/guest-view");
-    if (!shareLinkOpen(board)) {
+    if (!board || !shareLinkOpen(board)) {
       throw new Error("Dieser Link ist nicht (mehr) freigegeben");
     }
 
