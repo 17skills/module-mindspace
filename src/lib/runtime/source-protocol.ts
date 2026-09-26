@@ -147,11 +147,28 @@ export interface DataQuality {
   anomalies: string[];
 }
 
+/**
+ * Pointer to the full data outside the canvas. The canvas keeps only this
+ * reference plus a small preview; consumers read through the server.
+ */
+export interface DatasetRef {
+  datasetId: string | null;
+  version: number;
+  checksum: string;
+  rowCount: number;
+  /** Verified sources are not copied — only address and fetch time are kept. */
+  verified: boolean;
+  sourceUrl: string | null;
+  fetchedAt: string | null;
+}
+
 export interface SourceFacets {
   dataset?: TabularDataset;
   entity?: StructuredEntity;
   document?: UnstructuredText;
   evidence?: BinaryArtifactRef;
+  /** Set when `dataset.rows` is only a preview of a stored dataset. */
+  datasetRef?: DatasetRef;
 }
 
 export interface SourceEnvelope {
