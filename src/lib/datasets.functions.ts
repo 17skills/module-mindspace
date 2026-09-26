@@ -162,7 +162,8 @@ export const queryDataset = createServerFn({ method: "POST" })
     return {
       version: loaded.version,
       checksum: loaded.checksum,
-      result: queryRows(loaded.rows, data.query as DatasetQuery),
+      // JSON-Rundlauf: Zellwerte sind reine JSON-Werte.
+      result: JSON.parse(JSON.stringify(queryRows(loaded.rows, data.query as DatasetQuery))) as Record<string, never>,
     };
   });
 
