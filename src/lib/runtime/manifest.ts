@@ -168,7 +168,7 @@ export function backupToManifest(backup: BackupShape): ScopeManifest {
       url: str(node["source_url"]),
       content: str(node["content"]),
       ...(engine ? { engine } : {}),
-      settings: remap(meta) as Record<string, unknown>,
+      settings: remap(stripData(meta)) as Record<string, unknown>,
     };
   });
 
@@ -319,10 +319,47 @@ const FORBIDDEN_SETTING = /token|secret|password|passwort|api_?key|apikey|creden
 export function sanitizeSettings(settings: unknown): Record<string, unknown> {
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return {};
   const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(settings as Record<string, unknown>)) {
+  for (const [key, value] of Object.entries(stripData(settings as Record<string, unknown>))) {
     if (!FORBIDDEN_SETTING.test(key)) out[key] = value;
   }
   return out;
+}
+
+/**
+ * Ein Bauplan trägt nie Daten: Tabellenzeilen fallen weg, der Aufbau
+ * (Spalten) bleibt. Ein Verweis auf die Ablage wird gelöst, damit die
+ * Oberfläche „Datenquelle neu verbinden“ anbietet. Geprüfte Quellen
+ * behalten Adresse und Abrufzeit.
+ */
+export function stripData(meta: Record<string, unknown>): Record<string, unknown> {
+  const source = meta["source"] as { envelope?: { facets?: Record<string, unknown> } } | undefined;
+  const facets = source?.envelope?.facets;
+  const dataset = facets?.["dataset"] as { rows?: unknown[]; rowCount?: number } | undefined;
+  if (!source?.envelope || !facets || !dataset) return meta;
+  const ref = facets["datasetRef"] as Record<string, unknown> | undefined;
+  return {
+    ...meta,
+    source: {
+      ...source,
+      truncated: 0,
+      envelope: {
+        ...source.envelope,
+        facets: {
+          ...facets,
+          dataset: { ...dataset, rows: [] },
+          datasetRef: {
+            datasetId: null,
+            version: 0,
+            checksum: String(ref?.["checksum"] ?? ""),
+            rowCount: Number(ref?.["rowCount"] ?? dataset.rowCount ?? 0),
+            verified: Boolean(ref?.["verified"]),
+            sourceUrl: (ref?.["sourceUrl"] as string | null) ?? null,
+            fetchedAt: (ref?.["fetchedAt"] as string | null) ?? null,
+          },
+        },
+      },
+    },
+  };
 }
 
 export function manifestToBackup(manifest: ScopeManifest): BackupShape {

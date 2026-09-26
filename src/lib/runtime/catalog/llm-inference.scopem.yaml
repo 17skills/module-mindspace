@@ -2,7 +2,7 @@ apiVersion: scopebuilder.io/v1alpha1
 kind: ScopeModule
 metadata:
   name: llm-inference
-  version: 1.0.0
+  version: 1.1.0
   title: Language Model Inference
   description: >-
     Primitive inference archetype. Takes context and an instruction and returns
@@ -42,6 +42,14 @@ spec:
       title: Instruction
       description: What the model should produce from the context.
       required: true
+    dataset:
+      semantic: data:table-ref
+      title: Dataset
+      description: >-
+        Referenced table. The model receives structure, key figures and a small
+        wrapped sample; further rows only via the read-only dataset.query tool.
+      required: false
+      access: query
   engine:
     type: llm
     ref: openai/gpt-6-astra

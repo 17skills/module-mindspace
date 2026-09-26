@@ -20,3 +20,5 @@
 
 - Katalog enthält nur primitive Archetypen (http-request, llm-inference, rule-gate, tabular-data, mcp-tool-call, audio-synthesis, camera, map, output, zone); Fachmodule sind Spezialisierungen via `spec.extends`+`presets` (`resolveModuleInheritance`), die Schutz nur verschärfen. Warum: ein Update am Archetyp erreicht alle Ableitungen.
 
+
+- Canvas hält nur Referenzen: vollständige Tabellen liegen versioniert in `datasets` (+ JSONL im Speicher), die Karte trägt `facets.datasetRef` und max. 20 Vorschauzeilen; Karte/Diagramm/Agent/Regelwerk lesen über `queryDataset`/`checkDatasetRule` (gedeckelt), Baupläne (`stripData`) tragen nie Zeilen; scope deklariert `spec.datasets` + `mapping`, scopem nutzt `data:table-ref`. Warum: Daten skalieren und bleiben geschützt, ohne den Scope aufzublähen.

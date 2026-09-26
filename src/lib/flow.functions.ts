@@ -48,6 +48,13 @@ export const runCameraFlow = createServerFn({ method: "POST" })
     const { callApi } = await import("@/lib/api-fetch.server");
     const { readApi } = await import("@/lib/api-module");
     const { retentionDays, expiresAt, sha256Hex } = await import("@/lib/runs");
+    const { datasetRefOf } = await import("@/lib/datasets");
+    /** Welche Datenversionen in einen Schritt geflossen sind — für den Nachweis. */
+    const datasetRefsInto = (id: string) =>
+      (edges ?? [])
+        .filter((e) => String(e.target_id) === id)
+        .map((e) => datasetRefOf(byId.get(String(e.source_id))?.metadata))
+        .filter((ref) => ref !== null);
     const input = cleanInput({ lat: data.lat, lon: data.lon, source: data.source });
     const origin = { lat: data.lat, lon: data.lon };
 
@@ -119,6 +126,7 @@ export const runCameraFlow = createServerFn({ method: "POST" })
             result: result as never,
             result_sha256: await sha256Hex(JSON.stringify(result)),
             error: step.error,
+            input_refs: datasetRefsInto(stepId) as never,
             finished_at: new Date().toISOString(),
             expires_at: expiresAt(retentionDays(outMeta)),
           })

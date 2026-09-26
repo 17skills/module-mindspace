@@ -472,6 +472,72 @@ export type Database = {
           },
         ]
       }
+      datasets: {
+        Row: {
+          board_id: string
+          checksum: string
+          created_at: string
+          created_by: string | null
+          fetched_at: string | null
+          id: string
+          node_id: string | null
+          origin_kind: string
+          row_count: number
+          schema: Json
+          source_url: string | null
+          storage_path: string | null
+          verified: boolean
+          version: number
+        }
+        Insert: {
+          board_id: string
+          checksum?: string
+          created_at?: string
+          created_by?: string | null
+          fetched_at?: string | null
+          id?: string
+          node_id?: string | null
+          origin_kind?: string
+          row_count?: number
+          schema?: Json
+          source_url?: string | null
+          storage_path?: string | null
+          verified?: boolean
+          version?: number
+        }
+        Update: {
+          board_id?: string
+          checksum?: string
+          created_at?: string
+          created_by?: string | null
+          fetched_at?: string | null
+          id?: string
+          node_id?: string | null
+          origin_kind?: string
+          row_count?: number
+          schema?: Json
+          source_url?: string | null
+          storage_path?: string | null
+          verified?: boolean
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "datasets_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "datasets_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_journal: {
         Row: {
           board_id: string
@@ -1129,6 +1195,7 @@ export type Database = {
           id: string
           input_mime: string | null
           input_path: string | null
+          input_refs: Json
           input_sha256: string | null
           model: string
           output_node_id: string
@@ -1151,6 +1218,7 @@ export type Database = {
           id?: string
           input_mime?: string | null
           input_path?: string | null
+          input_refs?: Json
           input_sha256?: string | null
           model?: string
           output_node_id: string
@@ -1173,6 +1241,7 @@ export type Database = {
           id?: string
           input_mime?: string | null
           input_path?: string | null
+          input_refs?: Json
           input_sha256?: string | null
           model?: string
           output_node_id?: string
