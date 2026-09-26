@@ -172,11 +172,12 @@ export const importBoard = createServerFn({ method: "POST" })
         parent_id:
           typeof oldParent === "string" ? (idMap.get(oldParent) ?? null) : null,
         type: String(node["type"] ?? "note"),
-        title: (node["title"] as string | null) ?? null,
+        title: (node["title"] as string | null) ?? "",
         position_x: Number(node["position_x"] ?? 0),
         position_y: Number(node["position_y"] ?? 0),
-        width: node["width"] == null ? null : Number(node["width"]),
-        height: node["height"] == null ? null : Number(node["height"]),
+        // Größe fehlt (z. B. im Bauplan)? Dann Standardgröße der Datenbank.
+        ...(node["width"] == null ? {} : { width: Number(node["width"]) }),
+        ...(node["height"] == null ? {} : { height: Number(node["height"]) }),
         color: (node["color"] as string | null) ?? null,
         source_url: (node["source_url"] as string | null) ?? null,
         storage_path: (node["storage_path"] as string | null) ?? null,
@@ -187,9 +188,15 @@ export const importBoard = createServerFn({ method: "POST" })
       };
     });
 
+    // Scheitert der Aufbau, bleibt kein leerer Scope zurück.
+    const fail = async (message: string): Promise<never> => {
+      await db.from("boards").delete().eq("id", board.id);
+      throw new Error(`Einspielen fehlgeschlagen: ${message}`);
+    };
+
     for (let index = 0; index < rows.length; index += 200) {
       const { error } = await db.from("nodes").insert(rows.slice(index, index + 200) as never);
-      if (error) throw new Error(error.message);
+      if (error) await fail(error.message);
     }
 
     const edgeRows = backup.edges
