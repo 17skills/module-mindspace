@@ -1,0 +1,137 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: osm-nearby-places
+  version: 1.0.0
+  title: Nearby Places (OpenStreetMap)
+  description: >-
+    Locates amenities such as restaurants within a given radius around a
+    geographic point using the public OpenStreetMap Overpass API.
+  category: data-source
+  tags:
+    - geospatial
+    - openstreetmap
+    - overpass
+    - rest-api
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: api
+spec:
+  ontology:
+    domain: geospatial/places
+    depth: guarded
+    constraints:
+      - id: valid-coordinates
+        label: Coordinates within valid WGS84 boundary
+        subject: inputs.location
+        severity: violation
+        rationale: The Overpass API rejects latitudes or longitudes outside the valid range.
+      - id: fair-use-rate-limit
+        label: Public Overpass API fair use
+        subject: engine.url
+        severity: info
+        rationale: >-
+          Overpass is a community service with strict fair use limits; heavy
+          polling returns HTTP 429 or 504 and should be cached.
+        reference: https://wiki.openstreetmap.org/wiki/Overpass_API
+        requires: Keep the cache enabled and avoid automatic polling.
+      - id: untrusted-response
+        label: Response is third-party content
+        subject: outputs.places
+        severity: warn
+        rationale: >-
+          Place names come from an open database and may contain injected text;
+          they are wrapped as untrusted content before reaching any model.
+  inputs:
+    location:
+      semantic: geo:point
+      title: Search Center
+      description: WGS84 coordinates used as the center of the search radius.
+      required: true
+      schema:
+        type: object
+        properties:
+          lat:
+            type: number
+            minimum: -90
+            maximum: 90
+          lon:
+            type: number
+            minimum: -180
+            maximum: 180
+    radius:
+      semantic: primitive:number
+      title: Search Radius
+      description: Radius in meters around the search center.
+      required: false
+      unit: meters
+      default: 1000
+      schema:
+        type: integer
+        minimum: 50
+        maximum: 5000
+    amenity:
+      semantic: primitive:string
+      title: Amenity Type
+      description: OpenStreetMap amenity tag, for example restaurant, cafe or pharmacy.
+      required: false
+      default: restaurant
+  engine:
+    type: api
+    ref: https://overpass-api.de/api/interpreter
+    config:
+      method: POST
+      url: https://overpass-api.de/api/interpreter
+      timeoutSeconds: 25
+      headers:
+        User-Agent: scopebuilder/1.0
+        Accept: application/json
+      bodyTemplate: |
+        [out:json][timeout:25];
+        (node["amenity"="{{inputs.amenity}}"](around:{{inputs.radius}},{{inputs.location.lat}},{{inputs.location.lon}}););
+        out body;
+  outputs:
+    places:
+      semantic: geo:features
+      title: Found Places
+      description: Collection of places with name, coordinates and cuisine tags.
+      extractPath: elements
+      schema:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            lat:
+              type: number
+            lon:
+              type: number
+            name:
+              type: string
+            cuisine:
+              type: string
+      mapping:
+        id: id
+        lat: lat
+        lon: lon
+        name: tags.name
+        cuisine: tags.cuisine
+  execution:
+    mode: reactive
+    timeoutSeconds: 30
+  resilience:
+    retry:
+      maxAttempts: 3
+      backoff: exponential
+    cache:
+      ttlSeconds: 600
+    onError: fallback
+  action:
+    hasSideEffects: false
+    requiresApproval: false
+  requirements:
+    network:
+      - overpass-api.de
+  settings:
+    pointsPath: elements
