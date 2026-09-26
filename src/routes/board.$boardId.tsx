@@ -1879,10 +1879,8 @@ function BoardPage() {
         })
         .join("\n\n---\n\n");
       try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
+        const { postChat } = await import("@/lib/chat-client");
+        const response = await postChat({
             model: "openai/gpt-6-astra",
             context,
             messages: [
@@ -1891,7 +1889,6 @@ function BoardPage() {
                 content: `Alle Inhalte gehören zum Feld „${zone.title ?? "Feld"}“ eines Canvas. Fasse zusammen, was sie über dieses Feld aussagen, und nenne die Beispiele mit kurzer Begründung.`,
               },
             ],
-          }),
         });
         if (!response.ok || !response.body) throw new Error(await response.text());
         const reader = response.body.getReader();

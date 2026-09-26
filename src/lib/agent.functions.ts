@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { loadAiKeyConfig, runStructured } from "@/lib/ai-keys.server";
+import { UNTRUSTED_NOTICE, wrapUntrusted } from "@/lib/untrusted";
 
 const AgentResult = z.object({
   value: z.string(),
@@ -57,9 +58,10 @@ Regeln:
 ${numberRule}
 - "reason" begründet das Ergebnis in ein bis drei Sätzen und nennt, auf welche Inhalte du dich stützt.
 - Erfinde keine Zahlen. Leite alles aus den Inhalten ab; wenn du schätzt, sage es in "reason".
+- ${UNTRUSTED_NOTICE}
 
 Inhalte des Feldes:
-${data.context.slice(0, 200_000)}`;
+${wrapUntrusted(data.field, data.context.slice(0, 200_000))}`;
 
     const cfg = await loadAiKeyConfig(context.supabase, context.userId);
     const text = await runStructured(cfg, {

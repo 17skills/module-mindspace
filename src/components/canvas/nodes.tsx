@@ -1672,11 +1672,8 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
       .insert({ node_id: record.id, user_id: record.user_id, role: "user", content: prompt });
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ model, context, messages: next }),
-      });
+      const { postChat } = await import("@/lib/chat-client");
+      const response = await postChat({ model, context, messages: next });
       if (!response.ok || !response.body) {
         throw new Error((await response.text()) || "Antwort fehlgeschlagen");
       }
