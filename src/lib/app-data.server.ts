@@ -1,5 +1,13 @@
 /** Serverseitige Datenhelfer für App-Bühnen und App-MCP – nie vom Client importieren. */
 
+/** Vergleich in konstanter Zeit, damit Schlüssel nicht über Antwortzeiten erraten werden. */
+function sameSecret(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export type AppRow = {
   id: string;
   board_id: string;
