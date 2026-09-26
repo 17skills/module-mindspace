@@ -287,3 +287,124 @@ function prune(value: unknown): unknown {
 export function scopeModuleToYaml(spec: ScopeModuleSpec): string {
   return stringify(prune(spec), { lineWidth: 0 });
 }
+
+// ---------------------------------------------------------------------------
+// Inheritance: a specialization only narrows its base archetype.
+// ---------------------------------------------------------------------------
+
+/** Minimal semver range check: exact, `^x.y.z` or `~x.y.z`; empty accepts all. */
+export function versionSatisfies(version: string, range: string): boolean {
+  const want = range.trim();
+  if (!want) return true;
+  const parse = (v: string) => v.split(".").map((n) => Number.parseInt(n, 10));
+  const [aMaj = 0, aMin = 0, aPatch = 0] = parse(version);
+  const op = want[0] === "^" || want[0] === "~" ? want[0] : "";
+  const [bMaj = 0, bMin = 0, bPatch = 0] = parse(op ? want.slice(1) : want);
+  if (!op) return version === want;
+  if (aMaj !== bMaj) return false;
+  if (op === "~" && aMin !== bMin) return false;
+  if (aMin !== bMin) return aMin > bMin;
+  return aPatch >= bPatch;
+}
+
+function mergeRecords<T>(base: Record<string, T>, child: Record<string, T>): Record<string, T> {
+  const out: Record<string, T> = { ...base };
+  for (const [key, value] of Object.entries(child)) {
+    const prev = out[key];
+    out[key] =
+      prev && typeof prev === "object" && value && typeof value === "object"
+        ? ({ ...prev, ...value } as T)
+        : value;
+  }
+  return out;
+}
+
+/**
+ * Resolve `spec.extends` against a catalog, walking the whole chain.
+ *
+ * The child inherits ports, engine, resilience and requirements. It may add or
+ * narrow, never loosen: side effects and approval stay on once any ancestor
+ * declares them, constraints accumulate and locked ports are never unlocked.
+ */
+export function resolveModuleInheritance(
+  spec: ScopeModuleSpec,
+  catalog: Map<string, ScopeModuleSpec>,
+  seen: string[] = [],
+): ScopeModuleSpec {
+  const parent = spec.spec.extends;
+  if (!parent) return spec;
+  const { name } = parseModuleRef(parent.ref);
+  if (seen.includes(name)) throw new Error(`Der Baustein "${name}" erbt im Kreis von sich selbst.`);
+  const found = catalog.get(name);
+  if (!found) throw new Error(`Der Basis-Baustein "${name}" ist im Katalog nicht vorhanden.`);
+  if (!versionSatisfies(found.metadata.version, parent.version)) {
+    throw new Error(
+      `Der Basis-Baustein "${name}" liegt in Version ${found.metadata.version} vor, verlangt ist ${parent.version}.`,
+    );
+  }
+  const base = resolveModuleInheritance(found, catalog, [...seen, name]);
+
+  const inputs = mergeRecords(base.spec.inputs, spec.spec.inputs);
+  const presets = { ...base.spec.presets, ...spec.spec.presets };
+  for (const [port, value] of Object.entries(presets)) {
+    const def = inputs[port];
+    if (def) inputs[port] = { ...def, default: value, required: false };
+  }
+
+  return {
+    ...spec,
+    metadata: {
+      ...spec.metadata,
+      nodeType: spec.metadata.nodeType || base.metadata.nodeType,
+      category: spec.metadata.category,
+    },
+    spec: {
+      ...base.spec,
+      ...spec.spec,
+      extends: spec.spec.extends,
+      presets,
+      locked: [...new Set([...base.spec.locked, ...spec.spec.locked, ...Object.keys(spec.spec.presets)])],
+      ontology: {
+        domain: spec.spec.ontology.domain || base.spec.ontology.domain,
+        // The stricter depth of the two always wins.
+        depth: (["advisory", "guarded", "strict"] as const)[
+          Math.max(
+            ["advisory", "guarded", "strict"].indexOf(base.spec.ontology.depth),
+            ["advisory", "guarded", "strict"].indexOf(spec.spec.ontology.depth),
+          )
+        ]!,
+        constraints: [...base.spec.ontology.constraints, ...spec.spec.ontology.constraints],
+      },
+      container: spec.spec.container ?? base.spec.container,
+      inputs,
+      engine: {
+        ...base.spec.engine,
+        ...spec.spec.engine,
+        type: spec.spec.engine.type === "none" ? base.spec.engine.type : spec.spec.engine.type,
+        ref: spec.spec.engine.ref || base.spec.engine.ref,
+        config: { ...base.spec.engine.config, ...spec.spec.engine.config },
+        governance: spec.spec.engine.governance ?? base.spec.engine.governance,
+      },
+      outputs: mergeRecords(base.spec.outputs, spec.spec.outputs),
+      action: {
+        hasSideEffects: base.spec.action.hasSideEffects || spec.spec.action.hasSideEffects,
+        requiresApproval:
+          base.spec.action.requiresApproval ||
+          spec.spec.action.requiresApproval ||
+          base.spec.action.hasSideEffects ||
+          spec.spec.action.hasSideEffects,
+        approval: spec.spec.action.approval ?? base.spec.action.approval,
+      },
+      requirements: {
+        secrets: [
+          ...base.spec.requirements.secrets,
+          ...spec.spec.requirements.secrets.filter(
+            (s) => !base.spec.requirements.secrets.some((b) => b.name === s.name),
+          ),
+        ],
+        network: [...new Set([...base.spec.requirements.network, ...spec.spec.requirements.network])],
+      },
+      settings: { ...base.spec.settings, ...spec.spec.settings },
+    },
+  };
+}
