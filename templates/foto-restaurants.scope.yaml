@@ -1,0 +1,66 @@
+scopebuilder: scopebuilder/v1
+scope:
+  title: "Foto → Ort → Restaurants"
+  description: "Handy-Foto aufnehmen, Ort auf der Karte zeigen, Restaurants im Umkreis von 1 km finden."
+
+modules:
+  - id: kamera
+    type: camera
+    role: source
+    title: "Foto mit dem Handy"
+    at: [0, 0]
+    size: [320, 200]
+
+  - id: restaurants
+    type: api
+    role: step
+    title: "Restaurants in der Nähe"
+    at: [420, 0]
+    size: [360, 260]
+    engine:
+      kind: api
+      ref: "https://overpass-api.de/api/interpreter"
+    settings:
+      url: "https://overpass-api.de/api/interpreter"
+      method: GET
+      params:
+        - key: data
+          value: '[out:json][timeout:15];(node["amenity"="restaurant"](around:1000,{{input.lat}},{{input.lon}});way["amenity"="restaurant"](around:1000,{{input.lat}},{{input.lon}}););out center 40;'
+      headers: []
+      points:
+        list: elements
+        lat: "lat|center.lat"
+        lon: "lon|center.lon"
+        label: tags.name
+        note: tags.cuisine
+
+  - id: karte
+    type: map
+    role: output
+    title: "Ort auf der Karte"
+    at: [880, -80]
+    size: [420, 340]
+    settings:
+      zoom: 15
+
+  - id: liste
+    type: output
+    role: output
+    title: "Restaurantliste"
+    at: [880, 300]
+    size: [360, 300]
+    settings:
+      retentionDays: 30
+
+links:
+  - { from: kamera, to: restaurants, label: "Ort" }
+  - { from: kamera, to: karte, label: "Fotostandort" }
+  - { from: restaurants, to: karte, label: "Restaurants" }
+  - { from: restaurants, to: liste }
+
+apps:
+  - title: "Foto & Restaurants"
+    description: "Foto machen, Ort sehen, Restaurants in der Nähe finden."
+    channels: [mobile]
+    modules: [kamera, karte, liste]
+    access: public
