@@ -62,10 +62,8 @@ export const getSharedBoard = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
 
-    const expired = board?.share_expires_at
-      ? new Date(board.share_expires_at).getTime() < Date.now()
-      : false;
-    if (!board || !board.is_public || board.share_revoked_at || expired) {
+    const { shareLinkOpen } = await import("@/lib/guest-view");
+    if (!shareLinkOpen(board)) {
       throw new Error("Dieser Link ist nicht (mehr) freigegeben");
     }
 
