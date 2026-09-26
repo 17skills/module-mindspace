@@ -175,9 +175,10 @@ export const importBoard = createServerFn({ method: "POST" })
         title: (node["title"] as string | null) ?? "",
         position_x: Number(node["position_x"] ?? 0),
         position_y: Number(node["position_y"] ?? 0),
-        // Größe fehlt (z. B. im Bauplan)? Dann Standardgröße der Datenbank.
-        ...(node["width"] == null ? {} : { width: Number(node["width"]) }),
-        ...(node["height"] == null ? {} : { height: Number(node["height"]) }),
+        // Größe fehlt (z. B. im Bauplan)? Standardgröße – explizit, weil Sammel-Einfügen
+        // fehlende Spalten sonst als leer statt mit dem Datenbank-Standard füllt.
+        width: node["width"] == null ? 320 : Number(node["width"]),
+        height: node["height"] == null ? 220 : Number(node["height"]),
         color: (node["color"] as string | null) ?? null,
         source_url: (node["source_url"] as string | null) ?? null,
         storage_path: (node["storage_path"] as string | null) ?? null,
