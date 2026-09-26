@@ -39,10 +39,11 @@ export const exportBoard = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertBoardRole(context.userId, data.boardId, "viewer");
     const db = await admin();
-    const [boardRes, nodeRes, edgeRes] = await Promise.all([
+    const [boardRes, nodeRes, edgeRes, appRes] = await Promise.all([
       db.from("boards").select("title,description").eq("id", data.boardId).maybeSingle(),
       db.from("nodes").select(NODE_COLUMNS.join(",")).eq("board_id", data.boardId),
       db.from("edges").select("id,source_id,target_id,label").eq("board_id", data.boardId),
+      db.from("apps").select("title,kind,node_ids,description,access_mode,branding,channels").eq("board_id", data.boardId),
     ]);
     if (!boardRes.data) throw new Error("Scope nicht gefunden");
     const nodes = (nodeRes.data ?? []) as unknown as Record<string, unknown>[];
@@ -76,6 +77,7 @@ export const exportBoard = createServerFn({ method: "POST" })
         nodes,
         edges: (edgeRes.data ?? []) as unknown as Record<string, unknown>[],
         mcpServers,
+        apps: (appRes.data ?? []) as unknown as Record<string, unknown>[],
       }),
     };
   });
@@ -86,6 +88,7 @@ const BackupSchema = z.object({
   nodes: z.array(z.record(z.string(), z.unknown())).max(2000),
   edges: z.array(z.record(z.string(), z.unknown())).max(4000),
   mcpServers: z.array(z.record(z.string(), z.unknown())).max(50).default([]),
+  apps: z.array(z.record(z.string(), z.unknown())).max(50).default([]),
 });
 
 function remapMetadata(
@@ -208,6 +211,28 @@ export const importBoard = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    // Apps: dieselbe Modulauswahl, Kanäle und Gestaltung, neue Kennungen.
+    let appCount = 0;
+    for (const app of backup.apps) {
+      const nodeIds = (Array.isArray(app["node_ids"]) ? app["node_ids"] : [])
+        .map((id) => idMap.get(String(id)))
+        .filter((id): id is string => Boolean(id));
+      const access = String(app["access_mode"] ?? "restricted");
+      const { error } = await db.from("apps").insert({
+        board_id: board.id,
+        user_id: context.userId,
+        org_id: (orgId as { id?: string } | null)?.id ?? null,
+        title: String(app["title"] ?? "App").slice(0, 200),
+        kind: app["kind"] === "capture" ? "capture" : "cockpit",
+        node_ids: nodeIds,
+        description: String(app["description"] ?? ""),
+        access_mode: access === "public" || access === "org" ? access : "restricted",
+        branding: (app["branding"] ?? {}) as never,
+        channels: (app["channels"] ?? { web: true, teams: false, mcp: false }) as never,
+      } as never);
+      if (!error) appCount += 1;
+    }
+
     const missingServers = backup.mcpServers.filter(
       (server) => !serverMap.has(String(server["id"])),
     ).length;
@@ -216,6 +241,7 @@ export const importBoard = createServerFn({ method: "POST" })
       boardId: board.id as string,
       nodes: rows.length,
       edges: edgeRows.length,
+      apps: appCount,
       missingServers,
     };
   });

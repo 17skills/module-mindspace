@@ -55,11 +55,18 @@ function LibraryPage() {
 
   const restoreBackup = useMutation({
     mutationFn: async (file: File) => {
-      return importBoard({ data: { backupJson: await file.text() } });
+      const text = await file.text();
+      const { isManifestText, parseManifest, manifestToBackup } = await import("@/lib/runtime/manifest");
+      if (isManifestText(text)) {
+        const { manifest, warnings } = parseManifest(text);
+        if (warnings.length) toast.warning(warnings.slice(0, 3).join(" "));
+        return importBoard({ data: { backupJson: JSON.stringify(manifestToBackup(manifest)) } });
+      }
+      return importBoard({ data: { backupJson: text } });
     },
     onSuccess: (result) => {
       toast.success(
-        `Wiederhergestellt: ${result.nodes} Module, ${result.edges} Verbindungen` +
+        `Aufgebaut: ${result.nodes} Module, ${result.edges} Verbindungen, ${result.apps} Apps` +
           (result.missingServers
             ? ` – ${result.missingServers} MCP-Zugang fehlt noch`
             : ""),
@@ -211,7 +218,7 @@ function LibraryPage() {
             <input
               ref={restoreRef}
               type="file"
-              accept="application/json,.json"
+              accept="application/json,.json,.yaml,.yml,.md,text/markdown"
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -224,7 +231,7 @@ function LibraryPage() {
               onClick={() => restoreRef.current?.click()}
               disabled={restoreBackup.isPending}
             >
-              Sicherung einspielen
+              Sicherung oder Bauplan einspielen
             </Button>
             <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
               Neuer Scope
