@@ -1,0 +1,23 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: restaurant-finder
+  version: 1.0.0
+  title: Nearby Restaurants
+  description: >-
+    Specialization of the points of interest search that is preset to
+    restaurants. It inherits transport, caching, retries and fair use rules.
+  category: data-source
+  tags:
+    - geospatial
+    - restaurants
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: api
+spec:
+  extends:
+    ref: core/geo-poi-search
+    version: ^1.0.0
+  presets:
+    category: restaurant
+    radius: 1200

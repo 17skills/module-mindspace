@@ -1,0 +1,45 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: webhook-dispatch
+  version: 1.0.0
+  title: Outbound Webhook
+  description: >-
+    Primitive archetype for handing a payload to an external system. Because it
+    acts outside the scope, every specialization needs human release.
+  category: action
+  tags:
+    - primitive
+    - protocol
+    - webhook
+    - automation
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: api
+spec:
+  extends:
+    ref: core/http-request
+    version: ^1.0.0
+  ontology:
+    domain: protocol/http
+    depth: strict
+    constraints:
+      - id: human-release
+        label: Outside effects need a person
+        subject: action
+        severity: violation
+        rationale: A handover to another system cannot be undone, so it waits for release.
+  presets:
+    method: POST
+  inputs:
+    payload:
+      semantic: primitive:json
+      title: Payload
+      description: Data handed to the receiving system.
+      required: true
+  action:
+    hasSideEffects: true
+    requiresApproval: true
+    approval:
+      role: owner
+      summaryTemplate: Send data to {{inputs.url}}?

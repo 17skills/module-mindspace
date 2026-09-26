@@ -16,4 +16,7 @@
 
 - Durchläufe (Eingabe→Ergebnis) liegen in `runs`, Protokoll in `run_events` (nur anhängen, Trigger sperrt Änderungen); Canvas zeigt nur Zählwert. Warum: viele Nutzer überschreiben sich nicht, Nachweis bleibt auditierbar.
 
-- Bausteine und Prozesse werden deklarativ beschrieben: `kind: ScopeModule` (`*.scopem.yaml`, src/lib/runtime/scopem.ts) und `kind: Scope` (`*.scope.yaml`, src/lib/runtime/scope-spec.ts) unter `apiVersion: scopebuilder.io/v1alpha1`; der Kern-Katalog liegt als YAML in src/lib/runtime/catalog/ und wird über `scopeSpecToManifest` auf `scopebuilder/v1` und den bestehenden Importweg abgebildet. Warum: Module aus einer Bibliothek statt neuem Code je Anwendungsfall, und `spec` bleibt headless-fähig, weil Canvas-Koordinaten nur im `layout`-Block stehen.
+- Bausteine (`kind: ScopeModule`, `*.scopem.yaml`, src/lib/runtime/scopem.ts) und Prozesse (`kind: Scope`, scope-spec.ts) sind deklarativ; Kern-Katalog als YAML in src/lib/runtime/catalog/, abgebildet über `scopeSpecToManifest`. Warum: Bibliothek statt Code je Anwendungsfall, headless-fähig.
+
+- Katalog enthält nur primitive Archetypen (http-request, llm-inference, rule-gate, tabular-data, mcp-tool-call, audio-synthesis, camera, map, output, zone); Fachmodule sind Spezialisierungen via `spec.extends`+`presets` (`resolveModuleInheritance`), die Schutz nur verschärfen. Warum: ein Update am Archetyp erreicht alle Ableitungen.
+

@@ -1,0 +1,49 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: tabular-data
+  version: 1.0.0
+  title: Table Data
+  description: >-
+    Primitive data archetype. Holds or receives rows and columns, validates them
+    against a declared shape and passes a typed table on.
+  category: data-source
+  tags:
+    - primitive
+    - table
+    - data
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: data
+spec:
+  ontology:
+    domain: data/table
+    depth: guarded
+    constraints:
+      - id: declared-columns
+        label: Columns are declared
+        subject: outputs.table
+        severity: warn
+        rationale: Downstream modules can only bind to a table whose columns are known.
+  inputs:
+    rows:
+      semantic: data:table
+      title: Rows
+      description: Incoming rows to store or validate.
+      required: false
+  engine:
+    type: none
+    ref: ""
+    config:
+      columns: []
+  outputs:
+    table:
+      semantic: data:table
+      title: Table
+      description: Validated rows with typed columns.
+  execution:
+    mode: manual
+    timeoutSeconds: 15
+  action:
+    hasSideEffects: false
+    requiresApproval: false

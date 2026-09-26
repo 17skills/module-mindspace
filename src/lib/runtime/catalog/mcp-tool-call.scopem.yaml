@@ -1,0 +1,65 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: mcp-tool-call
+  version: 1.0.0
+  title: MCP Tool Call
+  description: >-
+    Primitive protocol archetype for the Model Context Protocol. Calls one
+    declared tool on a connected server and returns its typed result.
+  category: transform
+  tags:
+    - primitive
+    - protocol
+    - mcp
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: mcp
+spec:
+  ontology:
+    domain: protocol/mcp
+    depth: guarded
+    constraints:
+      - id: https-only
+        label: Server is reached over https
+        subject: engine.ref
+        severity: violation
+        rationale: Tokens and payloads must never travel unencrypted.
+      - id: declared-tool
+        label: Only declared tools are callable
+        subject: engine.config.tool
+        severity: violation
+        rationale: A server may advertise new tools at any time; only the configured one runs.
+      - id: untrusted-result
+        label: Tool result is third-party content
+        subject: outputs.result
+        severity: warn
+        rationale: Server output is wrapped as untrusted content before reaching a model.
+  inputs:
+    arguments:
+      semantic: primitive:json
+      title: Arguments
+      description: Arguments passed to the tool, validated against its schema.
+      required: false
+  engine:
+    type: mcp
+    ref: ""
+    config:
+      tool: ""
+      timeoutSeconds: 30
+  outputs:
+    result:
+      semantic: primitive:json
+      title: Tool Result
+      description: Result returned by the tool.
+  execution:
+    mode: manual
+    timeoutSeconds: 45
+  resilience:
+    retry:
+      maxAttempts: 2
+      backoff: linear
+    onError: halt
+  action:
+    hasSideEffects: false
+    requiresApproval: false
