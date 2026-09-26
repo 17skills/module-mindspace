@@ -1,0 +1,50 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: rule-gate
+  version: 1.0.0
+  title: Rule Gate
+  description: >-
+    Primitive deterministic gate. Checks values against declared thresholds and
+    either passes the process on or stops it. Budget caps, retention guards and
+    compliance checks are specializations, not separate modules.
+  category: decision
+  tags:
+    - primitive
+    - governance
+    - rules
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: decision
+spec:
+  ontology:
+    domain: governance/rules
+    depth: strict
+    constraints:
+      - id: deterministic-only
+        label: No model involved
+        subject: engine
+        severity: violation
+        rationale: A gate must be reproducible, so it never asks a model.
+  inputs:
+    subject:
+      semantic: primitive:json
+      title: Checked Values
+      description: The values the rules are evaluated against.
+      required: true
+  engine:
+    type: script
+    ref: rule-evaluator
+    config:
+      rules: []
+  outputs:
+    verdict:
+      semantic: decision:judgement
+      title: Verdict
+      description: Pass, warn or block, together with the rules that fired.
+  execution:
+    mode: reactive
+    timeoutSeconds: 10
+  action:
+    hasSideEffects: false
+    requiresApproval: false

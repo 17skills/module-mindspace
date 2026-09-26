@@ -1,0 +1,59 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: audio-synthesis
+  version: 1.0.0
+  title: Speech Synthesis
+  description: >-
+    Primitive inference archetype that turns text into speech. Voice notices and
+    podcast episodes are specializations that only preset voice and length.
+  category: transform
+  tags:
+    - primitive
+    - inference
+    - audio
+    - tts
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: output
+spec:
+  ontology:
+    domain: inference/audio
+    depth: guarded
+    constraints:
+      - id: retention-applies
+        label: Generated audio follows the retention rule
+        subject: outputs.audio
+        severity: warn
+        rationale: Generated audio is stored with the run and deleted with it.
+  inputs:
+    text:
+      semantic: primitive:string
+      title: Spoken Text
+      description: The text that is read out.
+      required: true
+    voice:
+      semantic: primitive:string
+      title: Voice
+      description: Identifier of the voice used.
+      required: false
+  engine:
+    type: llm
+    ref: google/gemini-3.1-flash-tts-preview
+    config:
+      format: mp3
+    governance:
+      maxSteps: 1
+      maxTokenBudget: 4000
+      timeoutSeconds: 90
+  outputs:
+    audio:
+      semantic: media:audio
+      title: Audio
+      description: Generated audio file.
+  execution:
+    mode: manual
+    timeoutSeconds: 120
+  action:
+    hasSideEffects: false
+    requiresApproval: false

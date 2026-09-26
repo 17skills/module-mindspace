@@ -1,0 +1,72 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: llm-inference
+  version: 1.0.0
+  title: Language Model Inference
+  description: >-
+    Primitive inference archetype. Takes context and an instruction and returns
+    structured text. Report writers, summarizers and classifiers are
+    specializations that only preset the instruction and output shape.
+  category: transform
+  tags:
+    - primitive
+    - inference
+    - llm
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: chat
+spec:
+  ontology:
+    domain: inference/text
+    depth: guarded
+    constraints:
+      - id: untrusted-context
+        label: External context is wrapped
+        subject: inputs.context
+        severity: violation
+        rationale: Third-party text is wrapped as untrusted content so it cannot act as an instruction.
+      - id: no-autonomous-effects
+        label: Inference never triggers outside effects
+        subject: engine
+        severity: violation
+        rationale: A model may propose an action; only a person may release it.
+  inputs:
+    context:
+      semantic: primitive:json
+      title: Context
+      description: Material the model reasons about.
+      required: true
+    instruction:
+      semantic: primitive:string
+      title: Instruction
+      description: What the model should produce from the context.
+      required: true
+  engine:
+    type: llm
+    ref: openai/gpt-6-astra
+    config:
+      responseFormat: text
+    governance:
+      maxSteps: 1
+      maxTokenBudget: 8000
+      timeoutSeconds: 60
+      forbiddenActions:
+        - network:external-write
+        - action:execute
+  outputs:
+    result:
+      semantic: text:markdown
+      title: Result
+      description: Generated text in markdown.
+  execution:
+    mode: manual
+    timeoutSeconds: 90
+  resilience:
+    retry:
+      maxAttempts: 1
+      backoff: none
+    onError: halt
+  action:
+    hasSideEffects: false
+    requiresApproval: false
