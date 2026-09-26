@@ -56,12 +56,16 @@ export async function callApi(call: ApiCall, input: FlowInput = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20_000);
   try {
-    const init: RequestInit = { method: call.method, headers, signal: controller.signal, redirect: "error" };
+    // "manual" instead of "error": the edge runtime rejects "error". Redirects are refused below.
+    const init: RequestInit = { method: call.method, headers, signal: controller.signal, redirect: "manual" };
     if (call.method === "POST" && call.body?.trim()) {
       init.body = fillInputs(fillSecrets(call.body), input);
       if (!headers.has("content-type")) headers.set("content-type", "application/json");
     }
     const response = await fetch(url, init);
+    if ((response.status >= 300 && response.status < 400) || response.type === "opaqueredirect") {
+      throw new Error("Weiterleitungen werden aus Sicherheitsgründen nicht verfolgt");
+    }
     const text = (await response.text()).slice(0, MAX_BODY);
     return {
       status: response.status,
