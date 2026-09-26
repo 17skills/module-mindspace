@@ -1,0 +1,88 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: http-request
+  version: 1.0.0
+  title: HTTP Request
+  description: >-
+    Primitive HTTPS client archetype. Sends a request to a declared endpoint and
+    returns the parsed response. Every REST, webhook or automation connector is a
+    specialization of this archetype, never a separate implementation.
+  category: data-source
+  tags:
+    - primitive
+    - protocol
+    - http
+    - rest
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: api
+spec:
+  ontology:
+    domain: protocol/http
+    depth: guarded
+    constraints:
+      - id: https-only
+        label: Transport is encrypted
+        subject: engine.url
+        severity: violation
+        rationale: Only https endpoints are allowed; plain http is refused at runtime.
+      - id: no-redirect-follow
+        label: Redirects are not followed
+        subject: engine.url
+        severity: warn
+        rationale: A redirect could move the call to an unapproved host.
+      - id: untrusted-response
+        label: Response is third-party content
+        subject: outputs.response
+        severity: warn
+        rationale: Any remote payload is wrapped as untrusted content before reaching a model.
+  inputs:
+    url:
+      semantic: primitive:string
+      title: Endpoint
+      description: Absolute https endpoint of the service.
+      required: true
+    method:
+      semantic: primitive:string
+      title: Method
+      description: HTTP verb, for example GET or POST.
+      required: false
+      default: GET
+    query:
+      semantic: primitive:json
+      title: Query Parameters
+      description: Key/value pairs appended to the endpoint.
+      required: false
+    payload:
+      semantic: primitive:json
+      title: Request Payload
+      description: Body sent with POST, PUT or PATCH requests.
+      required: false
+  engine:
+    type: api
+    ref: ""
+    config:
+      method: GET
+      timeoutSeconds: 25
+      headers:
+        User-Agent: scopebuilder/1.0
+        Accept: application/json
+  outputs:
+    response:
+      semantic: primitive:json
+      title: Response
+      description: Parsed response body of the service.
+  execution:
+    mode: manual
+    timeoutSeconds: 30
+  resilience:
+    retry:
+      maxAttempts: 2
+      backoff: exponential
+    cache:
+      ttlSeconds: 0
+    onError: halt
+  action:
+    hasSideEffects: false
+    requiresApproval: false
