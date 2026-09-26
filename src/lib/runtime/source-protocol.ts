@@ -179,7 +179,7 @@ export interface SourceEnvelope {
   semantics: SemanticTag[];
 }
 
-export type FacetName = keyof SourceFacets;
+export type FacetName = Exclude<keyof SourceFacets, "datasetRef">;
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
