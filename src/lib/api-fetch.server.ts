@@ -47,7 +47,7 @@ export async function callApi(call: ApiCall, input: FlowInput = {}) {
   }
   safeUrl(url.toString());
 
-  const headers = new Headers({ accept: "application/json, text/plain;q=0.8, */*;q=0.5", "user-agent": "scopebuilder/1.0 (+https://module-mindspace.lovable.app)" });
+  const headers = new Headers({ accept: "application/json, text/plain;q=0.8, */*;q=0.5", "user-agent": "scopebuilder/1.0" });
   for (const pair of call.headers) {
     if (!pair.key.trim()) continue;
     headers.set(pair.key.trim(), fillInputs(fillSecrets(pair.value), input));
