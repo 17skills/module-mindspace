@@ -1879,10 +1879,8 @@ function BoardPage() {
         })
         .join("\n\n---\n\n");
       try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
+        const { postChat } = await import("@/lib/chat-client");
+        const response = await postChat({
             model: "openai/gpt-6-astra",
             context,
             messages: [
