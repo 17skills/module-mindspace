@@ -24,7 +24,8 @@ export const DEFAULT_RETENTION = 30;
 
 /** Löschfrist in Tagen aus den Modul-Einstellungen, nur erlaubte Werte. */
 export function retentionDays(metadata: Record<string, unknown> | null | undefined): number {
-  const value = Number((metadata ?? {})["retentionDays"]);
+  const raw = (metadata ?? {})["retentionDays"];
+  const value = typeof raw === "number" ? raw : NaN;
   return (RETENTION_CHOICES as readonly number[]).includes(value) ? value : DEFAULT_RETENTION;
 }
 
