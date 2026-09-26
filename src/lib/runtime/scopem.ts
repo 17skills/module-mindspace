@@ -185,6 +185,18 @@ export const ScopeModuleSchema = z.object({
     nodeType: z.string().min(1),
   }),
   spec: z.object({
+    /** Optional base archetype this module specializes. */
+    extends: z
+      .object({
+        ref: z.string().min(1),
+        /** Semver range, e.g. `^1.0.0`. Empty means "any compatible". */
+        version: z.string().default(""),
+      })
+      .optional(),
+    /** Fixed input values applied on top of the base archetype. */
+    presets: z.record(z.string(), z.unknown()).default({}),
+    /** Input ports frozen by the presets — hidden and unchangeable downstream. */
+    locked: z.array(z.string()).max(50).default([]),
     ontology: OntologySchema.default({ domain: "", depth: "advisory", constraints: [] }),
     container: ContainerSchema.optional(),
     inputs: z.record(z.string(), PortSchema).default({}),
@@ -202,6 +214,7 @@ export const ScopeModuleSchema = z.object({
     settings: z.record(z.string(), z.unknown()).default({}),
   }),
 });
+
 export type ScopeModuleSpec = z.infer<typeof ScopeModuleSchema>;
 
 /** Catalog reference of a module, e.g. `core/camera-input@1.0.0`. */
