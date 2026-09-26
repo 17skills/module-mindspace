@@ -2,7 +2,7 @@ apiVersion: scopebuilder.io/v1alpha1
 kind: ScopeModule
 metadata:
   name: rule-gate
-  version: 1.0.0
+  version: 1.1.0
   title: Rule Gate
   description: >-
     Primitive deterministic gate. Checks values against declared thresholds and
@@ -32,6 +32,14 @@ spec:
       title: Checked Values
       description: The values the rules are evaluated against.
       required: true
+    dataset:
+      semantic: data:table-ref
+      title: Dataset
+      description: >-
+        Referenced table. Column rules are evaluated server-side over every row;
+        only counts and row numbers come back.
+      required: false
+      access: aggregate
   engine:
     type: script
     ref: rule-evaluator

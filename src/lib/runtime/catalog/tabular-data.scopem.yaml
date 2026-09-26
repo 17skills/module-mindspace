@@ -2,7 +2,7 @@ apiVersion: scopebuilder.io/v1alpha1
 kind: ScopeModule
 metadata:
   name: tabular-data
-  version: 1.0.0
+  version: 1.1.0
   title: Table Data
   description: >-
     Primitive data archetype. Holds or receives rows and columns, validates them
@@ -39,8 +39,15 @@ spec:
   outputs:
     table:
       semantic: data:table
-      title: Table
-      description: Validated rows with typed columns.
+      title: Table Preview
+      description: Small embedded preview with typed columns.
+    dataset:
+      semantic: data:table-ref
+      title: Dataset Reference
+      description: >-
+        Pointer to the full, versioned data outside the canvas. Consumers read
+        it through bounded server queries; the scope never carries the rows.
+      access: query
   execution:
     mode: manual
     timeoutSeconds: 15

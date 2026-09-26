@@ -2,7 +2,7 @@ apiVersion: scopebuilder.io/v1alpha1
 kind: ScopeModule
 metadata:
   name: interactive-map
-  version: 1.0.0
+  version: 1.1.0
   title: Interactive Map
   description: >-
     Renders a pannable map showing a center location and any markers supplied
@@ -37,6 +37,18 @@ spec:
       title: Map Markers
       description: Points rendered on the map, each with coordinates and a label.
       required: false
+    dataset:
+      semantic: data:table-ref
+      title: Dataset Points
+      description: >-
+        Referenced table; the binding maps latitude, longitude and name columns.
+        Points are loaded server-side for the visible area only.
+      required: false
+      access: rows
+      schema:
+        lat: number
+        lon: number
+        name: string
   engine:
     type: none
     ref: openstreetmap-tiles
