@@ -25,6 +25,29 @@ export function stripSecrets(value: unknown, depth = 0): unknown {
 
 type Row = Record<string, unknown>;
 
+/**
+ * Darf ein Gastlink gerade benutzt werden? Widerruf, Ablauf und Freigabe an einer
+ * Stelle, damit Einbettungen dieselbe Tür benutzen wie die Gastseite.
+ * `requirePasswordless` gilt für Einbettungen: dort kann niemand ein Passwort eingeben.
+ */
+export function shareLinkOpen(
+  board: {
+    is_public?: boolean | null;
+    share_revoked_at?: string | null;
+    share_expires_at?: string | null;
+    share_password_hash?: string | null;
+  } | null,
+  options: { requirePasswordless?: boolean; now?: number } = {},
+): boolean {
+  if (!board) return false;
+  if (!board.is_public) return false;
+  if (board.share_revoked_at) return false;
+  const now = options.now ?? Date.now();
+  if (board.share_expires_at && new Date(board.share_expires_at).getTime() < now) return false;
+  if (options.requirePasswordless && board.share_password_hash) return false;
+  return true;
+}
+
 export function guestView(
   nodes: Row[],
   edges: Row[],
