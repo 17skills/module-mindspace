@@ -32,6 +32,8 @@ export const SEMANTIC_TYPES = [
   "media:audio",
   "media:file",
   "data:table",
+  /** Pointer to stored data; consumers read through bounded server queries. */
+  "data:table-ref",
   "data:list",
   "text:markdown",
   "decision:judgement",
@@ -68,6 +70,8 @@ const PortSchema = z.object({
   extractPath: z.string().nullable().default(null),
   /** Flat field mapping from raw response fields to output fields. */
   mapping: z.record(z.string(), z.string()).default({}),
+  /** How a consumer may read referenced data: preview, aggregate, rows (limited) or query tool. */
+  access: z.enum(["preview", "aggregate", "rows", "query"]).nullable().default(null),
 });
 export type ModulePort = z.infer<typeof PortSchema>;
 
@@ -236,6 +240,9 @@ export function portsCompatible(from: ModulePort, to: ModulePort): boolean {
   if (from.semantic === to.semantic) return true;
   if (from.semantic === "geo:features" && to.semantic === "data:list") return true;
   if (from.semantic === "data:list" && to.semantic === "data:table") return true;
+  // Embedded mini tables may feed reference ports; a reference feeds a table port as preview.
+  if (from.semantic === "data:table" && to.semantic === "data:table-ref") return true;
+  if (from.semantic === "data:table-ref" && to.semantic === "data:table") return true;
   return false;
 }
 
