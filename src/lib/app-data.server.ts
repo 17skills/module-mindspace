@@ -110,6 +110,7 @@ export async function loadAppNodes(appId: string) {
   const nodes = ((nodeRes.data ?? []) as NodeRow[])
     .filter((row) => order.has(String(row.id)))
     .sort((a, b) => (order.get(String(a.id)) ?? 0) - (order.get(String(b.id)) ?? 0));
+  await signOutputFiles(db, String(app.board_id), nodes);
   return {
     db,
     app,
