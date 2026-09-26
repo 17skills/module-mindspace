@@ -55,12 +55,8 @@ export const getEmbedZone = createServerFn({ method: "POST" })
     const zoneMeta = (zone.metadata ?? {}) as Record<string, unknown>;
     // Der Gastlink des Scopes gilt nur, solange er gültig und ohne Passwort ist –
     // sonst ließen sich Widerruf, Ablauf und Passwort über die Einbettung umgehen.
-    const linkOpen =
-      Boolean(board?.is_public) &&
-      !board?.share_revoked_at &&
-      !board?.share_password_hash &&
-      !(board?.share_expires_at && new Date(board.share_expires_at).getTime() < Date.now());
-    const shared = linkOpen || zoneMeta["embed"] === true;
+    const { shareLinkOpen } = await import("@/lib/guest-view");
+    const shared = shareLinkOpen(board, { requirePasswordless: true }) || zoneMeta["embed"] === true;
     if (!board || !shared) {
       throw new Error(
         "Dieses Feld ist noch nicht freigegeben. Bitte am Feld auf „Als App öffnen“ klicken.",

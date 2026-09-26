@@ -40,7 +40,9 @@
 - [x] Ergebnis-Modul (Bild, Video, Audio, PDF, Bericht; Folien/3D als Download) auf Canvas und in Apps
 - [ ] Browser-Vorschau für Folien und 3D im Ergebnis-Modul
 - [ ] Mobiler App-Eingang (Foto rein → Agent → Ergebnis)
-- [ ] Gastansicht geteilter Scopes sicherheitlich prüfen
+- [x] Gastansicht geteilter Scopes sicherheitlich prüfen
+- [x] Regressionstests: Gäste kommen nicht an private Dateien, Daten oder Aktionen
+- [ ] Durchlauf-Ablage: viele Nutzer, viele Eingaben – Liste/Galerie je Ergebnis, Nachweis (wer, wann, welche Datei, welches Modell), Löschfristen (DSGVO), unveränderliches Protokoll (EU AI Act)
 - [ ] Tempo: große Programmteile aufteilen, vorher/nachher messen
 - [ ] Motor-Umschalter am Feld (Modell / API / MCP)
 - [ ] Gemeinsamer Runner mit Lauf-Protokoll für alle Kanäle
