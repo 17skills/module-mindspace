@@ -14,7 +14,9 @@ export const getPublicLibraryEntry = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!entry || !entry.is_public) throw new Error("Dieser Link ist nicht (mehr) freigegeben");
-    return entry;
+    // Gäste sehen keine Zugangsdaten, die beim Speichern im Baustein mitgekommen sind.
+    const { stripSecrets } = await import("@/lib/guest-view");
+    return { ...entry, payload: stripSecrets(entry.payload) as typeof entry.payload };
   });
 
 /** Copy an entry reachable by link into my own library. */
