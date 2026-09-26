@@ -63,7 +63,7 @@ function LibraryPage() {
         const { manifest, warnings } = parseManifest(text);
         const hint = warnings.length ? `\n\nHinweise: ${warnings.slice(0, 3).join(" ")}` : "";
         const ok = window.confirm(
-          `Bauplan „${manifest.scope.title}“ einspielen?\n\nEs wird ein neuer Scope angelegt: ${summarizeManifest(manifest)}.\nSchlüssel, Passwörter und Freigaben aus der Datei werden nicht übernommen.${hint}`,
+          `Bauplan „${manifest.scope.title}“ einspielen?\n\nEs wird ein neuer Scope angelegt: ${summarizeManifest(manifest)}.\nSchlüssel, Passwörter und Freigaben aus der Datei werden nicht übernommen. Apps werden nicht öffentlich – veröffentlichen Sie sie danach bewusst.${hint}`,
         );
         if (!ok) return null;
         return importBoard({ data: { backupJson: JSON.stringify(manifestToBackup(manifest)) } });

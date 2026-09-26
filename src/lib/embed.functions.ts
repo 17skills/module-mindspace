@@ -25,6 +25,17 @@ function inside(row: Row, zone: Row): boolean {
 export const getEmbedZone = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ zoneId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
+    const { assertRate, callerKey } = await import("@/lib/rate-limit.server");
+    const { getRequest } = await import("@tanstack/react-start/server");
+    let caller = "anon";
+    try {
+      const request = getRequest();
+      if (request) caller = await callerKey(request);
+    } catch {
+      /* kein Request-Kontext */
+    }
+    assertRate(`embed:${caller}`, 60, 60_000);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: zone, error } = await supabaseAdmin
@@ -37,24 +48,33 @@ export const getEmbedZone = createServerFn({ method: "POST" })
 
     const { data: board, error: boardError } = await supabaseAdmin
       .from("boards")
-      .select("id,title,is_public")
+      .select("id,title,is_public,share_revoked_at,share_expires_at,share_password_hash")
       .eq("id", zone.board_id)
       .maybeSingle();
     if (boardError) throw new Error(boardError.message);
     const zoneMeta = (zone.metadata ?? {}) as Record<string, unknown>;
-    const shared = Boolean(board?.is_public) || zoneMeta["embed"] === true;
+    // Der Gastlink des Scopes gilt nur, solange er gültig und ohne Passwort ist –
+    // sonst ließen sich Widerruf, Ablauf und Passwort über die Einbettung umgehen.
+    const linkOpen =
+      Boolean(board?.is_public) &&
+      !board?.share_revoked_at &&
+      !board?.share_password_hash &&
+      !(board?.share_expires_at && new Date(board.share_expires_at).getTime() < Date.now());
+    const shared = linkOpen || zoneMeta["embed"] === true;
     if (!board || !shared) {
       throw new Error(
         "Dieses Feld ist noch nicht freigegeben. Bitte am Feld auf „Als App öffnen“ klicken.",
       );
     }
 
-    const [nodeRes, edgeRes] = await Promise.all([
+    const [nodeRes, edgeRes, ruleRes] = await Promise.all([
       supabaseAdmin.from("nodes").select("*").eq("board_id", board.id),
       supabaseAdmin.from("edges").select("*").eq("board_id", board.id),
+      supabaseAdmin.from("node_permissions").select("node_id").eq("board_id", board.id),
     ]);
     if (nodeRes.error) throw new Error(nodeRes.error.message);
     if (edgeRes.error) throw new Error(edgeRes.error.message);
+    if (ruleRes.error) throw new Error(ruleRes.error.message);
 
     const all = (nodeRes.data ?? []) as Row[];
     const members = all.filter((row) => {
@@ -65,8 +85,15 @@ export const getEmbedZone = createServerFn({ method: "POST" })
       return inside(row, zone as Row);
     });
     const ids = new Set(members.map((row) => String(row["id"])));
-    const edges = (edgeRes.data ?? []).filter(
-      (edge) => ids.has(String(edge.source_id)) && ids.has(String(edge.target_id)),
+    const edges = ((edgeRes.data ?? []) as Row[]).filter(
+      (edge) => ids.has(String(edge["source_id"])) && ids.has(String(edge["target_id"])),
+    );
+
+    const { guestView, stripSecrets } = await import("@/lib/guest-view");
+    const view = guestView(
+      members,
+      edges,
+      new Set((ruleRes.data ?? []).map((rule) => String(rule.node_id))),
     );
 
     return {
@@ -75,9 +102,9 @@ export const getEmbedZone = createServerFn({ method: "POST" })
         id: zone.id as string,
         title: (zone.title as string | null) ?? "Feld",
         content: (zone.content as string | null) ?? "",
-        metadata: zoneMeta as unknown as JsonRow,
+        metadata: stripSecrets(zoneMeta) as unknown as JsonRow,
       },
-      nodes: members as unknown as JsonRow[],
-      edges: (edges ?? []) as unknown as JsonRow[],
+      nodes: view.nodes as unknown as JsonRow[],
+      edges: view.edges as unknown as JsonRow[],
     };
   });

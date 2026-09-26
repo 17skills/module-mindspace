@@ -60,7 +60,7 @@ export function OutputView({
   }
   if (artifact.kind === "text") {
     return (
-      <div className="prose prose-sm max-w-none text-sm">
+      <div className="prose prose-sm max-w-none text-left text-sm">
         <Markdown source={compact ? artifact.text.slice(0, 1500) : artifact.text} />
       </div>
     );

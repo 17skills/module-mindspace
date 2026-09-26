@@ -172,11 +172,13 @@ export const importBoard = createServerFn({ method: "POST" })
         parent_id:
           typeof oldParent === "string" ? (idMap.get(oldParent) ?? null) : null,
         type: String(node["type"] ?? "note"),
-        title: (node["title"] as string | null) ?? null,
+        title: (node["title"] as string | null) ?? "",
         position_x: Number(node["position_x"] ?? 0),
         position_y: Number(node["position_y"] ?? 0),
-        width: node["width"] == null ? null : Number(node["width"]),
-        height: node["height"] == null ? null : Number(node["height"]),
+        // Größe fehlt (z. B. im Bauplan)? Standardgröße – explizit, weil Sammel-Einfügen
+        // fehlende Spalten sonst als leer statt mit dem Datenbank-Standard füllt.
+        width: node["width"] == null ? 320 : Number(node["width"]),
+        height: node["height"] == null ? 220 : Number(node["height"]),
         color: (node["color"] as string | null) ?? null,
         source_url: (node["source_url"] as string | null) ?? null,
         storage_path: (node["storage_path"] as string | null) ?? null,
@@ -187,9 +189,15 @@ export const importBoard = createServerFn({ method: "POST" })
       };
     });
 
+    // Scheitert der Aufbau, bleibt kein leerer Scope zurück.
+    const fail = async (message: string): Promise<never> => {
+      await db.from("boards").delete().eq("id", board.id);
+      throw new Error(`Einspielen fehlgeschlagen: ${message}`);
+    };
+
     for (let index = 0; index < rows.length; index += 200) {
       const { error } = await db.from("nodes").insert(rows.slice(index, index + 200) as never);
-      if (error) throw new Error(error.message);
+      if (error) await fail(error.message);
     }
 
     const edgeRows = backup.edges
@@ -208,7 +216,7 @@ export const importBoard = createServerFn({ method: "POST" })
       .filter((row): row is NonNullable<typeof row> => row !== null);
     if (edgeRows.length) {
       const { error } = await db.from("edges").insert(edgeRows as never);
-      if (error) throw new Error(error.message);
+      if (error) await fail(error.message);
     }
 
     // Apps: dieselbe Modulauswahl, Kanäle und Gestaltung, neue Kennungen.
@@ -226,7 +234,9 @@ export const importBoard = createServerFn({ method: "POST" })
         kind: app["kind"] === "capture" ? "capture" : "cockpit",
         node_ids: nodeIds,
         description: String(app["description"] ?? ""),
-        access_mode: access === "public" || access === "org" ? access : "restricted",
+        // Eine fremde Datei darf nichts sofort veröffentlichen: öffentlich wird zu „Organisation“,
+        // Veröffentlichen bleibt eine bewusste Handlung im Studio.
+        access_mode: access === "public" || access === "org" ? "org" : "restricted",
         branding: (app["branding"] ?? {}) as never,
         channels: (app["channels"] ?? { web: true, teams: false, mcp: false }) as never,
       } as never);

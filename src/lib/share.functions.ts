@@ -79,23 +79,32 @@ export const getSharedBoard = createServerFn({ method: "POST" })
       if (!ok) throw new Error("Passwort stimmt nicht");
     }
 
-    const [nodeRes, edgeRes] = await Promise.all([
+    const [nodeRes, edgeRes, ruleRes] = await Promise.all([
       db.from("nodes").select("*").eq("board_id", board.id),
       db.from("edges").select("*").eq("board_id", board.id),
+      db.from("node_permissions").select("node_id").eq("board_id", board.id),
     ]);
     if (nodeRes.error) throw new Error(nodeRes.error.message);
     if (edgeRes.error) throw new Error(edgeRes.error.message);
+    if (ruleRes.error) throw new Error(ruleRes.error.message);
 
     await db
       .from("boards")
       .update({ share_last_used_at: new Date().toISOString() })
       .eq("id", board.id);
 
+    const { guestView } = await import("@/lib/guest-view");
+    const view = guestView(
+      (nodeRes.data ?? []) as Record<string, unknown>[],
+      (edgeRes.data ?? []) as Record<string, unknown>[],
+      new Set((ruleRes.data ?? []).map((rule) => String(rule.node_id))),
+    );
+
     return {
       locked: false as const,
       board: { id: board.id, title: board.title, description: board.description },
-      nodes: nodeRes.data ?? [],
-      edges: edgeRes.data ?? [],
+      nodes: view.nodes as unknown as NonNullable<typeof nodeRes.data>,
+      edges: view.edges as unknown as NonNullable<typeof edgeRes.data>,
     };
   });
 
