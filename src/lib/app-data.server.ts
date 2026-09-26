@@ -80,7 +80,7 @@ export async function authorizeAppMcp(
   const bearer = /^bearer\s+(.+)$/i.exec(header.trim())?.[1]?.trim() ?? "";
   const query = new URL(request.url).searchParams.get("token")?.trim() ?? "";
   const presented = bearer || query;
-  if (!presented || presented !== String(app.mcp_token)) {
+  if (!presented || !sameSecret(presented, String(app.mcp_token))) {
     if (!rateLimit(`app-mcp-fail:${appId}:${caller}`, 10, 60_000).ok) {
       return { ok: false, status: 429 };
     }
