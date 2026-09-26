@@ -234,7 +234,9 @@ export const importBoard = createServerFn({ method: "POST" })
         kind: app["kind"] === "capture" ? "capture" : "cockpit",
         node_ids: nodeIds,
         description: String(app["description"] ?? ""),
-        access_mode: access === "public" || access === "org" ? access : "restricted",
+        // Eine fremde Datei darf nichts sofort veröffentlichen: öffentlich wird zu „Organisation“,
+        // Veröffentlichen bleibt eine bewusste Handlung im Studio.
+        access_mode: access === "public" || access === "org" ? "org" : "restricted",
         branding: (app["branding"] ?? {}) as never,
         channels: (app["channels"] ?? { web: true, teams: false, mcp: false }) as never,
       } as never);
