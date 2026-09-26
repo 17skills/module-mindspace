@@ -441,6 +441,7 @@ function toFlowNode(record: NodeRecord): Node {
     record.type === "source" ||
     record.type === "action" ||
     record.type === "output" ||
+    record.type === "camera" ||
     record.type === "text"
       ? record.type
       : DATA_TYPES.has(record.type)
