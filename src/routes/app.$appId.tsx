@@ -13,6 +13,7 @@ import {
 } from "@/lib/apps.functions";
 import { brandingFrom } from "@/lib/apps";
 import { AppEngine } from "@/components/app/AppEngine";
+import { CameraApp } from "@/components/app/CameraApp";
 import { resolveLayout } from "@/lib/app-layout";
 import {
   downscale,
@@ -117,7 +118,9 @@ function AppStage() {
         </Button>
       </header>
 
-      {resolveLayout(branding.layout, nodes.map((node) => node.type)) === "capture" ? (
+      {nodes.some((node) => node.type === "camera") ? (
+        <CameraApp appId={appId} nodes={nodes} />
+      ) : resolveLayout(branding.layout, nodes.map((node) => node.type)) === "capture" ? (
         <CaptureApp appId={appId} nodes={nodes} canUpdateData={canUpdateData} onSaved={() => void load()} />
       ) : (
         <AppEngine

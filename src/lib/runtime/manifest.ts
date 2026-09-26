@@ -13,7 +13,7 @@ export const MANIFEST_VERSION = "scopebuilder/v1";
 export type ModuleRole = "source" | "step" | "output" | "action";
 export type AppChannel = "web" | "mobile" | "teams" | "mcp";
 
-const SOURCE_TYPES = new Set(["source", "file", "image", "video", "link", "api", "inspect"]);
+const SOURCE_TYPES = new Set(["source", "file", "image", "video", "link", "api", "inspect", "camera"]);
 const OUTPUT_TYPES = new Set(["metric", "gauge", "output", "map"]);
 const ACTION_TYPES = new Set(["action"]);
 
