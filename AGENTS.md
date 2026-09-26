@@ -15,3 +15,5 @@
 - Ergebnis-Modul (`type: "output"`, `src/lib/output.ts`) hält eine Momentaufnahme der verbundenen Karte in `metadata.output`; Apps signieren Dateien serverseitig nur über den Pfad der Quellkarte desselben Scopes. Warum: fester Ausgang statt wild erzeugter Karten, und ein Modul kann keine fremden Dateien freischalten.
 
 - Durchläufe (Eingabe→Ergebnis) liegen in `runs`, Protokoll in `run_events` (nur anhängen, Trigger sperrt Änderungen); Canvas zeigt nur Zählwert. Warum: viele Nutzer überschreiben sich nicht, Nachweis bleibt auditierbar.
+
+- Bausteine und Prozesse werden deklarativ beschrieben: `kind: ScopeModule` (`*.scopem.yaml`, src/lib/runtime/scopem.ts) und `kind: Scope` (`*.scope.yaml`, src/lib/runtime/scope-spec.ts) unter `apiVersion: scopebuilder.io/v1alpha1`; der Kern-Katalog liegt als YAML in src/lib/runtime/catalog/ und wird über `scopeSpecToManifest` auf `scopebuilder/v1` und den bestehenden Importweg abgebildet. Warum: Module aus einer Bibliothek statt neuem Code je Anwendungsfall, und `spec` bleibt headless-fähig, weil Canvas-Koordinaten nur im `layout`-Block stehen.

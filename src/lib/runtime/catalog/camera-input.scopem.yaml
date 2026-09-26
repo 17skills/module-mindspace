@@ -1,0 +1,80 @@
+apiVersion: scopebuilder.io/v1alpha1
+kind: ScopeModule
+metadata:
+  name: camera-input
+  version: 1.0.0
+  title: Camera Capture (Photo + Location)
+  description: >-
+    Captures a photo with the device camera and reads the location either from
+    the image EXIF data or from the device GPS sensor. The photo stays on the
+    device unless it is explicitly stored; only the location is forwarded.
+  category: capture
+  tags:
+    - camera
+    - geolocation
+    - mobile
+    - input
+  author: scopebuilder
+  license: Apache-2.0
+  nodeType: camera
+spec:
+  ontology:
+    domain: capture/device
+    depth: guarded
+    constraints:
+      - id: location-consent
+        label: Location requires user consent
+        subject: outputs.location
+        severity: violation
+        rationale: >-
+          Precise coordinates are personal data; the browser permission prompt
+          must be accepted by the user before any capture.
+        reference: GDPR Art. 6(1)(a)
+        requires: Ask the user for permission before reading GPS coordinates.
+      - id: photo-stays-local
+        label: Photo is not uploaded automatically
+        subject: outputs.photo
+        severity: info
+        rationale: Images are only stored when a downstream module needs them.
+  inputs: {}
+  engine:
+    type: none
+    ref: ""
+  outputs:
+    location:
+      semantic: geo:point
+      title: Captured Location
+      description: WGS84 coordinates read from EXIF metadata or the device sensor.
+      schema:
+        type: object
+        properties:
+          lat:
+            type: number
+            minimum: -90
+            maximum: 90
+          lon:
+            type: number
+            minimum: -180
+            maximum: 180
+    photo:
+      semantic: media:image
+      title: Captured Photo
+      description: The captured image, available to downstream modules on demand.
+    capturedAt:
+      semantic: primitive:string
+      title: Capture Timestamp
+      description: ISO 8601 timestamp of the moment the photo was taken.
+  execution:
+    mode: manual
+    timeoutSeconds: 60
+  resilience:
+    retry:
+      maxAttempts: 1
+      backoff: none
+    onError: halt
+  action:
+    hasSideEffects: false
+    requiresApproval: false
+  requirements: {}
+  settings:
+    captureGps: true
