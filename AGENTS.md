@@ -13,3 +13,5 @@
 - Fremde Inhalte gehen nur über `wrapUntrusted` an Modelle, und Modelle lösen nie selbst Wirkungen aus (Ablagefach). Warum: Prompt Injection ist nicht ausschließbar, nur der Schaden begrenzbar.
 - `/api/chat` verlangt Bearer-Token, Sperrprüfung und Drosselung; Aufrufe laufen über `postChat`. Warum: offener KI-Zugang kostet und ist missbrauchbar.
 - Ergebnis-Modul (`type: "output"`, `src/lib/output.ts`) hält eine Momentaufnahme der verbundenen Karte in `metadata.output`; Apps signieren Dateien serverseitig nur über den Pfad der Quellkarte desselben Scopes. Warum: fester Ausgang statt wild erzeugter Karten, und ein Modul kann keine fremden Dateien freischalten.
+
+- Durchläufe (Eingabe→Ergebnis) liegen in `runs`, Protokoll in `run_events` (nur anhängen, Trigger sperrt Änderungen); Canvas zeigt nur Zählwert. Warum: viele Nutzer überschreiben sich nicht, Nachweis bleibt auditierbar.

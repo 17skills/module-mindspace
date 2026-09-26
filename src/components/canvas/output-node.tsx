@@ -9,6 +9,76 @@ import { SignalHandle } from "./nodes";
 import { supabase } from "@/integrations/supabase/client";
 import { OutputView } from "@/components/OutputView";
 import { ARTIFACT_LABEL, artifactFrom, readOutput, sameArtifact } from "@/lib/output";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { createTestRun, runStats } from "@/lib/runs.functions";
+import { retentionDays } from "@/lib/runs";
+import { RunsDialog } from "./RunsDialog";
+
+function ago(value: string) {
+  const min = Math.round((Date.now() - new Date(value).getTime()) / 60_000);
+  if (min < 1) return "gerade eben";
+  if (min < 60) return `vor ${min} Min.`;
+  const h = Math.round(min / 60);
+  return h < 48 ? `vor ${h} Std.` : `vor ${Math.round(h / 24)} Tagen`;
+}
+
+/** Nur Zählwert und letzter Zeitpunkt – die Liste lädt erst im Dialog. */
+function RunsFooter({ nodeId, metadata }: { nodeId: string; metadata: Record<string, unknown> | null }) {
+  const stats = useServerFn(runStats);
+  const test = useServerFn(createTestRun);
+  const [info, setInfo] = useState<{ count: number; lastAt: string | null; seesAll: boolean } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const refresh = () =>
+    void stats({ data: { outputNodeId: nodeId } })
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  useEffect(refresh, [nodeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!info) return null;
+  return (
+    <div className="nodrag flex items-center gap-2 border-t px-3 py-1.5 text-[11px] text-muted-foreground">
+      <span className="flex-1">
+        {info.count} {info.count === 1 ? "Durchlauf" : "Durchläufe"}
+        {info.lastAt ? ` · letzter ${ago(info.lastAt)}` : ""}
+      </span>
+      {info.seesAll ? (
+        <button
+          className="rounded-full px-2 py-0.5 hover:bg-muted hover:text-foreground disabled:opacity-50"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const run = await test({ data: { outputNodeId: nodeId } });
+              toast.success(run.status === "done" ? "Testdurchlauf abgelegt" : "Abgelegt – noch kein Ergebnis am Ausgang");
+              refresh();
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Nicht abgelegt");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Testdurchlauf
+        </button>
+      ) : null}
+      <button className="rounded-full bg-muted px-2 py-0.5 text-foreground hover:bg-muted/70" onClick={() => setOpen(true)}>
+        Durchläufe ansehen
+      </button>
+      {open ? (
+        <RunsDialog
+          open={open}
+          onOpenChange={(v) => {
+            setOpen(v);
+            if (!v) refresh();
+          }}
+          outputNodeId={nodeId}
+          retention={retentionDays(metadata)}
+        />
+      ) : null}
+    </div>
+  );
+}
 
 /** Zuletzt verbundene Karte, die auf diesen Ausgang zeigt. */
 function useUpstream(nodeId: string): NodeRecord | null {
@@ -98,6 +168,7 @@ export const OutputNode = memo(function OutputNode({ id, data, selected }: NodeP
           Aus: {upstream.title || "verbundener Karte"}
         </p>
       ) : null}
+      <RunsFooter nodeId={record.id} metadata={record.metadata} />
     </div>
   );
 });
