@@ -1,10 +1,8 @@
-import { readFileSync } from "fs";
 import { describe, expect, it } from "vitest";
 import { manifestToBackup, parseManifest } from "@/lib/runtime/manifest";
 import { readApi } from "@/lib/api-module";
 import { readPointSpec } from "@/lib/flow";
-
-const text = readFileSync(new URL("../../../templates/foto-restaurants.scope.yaml", import.meta.url), "utf8");
+import text from "../../../templates/foto-restaurants.scope.yaml?raw";
 
 describe("Bauplan Foto → Ort → Restaurants", () => {
   it("baut Scope, Verkabelung und App ohne Warnungen", () => {
