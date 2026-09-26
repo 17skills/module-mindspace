@@ -6,7 +6,7 @@ export async function postChat(body: unknown, signal?: AbortSignal): Promise<Res
   const token = data.session?.access_token;
   return fetch("/api/chat", {
     method: "POST",
-    signal,
+    signal: signal ?? null,
     headers: {
       "content-type": "application/json",
       ...(token ? { authorization: `Bearer ${token}` } : {}),
