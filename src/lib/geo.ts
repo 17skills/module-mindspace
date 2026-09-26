@@ -1,6 +1,7 @@
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { readStructure } from "@/lib/structure";
 import { priorityColor, readInspection } from "@/lib/inspection";
+import { readPointSpec, readPoints } from "@/lib/flow";
 
 export type GeoPoint = {
   id: string;
@@ -140,6 +141,23 @@ export function pointsFromSources(sources: NodeRecord[], config: MapConfig): Geo
           color: priorityColor(finding.priority),
           photo: finding.thumb ?? null,
           note: [finding.finding, finding.action].filter(Boolean).join(" · "),
+        });
+      }
+      continue;
+    }
+    // API-Schritte mit Punkt-Zuordnung (metadata.points) liefern Orte aus ihrer letzten Antwort.
+    if (source.type === "api") {
+      const spec = readPointSpec((source.metadata ?? {})["points"]);
+      if (!spec) continue;
+      for (const point of readPoints(source.content, spec)) {
+        points.push({
+          id: `${source.id}:${point.id}`,
+          label: point.label,
+          lat: point.lat,
+          lon: point.lon,
+          klass: source.title ?? "",
+          impact: null,
+          note: point.note,
         });
       }
       continue;
