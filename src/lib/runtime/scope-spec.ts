@@ -374,8 +374,82 @@ export function scopeSpecToManifest(spec: ScopeSpec, catalog: ModuleCatalog): Sc
     };
   });
 
+  // Named datasets become data cards holding only structure and a reference.
+  const datasetModules = spec.spec.datasets.map((dataset, i) => {
+    const layout = spec.layout.canvas[`datasets.${dataset.id}`] ?? spec.layout.canvas[dataset.id];
+    const columns = Object.entries(dataset.schema).map(([key, type]) => ({
+      key,
+      label: key,
+      type: type === "date" ? "date" : type,
+      unit: null,
+      semantic: null,
+      filled: 0,
+      total: 0,
+    }));
+    const verified = dataset.kind === "verified" || dataset.verified;
+    return {
+      id: `datasets.${dataset.id}`,
+      role: roleOf("source"),
+      type: "source",
+      title: dataset.title || dataset.id,
+      parent: null,
+      at: [Math.round(layout?.x ?? -400), Math.round(layout?.y ?? i * 260)] as [number, number],
+      size: [layout?.width ?? null, layout?.height ?? null] as [number | null, number | null],
+      color: null,
+      url: dataset.sourceUrl,
+      content: null,
+      settings: {
+        ...(dataset.retention ? { retention: dataset.retention } : {}),
+        source: {
+          truncated: 0,
+          envelope: {
+            id: `src_${dataset.id}`,
+            meta: {
+              originKind: dataset.kind === "api" ? "stream" : "file",
+              sourceName: dataset.title || dataset.id,
+              format: "json",
+              mediaType: null,
+              checksum: "",
+              ingestedAt: new Date(0).toISOString(),
+              container: null,
+            },
+            facets: {
+              dataset: { columns, rows: [], rowCount: 0 },
+              datasetRef: {
+                datasetId: null,
+                version: 0,
+                checksum: "",
+                rowCount: 0,
+                verified,
+                sourceUrl: dataset.sourceUrl,
+                fetchedAt: null,
+              },
+            },
+            quality: { completeness: 0, confidence: 0, anomalies: [] },
+            semantics: [],
+          },
+        },
+      } as Record<string, unknown>,
+    };
+  });
+
+  // Column mappings travel with the receiving module.
+  for (const binding of spec.spec.bindings) {
+    if (!binding.from.startsWith("datasets.") || !Object.keys(binding.mapping).length) continue;
+    const to = splitPort(binding.to);
+    const target = to ? modules.find((m) => m.id === to.id) : undefined;
+    if (!target || !to) continue;
+    const existing = (target.settings["datasetMapping"] as Record<string, unknown> | undefined) ?? {};
+    target.settings["datasetMapping"] = { ...existing, [to.port]: binding.mapping };
+  }
+
   const links = spec.spec.bindings
     .map((binding) => {
+      if (binding.from.startsWith("datasets.")) {
+        const to = splitPort(binding.to);
+        if (!to) return null;
+        return { from: binding.from, to: to.id, label: binding.label ?? `Daten → ${to.port}` };
+      }
       const from = splitPort(binding.from);
       const to = splitPort(binding.to);
       if (!from || !to) return null;
@@ -389,7 +463,7 @@ export function scopeSpecToManifest(spec: ScopeSpec, catalog: ModuleCatalog): Sc
       title: spec.metadata.title,
       description: spec.metadata.description || null,
     },
-    modules,
+    modules: [...datasetModules, ...modules],
     links,
     apps: spec.spec.apps.map((app) => ({
       title: app.title || app.name,
