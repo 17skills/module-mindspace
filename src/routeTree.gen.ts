@@ -36,6 +36,7 @@ import { Route as AuthenticatedKontoMitgliederRouteImport } from './routes/_auth
 import { Route as AuthenticatedKontoOrganisationRouteImport } from './routes/_authenticated/konto.organisation'
 import { Route as AuthenticatedKontoSitzungenRouteImport } from './routes/_authenticated/konto.sitzungen'
 import { Route as AuthenticatedKontoTeamsRouteImport } from './routes/_authenticated/konto.teams'
+import { Route as ApiPublicRunsPurgeRouteImport } from './routes/api/public/runs-purge'
 import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
 import { Route as AuthenticatedKontoNutzerUserIdRouteImport } from './routes/_authenticated/konto.nutzer.$userId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
@@ -183,6 +184,11 @@ const AuthenticatedKontoTeamsRoute = AuthenticatedKontoTeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => AuthenticatedKontoRoute,
 } as any)
+const ApiPublicRunsPurgeRoute = ApiPublicRunsPurgeRouteImport.update({
+  id: '/api/public/runs-purge',
+  path: '/api/public/runs-purge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmbedZoneZoneIdRoute = EmbedZoneZoneIdRouteImport.update({
   id: '/embed/zone/$zoneId',
   path: '/embed/zone/$zoneId',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
   '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
+  '/api/public/runs-purge': typeof ApiPublicRunsPurgeRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto/': typeof AuthenticatedKontoIndexRoute
   '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
   '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
+  '/api/public/runs-purge': typeof ApiPublicRunsPurgeRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto': typeof AuthenticatedKontoIndexRoute
   '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/_authenticated/konto/organisation': typeof AuthenticatedKontoOrganisationRoute
   '/_authenticated/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/_authenticated/konto/teams': typeof AuthenticatedKontoTeamsRoute
+  '/api/public/runs-purge': typeof ApiPublicRunsPurgeRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/_authenticated/konto/': typeof AuthenticatedKontoIndexRoute
   '/_authenticated/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/konto/organisation'
     | '/konto/sitzungen'
     | '/konto/teams'
+    | '/api/public/runs-purge'
     | '/embed/zone/$zoneId'
     | '/konto/'
     | '/konto/nutzer/$userId'
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/konto/organisation'
     | '/konto/sitzungen'
     | '/konto/teams'
+    | '/api/public/runs-purge'
     | '/embed/zone/$zoneId'
     | '/konto'
     | '/konto/nutzer/$userId'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/organisation'
     | '/_authenticated/konto/sitzungen'
     | '/_authenticated/konto/teams'
+    | '/api/public/runs-purge'
     | '/embed/zone/$zoneId'
     | '/_authenticated/konto/'
     | '/_authenticated/konto/nutzer/$userId'
@@ -430,6 +442,7 @@ export interface RootRouteChildren {
   LibraryTokenRoute: typeof LibraryTokenRoute
   ShareTokenRoute: typeof ShareTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  ApiPublicRunsPurgeRoute: typeof ApiPublicRunsPurgeRoute
   EmbedZoneZoneIdRoute: typeof EmbedZoneZoneIdRoute
   ApiPublicAppAppIdMcpRoute: typeof ApiPublicAppAppIdMcpRoute
   ApiPublicAppAppIdTeamsCardRoute: typeof ApiPublicAppAppIdTeamsCardRoute
@@ -627,6 +640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKontoTeamsRouteImport
       parentRoute: typeof AuthenticatedKontoRoute
     }
+    '/api/public/runs-purge': {
+      id: '/api/public/runs-purge'
+      path: '/api/public/runs-purge'
+      fullPath: '/api/public/runs-purge'
+      preLoaderRoute: typeof ApiPublicRunsPurgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/embed/zone/$zoneId': {
       id: '/embed/zone/$zoneId'
       path: '/embed/zone/$zoneId'
@@ -726,6 +746,7 @@ const rootRouteChildren: RootRouteChildren = {
   LibraryTokenRoute: LibraryTokenRoute,
   ShareTokenRoute: ShareTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  ApiPublicRunsPurgeRoute: ApiPublicRunsPurgeRoute,
   EmbedZoneZoneIdRoute: EmbedZoneZoneIdRoute,
   ApiPublicAppAppIdMcpRoute: ApiPublicAppAppIdMcpRoute,
   ApiPublicAppAppIdTeamsCardRoute: ApiPublicAppAppIdTeamsCardRoute,
