@@ -113,6 +113,49 @@ function num(value: unknown): number | null {
   return null;
 }
 
+/** Zahl aus einer Zelle lesen (null, wenn die Zelle keine Zahl enthält). */
+export const cellNumber = num;
+
+const LAT_KEYS = ["lat", "latitude", "breite", "breitengrad", "y"];
+const LON_KEYS = ["lon", "lng", "long", "longitude", "laenge", "länge", "längengrad", "x"];
+
+function matchColumn(columns: { key: string; label: string }[], names: string[]): string | null {
+  for (const column of columns) {
+    const key = column.key.toLowerCase().trim();
+    const label = column.label.toLowerCase().trim();
+    if (names.includes(key) || names.includes(label)) return column.key;
+  }
+  return null;
+}
+
+/**
+ * Koordinatenspalten erkennen. Sie werden beim Ablegen in eigene, indizierte
+ * Spalten geschrieben, damit der Kartenausschnitt schnell abgefragt werden kann.
+ */
+export function detectGeoColumns(
+  columns: { key: string; label: string }[],
+): { lat: string; lon: string } | null {
+  const lat = matchColumn(columns, LAT_KEYS);
+  const lon = matchColumn(columns, LON_KEYS);
+  return lat && lon ? { lat, lon } : null;
+}
+
+/** Kompakter Aufbau einer Tabelle für den Agenten — ohne eine einzige Datenzeile. */
+export function datasetSchemaBrief(
+  dataset: Pick<TabularDataset, "columns">,
+  rowCount: number,
+  datasetId: string | null,
+): string {
+  const columns = dataset.columns
+    .map((c) => `${c.key} (${c.type}${c.unit ? `, ${c.unit}` : ""})`)
+    .join("; ");
+  return [
+    `Datenquelle ${datasetId ?? "(nicht verbunden)"} mit ${rowCount.toLocaleString("de-DE")} Zeilen.`,
+    `Spalten: ${columns}`,
+    "Werte niemals raten: Zahlen, Treffer und Zeilen ausschließlich über das Werkzeug dataset_query abfragen.",
+  ].join("\n");
+}
+
 function filled(value: unknown): boolean {
   return value !== null && value !== undefined && String(value).trim() !== "";
 }
