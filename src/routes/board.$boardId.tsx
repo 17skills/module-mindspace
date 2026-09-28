@@ -2868,6 +2868,7 @@ function BoardPage() {
       deleteEdge,
       deleteNode,
       collectContext,
+      collectDatasets,
       contextReport,
       addNoteFrom,
       extractStructure,
