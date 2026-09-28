@@ -1834,6 +1834,56 @@ export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps
 
       {type === "chart" && (
         <>
+          {linked && suggestion && (
+            <div className="space-y-1.5 border-b bg-accent/40 px-3 py-2 text-[10px]">
+              <p className="font-semibold text-foreground">
+                Vorschlag: {describeChartConfig(suggestion, linked.columns)}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="nodrag rounded-full border border-primary bg-background px-2 py-0.5 font-semibold"
+                  onClick={() => saveConfig(suggestion)}
+                >
+                  Übernehmen
+                </button>
+                <button
+                  className="nodrag rounded-full border px-2 py-0.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => openInspector(record.id, "data")}
+                >
+                  Anpassen
+                </button>
+              </div>
+            </div>
+          )}
+          {linked && (
+            <div className="flex items-center gap-1.5 border-b px-3 py-1.5">
+              <input
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") applyPrompt();
+                }}
+                placeholder="z. B. Top 5 Umsatz je Stadt"
+                className="nodrag min-w-0 flex-1 rounded border bg-transparent px-2 py-1 text-[10px] outline-none"
+              />
+              <button
+                className="nodrag rounded border px-2 py-1 text-[10px] font-semibold hover:bg-secondary"
+                onClick={applyPrompt}
+              >
+                Anwenden
+              </button>
+            </div>
+          )}
+          {linked && config && (
+            <div className="border-b px-3 py-1 text-[10px] text-muted-foreground">
+              {describeChartConfig(config, linked.columns)}
+            </div>
+          )}
+          {queryError && (
+            <div className="border-b bg-destructive/10 px-3 py-1 text-[10px] text-destructive">
+              {queryError}
+            </div>
+          )}
           <div className="flex gap-1 border-b px-3 py-1.5">
             {(["bar", "line", "pie"] as const).map((option) => (
               <button
