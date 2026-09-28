@@ -256,6 +256,7 @@ function EmbedZonePage() {
       runDecide: noop,
       deleteNode: noop,
       collectContext: () => "",
+      collectDatasets: () => [],
       contextReport: () => ({ used: [], excluded: [] }),
       addNoteFrom: noop,
       extractStructure: noop,

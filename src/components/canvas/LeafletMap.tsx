@@ -1,4 +1,5 @@
-import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
+import { useEffect } from "react";
+import { CircleMarker, MapContainer, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { GeoPoint, WeatherValue } from "@/lib/geo";
 
@@ -12,6 +13,29 @@ function ringColor(weather: WeatherValue | undefined): string {
   return "#16a34a";
 }
 
+/**
+ * Meldet den sichtbaren Ausschnitt. Große Tabellen werden darüber nachgeladen:
+ * der Server liefert nur die Punkte im Fenster, nie die ganze Tabelle.
+ */
+function BoundsWatcher({
+  onBounds,
+}: {
+  onBounds: (box: [number, number, number, number]) => void;
+}) {
+  const map = useMapEvents({
+    moveend: () => {
+      const b = map.getBounds();
+      onBounds([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
+    },
+  });
+  useEffect(() => {
+    const b = map.getBounds();
+    onBounds([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 export default function LeafletMap({
   points,
   weather,
@@ -20,6 +44,7 @@ export default function LeafletMap({
   onSelect,
   selectedId,
   highlightIds,
+  onBounds,
 }: {
   points: GeoPoint[];
   weather: Record<string, WeatherValue>;
@@ -28,6 +53,7 @@ export default function LeafletMap({
   onSelect?: (id: string) => void;
   selectedId?: string | null;
   highlightIds?: string[];
+  onBounds?: (box: [number, number, number, number]) => void;
 }) {
   const focus = highlightIds && highlightIds.length ? new Set(highlightIds) : null;
   return (
@@ -42,6 +68,8 @@ export default function LeafletMap({
         attribution="&copy; OpenStreetMap"
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {onBounds ? <BoundsWatcher onBounds={onBounds} /> : null}
+
       {points.map((point) => {
         const marked = focus ? focus.has(point.id) : false;
         const dimmed = focus ? !marked : false;
@@ -94,4 +122,3 @@ export default function LeafletMap({
     </MapContainer>
   );
 }
-

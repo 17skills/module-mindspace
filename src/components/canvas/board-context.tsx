@@ -21,14 +21,7 @@ export type NodeRecord = {
   metadata: Record<string, unknown> | null;
 };
 
-export type InspectorTab =
-  | "source"
-  | "data"
-  | "refresh"
-  | "assign"
-  | "guide"
-  | "agent"
-  | "fetch";
+export type InspectorTab = "source" | "data" | "refresh" | "assign" | "guide" | "agent" | "fetch";
 
 export type StructureItem = {
   kind: "table" | "list" | "chart";
@@ -55,6 +48,8 @@ export type BoardApi = {
   deleteEdge: (id: string) => void;
   deleteNode: (id: string) => void;
   collectContext: (id: string) => string;
+  /** Verweise der verbundenen Datenquellen — der Agent fragt sie gezielt ab. */
+  collectDatasets: (id: string) => string[];
   /** Transparent breakdown of what the chat context actually contains. */
   contextReport: (id: string) => ContextReport;
   addNoteFrom: (id: string, text: string) => void;

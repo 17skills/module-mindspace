@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { streamText, type ModelMessage } from "ai";
+import { stepCountIs, streamText, type ModelMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { chatModel, isOpenAiModel, responsesModel } from "@/lib/ai-gateway.server";
@@ -21,6 +21,7 @@ import {
   redactionSummary,
   stricterMode,
 } from "@/lib/pii";
+import { datasetSchemaBrief } from "@/lib/datasets";
 
 const Body = z.object({
   nodeId: z.string().uuid().optional(),
@@ -30,6 +31,8 @@ const Body = z.object({
     .regex(/^[a-z0-9-]+\/[a-z0-9.\-:]+$/i)
     .optional(),
   context: z.string().max(400_000).optional(),
+  /** Verbundene Datenquellen: der Agent fragt sie ab, statt Zeilen zu lesen. */
+  datasetIds: z.array(z.string().uuid()).max(5).optional(),
   messages: z
     .array(
       z.object({
@@ -41,21 +44,61 @@ const Body = z.object({
     .max(200),
 });
 
+const filterSchema = z.object({
+  column: z.string().max(200).describe("Spaltenname exakt wie im Aufbau angegeben"),
+  op: z.enum(["eq", "neq", "gt", "gte", "lt", "lte", "contains", "oneOf", "filled"]),
+  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional(),
+});
+
+const toolInput = z.object({
+  datasetId: z.string().uuid().describe("Kennung der Datenquelle aus dem Aufbau"),
+  mode: z
+    .enum(["aggregate", "rows"])
+    .describe("aggregate für Zahlen über alle Zeilen, rows für einzelne Treffer"),
+  fn: z
+    .enum(["count", "sum", "avg", "min", "max"])
+    .optional()
+    .describe("Berechnung bei mode=aggregate"),
+  measure: z.string().max(200).optional().describe("Wertspalte für sum, avg, min, max"),
+  groupBy: z.string().max(200).optional().describe("Spalte, nach der gruppiert wird"),
+  columns: z.array(z.string().max(200)).max(20).optional().describe("Spalten bei mode=rows"),
+  filters: z.array(filterSchema).max(10).optional(),
+  limit: z.number().int().min(1).max(30).optional().describe("Zeilen bei mode=rows, höchstens 30"),
+});
+
 const SYSTEM = `Du bist der KI-Assistent eines Wissens-Canvas. Der Nutzer verbindet Inhalte
 (YouTube-Transkripte, Podcast-Transkripte, PDFs, Präsentationen, Notizen) mit einem Chat-Modul.
 Arbeite ausschließlich mit den bereitgestellten Inhalten, erfinde nichts dazu.
 Antworte in der Sprache des Nutzers, strukturiert und ohne Floskeln.
 Wenn keine Inhalte verbunden sind, sage das kurz und bitte darum, Module mit dem Chat zu verbinden.
+Große Tabellen stehen nicht im Text: Zahlen, Summen, Zählungen und einzelne Zeilen holst du
+ausschließlich über das Werkzeug dataset_query. Rate nie einen Wert und rechne nie mit der Vorschau.
 
 ${UNTRUSTED_NOTICE}`;
+
+/** Auch Werkzeug-Ergebnisse laufen durch den Datenschutz-Filter. */
+function scrubValues(
+  values: Record<string, unknown>,
+  scrub: (text: string) => string,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    out[key] = typeof value === "string" ? scrub(value) : value;
+  }
+  return out;
+}
 
 async function userIdFrom(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   if (!token) return null;
-  const client = createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_PUBLISHABLE_KEY"]!, {
-    auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
-  });
+  const client = createClient(
+    process.env["SUPABASE_URL"]!,
+    process.env["SUPABASE_PUBLISHABLE_KEY"]!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+    },
+  );
   const { data, error } = await client.auth.getUser(token);
   return error || !data.user ? null : data.user.id;
 }
@@ -73,10 +116,13 @@ export const Route = createFileRoute("/api/chat")({
         }
         const limit = rateLimit(`chat:${userId}`, 30, 60_000);
         if (!limit.ok) {
-          return new Response(`Zu viele Anfragen. Bitte in ${limit.retryAfter} s erneut versuchen.`, {
-            status: 429,
-            headers: { "retry-after": String(limit.retryAfter) },
-          });
+          return new Response(
+            `Zu viele Anfragen. Bitte in ${limit.retryAfter} s erneut versuchen.`,
+            {
+              status: 429,
+              headers: { "retry-after": String(limit.retryAfter) },
+            },
+          );
         }
 
         let body: z.infer<typeof Body>;
@@ -89,19 +135,21 @@ export const Route = createFileRoute("/api/chat")({
         const modelId = body.model ?? "openai/gpt-6-astra";
         const history = body.messages.slice(-24);
 
+        // Alles Weitere läuft mit den Rechten des Nutzers (RLS), nie mit Adminrechten.
+        const scoped = createClient(
+          process.env["SUPABASE_URL"]!,
+          process.env["SUPABASE_PUBLISHABLE_KEY"]!,
+          {
+            auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+            global: { headers: { Authorization: request.headers.get("authorization") ?? "" } },
+          },
+        );
+
         // Harte Budgetbremse und Zeitlimit: Grenzen des Bausteins, sonst Standarddeckel.
         let budget = DEFAULT_BUDGET;
         let timeoutMs: number | null = null;
         let privacy: PrivacyMode = "strict";
         if (body.nodeId) {
-          const scoped = createClient(
-            process.env["SUPABASE_URL"]!,
-            process.env["SUPABASE_PUBLISHABLE_KEY"]!,
-            {
-              auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
-              global: { headers: { Authorization: request.headers.get("authorization") ?? "" } },
-            },
-          );
           const { data: node } = await scoped
             .from("nodes")
             .select("metadata,board_id")
@@ -120,22 +168,114 @@ export const Route = createFileRoute("/api/chat")({
           }
         }
 
+        // Verbundene Tabellen kommen nur als Aufbau in den Prompt — nie als Zeilen.
+        const allowedDatasets = new Set<string>();
+        let datasetBrief = "";
+        if (body.datasetIds?.length) {
+          const { data: rows } = await scoped
+            .from("datasets")
+            .select("id,schema,row_count,verified")
+            .in("id", body.datasetIds);
+          for (const row of rows ?? []) {
+            allowedDatasets.add(row.id);
+            const columns = Array.isArray(row.schema)
+              ? (row.schema as { key?: string; label?: string; type?: string; unit?: string }[])
+              : [];
+            datasetBrief += `${datasetSchemaBrief(
+              {
+                columns: columns.map((c) => ({
+                  key: String(c.key ?? c.label ?? ""),
+                  label: String(c.label ?? c.key ?? ""),
+                  type: (c.type ?? "unknown") as never,
+                  unit: (c.unit ?? null) as never,
+                  semantic: null,
+                  filled: 0,
+                  total: 0,
+                })),
+              },
+              row.row_count,
+              row.id,
+            )}\n\n`;
+          }
+        }
+
         // Datenschutz-Filter: persönliche Daten verlassen den Server nicht.
         const redactions: Record<string, number> = {};
         const scrub = (text: string) => {
           const r = redactPii(text, privacy);
-          for (const [k, n] of Object.entries(r.counts)) redactions[k] = (redactions[k] ?? 0) + (n ?? 0);
+          for (const [k, n] of Object.entries(r.counts))
+            redactions[k] = (redactions[k] ?? 0) + (n ?? 0);
           return r.text;
         };
         const context = scrub(body.context ?? "");
-        const instructions = context
+        let instructions = context
           ? `${SYSTEM}\n\nVerbundene Inhalte:\n\n${wrapUntrusted("verbundene Module", context)}`
           : SYSTEM;
+        if (datasetBrief) {
+          instructions += `\n\nVerbundene Datenquellen (nur Aufbau, Werte über dataset_query abfragen):\n\n${datasetBrief}`;
+        }
         const messages: ModelMessage[] = history.map(
           (m) => ({ role: m.role, content: scrub(m.content) }) as ModelMessage,
         );
         const summary = redactionSummary(redactions);
         if (summary) console.info("chat privacy", privacy, summary);
+
+        /**
+         * Das Werkzeug rechnet in der Datenbank und liefert nur Ergebnisse
+         * zurück. Es greift ausschließlich auf die verbundenen Datenquellen zu,
+         * und immer mit den Rechten des angemeldeten Nutzers.
+         */
+        const tools = allowedDatasets.size
+          ? {
+              dataset_query: {
+                description:
+                  "Fragt eine verbundene Datenquelle ab. mode=aggregate liefert Summe, Mittelwert, " +
+                  "Minimum, Maximum oder Anzahl über alle Zeilen (optional gruppiert); " +
+                  "mode=rows liefert einzelne, gefilterte Zeilen.",
+                inputSchema: toolInput,
+                execute: async (input: z.infer<typeof toolInput>) => {
+                  if (!allowedDatasets.has(input.datasetId)) {
+                    return { error: "Diese Datenquelle ist mit dem Chat nicht verbunden." };
+                  }
+                  try {
+                    const { runDatasetQuery } = await import("@/lib/datasets.server");
+                    const query =
+                      input.mode === "aggregate"
+                        ? {
+                            mode: "aggregate" as const,
+                            fn: input.fn ?? "count",
+                            groupBy: input.groupBy ?? null,
+                            measure: input.measure ?? null,
+                            filters: input.filters ?? [],
+                          }
+                        : {
+                            mode: "rows" as const,
+                            columns: input.columns ?? [],
+                            filters: input.filters ?? [],
+                            limit: Math.min(input.limit ?? 10, 30),
+                            offset: 0,
+                          };
+                    const answer = await runDatasetQuery(
+                      scoped as never,
+                      input.datasetId,
+                      query as never,
+                    );
+                    const out = answer.result;
+                    return out.mode === "aggregate"
+                      ? { total: out.total, matched: out.matched, groups: out.groups }
+                      : {
+                          total: out.total,
+                          matched: out.matched,
+                          rows: (out.rows ?? []).map((row) => scrubValues(row.values, scrub)),
+                        };
+                  } catch (toolError) {
+                    console.error("dataset_query", toolError);
+                    return { error: "Abfrage fehlgeschlagen." };
+                  }
+                },
+              },
+            }
+          : undefined;
 
         const check = checkInputBudget(
           instructions + history.map((m) => m.content).join("\n"),
@@ -164,6 +304,11 @@ export const Route = createFileRoute("/api/chat")({
           console.error("chat error", error);
         };
 
+        // Werkzeug-Runden sind hart gedeckelt (Deckel des Bausteins, höchstens 5).
+        const toolOptions = tools
+          ? { tools, stopWhen: stepCountIs(Math.max(2, Math.min(budget.maxSteps, 5))) }
+          : {};
+
         try {
           const result = isOpenAiModel(modelId)
             ? streamText({
@@ -172,6 +317,7 @@ export const Route = createFileRoute("/api/chat")({
                 messages,
                 abortSignal: controller.signal,
                 onError,
+                ...toolOptions,
                 providerOptions: {
                   openai: {
                     forceReasoning: true,
@@ -188,6 +334,7 @@ export const Route = createFileRoute("/api/chat")({
                 messages,
                 abortSignal: controller.signal,
                 onError,
+                ...toolOptions,
               });
 
           const encoder = new TextEncoder();
@@ -214,7 +361,9 @@ export const Route = createFileRoute("/api/chat")({
               clearTimeout(timer);
               if (timedOut) {
                 out.enqueue(
-                  encoder.encode(`\n\n⏱️ Zeitlimit überschritten (${budget.timeoutSeconds} s) – die Antwort wurde abgebrochen.`),
+                  encoder.encode(
+                    `\n\n⏱️ Zeitlimit überschritten (${budget.timeoutSeconds} s) – die Antwort wurde abgebrochen.`,
+                  ),
                 );
               }
               out.close();

@@ -522,6 +522,41 @@ export type Database = {
           },
         ]
       }
+      dataset_rows: {
+        Row: {
+          data: Json
+          dataset_id: string
+          id: number
+          lat: number | null
+          lon: number | null
+          row_index: number
+        }
+        Insert: {
+          data?: Json
+          dataset_id: string
+          id?: never
+          lat?: number | null
+          lon?: number | null
+          row_index: number
+        }
+        Update: {
+          data?: Json
+          dataset_id?: string
+          id?: never
+          lat?: number | null
+          lon?: number | null
+          row_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_rows_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       datasets: {
         Row: {
           board_id: string
@@ -1509,6 +1544,70 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dataset_aggregate: {
+        Args: {
+          _dataset: string
+          _filters?: Json
+          _fn?: string
+          _group_by?: string
+          _measure?: string
+        }
+        Returns: {
+          bucket: string
+          cnt: number
+          matched: number
+          total: number
+          value: number
+        }[]
+      }
+      dataset_bbox: {
+        Args: {
+          _dataset: string
+          _east?: number
+          _limit?: number
+          _name_col?: string
+          _north?: number
+          _south?: number
+          _west?: number
+        }
+        Returns: {
+          lat: number
+          lon: number
+          matched: number
+          name: string
+          row_index: number
+          total: number
+        }[]
+      }
+      dataset_query_rows: {
+        Args: {
+          _columns?: string[]
+          _dataset: string
+          _filters?: Json
+          _limit?: number
+          _offset?: number
+        }
+        Returns: {
+          data: Json
+          matched: number
+          row_index: number
+          total: number
+        }[]
+      }
+      dataset_rule_check: {
+        Args: {
+          _column: string
+          _dataset: string
+          _operator: string
+          _value?: Json
+        }
+        Returns: {
+          failed: number
+          failed_rows: number[]
+          passed: number
+          total: number
+        }[]
+      }
       end_user_sessions: {
         Args: { _session?: string; _user: string }
         Returns: number

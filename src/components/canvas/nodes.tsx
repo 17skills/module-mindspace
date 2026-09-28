@@ -1,5 +1,19 @@
-import { Fragment, lazy, memo, Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  Fragment,
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { ClientOnly } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { detectGeoColumns, readDatasetRef } from "@/lib/datasets";
+import { queryDataset } from "@/lib/datasets.functions";
 import {
   mapText,
   pointsFromSources,
@@ -40,7 +54,32 @@ const UNIT_TONE: Record<string, string> = {
 };
 
 import { Plug } from "lucide-react";
-import { AlertTriangle, BookOpen, Calculator, Camera, ChevronDown, ChevronRight, ChevronUp, CloudSun, ExternalLink, Eye, EyeOff, Globe, ImagePlus, LayoutTemplate, Lock, Plus, RefreshCw, RotateCcw, RotateCw, Scale, ShieldOff, Sparkles, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  Calculator,
+  Camera,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  CloudSun,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Globe,
+  ImagePlus,
+  LayoutTemplate,
+  Lock,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  RotateCw,
+  Scale,
+  ShieldOff,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -55,11 +94,34 @@ import {
   type EdgeProps,
   type NodeProps,
 } from "@xyflow/react";
-import { calcInputs, edgeValue, evalFormula, formatValue, nodeValue, readFormat, sheetOutputRow, sheetRows, sheetValues, valueOfNode } from "@/lib/calc";
+import {
+  calcInputs,
+  edgeValue,
+  evalFormula,
+  formatValue,
+  nodeValue,
+  readFormat,
+  sheetOutputRow,
+  sheetRows,
+  sheetValues,
+  valueOfNode,
+} from "@/lib/calc";
 import { useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { Markdown, markdownSections } from "@/lib/markdown";
 import { edgeProblem, isReference, type PortStatus as SignalPortStatus } from "@/lib/signal-status";
-import { APP_DESIGN_PRESETS, readAgent, readAppBranding, readAppLayout, readAssignment, zoneMembers, type AppAccent, type AppBackground, type AppBranding, type AppDesignProfile, type AppLayoutEntry } from "@/lib/zones";
+import {
+  APP_DESIGN_PRESETS,
+  readAgent,
+  readAppBranding,
+  readAppLayout,
+  readAssignment,
+  zoneMembers,
+  type AppAccent,
+  type AppBackground,
+  type AppBranding,
+  type AppDesignProfile,
+  type AppLayoutEntry,
+} from "@/lib/zones";
 import {
   factorText,
   normalizeWeights,
@@ -154,21 +216,17 @@ import {
 } from "@/components/ui/select";
 import { ZONE_WHITE } from "@/lib/templates";
 import { isProfileLink } from "@/lib/profiles";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { NODE_ACCENT, NODE_LABEL, useBoard, type ContextReport, type NodeRecord } from "./board-context";
+  NODE_ACCENT,
+  NODE_LABEL,
+  useBoard,
+  type ContextReport,
+  type NodeRecord,
+} from "./board-context";
 
 /** Shows exactly which modules feed this chat — and which are excluded. */
-function ContextBar({
-  report,
-  onFocus,
-}: {
-  report: ContextReport;
-  onFocus: (id: string) => void;
-}) {
+function ContextBar({ report, onFocus }: { report: ContextReport; onFocus: (id: string) => void }) {
   const total = report.used.length + report.excluded.length;
   return (
     <div className="flex items-center border-b px-3 py-1">
@@ -185,7 +243,9 @@ function ContextBar({
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <UiTooltipContent>Anzeigen, welche Inhalte an den Chat übertragen werden</UiTooltipContent>
+          <UiTooltipContent>
+            Anzeigen, welche Inhalte an den Chat übertragen werden
+          </UiTooltipContent>
         </UiTooltip>
         <PopoverContent align="start" className="nodrag nowheel w-72 p-0 text-xs">
           <p className="border-b px-3 py-2 font-medium">Übertragener Kontext</p>
@@ -273,7 +333,6 @@ const NUM = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
  * green = value flows, amber = waiting for a value, red = invalid calculation.
  */
 
-
 export function SignalHandle(props: React.ComponentProps<typeof Handle>) {
   const nodeId = useNodeId();
   const kind = props.type;
@@ -298,7 +357,11 @@ export function SignalHandle(props: React.ComponentProps<typeof Handle>) {
         const value = valueOf(nodeId);
         if (value == null) {
           if (isReference(own))
-            return { status: "idle" as PortStatus, hint: "Ausgang: Inhalt (ohne Zahlenwert)", text: "" };
+            return {
+              status: "idle" as PortStatus,
+              hint: "Ausgang: Inhalt (ohne Zahlenwert)",
+              text: "",
+            };
           return { status: "warn" as PortStatus, hint: "Ausgang: noch kein Wert", text: "" };
         }
         const text = formatValue(value, readFormat(own?.metadata));
@@ -394,8 +457,6 @@ function contextTextFor(note: NodeRecord, choice: string): string {
     .map((part) => part.text)
     .join("\n\n");
 }
-
-
 
 function Shell({
   type,
@@ -551,7 +612,9 @@ export const ContentNode = memo(function ContentNode({ data, selected }: NodePro
         )}
       </div>
       <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-[11px] text-muted-foreground">
-        <span>{record.content ? `${record.content.length.toLocaleString("de-DE")} Zeichen` : "—"}</span>
+        <span>
+          {record.content ? `${record.content.length.toLocaleString("de-DE")} Zeichen` : "—"}
+        </span>
         <div className="flex items-center gap-2">
           <button
             className="nodrag hover:text-foreground hover:underline"
@@ -632,11 +695,13 @@ function noteKpi(entries: string[]) {
   if (metricIndex < 0) return null;
   const [rawLabel = "", ...rest] = (entries[metricIndex] ?? "").split(":");
   const value = rest.join(":").trim();
-  const limitEntry = entries.find((entry, index) =>
-    index !== metricIndex && /schwelle|limit|grenzwert|ziel/i.test(entry),
+  const limitEntry = entries.find(
+    (entry, index) => index !== metricIndex && /schwelle|limit|grenzwert|ziel/i.test(entry),
   );
   const valueNumber = firstNumber(value);
-  const limitNumber = limitEntry ? firstNumber(limitEntry.split(":").slice(1).join(":") || limitEntry) : null;
+  const limitNumber = limitEntry
+    ? firstNumber(limitEntry.split(":").slice(1).join(":") || limitEntry)
+    : null;
   const breach = valueNumber !== null && limitNumber !== null ? valueNumber >= limitNumber : null;
   return {
     label: rawLabel.trim(),
@@ -725,7 +790,9 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
   return (
     <Shell type="note" selected={selected} locked={Boolean(record.parent_id)}>
       <Header record={record} />
-      <div className={`flex items-center justify-between border-b px-3 py-2 ${NOTE_TONE[role.tone]}`}>
+      <div
+        className={`flex items-center justify-between border-b px-3 py-2 ${NOTE_TONE[role.tone]}`}
+      >
         <span className="module-eyebrow text-current">{role.eyebrow}</span>
         <span className="rounded-sm border border-current/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold">
           {role.state}
@@ -789,12 +856,17 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                         <td className="truncate px-1 py-1" title={param.jev?.reason || param.label}>
                           {param.label}
                         </td>
-                        <td className="px-1 py-1 text-right font-mono tabular-nums text-muted-foreground" title={param.jev?.reason}>
+                        <td
+                          className="px-1 py-1 text-right font-mono tabular-nums text-muted-foreground"
+                          title={param.jev?.reason}
+                        >
                           {param.jev ? (
                             <>
                               {param.jev.weight} % · {param.jev.score}
                               {param.jev.confidence != null && (
-                                <div className="text-[9px]">{Math.round(param.jev.confidence * 100)} % sicher</div>
+                                <div className="text-[9px]">
+                                  {Math.round(param.jev.confidence * 100)} % sicher
+                                </div>
                               )}
                             </>
                           ) : (
@@ -823,7 +895,10 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                                 className="nodrag h-5 w-9 rounded border border-transparent bg-transparent text-right outline-none hover:border-border focus:border-ring"
                                 onBlur={(e) =>
                                   Number(e.target.value) !== param.weight &&
-                                  patchParam(param.id, { weight: Number(e.target.value), source: "Entscheider" })
+                                  patchParam(param.id, {
+                                    weight: Number(e.target.value),
+                                    source: "Entscheider",
+                                  })
                                 }
                               />
                               %
@@ -838,7 +913,10 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                                 className="nodrag h-5 w-8 rounded border border-transparent bg-transparent text-right outline-none hover:border-border focus:border-ring"
                                 onBlur={(e) =>
                                   Number(e.target.value) !== param.score &&
-                                  patchParam(param.id, { score: Number(e.target.value), source: "Entscheider" })
+                                  patchParam(param.id, {
+                                    score: Number(e.target.value),
+                                    source: "Entscheider",
+                                  })
                                 }
                               />
                             </span>
@@ -850,7 +928,10 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
                       </tr>,
                       param.jev && pending(param) ? (
                         <tr key={`${param.id}-why`} className="align-top">
-                          <td colSpan={3} className="px-1 pb-1.5 text-[9px] leading-snug text-muted-foreground">
+                          <td
+                            colSpan={3}
+                            className="px-1 pb-1.5 text-[9px] leading-snug text-muted-foreground"
+                          >
                             {param.jev.reason}
                           </td>
                         </tr>
@@ -925,7 +1006,10 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
             ) : listEntries.length ? (
               <ul className="space-y-2" aria-label={role.eyebrow}>
                 {listEntries.map((entry, index) => (
-                  <li key={`${entry}-${index}`} className="flex gap-2 text-xs leading-snug text-foreground">
+                  <li
+                    key={`${entry}-${index}`}
+                    className="flex gap-2 text-xs leading-snug text-foreground"
+                  >
                     <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-note" />
                     <span>{entry}</span>
                   </li>
@@ -940,7 +1024,6 @@ export const NoteNode = memo(function NoteNode({ data, selected }: NodeProps) {
     </Shell>
   );
 });
-
 
 export const FrameNode = memo(function FrameNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
@@ -1063,15 +1146,25 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
       if (isSvg) {
         const source = await file.text();
         const documentNode = new DOMParser().parseFromString(source, "image/svg+xml");
-        if (documentNode.querySelector("parsererror") || documentNode.documentElement.tagName.toLowerCase() !== "svg") {
+        if (
+          documentNode.querySelector("parsererror") ||
+          documentNode.documentElement.tagName.toLowerCase() !== "svg"
+        ) {
           throw new Error("invalid svg");
         }
-        documentNode.querySelectorAll("script, foreignObject, iframe, object, embed").forEach((node) => node.remove());
+        documentNode
+          .querySelectorAll("script, foreignObject, iframe, object, embed")
+          .forEach((node) => node.remove());
         documentNode.querySelectorAll("*").forEach((node) => {
           for (const attribute of [...node.attributes]) {
             const name = attribute.name.toLowerCase();
             const value = attribute.value.trim().toLowerCase();
-            if (name.startsWith("on") || ((name === "href" || name.endsWith(":href")) && !value.startsWith("#") && value !== "")) {
+            if (
+              name.startsWith("on") ||
+              ((name === "href" || name.endsWith(":href")) &&
+                !value.startsWith("#") &&
+                value !== "")
+            ) {
               node.removeAttribute(attribute.name);
             }
           }
@@ -1236,28 +1329,72 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                 {customProfiles.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {customProfiles.map((profile) => (
-                      <div key={profile.id} className="flex items-center rounded-md border border-border/70 bg-secondary">
-                        <button type="button" className="max-w-24 truncate px-2 py-1 text-[10px]" onClick={() => applyProfile(profile)}>{profile.name}</button>
-                        <button type="button" aria-label={`${profile.name} löschen`} className="border-l border-border/70 p-1 text-muted-foreground hover:text-destructive" onClick={() => storeProfiles(customProfiles.filter((item) => item.id !== profile.id))}><X className="size-3" /></button>
+                      <div
+                        key={profile.id}
+                        className="flex items-center rounded-md border border-border/70 bg-secondary"
+                      >
+                        <button
+                          type="button"
+                          className="max-w-24 truncate px-2 py-1 text-[10px]"
+                          onClick={() => applyProfile(profile)}
+                        >
+                          {profile.name}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`${profile.name} löschen`}
+                          className="border-l border-border/70 p-1 text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            storeProfiles(customProfiles.filter((item) => item.id !== profile.id))
+                          }
+                        >
+                          <X className="size-3" />
+                        </button>
                       </div>
                     ))}
                   </div>
                 )}
                 <div className="mt-1.5 flex gap-1">
-                  <input aria-label="Name des Designprofils" value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Eigenes Profil" className="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-[10px] outline-none focus:border-ring" />
-                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={saveProfile}>Speichern</Button>
+                  <input
+                    aria-label="Name des Designprofils"
+                    value={profileName}
+                    onChange={(event) => setProfileName(event.target.value)}
+                    placeholder="Eigenes Profil"
+                    className="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-[10px] outline-none focus:border-ring"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-[10px]"
+                    onClick={saveProfile}
+                  >
+                    Speichern
+                  </Button>
                 </div>
               </div>
-              <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} overflow-hidden rounded-lg border border-border/70`}>
+              <div
+                className={`app-shell app-accent-${branding.accent} app-background-${branding.background} overflow-hidden rounded-lg border border-border/70`}
+              >
                 <div className="app-header flex items-center gap-2 border-b px-2.5 py-2">
                   {branding.logo ? (
-                    <img src={branding.logo} alt="Logo-Vorschau" className="app-preview-logo shrink-0 rounded bg-card object-contain" style={{ width: Math.max(20, branding.logoSize * 0.55), height: Math.max(20, branding.logoSize * 0.55) }} />
+                    <img
+                      src={branding.logo}
+                      alt="Logo-Vorschau"
+                      className="app-preview-logo shrink-0 rounded bg-card object-contain"
+                      style={{
+                        width: Math.max(20, branding.logoSize * 0.55),
+                        height: Math.max(20, branding.logoSize * 0.55),
+                      }}
+                    />
                   ) : (
                     <span className="app-logo-mark size-2.5 rounded-sm" />
                   )}
                   <div className="min-w-0">
                     <span className="module-eyebrow block">MCP · APP</span>
-                    <span className="block truncate text-xs font-semibold">{previewTitle || record.title || "Feld-App"}</span>
+                    <span className="block truncate text-xs font-semibold">
+                      {previewTitle || record.title || "Feld-App"}
+                    </span>
                   </div>
                 </div>
                 <div className="app-preview-canvas grid grid-cols-[0.7fr_1.3fr] gap-1.5 p-2.5">
@@ -1280,7 +1417,11 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                 <span className="module-eyebrow mb-1 block">Logo</span>
                 <div className="flex items-center gap-2">
                   {branding.logo ? (
-                    <img src={branding.logo} alt="App-Logo" className="size-9 rounded-md border border-border object-contain" />
+                    <img
+                      src={branding.logo}
+                      alt="App-Logo"
+                      className="size-9 rounded-md border border-border object-contain"
+                    />
                   ) : (
                     <div className="flex size-9 items-center justify-center rounded-md border border-dashed border-border bg-secondary">
                       <ImagePlus className="size-4 text-muted-foreground" />
@@ -1293,11 +1434,24 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                     className="hidden"
                     onChange={(event) => void uploadLogo(event.target.files?.[0])}
                   />
-                  <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => logoInput.current?.click()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => logoInput.current?.click()}
+                  >
                     {branding.logo ? "Ersetzen" : "Hochladen"}
                   </Button>
                   {branding.logo && (
-                    <Button type="button" size="icon" variant="ghost" className="size-8" aria-label="Logo entfernen" onClick={() => saveBranding({ logo: "" })}>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="size-8"
+                      aria-label="Logo entfernen"
+                      onClick={() => saveBranding({ logo: "" })}
+                    >
                       <Trash2 className="size-3.5" />
                     </Button>
                   )}
@@ -1305,8 +1459,19 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                 {branding.logo && (
                   <label className="mt-2 grid grid-cols-[1fr_auto] items-center gap-2">
                     <span className="module-eyebrow">Logogröße</span>
-                    <output className="font-mono text-[10px] text-muted-foreground">{branding.logoSize}px</output>
-                    <input aria-label="Größe des Logos" type="range" min={24} max={72} step={4} value={branding.logoSize} onChange={(event) => saveBranding({ logoSize: Number(event.target.value) })} className="col-span-2 w-full accent-primary" />
+                    <output className="font-mono text-[10px] text-muted-foreground">
+                      {branding.logoSize}px
+                    </output>
+                    <input
+                      aria-label="Größe des Logos"
+                      type="range"
+                      min={24}
+                      max={72}
+                      step={4}
+                      value={branding.logoSize}
+                      onChange={(event) => saveBranding({ logoSize: Number(event.target.value) })}
+                      className="col-span-2 w-full accent-primary"
+                    />
                   </label>
                 )}
               </div>
@@ -1346,13 +1511,24 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
               </fieldset>
               <button
                 type="button"
-                onClick={() => { setPreviewTitle(""); saveBranding({ title: "", logo: "", logoSize: 40, accent: "forest", background: "stone" }); }}
+                onClick={() => {
+                  setPreviewTitle("");
+                  saveBranding({
+                    title: "",
+                    logo: "",
+                    logoSize: 40,
+                    accent: "forest",
+                    background: "stone",
+                  });
+                }}
                 className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="size-3" /> Standard wiederherstellen
               </button>
             </div>
-            <div className="module-eyebrow px-1 pt-3 pb-1.5 text-muted-foreground">Module · Reihenfolge &amp; Darstellung</div>
+            <div className="module-eyebrow px-1 pt-3 pb-1.5 text-muted-foreground">
+              Module · Reihenfolge &amp; Darstellung
+            </div>
             {layout.length === 0 && (
               <p className="px-1 py-2 text-[11px] text-muted-foreground">
                 Noch keine Module auf diesem Feld.
@@ -1374,7 +1550,9 @@ export const ZoneNode = memo(function ZoneNode({ data, selected }: NodeProps) {
                       aria-label="Darstellung"
                       value={entry.view}
                       onChange={(e) =>
-                        patchEntry(entry.id, { view: e.target.value === "compact" ? "compact" : "full" })
+                        patchEntry(entry.id, {
+                          view: e.target.value === "compact" ? "compact" : "full",
+                        })
                       }
                       className="rounded-md border border-border/60 bg-card px-1 py-0.5 font-mono text-[10px] outline-none"
                     >
@@ -1480,24 +1658,107 @@ function tableData(record: NodeRecord): TableData {
   return { columns, rows, chartType: meta["chartType"] as string | undefined };
 }
 
-const CHART_COLORS = ["var(--primary)", "var(--video)", "var(--audio)", "var(--doc)", "var(--note)"];
+const CHART_COLORS = [
+  "var(--primary)",
+  "var(--video)",
+  "var(--audio)",
+  "var(--doc)",
+  "var(--note)",
+];
 
-export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
+export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode, openInspector } = useBoard();
   const { columns, rows, chartType } = tableData(record);
   const type = record.type;
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
 
-  const chartRows = useMemo(() => chartSeries(readStructure(record)), [record]);
+  const localRows = useMemo(() => chartSeries(readStructure(record)), [record]);
+
+  /**
+   * Verbundene Datenablage: das Diagramm rechnet nicht im Browser, sondern
+   * lässt die Werte serverseitig gruppieren — zurück kommen nur die Balken.
+   */
+  const chartSource = useMemo(() => {
+    if (type !== "chart") return null;
+    const byId = Object.fromEntries(
+      flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    for (const edge of edges) {
+      const otherId = edge.target === id ? edge.source : edge.source === id ? edge.target : null;
+      if (!otherId) continue;
+      const stored = readSource(byId[otherId]);
+      const ref = readDatasetRef(stored?.envelope);
+      const cols = stored?.envelope.facets.dataset?.columns ?? [];
+      if (!ref?.datasetId || !cols.length) continue;
+      const group = cols.find((c) => c.type === "text")?.key ?? cols[0]!.key;
+      const measure = cols.find((c) => c.type === "number")?.key ?? null;
+      return { datasetId: ref.datasetId, group, measure };
+    }
+    return null;
+  }, [type, edges, flowNodes, id]);
+
+  const [serverRows, setServerRows] = useState<{ name: string; value: number }[] | null>(null);
+  const runQuery = useServerFn(queryDataset);
+
+  useEffect(() => {
+    if (!chartSource) {
+      setServerRows(null);
+      return;
+    }
+    let active = true;
+    void runQuery({
+      data: {
+        datasetId: chartSource.datasetId,
+        query: {
+          mode: "aggregate",
+          fn: chartSource.measure ? "sum" : "count",
+          groupBy: chartSource.group,
+          measure: chartSource.measure,
+          filters: [],
+        },
+      },
+    })
+      .then((answer) => {
+        const groups = (answer.result as unknown as { groups?: { key: string; value: number }[] })
+          .groups;
+        if (active && groups) {
+          setServerRows(groups.slice(0, 25).map((g) => ({ name: g.key, value: Number(g.value) })));
+        }
+      })
+      .catch(() => {
+        // Ohne Zugriff bleibt das Diagramm bei den Werten der Karte.
+      });
+    return () => {
+      active = false;
+    };
+  }, [chartSource, runQuery]);
+
+  const chartRows = serverRows ?? localRows;
 
   return (
     <Shell type={type} selected={selected} locked={Boolean(record.parent_id)} minHeight={200}>
       <Header record={record} />
       <div className="flex items-center justify-between gap-2 border-b bg-secondary/20 px-3 py-1.5 text-[10px] text-muted-foreground">
-        <span className="font-mono font-semibold">{rows.length} Zeilen · {columns.length} Felder</span>
+        <span className="font-mono font-semibold">
+          {rows.length} Zeilen · {columns.length} Felder
+        </span>
         <div className="flex gap-2">
-          <button className="nodrag font-semibold hover:text-foreground" onClick={() => openInspector(record.id, "data")}>Bearbeiten</button>
-          {selected && <button className="nodrag font-semibold hover:text-foreground" onClick={() => openInspector(record.id, "refresh")}>Aktualisieren</button>}
+          <button
+            className="nodrag font-semibold hover:text-foreground"
+            onClick={() => openInspector(record.id, "data")}
+          >
+            Bearbeiten
+          </button>
+          {selected && (
+            <button
+              className="nodrag font-semibold hover:text-foreground"
+              onClick={() => openInspector(record.id, "refresh")}
+            >
+              Aktualisieren
+            </button>
+          )}
         </div>
       </div>
 
@@ -1629,7 +1890,7 @@ type Msg = { id?: string; role: "user" | "assistant"; content: string };
 
 export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { collectContext, contextReport, addNoteFrom, focusNode } = useBoard();
+  const { collectContext, collectDatasets, contextReport, addNoteFrom, focusNode } = useBoard();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -1663,6 +1924,7 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
     if (!prompt || streaming) return;
     setInput("");
     const context = collectContext(record.id);
+    const datasetIds = collectDatasets(record.id);
     const next: Msg[] = [...messages, { role: "user", content: prompt }];
     setMessages([...next, { role: "assistant", content: "" }]);
     setStreaming(true);
@@ -1673,7 +1935,13 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
 
     try {
       const { postChat } = await import("@/lib/chat-client");
-      const response = await postChat({ nodeId: record.id, model, context, messages: next });
+      const response = await postChat({
+        nodeId: record.id,
+        model,
+        context,
+        datasetIds,
+        messages: next,
+      });
       if (!response.ok || !response.body) {
         throw new Error((await response.text()) || "Antwort fehlgeschlagen");
       }
@@ -1898,7 +2166,9 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps) 
             : {
                 borderRadius: kind.radius,
                 border: `1.5px solid ${
-                  color === ZONE_WHITE ? "var(--border)" : `color-mix(in oklab, ${color} 45%, transparent)`
+                  color === ZONE_WHITE
+                    ? "var(--border)"
+                    : `color-mix(in oklab, ${color} 45%, transparent)`
                 }`,
                 boxShadow: selected ? "var(--shadow-float)" : "var(--shadow-card)",
               }),
@@ -1989,8 +2259,7 @@ export function textStyle(record: NodeRecord) {
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const font = TEXT_FONTS.find((item) => item.id === meta["textFont"]) ?? TEXT_FONTS[0]!;
   const align = TEXT_ALIGNS.find((item) => item.id === meta["textAlign"]) ?? TEXT_ALIGNS[0]!;
-  const color =
-    TEXT_COLORS.find((item) => item.value === meta["textColor"]) ?? TEXT_COLORS[0]!;
+  const color = TEXT_COLORS.find((item) => item.value === meta["textColor"]) ?? TEXT_COLORS[0]!;
   const background =
     TEXT_BACKGROUNDS.find((item) => item.value === meta["textBg"]) ?? TEXT_BACKGROUNDS[0]!;
   return { font, align, color, background };
@@ -2174,8 +2443,17 @@ export const TextNode = memo(function TextNode({ data, selected }: NodeProps) {
             <div className="sticky top-0 bg-card/80 text-[9px] uppercase tracking-wide text-muted-foreground">
               Vorschau
             </div>
-            <div style={boxStyle} className={`${size.className} ${formatted ? "" : "whitespace-pre-wrap"}`}>
-              {text ? formatted ? <Markdown source={text} /> : text : (
+            <div
+              style={boxStyle}
+              className={`${size.className} ${formatted ? "" : "whitespace-pre-wrap"}`}
+            >
+              {text ? (
+                formatted ? (
+                  <Markdown source={text} />
+                ) : (
+                  text
+                )
+              ) : (
                 <span className="text-muted-foreground/60">Noch kein Text</span>
               )}
             </div>
@@ -2257,7 +2535,11 @@ export function LabeledEdge(props: EdgeProps) {
         }
       }
       const signal = evaluateSignal({ envelope: stored.envelope, ontology });
-      return { status: signal.status, display: signal.display, headline: signal.explanation.headline };
+      return {
+        status: signal.status,
+        display: signal.display,
+        headline: signal.explanation.headline,
+      };
     },
     (a, b) => a?.status === b?.status && a?.display === b?.display && a?.headline === b?.headline,
   );
@@ -2275,9 +2557,8 @@ export function LabeledEdge(props: EdgeProps) {
     : flow.bad
       ? "#de5a3a"
       : sourceSignal
-        ? SIGNAL_STROKE[signalTone(sourceSignal.status)] ?? "var(--edge)"
+        ? (SIGNAL_STROKE[signalTone(sourceSignal.status)] ?? "var(--edge)")
         : "var(--edge)";
-
 
   return (
     <>
@@ -2338,7 +2619,7 @@ export function LabeledEdge(props: EdgeProps) {
                     <Calculator className="size-3.5" />
                   </button>
                 </TooltipTrigger>
-               <UiTooltipContent>Rechnung anlegen</UiTooltipContent>
+                <UiTooltipContent>Rechnung anlegen</UiTooltipContent>
               </UiTooltip>
               <UiTooltip>
                 <TooltipTrigger asChild>
@@ -2456,9 +2737,7 @@ export const CalcNode = memo(function CalcNode({ id, data, selected }: NodeProps
   const flowNodes = useStore((state) => state.nodes);
   const records = useMemo(
     () =>
-      Object.fromEntries(
-        flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
-      ),
+      Object.fromEntries(flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record])),
     [flowNodes],
   );
   const inputs = calcInputs(id, records, edges);
@@ -2587,14 +2866,21 @@ function useIncoming(id: string) {
   const edges = useEdges();
   const flowNodes = useStore((state) => state.nodes);
   const records = useMemo(
-    () => Object.fromEntries(flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record])),
+    () =>
+      Object.fromEntries(flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record])),
     [flowNodes],
   );
   return calcInputs(id, records, edges);
 }
 
 /** Small format bar: decimal places, prefix and suffix (metadata.numFormat). */
-function FormatRow({ meta, onPatch }: { meta: Record<string, unknown>; onPatch: (next: Record<string, unknown>) => void }) {
+function FormatRow({
+  meta,
+  onPatch,
+}: {
+  meta: Record<string, unknown>;
+  onPatch: (next: Record<string, unknown>) => void;
+}) {
   const fmt = (meta["numFormat"] ?? {}) as Record<string, unknown>;
   const decimals = typeof fmt["decimals"] === "number" ? fmt["decimals"] : null;
   const prefix = typeof fmt["prefix"] === "string" ? fmt["prefix"] : "";
@@ -2617,7 +2903,9 @@ function FormatRow({ meta, onPatch }: { meta: Record<string, unknown>; onPatch: 
         value={decimals == null ? "auto" : String(decimals)}
         aria-label="Dezimalstellen"
         className={`${field} cursor-pointer`}
-        onChange={(e) => setFmt({ ...fmt, decimals: e.target.value === "auto" ? null : Number(e.target.value) })}
+        onChange={(e) =>
+          setFmt({ ...fmt, decimals: e.target.value === "auto" ? null : Number(e.target.value) })
+        }
       >
         <option value="auto">Auto</option>
         <option value="0">0</option>
@@ -2667,7 +2955,8 @@ function SourcePicker({
 
 /** The incoming connection a module shows: the chosen one, else the first with a value. */
 function pickLinked(inputs: ReturnType<typeof useIncoming>, chosen: unknown) {
-  const byId = typeof chosen === "string" ? inputs.find((input) => input.edgeId === chosen) : undefined;
+  const byId =
+    typeof chosen === "string" ? inputs.find((input) => input.edgeId === chosen) : undefined;
   return byId ?? inputs.find((input) => input.value != null);
 }
 
@@ -2686,8 +2975,9 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
   const value = linked?.value ?? manual;
   const flowNodes = useStore((state) => state.nodes);
   const linkedType = linked
-    ? ((flowNodes.find((n) => n.id === linked.sourceId)?.data as { record?: NodeRecord } | undefined)
-        ?.record?.type ?? null)
+    ? ((
+        flowNodes.find((n) => n.id === linked.sourceId)?.data as { record?: NodeRecord } | undefined
+      )?.record?.type ?? null)
     : null;
   const threshold = (key: string, fallback: number | null) => {
     const parsed = Number(meta[key]);
@@ -2764,7 +3054,11 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
         {selected ? (
           <SourcePicker
             inputs={inputs}
-            value={typeof meta["sourceEdge"] === "string" ? (meta["sourceEdge"] as string) : (linked?.edgeId ?? "")}
+            value={
+              typeof meta["sourceEdge"] === "string"
+                ? (meta["sourceEdge"] as string)
+                : (linked?.edgeId ?? "")
+            }
             onChange={(edgeId) => patch({ sourceEdge: edgeId })}
           />
         ) : null}
@@ -2784,13 +3078,19 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
             </span>
             {warnAbove != null ? (
               <span className="flex items-center gap-1">
-                <span className="size-2 rounded-full" style={{ background: "var(--brand-orange)" }} />
+                <span
+                  className="size-2 rounded-full"
+                  style={{ background: "var(--brand-orange)" }}
+                />
                 ab {formatValue(warnAbove, fmt)}
               </span>
             ) : null}
             {dangerAbove != null ? (
               <span className="flex items-center gap-1">
-                <span className="size-2 rounded-full" style={{ background: "var(--destructive)" }} />
+                <span
+                  className="size-2 rounded-full"
+                  style={{ background: "var(--destructive)" }}
+                />
                 ab {formatValue(dangerAbove, fmt)}
               </span>
             ) : null}
@@ -2838,7 +3138,6 @@ export const MetricNode = memo(function MetricNode({ id, data, selected }: NodeP
     </div>
   );
 });
-
 
 function arc(cx: number, cy: number, r: number, from: number, to: number) {
   const point = (angle: number) => {
@@ -2914,7 +3213,13 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
       />
       <div className="flex flex-1 flex-col items-center justify-center px-3 py-2">
         <svg viewBox="0 0 200 110" className="w-full max-w-56">
-          <path d={arc(100, 100, 80, 180, 360)} fill="none" stroke="var(--border)" strokeWidth={14} strokeLinecap="round" />
+          <path
+            d={arc(100, 100, 80, 180, 360)}
+            fill="none"
+            stroke="var(--border)"
+            strokeWidth={14}
+            strokeLinecap="round"
+          />
           {zones.map((zone) => (
             <path
               key={zone.colour}
@@ -2932,7 +3237,13 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
             strokeWidth={14}
             strokeLinecap="round"
           />
-          <text x="100" y="94" textAnchor="middle" className="fill-foreground" style={{ fontSize: 26, fontWeight: 600 }}>
+          <text
+            x="100"
+            y="94"
+            textAnchor="middle"
+            className="fill-foreground"
+            style={{ fontSize: 26, fontWeight: 600 }}
+          >
             {formatValue(value, fmt)}
           </text>
         </svg>
@@ -2942,7 +3253,9 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
               <span className="uppercase">{key}</span>
               <input
                 key={record.id + key + String(meta[key] ?? "")}
-                defaultValue={String(num(key, key === "max" ? 100 : key === "warn" ? 60 : key === "danger" ? 85 : 0))}
+                defaultValue={String(
+                  num(key, key === "max" ? 100 : key === "warn" ? 60 : key === "danger" ? 85 : 0),
+                )}
                 inputMode="decimal"
                 aria-label={key}
                 className="nodrag w-full rounded-md border border-transparent bg-transparent text-center font-mono outline-none hover:border-border focus:border-border"
@@ -2971,9 +3284,15 @@ export const GaugeNode = memo(function GaugeNode({ id, data, selected }: NodePro
           <>
             <SourcePicker
               inputs={inputs}
-              value={typeof meta["sourceEdge"] === "string" ? (meta["sourceEdge"] as string) : (linked?.edgeId ?? "")}
+              value={
+                typeof meta["sourceEdge"] === "string"
+                  ? (meta["sourceEdge"] as string)
+                  : (linked?.edgeId ?? "")
+              }
               onChange={(edgeId) =>
-                updateNode(record.id, { metadata: { ...(record.metadata ?? {}), sourceEdge: edgeId } })
+                updateNode(record.id, {
+                  metadata: { ...(record.metadata ?? {}), sourceEdge: edgeId },
+                })
               }
             />
             <div className="w-full">
@@ -2993,7 +3312,8 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
   const edges = useEdges();
   const flowNodes = useStore((state) => state.nodes);
   const records = useMemo(
-    () => Object.fromEntries(flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record])),
+    () =>
+      Object.fromEntries(flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record])),
     [flowNodes],
   );
   const inputs = calcInputs(id, records, edges);
@@ -3046,7 +3366,10 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
               }`}
               onClick={() =>
                 updateNode(record.id, {
-                  metadata: { ...(record.metadata ?? {}), outputRow: output === index ? null : index },
+                  metadata: {
+                    ...(record.metadata ?? {}),
+                    outputRow: output === index ? null : index,
+                  },
                 })
               }
             >
@@ -3072,7 +3395,11 @@ export const SheetNode = memo(function SheetNode({ id, data, selected }: NodePro
               className="nodrag w-28 shrink-0 rounded-md border border-transparent bg-transparent px-1 text-right font-mono outline-none hover:border-border focus:border-border"
               onBlur={(e) => {
                 const text = e.target.value.trim();
-                const formula = text.startsWith("=") ? text.slice(1).trim() : /[A-Za-z(]/.test(text) ? text : "";
+                const formula = text.startsWith("=")
+                  ? text.slice(1).trim()
+                  : /[A-Za-z(]/.test(text)
+                    ? text
+                    : "";
                 const next = [...rows];
                 next[index] = { name: row.name, value: formula ? "" : text, formula };
                 writeRows(next);
@@ -3167,7 +3494,9 @@ export const ApiNode = memo(function ApiNode({ data, selected }: NodeProps) {
           aria-label="Feld für die Verbindung"
           className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 font-mono outline-none hover:border-border focus:border-border"
           onBlur={(e) =>
-            updateNode(record.id, { metadata: { ...(record.metadata ?? {}), pick: e.target.value } })
+            updateNode(record.id, {
+              metadata: { ...(record.metadata ?? {}), pick: e.target.value },
+            })
           }
         />
         <span className="shrink-0 font-mono text-foreground">
@@ -3195,7 +3524,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
   const running = meta["decideRunning"] === true;
   const output = typeof meta["outputQuestion"] === "string" ? meta["outputQuestion"] : "";
-  const threshold = typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
+  const threshold =
+    typeof meta["minConfidence"] === "number" ? (meta["minConfidence"] as number) : 80;
   const inputs = useIncoming(id);
   /** Was der Mensch als „bestätigt“ gelten lässt — Festlegung auf dieser Karte. */
   const basis = "followed" as const;
@@ -3225,7 +3555,11 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
   const answered = answers.filter((answer) => answerLabel(answer) !== "–");
   const ratedAnswers = answers.filter((answer) => confidenceOf(answer) !== null);
   const confidence = ratedAnswers.length
-    ? Math.round(ratedAnswers.reduce((sum, answer) => sum + (confidenceOf(answer) ?? 0), 0) / ratedAnswers.length * 100)
+    ? Math.round(
+        (ratedAnswers.reduce((sum, answer) => sum + (confidenceOf(answer) ?? 0), 0) /
+          ratedAnswers.length) *
+          100,
+      )
     : null;
   const reviewCount = questions.filter((question) => {
     const answer = answers.find((item) => item.id === question.id);
@@ -3240,7 +3574,13 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
 
   /** Kalibrierung: Urteil gegen den Ausgang, den Menschen danach gesetzt haben. */
   const calibration = useQuery({
-    queryKey: ["calibration", record.id, meta["decidedAt"] ?? "", basis, JSON.stringify(humanConfidence)],
+    queryKey: [
+      "calibration",
+      record.id,
+      meta["decidedAt"] ?? "",
+      basis,
+      JSON.stringify(humanConfidence),
+    ],
     queryFn: () => loadCalibration({ data: { nodeId: record.id, basis } }),
     staleTime: 60_000,
     retry: false,
@@ -3267,7 +3607,7 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
       style={{
         borderTop: `3px solid ${
           unit.status === "idle"
-            ? NODE_ACCENT["decision"] ?? "var(--primary)"
+            ? (NODE_ACCENT["decision"] ?? "var(--primary)")
             : UNIT_TONE[signalTone(unit.status)]
         }`,
       }}
@@ -3292,9 +3632,15 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
       <div className={`border-b px-3 py-3 ${reviewCount ? "bg-destructive/10" : "bg-support/10"}`}>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <span className="text-[9px] font-bold uppercase text-muted-foreground">Aktuelle Lage</span>
+            <span className="text-[9px] font-bold uppercase text-muted-foreground">
+              Aktuelle Lage
+            </span>
             <p className="font-display text-xl font-bold leading-tight">
-              {answered.length === 0 ? "Noch nicht bewertet" : reviewCount ? `${reviewCount} Prüfungen offen` : "Entscheidung belastbar"}
+              {answered.length === 0
+                ? "Noch nicht bewertet"
+                : reviewCount
+                  ? `${reviewCount} Prüfungen offen`
+                  : "Entscheidung belastbar"}
             </p>
           </div>
           <span className="rounded-full border bg-card px-2 py-1 font-mono text-[10px] font-semibold">
@@ -3324,147 +3670,165 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
           const limit = own ?? threshold;
           const low = typeof answer?.confidence === "number" && answer.confidence * 100 < limit;
           return (
-            <details key={question.id} open className="group border-b border-border/60 py-1.5 last:border-0">
+            <details
+              key={question.id}
+              open
+              className="group border-b border-border/60 py-1.5 last:border-0"
+            >
               <summary className="nodrag flex cursor-pointer list-none items-center gap-2 py-1">
-                <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${low ? "bg-destructive/10 text-destructive" : answer ? "bg-support/10 text-support" : "bg-secondary text-muted-foreground"}`}>
-                  {low ? <AlertTriangle className="size-3.5" /> : <span className="font-mono text-[10px]">{index + 1}</span>}
+                <span
+                  className={`flex size-7 shrink-0 items-center justify-center rounded-md ${low ? "bg-destructive/10 text-destructive" : answer ? "bg-support/10 text-support" : "bg-secondary text-muted-foreground"}`}
+                >
+                  {low ? (
+                    <AlertTriangle className="size-3.5" />
+                  ) : (
+                    <span className="font-mono text-[10px]">{index + 1}</span>
+                  )}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold">{question.instructions || `Frage ${index + 1}`}</span>
-                <span className={`shrink-0 text-[10px] font-semibold ${low ? "text-destructive" : "text-muted-foreground"}`}>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+                  {question.instructions || `Frage ${index + 1}`}
+                </span>
+                <span
+                  className={`shrink-0 text-[10px] font-semibold ${low ? "text-destructive" : "text-muted-foreground"}`}
+                >
                   {answer ? answerLabel(answer) : "Offen"}
                 </span>
                 <ChevronRight className="size-3 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
               </summary>
               <div className="mt-1 rounded-md bg-secondary/30 p-2">
                 <div className="flex items-start gap-1">
-                <textarea
-                  key={question.id + question.instructions}
-                  defaultValue={question.instructions}
-                  placeholder="Frage, z. B. Ist der Markt groß genug für einen Eintritt?"
-                  aria-label={`Frage ${index + 1}`}
-                  className="nodrag min-h-10 min-w-0 flex-1 resize-none rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs outline-none hover:border-border focus:border-border"
-                  onBlur={(e) => {
-                    const next = [...questions];
-                    next[index] = { ...question, instructions: e.target.value };
-                    writeQuestions(next);
-                  }}
-                />
-                <button
-                  aria-label={`Frage ${index + 1} löschen`}
-                  className="nodrag shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
-                  onClick={() => writeQuestions(questions.filter((_, other) => other !== index))}
-                >
-                  <Trash2 className="size-3" />
-                </button>
-              </div>
-              <div className="mt-1 flex items-center gap-1">
-                <select
-                  value={question.type}
-                  aria-label={`Art der Frage ${index + 1}`}
-                  className="nodrag cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
-                  onChange={(e) => {
-                    const next = [...questions];
-                    next[index] = { ...question, type: e.target.value as DecisionQuestion["type"] };
-                    writeQuestions(next);
-                  }}
-                >
-                  <option value="noul">Ja / Nein</option>
-                  <option value="choice">Auswahl</option>
-                  <option value="score">Bewertung</option>
-                </select>
-                {question.type !== "noul" && (
-                  <input
-                    key={question.id + question.options.join("|")}
-                    defaultValue={question.options.join(", ")}
-                    placeholder={
-                      question.type === "choice" ? "Optionen, mit Komma" : "Stufen, mit Komma"
-                    }
-                    aria-label={`Optionen der Frage ${index + 1}`}
-                    className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border"
+                  <textarea
+                    key={question.id + question.instructions}
+                    defaultValue={question.instructions}
+                    placeholder="Frage, z. B. Ist der Markt groß genug für einen Eintritt?"
+                    aria-label={`Frage ${index + 1}`}
+                    className="nodrag min-h-10 min-w-0 flex-1 resize-none rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs outline-none hover:border-border focus:border-border"
                     onBlur={(e) => {
+                      const next = [...questions];
+                      next[index] = { ...question, instructions: e.target.value };
+                      writeQuestions(next);
+                    }}
+                  />
+                  <button
+                    aria-label={`Frage ${index + 1} löschen`}
+                    className="nodrag shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
+                    onClick={() => writeQuestions(questions.filter((_, other) => other !== index))}
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+                <div className="mt-1 flex items-center gap-1">
+                  <select
+                    value={question.type}
+                    aria-label={`Art der Frage ${index + 1}`}
+                    className="nodrag cursor-pointer rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+                    onChange={(e) => {
                       const next = [...questions];
                       next[index] = {
                         ...question,
-                        options: e.target.value
-                          .split(",")
-                          .map((part) => part.trim())
-                          .filter(Boolean),
+                        type: e.target.value as DecisionQuestion["type"],
+                      };
+                      writeQuestions(next);
+                    }}
+                  >
+                    <option value="noul">Ja / Nein</option>
+                    <option value="choice">Auswahl</option>
+                    <option value="score">Bewertung</option>
+                  </select>
+                  {question.type !== "noul" && (
+                    <input
+                      key={question.id + question.options.join("|")}
+                      defaultValue={question.options.join(", ")}
+                      placeholder={
+                        question.type === "choice" ? "Optionen, mit Komma" : "Stufen, mit Komma"
+                      }
+                      aria-label={`Optionen der Frage ${index + 1}`}
+                      className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border"
+                      onBlur={(e) => {
+                        const next = [...questions];
+                        next[index] = {
+                          ...question,
+                          options: e.target.value
+                            .split(",")
+                            .map((part) => part.trim())
+                            .filter(Boolean),
+                        };
+                        writeQuestions(next);
+                      }}
+                    />
+                  )}
+                  <button
+                    title="Ergebnis dieser Frage weitergeben"
+                    aria-label={`Frage ${index + 1} weitergeben`}
+                    className={`nodrag shrink-0 rounded-md px-1.5 py-0.5 text-[10px] ${
+                      output === question.id
+                        ? "bg-accent font-semibold text-accent-foreground"
+                        : "text-muted-foreground hover:bg-accent"
+                    }`}
+                    onClick={() =>
+                      updateNode(record.id, {
+                        metadata: {
+                          ...(record.metadata ?? {}),
+                          outputQuestion: output === question.id ? null : question.id,
+                        },
+                      })
+                    }
+                  >
+                    ⇢
+                  </button>
+                </div>
+                <div className="mt-1 flex items-center gap-1">
+                  <input
+                    key={question.id + "rule"}
+                    defaultValue={question.rule ?? ""}
+                    placeholder="Eigene Regel für diese Frage (optional)"
+                    aria-label={`Regel der Frage ${index + 1}`}
+                    className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border"
+                    onBlur={(e) => {
+                      const next = [...questions];
+                      next[index] = { ...question, rule: e.target.value };
+                      writeQuestions(next);
+                    }}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={5}
+                    key={question.id + "minconf"}
+                    defaultValue={own ?? ""}
+                    placeholder={`${Math.round(threshold)}`}
+                    title="Eigene Mindest-Sicherheit in Prozent"
+                    aria-label={`Mindest-Sicherheit der Frage ${index + 1}`}
+                    className="nodrag w-14 shrink-0 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
+                    onBlur={(e) => {
+                      const value = Number(e.target.value);
+                      const next = [...questions];
+                      next[index] = {
+                        ...question,
+                        minConfidence:
+                          e.target.value.trim() === "" || !Number.isFinite(value)
+                            ? null
+                            : Math.min(100, Math.max(0, value)),
                       };
                       writeQuestions(next);
                     }}
                   />
+                  <span className="shrink-0 text-[10px] text-muted-foreground">%</span>
+                </div>
+                {answer && (
+                  <p className="mt-1 flex flex-wrap items-center gap-1 text-xs">
+                    <span className="font-medium">{answerLabel(answer)}</span>
+                    {typeof answer.confidence === "number" ? (
+                      <span
+                        className={`text-[10px] ${low ? "text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {low ? "zur Prüfung · " : ""}
+                        {Math.round(answer.confidence * 100)} % sicher
+                      </span>
+                    ) : null}
+                  </p>
                 )}
-                <button
-                  title="Ergebnis dieser Frage weitergeben"
-                  aria-label={`Frage ${index + 1} weitergeben`}
-                  className={`nodrag shrink-0 rounded-md px-1.5 py-0.5 text-[10px] ${
-                    output === question.id
-                      ? "bg-accent font-semibold text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent"
-                  }`}
-                  onClick={() =>
-                    updateNode(record.id, {
-                      metadata: {
-                        ...(record.metadata ?? {}),
-                        outputQuestion: output === question.id ? null : question.id,
-                      },
-                    })
-                  }
-                >
-                  ⇢
-                </button>
-              </div>
-              <div className="mt-1 flex items-center gap-1">
-                <input
-                  key={question.id + "rule"}
-                  defaultValue={question.rule ?? ""}
-                  placeholder="Eigene Regel für diese Frage (optional)"
-                  aria-label={`Regel der Frage ${index + 1}`}
-                  className="nodrag min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none hover:border-border focus:border-border"
-                  onBlur={(e) => {
-                    const next = [...questions];
-                    next[index] = { ...question, rule: e.target.value };
-                    writeQuestions(next);
-                  }}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={5}
-                  key={question.id + "minconf"}
-                  defaultValue={own ?? ""}
-                  placeholder={`${Math.round(threshold)}`}
-                  title="Eigene Mindest-Sicherheit in Prozent"
-                  aria-label={`Mindest-Sicherheit der Frage ${index + 1}`}
-                  className="nodrag w-14 shrink-0 rounded-md border border-border/70 bg-background px-1 py-0.5 text-[10px]"
-                  onBlur={(e) => {
-                    const value = Number(e.target.value);
-                    const next = [...questions];
-                    next[index] = {
-                      ...question,
-                      minConfidence:
-                        e.target.value.trim() === "" || !Number.isFinite(value)
-                          ? null
-                          : Math.min(100, Math.max(0, value)),
-                    };
-                    writeQuestions(next);
-                  }}
-                />
-                <span className="shrink-0 text-[10px] text-muted-foreground">%</span>
-              </div>
-              {answer && (
-                <p className="mt-1 flex flex-wrap items-center gap-1 text-xs">
-                  <span className="font-medium">{answerLabel(answer)}</span>
-                  {typeof answer.confidence === "number" ? (
-                    <span className={`text-[10px] ${low ? "text-destructive" : "text-muted-foreground"}`}>
-                      {low ? "zur Prüfung · " : ""}
-                      {Math.round(answer.confidence * 100)} % sicher
-                    </span>
-                  ) : null}
-
-                </p>
-              )}
               </div>
             </details>
           );
@@ -3472,7 +3836,8 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
       </div>
       <details open className="group border-t bg-secondary/20 px-3 py-1.5">
         <summary className="nodrag flex cursor-pointer list-none items-center justify-between text-[10px] font-semibold uppercase text-muted-foreground">
-          Konfiguration <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          Konfiguration{" "}
+          <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
         </summary>
         <div className="space-y-2 py-2">
           <textarea
@@ -3481,19 +3846,58 @@ export const DecisionNode = memo(function DecisionNode({ id, data, selected }: N
             placeholder="Gemeinsame Regel"
             aria-label="Regel für alle Fragen"
             className="nodrag min-h-12 w-full resize-none rounded-md border bg-background px-2 py-1 text-xs outline-none"
-            onBlur={(e) => updateNode(record.id, { metadata: { ...(record.metadata ?? {}), policy: e.target.value } })}
+            onBlur={(e) =>
+              updateNode(record.id, {
+                metadata: { ...(record.metadata ?? {}), policy: e.target.value },
+              })
+            }
           />
           <label className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
             Mindest-Sicherheit
-            <span><input type="number" min={0} max={100} step={5} key={record.id + "minconf"} defaultValue={threshold} aria-label="Mindest-Sicherheit in Prozent" className="nodrag w-14 rounded-md border bg-background px-1 py-0.5 text-right" onBlur={(e) => { const value = Number(e.target.value); updateNode(record.id, { metadata: { ...(record.metadata ?? {}), minConfidence: Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 80 } }); }} /> %</span>
+            <span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={5}
+                key={record.id + "minconf"}
+                defaultValue={threshold}
+                aria-label="Mindest-Sicherheit in Prozent"
+                className="nodrag w-14 rounded-md border bg-background px-1 py-0.5 text-right"
+                onBlur={(e) => {
+                  const value = Number(e.target.value);
+                  updateNode(record.id, {
+                    metadata: {
+                      ...(record.metadata ?? {}),
+                      minConfidence: Number.isFinite(value)
+                        ? Math.min(100, Math.max(0, value))
+                        : 80,
+                    },
+                  });
+                }}
+              />{" "}
+              %
+            </span>
           </label>
-          <button className="nodrag flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground" onClick={() => writeQuestions([...questions, { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] }])}>
+          <button
+            className="nodrag flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+            onClick={() =>
+              writeQuestions([
+                ...questions,
+                { id: `f${Date.now().toString(36)}`, type: "noul", instructions: "", options: [] },
+              ])
+            }
+          >
             <Plus className="size-3" /> Frage hinzufügen
           </button>
         </div>
       </details>
       <div className="border-t p-2.5">
-        <Button className="nodrag w-full font-semibold" disabled={running || questions.length === 0} onClick={() => runDecide(record.id)}>
+        <Button
+          className="nodrag w-full font-semibold"
+          disabled={running || questions.length === 0}
+          onClick={() => runDecide(record.id)}
+        >
           <Sparkles className={`mr-1.5 size-3.5 ${running ? "animate-pulse" : ""}`} />
           {running ? "Prüft …" : "Entscheidung aktualisieren"}
         </Button>
@@ -3526,8 +3930,10 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
   const question = questions.find((item) => item.id === pickedId) ?? questions[0];
   const answer = answers.find((item) => item.id === question?.id);
   const yes = typeof answer?.noul === "number" ? answer.noul >= 0.5 : null;
-  const yesLabel = typeof meta["yesLabel"] === "string" && meta["yesLabel"] ? meta["yesLabel"] : "KAUFEN";
-  const noLabel = typeof meta["noLabel"] === "string" && meta["noLabel"] ? meta["noLabel"] : "NICHT KAUFEN";
+  const yesLabel =
+    typeof meta["yesLabel"] === "string" && meta["yesLabel"] ? meta["yesLabel"] : "KAUFEN";
+  const noLabel =
+    typeof meta["noLabel"] === "string" && meta["noLabel"] ? meta["noLabel"] : "NICHT KAUFEN";
   const decisionMeta = (decision?.metadata ?? {}) as Record<string, unknown>;
   const threshold =
     typeof question?.minConfidence === "number"
@@ -3574,7 +3980,9 @@ export const SignalNode = memo(function SignalNode({ id, data, selected }: NodeP
         </span>
         <span className="font-display text-base font-semibold tracking-tight">{tone.text}</span>
         {confidence !== null && (
-          <span className="text-[10px] opacity-90">Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : " erreicht"}</span>
+          <span className="text-[10px] opacity-90">
+            Schwelle {Math.round(threshold)} %{unsure ? " nicht erreicht" : " erreicht"}
+          </span>
         )}
       </div>
       {selected && (
@@ -3677,7 +4085,6 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
   const rows = useMemo(() => chartRows(config, mode, holdings), [config, mode, holdings]);
   const total = mode === "value" ? totalValue(config, holdings) : null;
 
-
   function patch(next: Record<string, unknown>) {
     updateNode(record.id, { metadata: { ...(record.metadata ?? {}), ...next } });
   }
@@ -3739,9 +4146,10 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
       const questions = readQuestions(decision);
       const answers = readAnswers(decision);
       for (const asset of config.assets) {
-        const question = questions.find((item) =>
-          `${item.instructions} ${item.id}`.toLowerCase().includes(asset.label.toLowerCase()) ||
-          `${item.instructions} ${item.id}`.toLowerCase().includes(asset.id.toLowerCase()),
+        const question = questions.find(
+          (item) =>
+            `${item.instructions} ${item.id}`.toLowerCase().includes(asset.label.toLowerCase()) ||
+            `${item.instructions} ${item.id}`.toLowerCase().includes(asset.id.toLowerCase()),
         );
         const answer = answers.find((item) => item.id === question?.id);
         if (!answer || typeof answer.noul !== "number") continue;
@@ -3809,7 +4217,13 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
           <option value="30">30 Tage</option>
           <option value="90">90 Tage</option>
         </select>
-        <Button size="sm" variant="secondary" className="nodrag h-7 rounded-full px-2 text-[11px]" disabled={busy} onClick={() => void loadQuotes()}>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="nodrag h-7 rounded-full px-2 text-[11px]"
+          disabled={busy}
+          onClick={() => void loadQuotes()}
+        >
           <RefreshCw className={`size-3 ${busy ? "animate-spin" : ""}`} /> Kurse
         </Button>
       </div>
@@ -3834,7 +4248,9 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
                 {...(mode === "pct" ? { unit: "%" } : {})}
                 width={mode === "pct" ? 38 : 56}
                 tickFormatter={(value: number) =>
-                  mode === "pct" ? String(value) : value.toLocaleString("de-DE", { notation: "compact" })
+                  mode === "pct"
+                    ? String(value)
+                    : value.toLocaleString("de-DE", { notation: "compact" })
                 }
               />
               <Tooltip
@@ -3882,11 +4298,16 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
               style={{ background: QUOTE_COLORS[index % QUOTE_COLORS.length] }}
             />
             {asset.label}
-            <span className="font-mono">{formatPrice(latestPrice(config, asset.id), config.currency)}</span>
+            <span className="font-mono">
+              {formatPrice(latestPrice(config, asset.id), config.currency)}
+            </span>
             {holdings[asset.id] ? (
               <span className="font-mono opacity-80">
                 × {holdings[asset.id]!.toLocaleString("de-DE")} ={" "}
-                {formatPrice(holdings[asset.id]! * (latestPrice(config, asset.id) ?? 0), config.currency)}
+                {formatPrice(
+                  holdings[asset.id]! * (latestPrice(config, asset.id) ?? 0),
+                  config.currency,
+                )}
               </span>
             ) : null}
           </span>
@@ -3921,7 +4342,6 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
         </div>
       )}
 
-
       <div className="nowheel flex-1 overflow-auto border-t px-3 py-2 text-[11px]">
         <div className="mb-1 flex items-center justify-between">
           <span className="font-medium">Entscheidungen im Rückblick</span>
@@ -3937,20 +4357,24 @@ export const QuotesNode = memo(function QuotesNode({ id, data, selected }: NodeP
         )}
         {results.length === 0 ? (
           <p className="text-muted-foreground">
-            Noch nichts festgehalten. Mit dem Entscheidungs-Modul verbinden und „Entscheidung festhalten“ klicken.
+            Noch nichts festgehalten. Mit dem Entscheidungs-Modul verbinden und „Entscheidung
+            festhalten“ klicken.
           </p>
         ) : (
           <ul className="space-y-1">
             {results.map((item, index) => (
-              <li key={`${item.at}-${item.asset}-${index}`} className="flex items-center justify-between gap-2">
+              <li
+                key={`${item.at}-${item.asset}-${index}`}
+                className="flex items-center justify-between gap-2"
+              >
                 <span className="min-w-0 truncate">
                   <span
                     className="mr-1 font-medium"
                     style={{ color: item.buy ? "var(--ok, #16a34a)" : "var(--danger, #dc2626)" }}
                   >
                     {item.buy ? "KAUFEN" : "NICHT KAUFEN"}
-                  </span>
-                  {" "}{item.label} ·{" "}
+                  </span>{" "}
+                  {item.label} ·{" "}
                   {new Date(item.at).toLocaleString("de-DE", {
                     day: "2-digit",
                     month: "2-digit",
@@ -4017,7 +4441,6 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
   const config = readMapConfig(record);
   const focus = useMapFocus();
 
-
   const sources = useMemo(() => {
     const byId = Object.fromEntries(
       flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
@@ -4028,7 +4451,88 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
       .filter((item): item is NodeRecord => Boolean(item));
   }, [edges, flowNodes, id]);
 
-  const points = useMemo(() => pointsFromSources(sources, config), [sources, config]);
+  /**
+   * Verbundene Datenablage: die Karte hält keine Zeilen, sondern fragt beim
+   * Bewegen nur den sichtbaren Ausschnitt ab (höchstens 300 Punkte).
+   */
+  const dataset = useMemo(() => {
+    for (const source of sources) {
+      const stored = readSource(source);
+      const ref = readDatasetRef(stored?.envelope);
+      const columns = stored?.envelope.facets.dataset?.columns ?? [];
+      const geo = detectGeoColumns(columns);
+      if (ref?.datasetId && geo) {
+        const label =
+          columns.find((c) => c.semantic === "identifier" || c.type === "text")?.key ?? null;
+        return { id: ref.datasetId, geo, label, title: source.title ?? "Datenablage" };
+      }
+    }
+    return null;
+  }, [sources]);
+
+  const [remote, setRemote] = useState<{
+    points: GeoPoint[];
+    matched: number;
+    total: number;
+  } | null>(null);
+  const runQuery = useServerFn(queryDataset);
+  const lastBox = useRef<string>("");
+
+  const loadBox = useCallback(
+    async (box: [number, number, number, number]) => {
+      if (!dataset) return;
+      const key = box.map((value) => value.toFixed(3)).join(",");
+      if (key === lastBox.current) return;
+      lastBox.current = key;
+      try {
+        const answer = await runQuery({
+          data: {
+            datasetId: dataset.id,
+            query: {
+              mode: "bbox",
+              mapping: {
+                lat: dataset.geo.lat,
+                lon: dataset.geo.lon,
+                ...(dataset.label ? { name: dataset.label } : {}),
+              },
+              bbox: box,
+              limit: 300,
+            },
+          },
+        });
+        const result = answer.result as unknown as {
+          points?: { lat: number; lon: number; name: string; index: number }[];
+          matched?: number;
+          total?: number;
+        };
+        setRemote({
+          points: (result.points ?? []).map((point) => ({
+            id: `${dataset.id}:${point.index}`,
+            label: point.name || `Zeile ${point.index}`,
+            lat: point.lat,
+            lon: point.lon,
+            klass: dataset.title,
+            impact: null,
+          })),
+          matched: result.matched ?? 0,
+          total: result.total ?? 0,
+        });
+      } catch {
+        // Kein Zugriff oder Dienst nicht erreichbar: die Karte bleibt nutzbar.
+      }
+    },
+    [dataset, runQuery],
+  );
+
+  useEffect(() => {
+    lastBox.current = "";
+    if (!dataset) setRemote(null);
+  }, [dataset]);
+
+  const points = useMemo(
+    () => [...pointsFromSources(sources, config), ...(remote?.points ?? [])],
+    [sources, config, remote],
+  );
   const summary = useMemo(() => mapText(points, config.weather), [points, config.weather]);
 
   // keep the chat / decision context in sync with what the map shows
@@ -4072,8 +4576,7 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
       }
       if (answer.status !== 200) throw new Error(`Wetter: Status ${answer.status}`);
       const parsed = JSON.parse(answer.body) as
-        | { current?: Record<string, number> }
-        | { current?: Record<string, number> }[];
+        { current?: Record<string, number> } | { current?: Record<string, number> }[];
       const list = Array.isArray(parsed) ? parsed : [parsed];
       const weather: Record<string, unknown> = {};
       batch.forEach((point, index) => {
@@ -4135,12 +4638,20 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
 
       <div className="flex items-center justify-between gap-3 border-b bg-secondary/25 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${risky ? "bg-destructive/10 text-destructive" : "bg-support/10 text-support"}`}>
+          <span
+            className={`flex size-7 shrink-0 items-center justify-center rounded-md ${risky ? "bg-destructive/10 text-destructive" : "bg-support/10 text-support"}`}
+          >
             <CloudSun className="size-4" />
           </span>
           <div className="min-w-0">
-            <p className="text-xs font-bold">{risky ? `${risky} Wetterwarnungen` : `${points.length} Anlagen stabil`}</p>
-            <p className="truncate text-[9px] text-muted-foreground">{config.lastAt ? `Stand ${new Date(config.lastAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "Wetter noch nicht abgerufen"}</p>
+            <p className="text-xs font-bold">
+              {risky ? `${risky} Wetterwarnungen` : `${points.length} Anlagen stabil`}
+            </p>
+            <p className="truncate text-[9px] text-muted-foreground">
+              {config.lastAt
+                ? `Stand ${new Date(config.lastAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
+                : "Wetter noch nicht abgerufen"}
+            </p>
           </div>
         </div>
         <span className="shrink-0 font-mono text-xs font-semibold">{points.length} Objekte</span>
@@ -4168,7 +4679,9 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
               zoom={points.length ? 6 : config.zoom}
               selectedId={picked}
               highlightIds={focus.ids}
-
+              {...(dataset
+                ? { onBounds: (box: [number, number, number, number]) => void loadBox(box) }
+                : {})}
               onSelect={setPicked}
             />
           </Suspense>
@@ -4176,6 +4689,12 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
         {!points.length && (
           <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-card/90 px-2 py-1 text-[10px] text-muted-foreground">
             Keine Objekte – eine Tabelle mit Spalten für Breitengrad und Längengrad verbinden.
+          </div>
+        )}
+        {remote && remote.matched > remote.points.length && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-card/90 px-2 py-1 text-[10px] text-muted-foreground">
+            {remote.matched.toLocaleString("de-DE")} Objekte im Ausschnitt – {remote.points.length}{" "}
+            werden gezeigt. Ausschnitt verkleinern.
           </div>
         )}
       </div>
@@ -4216,9 +4735,7 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
                     {point.klass ? ` · ${point.klass}` : ""} ·{" "}
                     {w ? `Regen ${w.rain ?? "?"} mm/h, Wind ${w.wind ?? "?"} km/h` : "kein Wetter"}
                   </p>
-                  {point.note ? (
-                    <p className="mt-0.5 text-muted-foreground">{point.note}</p>
-                  ) : null}
+                  {point.note ? <p className="mt-0.5 text-muted-foreground">{point.note}</p> : null}
                 </div>
               </div>
             );
@@ -4250,9 +4767,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     const maps = linked.filter((item) => item.type === "map");
     return {
       mapRecords: maps.length ? maps : Object.values(byId).filter((item) => item?.type === "map"),
-      tables: Object.values(byId).filter(
-        (item) => item?.type === "table" || item?.type === "list",
-      ),
+      tables: Object.values(byId).filter((item) => item?.type === "table" || item?.type === "list"),
       decisions: edges
         .filter((edge) => edge.source === id)
         .map((edge) => byId[edge.target])
@@ -4271,8 +4786,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         .map((edge) => {
           const otherId = edge.target === mapRecord.id ? edge.source : edge.target;
           return flowNodes.find((n) => n.id === otherId)?.data as
-            | { record: NodeRecord }
-            | undefined;
+            { record: NodeRecord } | undefined;
         })
         .map((item) => item?.record)
         .filter((item): item is NodeRecord => Boolean(item));
@@ -4340,7 +4854,8 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
       if (!factor.params.length) continue;
       let value: number | null = factor.score;
       for (const label of labels) value = edgeValue(label, value);
-      const scaled = value == null ? factor.score : Math.min(10, Math.max(0, Math.round(value * 10) / 10));
+      const scaled =
+        value == null ? factor.score : Math.min(10, Math.max(0, Math.round(value * 10) / 10));
       map[note.id] = {
         label: note.title ?? "Faktor",
         score: scaled,
@@ -4437,7 +4952,8 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         {
           fields: allFields,
           gaps: sourceGaps.map(
-            (row) => `${row.label}: ${row.missing.join(", ")} fehlt · ${row.sourceName}, Zeile ${row.row}`,
+            (row) =>
+              `${row.label}: ${row.missing.join(", ")} fehlt · ${row.sourceName}, Zeile ${row.row}`,
           ),
         },
       ),
@@ -4460,7 +4976,9 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
       const evidenceText = evidence
         .map((item) => {
           const factor = readFactor(item);
-          const weights = factor.params.length ? `\n${factorText(item.title ?? "Faktor", factor)}` : "";
+          const weights = factor.params.length
+            ? `\n${factorText(item.title ?? "Faktor", factor)}`
+            : "";
           return `### ${noteRole(item).eyebrow}: ${item.title ?? "Eintrag"}\n${item.content ?? ""}${weights}`;
         })
         .join("\n\n");
@@ -4628,12 +5146,22 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
         </span>
       </div>
 
-      <div className="border-b px-3 py-3" style={{ background: `color-mix(in oklab, ${result.portfolio.color} 20%, var(--card))` }}>
+      <div
+        className="border-b px-3 py-3"
+        style={{ background: `color-mix(in oklab, ${result.portfolio.color} 20%, var(--card))` }}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <span className="text-[9px] font-bold uppercase text-muted-foreground">Aktuelle Risikostufe</span>
-            <p className="truncate font-display text-2xl font-bold leading-none">{result.portfolio.label}</p>
-            <p className="mt-1 truncate text-[10px] text-muted-foreground">Höchstes Risiko: {result.fields.find((field) => field.score === result.highest)?.name ?? "–"}</p>
+            <span className="text-[9px] font-bold uppercase text-muted-foreground">
+              Aktuelle Risikostufe
+            </span>
+            <p className="truncate font-display text-2xl font-bold leading-none">
+              {result.portfolio.label}
+            </p>
+            <p className="mt-1 truncate text-[10px] text-muted-foreground">
+              Höchstes Risiko:{" "}
+              {result.fields.find((field) => field.score === result.highest)?.name ?? "–"}
+            </p>
           </div>
           <div className="shrink-0 text-right">
             <span className="font-mono text-xl font-bold">{result.index}</span>
@@ -4661,18 +5189,20 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                 <li key={row.id} className="flex items-start gap-1 text-[#8a5a12]">
                   <span className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-[#e0a03a]" />
                   <span>
-                    {row.label}: {row.missing.join(" und ")} fehlt · {row.sourceName}, Zeile {row.row}
+                    {row.label}: {row.missing.join(" und ")} fehlt · {row.sourceName}, Zeile{" "}
+                    {row.row}
                   </span>
                 </li>
               ))}
               {sourceGaps.length > 3 ? (
-                <li className="text-muted-foreground">… {sourceGaps.length - 3} weitere Zeilen mit Lücken</li>
+                <li className="text-muted-foreground">
+                  … {sourceGaps.length - 3} weitere Zeilen mit Lücken
+                </li>
               ) : null}
             </ul>
           ) : null}
         </div>
       ) : null}
-
 
       <div className="nowheel flex-1 overflow-auto p-2">
         <section>
@@ -4803,8 +5333,12 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                         <tr className="border-t border-border/60 bg-primary/5">
                           <td colSpan={8} className="px-1.5 py-1.5">
                             <div className="space-y-1 text-[10px]">
-                              <p className="module-eyebrow text-muted-foreground">So entsteht der Wert</p>
-                              <p className="font-mono text-[10px] font-semibold">{explain.formula}</p>
+                              <p className="module-eyebrow text-muted-foreground">
+                                So entsteht der Wert
+                              </p>
+                              <p className="font-mono text-[10px] font-semibold">
+                                {explain.formula}
+                              </p>
                               <ul className="space-y-0.5">
                                 {explain.inputs.map((input) => (
                                   <li key={input.label} className="flex items-start gap-1">
@@ -4885,11 +5419,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                   aria-label="Quelle der Eintrittswahrscheinlichkeit"
                                   className="nodrag h-6 min-w-0 flex-1 rounded-md border border-border/70 bg-background px-1 text-[10px] outline-none"
                                   onChange={(e) =>
-                                     commit(
-                                      field.id,
-                                      "auto",
-                                      e.target.value as RiskField["auto"],
-                                    )
+                                    commit(field.id, "auto", e.target.value as RiskField["auto"])
                                   }
                                 >
                                   <option value="none">eigener Wert</option>
@@ -4932,7 +5462,9 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                                     type="button"
                                     className="nodrag rounded-full px-2 py-0.5 text-destructive hover:bg-accent"
                                     onClick={() =>
-                                      setFields(config.fields.filter((item) => item.id !== field.id))
+                                      setFields(
+                                        config.fields.filter((item) => item.id !== field.id),
+                                      )
                                     }
                                   >
                                     entfernen
@@ -5025,7 +5557,9 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
                   </span>
                 ))}
               </div>
-              <p className="pl-16 pt-0.5 text-center text-[9px] text-muted-foreground">Auswirkung</p>
+              <p className="pl-16 pt-0.5 text-center text-[9px] text-muted-foreground">
+                Auswirkung
+              </p>
             </div>
           </div>
         </section>
@@ -5120,10 +5654,7 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
             </div>
             <ul className="space-y-1">
               {config.history.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="rounded-md border border-border/60 px-1.5 py-1"
-                >
+                <li key={entry.id} className="rounded-md border border-border/60 px-1.5 py-1">
                   <div className="flex items-center justify-between gap-1">
                     <span className="truncate font-medium">
                       <span className="font-mono text-muted-foreground">{entry.code}</span>{" "}
@@ -5148,7 +5679,6 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
     </div>
   );
 });
-
 
 /** Inspection photos of substations: assessment, priority, cost and action plan. */
 export const InspectNode = memo(function InspectNode({ data, selected }: NodeProps) {
@@ -5328,7 +5858,10 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
         }}
       >
         {findings.length - located > 0 && (
-          <p className="rounded-md border border-dashed px-2 py-1 text-[10px]" style={{ borderColor: "#dc2626", color: "#dc2626" }}>
+          <p
+            className="rounded-md border border-dashed px-2 py-1 text-[10px]"
+            style={{ borderColor: "#dc2626", color: "#dc2626" }}
+          >
             {findings.length - located} Befund(e) ohne vollständige Koordinaten – sie erscheinen
             nicht auf der Karte. Breite und Länge unten am Eintrag eintragen.
           </p>
@@ -5464,7 +5997,9 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
                               placeholder="verantwortlich"
                               aria-label="Verantwortliche Person"
                               className="nodrag w-24 rounded border border-border/70 px-1 py-0.5 text-[9px]"
-                              onBlur={(e) => patchFinding(finding.id, { owner: e.target.value.trim() })}
+                              onBlur={(e) =>
+                                patchFinding(finding.id, { owner: e.target.value.trim() })
+                              }
                             />
                             <input
                               key={finding.id + "due" + finding.due}
@@ -5591,9 +6126,6 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
     patch({ mcpContext: next });
   }
 
-
-
-
   return (
     <div
       className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
@@ -5658,7 +6190,6 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
             })
           }
         />
-
 
         <Select
           value={config.tool}
@@ -5753,17 +6284,22 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
                 <div key={field.name} className="grid gap-1">
                   <div className="flex items-baseline gap-1">
                     <span className="text-[10px] font-medium">{field.title}</span>
-                    {field.required ? <span className="text-[10px] text-destructive">*</span> : null}
+                    {field.required ? (
+                      <span className="text-[10px] text-destructive">*</span>
+                    ) : null}
                     <span className="ml-auto font-mono text-[9px] text-muted-foreground">
                       {field.type}
                     </span>
                   </div>
                   {field.description ? (
-                    <p className="line-clamp-2 text-[9px] text-muted-foreground">{field.description}</p>
+                    <p className="line-clamp-2 text-[9px] text-muted-foreground">
+                      {field.description}
+                    </p>
                   ) : null}
                   {bound ? (
                     <p className="rounded-md bg-secondary px-2 py-1 text-[10px]">
-                      Wert kommt aus „{linkable.find((item) => item.id === bound)?.title ?? "Modul"}“
+                      Wert kommt aus „{linkable.find((item) => item.id === bound)?.title ?? "Modul"}
+                      “
                     </p>
                   ) : field.type === "enum" ? (
                     <Select
@@ -5800,13 +6336,20 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
                       defaultValue={config.inputs[field.name] ?? ""}
                       placeholder={field.placeholder}
                       aria-label={field.title}
-                      inputMode={field.type === "number" || field.type === "integer" ? "decimal" : "text"}
+                      inputMode={
+                        field.type === "number" || field.type === "integer" ? "decimal" : "text"
+                      }
                       className="nodrag h-7 w-full rounded-md border border-border/70 bg-background px-2 text-[11px] outline-none focus:border-ring"
                       onBlur={(e) => setInput(field.name, e.target.value)}
                     />
                   )}
                   {linkable.length > 0 ? (
-                    <Select value={bound} onValueChange={(next) => setBinding(field.name, next === "__none__" ? "" : next)}>
+                    <Select
+                      value={bound}
+                      onValueChange={(next) =>
+                        setBinding(field.name, next === "__none__" ? "" : next)
+                      }
+                    >
                       <SelectTrigger
                         className="nodrag h-6 text-[10px] text-muted-foreground"
                         aria-label={`${field.title}: Wert aus Modul`}
@@ -5946,7 +6489,9 @@ export const McpNode = memo(function McpNode({ data, selected }: NodeProps) {
                   </span>
                   <span
                     className="ml-auto text-[9px]"
-                    style={{ color: run.ok ? "var(--signal-ok, #4f8a5b)" : "var(--signal-error, #de5a3a)" }}
+                    style={{
+                      color: run.ok ? "var(--signal-ok, #4f8a5b)" : "var(--signal-error, #de5a3a)",
+                    }}
                   >
                     {run.ok ? "erfolgreich" : "Fehler"}
                   </span>

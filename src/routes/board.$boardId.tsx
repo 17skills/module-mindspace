@@ -18,7 +18,19 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
-import { Download, FileCode2, Globe, LayoutGrid, Plug, Plus, Scale, Send, Server, Shapes, Tag } from "lucide-react";
+import {
+  Download,
+  FileCode2,
+  Globe,
+  LayoutGrid,
+  Plug,
+  Plus,
+  Scale,
+  Send,
+  Server,
+  Shapes,
+  Tag,
+} from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
@@ -146,6 +158,8 @@ import {
   zoneMembers,
 } from "@/lib/zones";
 import { runZoneAgent } from "@/lib/agent.functions";
+import { readSource } from "@/lib/source-node";
+import { readDatasetRef } from "@/lib/datasets";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
@@ -163,7 +177,12 @@ import {
 } from "@/lib/canvas-history";
 
 /** Verbindung auf die Felder reduzieren, die zum Wiederherstellen nötig sind. */
-function snapEdge(edge: { id: string; source: string; target: string; label?: unknown }): EdgeSnapshot {
+function snapEdge(edge: {
+  id: string;
+  source: string;
+  target: string;
+  label?: unknown;
+}): EdgeSnapshot {
   return {
     id: edge.id,
     source: edge.source,
@@ -173,7 +192,13 @@ function snapEdge(edge: { id: string; source: string; target: string; label?: un
 }
 
 import { MAX_APP_MODULES } from "@/lib/apps";
-import { capture, readPayload, stripContent, type LibraryEntry, type LibraryPayload } from "@/lib/library";
+import {
+  capture,
+  readPayload,
+  stripContent,
+  type LibraryEntry,
+  type LibraryPayload,
+} from "@/lib/library";
 
 import {
   extractStructured,
@@ -348,7 +373,8 @@ function naturalElementHeight(element: HTMLElement): number {
   if (!children.length || (!isVerticalFlex && !scrolls)) return rect.height;
 
   const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
-  const border = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
+  const border =
+    Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
   const gap = Number.parseFloat(style.rowGap) || 0;
   return (
     padding +
@@ -366,14 +392,39 @@ function measuredCardHeight(nodeElement: HTMLElement) {
 
 /** Modules of the dashboard family, added through one toolbar menu. */
 const DASHBOARD_MODULES = [
-  { id: "metric", label: "Kennzahl", title: "Kennzahl", metadata: { value: null, unit: "", compare: "" } },
-  { id: "gauge", label: "Tacho", title: "Tacho", metadata: { min: 0, max: 100, warn: 60, danger: 85, value: 0 } },
+  {
+    id: "metric",
+    label: "Kennzahl",
+    title: "Kennzahl",
+    metadata: { value: null, unit: "", compare: "" },
+  },
+  {
+    id: "gauge",
+    label: "Tacho",
+    title: "Tacho",
+    metadata: { min: 0, max: 100, warn: 60, danger: 85, value: 0 },
+  },
   { id: "sheet", label: "Rechenblatt", title: "Rechenblatt", metadata: { rows: [] } },
   { id: "signal", label: "Signal (Ampel)", title: "Signal", metadata: { question: "" } },
   { id: "quotes", label: "Kursverlauf", title: "Kurse", metadata: { days: 7, currency: "eur" } },
-  { id: "map", label: "Karte (GIS)", title: "Karte", metadata: { columns: {}, weather: {}, zoom: 5 } },
-  { id: "risk", label: "Risikomatrix (ISO 55001)", title: "Risikomatrix", metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 } },
-  { id: "inspect", label: "Inspektion (Fotos)", title: "Trafostations-Inspektion", metadata: { findings: [], rates: {} } },
+  {
+    id: "map",
+    label: "Karte (GIS)",
+    title: "Karte",
+    metadata: { columns: {}, weather: {}, zoom: 5 },
+  },
+  {
+    id: "risk",
+    label: "Risikomatrix (ISO 55001)",
+    title: "Risikomatrix",
+    metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 },
+  },
+  {
+    id: "inspect",
+    label: "Inspektion (Fotos)",
+    title: "Trafostations-Inspektion",
+    metadata: { findings: [], rates: {} },
+  },
   { id: "camera", label: "Kamera (Foto + Ort)", title: "Kamera", metadata: {} },
 ] as const;
 
@@ -416,7 +467,6 @@ function absoluteZones(all: NodeRecord[]): NodeRecord[] {
     });
 }
 
-
 function toFlowNode(record: NodeRecord): Node {
   const size = DEFAULT_SIZE[record.type] ?? DEFAULT_SIZE["default"]!;
   const kind =
@@ -448,8 +498,7 @@ function toFlowNode(record: NodeRecord): Node {
         ? "data"
         : "content";
   const zoneLocked =
-    kind === "zone" &&
-    (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
+    kind === "zone" && (record.metadata as Record<string, unknown> | null)?.["locked"] === true;
   return {
     id: record.id,
     type: kind,
@@ -533,7 +582,6 @@ function BoardPage() {
   const myName =
     (user?.user_metadata?.["full_name"] as string | undefined) ||
     (user?.user_metadata?.["name"] as string | undefined) ||
-
     user?.email ||
     "Gast";
   const { peers, sendCursor, setEditing, myColor } = useBoardPresence({
@@ -555,9 +603,7 @@ function BoardPage() {
       record.position_y + (record.height ?? 240) / 2,
       { zoom: 1, duration: 500 },
     );
-    setNodes((current) =>
-      current.map((node) => ({ ...node, selected: node.id === focusParam })),
-    );
+    setNodes((current) => current.map((node) => ({ ...node, selected: node.id === focusParam })));
   }, [ready, focusParam, setCenter, setNodes]);
 
   const downloadBackup = useCallback(async () => {
@@ -637,8 +683,6 @@ function BoardPage() {
     if (!ready) return;
     reloadAccess();
   }, [ready, reloadAccess]);
-
-
 
   const fileRef = useRef<HTMLInputElement>(null);
   const filePosition = useRef<{ x: number; y: number } | null>(null);
@@ -753,7 +797,9 @@ function BoardPage() {
           label: (row.label as string | null) ?? undefined,
         });
         if (source !== row.source_id || target !== row.target_id) {
-          trackSave(supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id));
+          trackSave(
+            supabase.from("edges").update({ source_id: source, target_id: target }).eq("id", id),
+          );
         }
       }
       if (drop.length) trackSave(supabase.from("edges").delete().in("id", drop));
@@ -799,7 +845,11 @@ function BoardPage() {
         current.some((node) => node.id === record.id)
           ? current.map((node) =>
               node.id === record.id
-                ? { ...node, position: { x: record.position_x, y: record.position_y }, data: { record } }
+                ? {
+                    ...node,
+                    position: { x: record.position_x, y: record.position_y },
+                    data: { record },
+                  }
                 : node,
             )
           : (record.type === "frame" || record.type === "zone") && !record.parent_id
@@ -859,7 +909,11 @@ function BoardPage() {
             const from = dragStartRef.current[node.id];
             return from ? { id: node.id, from, to: { ...node.position } } : null;
           })
-          .filter(Boolean) as { id: string; from: { x: number; y: number }; to: { x: number; y: number } }[],
+          .filter(Boolean) as {
+          id: string;
+          from: { x: number; y: number };
+          to: { x: number; y: number };
+        }[],
       );
       if (items.length) recordHistory({ kind: "move", items });
       dragStartRef.current = {};
@@ -909,9 +963,7 @@ function BoardPage() {
       recordHistory({
         kind: "nodes.remove",
         rows: list.map((key) => recordsRef.current[key]).filter(Boolean) as NodeRecord[],
-        edges: edgesRef.current
-          .filter((e) => ids.has(e.source) || ids.has(e.target))
-          .map(snapEdge),
+        edges: edgesRef.current.filter((e) => ids.has(e.source) || ids.has(e.target)).map(snapEdge),
       });
       setNodes((current) => current.filter((n) => !ids.has(n.id)));
       setEdges((current) => current.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
@@ -1022,14 +1074,11 @@ function BoardPage() {
     [boardId, setEdges, user],
   );
 
-
   const updateEdge = useCallback(
     (id: string, label: string) => {
       const value = label.trim();
       setEdges((current) =>
-        current.map((edge) =>
-          edge.id === id ? { ...edge, label: value || undefined } : edge,
-        ),
+        current.map((edge) => (edge.id === id ? { ...edge, label: value || undefined } : edge)),
       );
       markSelfWrite(id);
       saveOp(boardId, { kind: "edge.update", id, label: value || null });
@@ -1128,7 +1177,9 @@ function BoardPage() {
 
         // Entfernen von Modulen und/oder Verbindungen
         const edgeIds = new Set(entry.edges.map((edge) => edge.id));
-        const nodeIds = new Set(entry.kind === "nodes.remove" ? entry.rows.map((row) => row.id) : []);
+        const nodeIds = new Set(
+          entry.kind === "nodes.remove" ? entry.rows.map((row) => row.id) : [],
+        );
         if (nodeIds.size) {
           setRecords((current) => {
             const next = { ...current };
@@ -1180,7 +1231,6 @@ function BoardPage() {
   const canUndo = useMemo(() => pastRef.current.length > 0, [historyTick]);
   const canRedo = useMemo(() => futureRef.current.length > 0, [historyTick]);
 
-
   /** Entscheidung bei gleichzeitiger Änderung: eigene Fassung halten oder fremde übernehmen. */
   const resolveWith = useCallback(
     (conflict: Conflict, keep: "mine" | "theirs") => {
@@ -1229,6 +1279,40 @@ function BoardPage() {
       );
     }
     return parts.join("\n\n---\n\n");
+  }, []);
+
+  /**
+   * Verbundene Datenquellen eines Moduls — nur die Verweise. Große Tabellen
+   * fließen nie als Text in den Chat; der Agent fragt sie gezielt ab.
+   */
+  const collectDatasets = useCallback((id: string) => {
+    const connected = new Set<string>();
+    for (const edge of edgesRef.current) {
+      if (edge.source === id) connected.add(edge.target);
+      if (edge.target === id) connected.add(edge.source);
+    }
+    for (const nodeId of [...connected]) {
+      const record = recordsRef.current[nodeId];
+      if (record?.type === "frame") {
+        for (const candidate of Object.values(recordsRef.current)) {
+          if (candidate.parent_id === nodeId) connected.add(candidate.id);
+        }
+      }
+    }
+    const own = readAssignment(recordsRef.current[id]);
+    if (own) {
+      for (const candidate of Object.values(recordsRef.current)) {
+        if (candidate.id !== id && readAssignment(candidate)?.zoneId === own.zoneId) {
+          connected.add(candidate.id);
+        }
+      }
+    }
+    const ids: string[] = [];
+    for (const nodeId of connected) {
+      const ref = readDatasetRef(readSource(recordsRef.current[nodeId])?.envelope);
+      if (ref?.datasetId && !ids.includes(ref.datasetId)) ids.push(ref.datasetId);
+    }
+    return ids.slice(0, 5);
   }, []);
 
   /**
@@ -1285,26 +1369,28 @@ function BoardPage() {
   }, []);
 
   /** Assign a card to the background field it now sits on. */
-  const syncZone = useCallback((id: string, x: number, y: number) => {
-    const record = recordsRef.current[id];
-    if (!record || record.type === "zone" || record.type === "frame" || record.parent_id) return;
-    if (!isAuto(record)) return;
-    const centre = {
-      x: x + (record.width ?? 320) / 2,
-      y: y + (record.height ?? 300) / 2,
-    };
-    const zone = zoneAt(centre, absoluteZones(Object.values(recordsRef.current)));
-    const current = readAssignment(record);
-    if ((zone?.id ?? null) === (current?.zoneId ?? null)) return;
-    updateNode(id, {
-      metadata: {
-        ...(record.metadata ?? {}),
-        zoneId: zone?.id ?? null,
-        ...(zone && !current?.role ? { zoneRole: ZONE_ROLES[0] } : {}),
-      },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateNode]);
+  const syncZone = useCallback(
+    (id: string, x: number, y: number) => {
+      const record = recordsRef.current[id];
+      if (!record || record.type === "zone" || record.type === "frame" || record.parent_id) return;
+      if (!isAuto(record)) return;
+      const centre = {
+        x: x + (record.width ?? 320) / 2,
+        y: y + (record.height ?? 300) / 2,
+      };
+      const zone = zoneAt(centre, absoluteZones(Object.values(recordsRef.current)));
+      const current = readAssignment(record);
+      if ((zone?.id ?? null) === (current?.zoneId ?? null)) return;
+      updateNode(id, {
+        metadata: {
+          ...(record.metadata ?? {}),
+          zoneId: zone?.id ?? null,
+          ...(zone && !current?.role ? { zoneRole: ZONE_ROLES[0] } : {}),
+        },
+      });
+    },
+    [updateNode],
+  );
 
   const addNoteFrom = useCallback(
     (sourceId: string, text: string) => {
@@ -1407,7 +1493,10 @@ function BoardPage() {
           const meta = await fetchLinkMeta({ data: { url } });
           const name =
             meta.title
-              ?.replace(/\s*[|\-–—]\s*(LinkedIn|Xing|X|Twitter|Instagram|Facebook|Threads|TikTok|Mastodon).*$/i, "")
+              ?.replace(
+                /\s*[|\-–—]\s*(LinkedIn|Xing|X|Twitter|Instagram|Facebook|Threads|TikTok|Mastodon).*$/i,
+                "",
+              )
               .trim() || slug;
           updateNode(record.id, {
             title: name,
@@ -1458,7 +1547,9 @@ function BoardPage() {
                 }
               : {}),
           });
-          const { text, segments } = await transcribeAudio({ data: { audioUrl: episode.audioUrl } });
+          const { text, segments } = await transcribeAudio({
+            data: { audioUrl: episode.audioUrl },
+          });
           updateNode(record.id, {
             content: text,
             status: text ? "ready" : "error",
@@ -1684,26 +1775,30 @@ function BoardPage() {
       );
       const parentId = parentKey.startsWith("parent:") ? parentKey.slice(7) : null;
       const zoneId = parentKey.startsWith("zone:") ? parentKey.slice(5) : null;
-      const parent = parentId
-        ? nodesRef.current.find((node) => node.id === parentId)
-        : null;
+      const parent = parentId ? nodesRef.current.find((node) => node.id === parentId) : null;
       const zone = zoneId
         ? absoluteZones(Object.values(recordsRef.current)).find((record) => record.id === zoneId)
         : null;
       const parentWidth = parent
-        ? parent.width ?? recordsRef.current[parent.id]?.width ?? 1200
-        : zone?.width ?? Number.POSITIVE_INFINITY;
+        ? (parent.width ?? recordsRef.current[parent.id]?.width ?? 1200)
+        : (zone?.width ?? Number.POSITIVE_INFINITY);
       const parentHeight = parent
-        ? parent.height ?? recordsRef.current[parent.id]?.height ?? 900
-        : zone?.height ?? Number.POSITIVE_INFINITY;
+        ? (parent.height ?? recordsRef.current[parent.id]?.height ?? 900)
+        : (zone?.height ?? Number.POSITIVE_INFINITY);
       const boundaryX = zone?.position_x ?? 0;
       const boundaryY = zone?.position_y ?? 0;
       const hasBoundary = Boolean(parent || zone);
       const inset = hasBoundary ? 28 : 0;
       const widthOf = (node: Node) =>
-        node.width ?? recordsRef.current[node.id]?.width ?? DEFAULT_SIZE[node.type ?? "default"]?.width ?? 320;
+        node.width ??
+        recordsRef.current[node.id]?.width ??
+        DEFAULT_SIZE[node.type ?? "default"]?.width ??
+        320;
       const heightOf = (node: Node) =>
-        node.height ?? recordsRef.current[node.id]?.height ?? DEFAULT_SIZE[node.type ?? "default"]?.height ?? 240;
+        node.height ??
+        recordsRef.current[node.id]?.height ??
+        DEFAULT_SIZE[node.type ?? "default"]?.height ??
+        240;
 
       let columns = Math.min(3, Math.ceil(Math.sqrt(ordered.length)));
       const layoutAt = (originX: number, originY: number, count: number) => {
@@ -1786,7 +1881,10 @@ function BoardPage() {
             candidate.y >= boundaryY + inset &&
             candidate.x + attempt.width <= boundaryX + parentWidth - inset &&
             candidate.y + attempt.height <= boundaryY + parentHeight - inset);
-        if (withinParent && !attempt.rects.some((rect) => obstacles.some((other) => overlaps(rect, other)))) {
+        if (
+          withinParent &&
+          !attempt.rects.some((rect) => obstacles.some((other) => overlaps(rect, other)))
+        ) {
           arranged = attempt;
           break;
         }
@@ -1895,15 +1993,15 @@ function BoardPage() {
       try {
         const { postChat } = await import("@/lib/chat-client");
         const response = await postChat({
-            nodeId: zone.id,
-            model: "openai/gpt-6-astra",
-            context,
-            messages: [
-              {
-                role: "user",
-                content: `Alle Inhalte gehören zum Feld „${zone.title ?? "Feld"}“ eines Canvas. Fasse zusammen, was sie über dieses Feld aussagen, und nenne die Beispiele mit kurzer Begründung.`,
-              },
-            ],
+          nodeId: zone.id,
+          model: "openai/gpt-6-astra",
+          context,
+          messages: [
+            {
+              role: "user",
+              content: `Alle Inhalte gehören zum Feld „${zone.title ?? "Feld"}“ eines Canvas. Fasse zusammen, was sie über dieses Feld aussagen, und nenne die Beispiele mit kurzer Begründung.`,
+            },
+          ],
         });
         if (!response.ok || !response.body) throw new Error(await response.text());
         const reader = response.body.getReader();
@@ -2055,7 +2153,8 @@ function BoardPage() {
         let parsed: Record<string, unknown> = {};
         try {
           const raw: unknown = JSON.parse(config.args || "{}");
-          if (raw && typeof raw === "object" && !Array.isArray(raw)) parsed = raw as Record<string, unknown>;
+          if (raw && typeof raw === "object" && !Array.isArray(raw))
+            parsed = raw as Record<string, unknown>;
         } catch {
           parsed = {};
         }
@@ -2121,7 +2220,9 @@ function BoardPage() {
       const hub = recordsRef.current[hubId];
       if (!hub) return;
       const siblings = Object.values(recordsRef.current).filter(
-        (item) => item.type === "mcp" && (item.metadata as Record<string, unknown> | null)?.["mcpHubId"] === hubId,
+        (item) =>
+          item.type === "mcp" &&
+          (item.metadata as Record<string, unknown> | null)?.["mcpHubId"] === hubId,
       ).length;
       void createRecord({
         type: "mcp",
@@ -2142,7 +2243,9 @@ function BoardPage() {
           createEdge(hub.id, created.id);
         })
         .catch((error: unknown) => {
-          toast.error(error instanceof Error ? error.message : "Karte konnte nicht angelegt werden");
+          toast.error(
+            error instanceof Error ? error.message : "Karte konnte nicht angelegt werden",
+          );
         });
     },
     [createRecord, createEdge],
@@ -2286,9 +2389,7 @@ function BoardPage() {
         record.position_y + (record.height ?? 220) / 2,
         { zoom: 1, duration: 400 },
       );
-      setNodes((current) =>
-        current.map((node) => ({ ...node, selected: node.id === id })),
-      );
+      setNodes((current) => current.map((node) => ({ ...node, selected: node.id === id })));
     },
     [setCenter, setNodes],
   );
@@ -2303,7 +2404,8 @@ function BoardPage() {
       if (!record || !target || record.parent_id || (!readableWidth && !autoHeight)) return;
 
       const currentWidth = target.width ?? record.width ?? DEFAULT_SIZE[record.type]?.width ?? 320;
-      const currentHeight = target.height ?? record.height ?? DEFAULT_SIZE[record.type]?.height ?? 240;
+      const currentHeight =
+        target.height ?? record.height ?? DEFAULT_SIZE[record.type]?.height ?? 240;
       const width = readableWidth ? Math.max(currentWidth, readableWidth) : currentWidth;
       const height =
         autoHeight && measuredHeight != null
@@ -2350,8 +2452,6 @@ function BoardPage() {
           return da - db;
         });
 
-
-
       for (const peer of peers) {
         const item = recordsRef.current[peer.id];
         if (!item) continue;
@@ -2372,9 +2472,7 @@ function BoardPage() {
           const belowY = collision.y + collision.height + MODULE_GAP;
           const moveRight = Math.abs(rightX - rect.x);
           const moveBelow = Math.abs(belowY - rect.y);
-          rect = moveRight <= moveBelow
-            ? { ...rect, x: rightX }
-            : { ...rect, y: belowY };
+          rect = moveRight <= moveBelow ? { ...rect, x: rightX } : { ...rect, y: belowY };
           moved = true;
         }
         placed.push(rect);
@@ -2423,7 +2521,9 @@ function BoardPage() {
           heightTimers.current.delete(nodeId);
           if (interacting.current || Date.now() < suppressMeasure.current) return;
           const root = flowWrapRef.current;
-          const nodeElement = root?.querySelector<HTMLElement>(`.react-flow__node[data-id="${nodeId}"]`);
+          const nodeElement = root?.querySelector<HTMLElement>(
+            `.react-flow__node[data-id="${nodeId}"]`,
+          );
           if (!nodeElement) return;
           const height = measuredCardHeight(nodeElement);
           if (height == null) return;
@@ -2493,7 +2593,6 @@ function BoardPage() {
     [onNodesChange, updateNode],
   );
 
-
   /** Persist a field size; a template group scales its fields along. */
   const resizeZone = useCallback(
     (id: string, width: number, height: number) => {
@@ -2557,7 +2656,10 @@ function BoardPage() {
       // bring the fresh template fully into view
       const zoom = Math.min(
         1,
-        Math.max(0.2, Math.min(window.innerWidth / (width + 160), window.innerHeight / (height + 240))),
+        Math.max(
+          0.2,
+          Math.min(window.innerWidth / (width + 160), window.innerHeight / (height + 240)),
+        ),
       );
       setCenter(x + width / 2, y + height / 2, { zoom, duration: 500 });
       toast.success(`${template.title} eingefügt`);
@@ -2599,7 +2701,7 @@ function BoardPage() {
         (a, b) => (a.parentLocalId ? 1 : 0) - (b.parentLocalId ? 1 : 0),
       );
       for (const node of ordered) {
-        const parentId = node.parentLocalId ? idMap.get(node.parentLocalId) ?? null : null;
+        const parentId = node.parentLocalId ? (idMap.get(node.parentLocalId) ?? null) : null;
         const created = await createRecord({
           type: node.type,
           title: node.title || null,
@@ -2628,7 +2730,8 @@ function BoardPage() {
   /** Place a library entry on the canvas, optionally without any stored content. */
   const insertLibraryEntry = useCallback(
     async (entry: LibraryEntry, mode: "empty" | "full") => {
-      const payload: LibraryPayload = mode === "empty" ? stripContent(entry.payload) : entry.payload;
+      const payload: LibraryPayload =
+        mode === "empty" ? stripContent(entry.payload) : entry.payload;
       if (!payload.nodes.length) {
         toast.error("Dieser Eintrag enthält keine Module");
         return;
@@ -2653,37 +2756,34 @@ function BoardPage() {
   const clipboard = useRef<LibraryPayload | null>(null);
 
   /** Copy the chosen modules (or the current selection) with size, position and links. */
-  const copyModules = useCallback(
-    (ids?: string[]) => {
-      const list =
-        ids && ids.length
-          ? ids
-          : nodesRef.current.filter((node) => node.selected && !node.parentId).map((n) => n.id);
-      if (!list.length) {
-        toast.info("Kein Modul ausgewählt");
-        return null;
-      }
-      const payload = capture(
-        list,
-        Object.values(recordsRef.current),
-        edgesRef.current.map((edge) => ({
-          source: edge.source,
-          target: edge.target,
-          label: typeof edge.label === "string" ? edge.label : null,
-        })),
-      );
-      if (!payload.nodes.length) return null;
-      clipboard.current = payload;
-      void navigator.clipboard
-        ?.writeText(JSON.stringify({ scopebuilder: payload }))
-        .catch(() => undefined);
-      toast.success(
-        payload.nodes.length > 1 ? `${payload.nodes.length} Module kopiert` : "Modul kopiert",
-      );
-      return payload;
-    },
-    [],
-  );
+  const copyModules = useCallback((ids?: string[]) => {
+    const list =
+      ids && ids.length
+        ? ids
+        : nodesRef.current.filter((node) => node.selected && !node.parentId).map((n) => n.id);
+    if (!list.length) {
+      toast.info("Kein Modul ausgewählt");
+      return null;
+    }
+    const payload = capture(
+      list,
+      Object.values(recordsRef.current),
+      edgesRef.current.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+        label: typeof edge.label === "string" ? edge.label : null,
+      })),
+    );
+    if (!payload.nodes.length) return null;
+    clipboard.current = payload;
+    void navigator.clipboard
+      ?.writeText(JSON.stringify({ scopebuilder: payload }))
+      .catch(() => undefined);
+    toast.success(
+      payload.nodes.length > 1 ? `${payload.nodes.length} Module kopiert` : "Modul kopiert",
+    );
+    return payload;
+  }, []);
 
   /** Select freshly created modules so they can be moved right away. */
   const selectOnly = useCallback(
@@ -2738,16 +2838,19 @@ function BoardPage() {
       if (!payload.nodes.length) return;
       const roots = payload.nodes.filter((node) => !node.parentLocalId);
       const base = roots.length
-        ? { x: Math.min(...list.map((id) => recordsRef.current[id]?.position_x ?? 0)), y: Math.min(...list.map((id) => recordsRef.current[id]?.position_y ?? 0)) }
+        ? {
+            x: Math.min(...list.map((id) => recordsRef.current[id]?.position_x ?? 0)),
+            y: Math.min(...list.map((id) => recordsRef.current[id]?.position_y ?? 0)),
+          }
         : { x: 0, y: 0 };
       const created = await insertPayload(payload, { x: base.x + 48, y: base.y + 48 });
       selectOnly(created);
-      toast.success(created.length > 1 ? `${created.length} Module dupliziert` : "Modul dupliziert");
+      toast.success(
+        created.length > 1 ? `${created.length} Module dupliziert` : "Modul dupliziert",
+      );
     },
     [insertPayload, selectOnly],
   );
-
-
 
   /** Fields of the selected template group, otherwise every field on the board. */
   const currentFields = useCallback((): TemplateField[] => {
@@ -2774,7 +2877,7 @@ function BoardPage() {
     async (record: NodeRecord) => {
       if (!user) return;
       const all = Object.values(recordsRef.current);
-      const group = record.parent_id ? recordsRef.current[record.parent_id] ?? record : record;
+      const group = record.parent_id ? (recordsRef.current[record.parent_id] ?? record) : record;
       const list = groupFields(group, all);
       const source = list.length ? list : [group];
       const minX = Math.min(...source.map((z) => z.position_x));
@@ -2832,6 +2935,7 @@ function BoardPage() {
       deleteEdge,
       deleteNode,
       collectContext,
+      collectDatasets,
       contextReport,
       addNoteFrom,
       extractStructure,
@@ -2860,6 +2964,7 @@ function BoardPage() {
       deleteEdge,
       deleteNode,
       collectContext,
+      collectDatasets,
       contextReport,
       addNoteFrom,
       extractStructure,
@@ -2950,7 +3055,6 @@ function BoardPage() {
         return;
       }
       // Cmd/Ctrl+V is handled by the paste listener above
-
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -2976,7 +3080,6 @@ function BoardPage() {
     [nodes, records],
   );
 
-
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>
@@ -2986,307 +3089,335 @@ function BoardPage() {
   const menuRecord = menu?.nodeId ? records[menu.nodeId] : undefined;
   const accessRecord = accessFor ? records[accessFor] : undefined;
 
-  const menuItems = menuRecord?.type === "text"
-    ? [
-        ...TEXT_SIZES.map((size) => ({
-          label: size.label,
-          active: textSize(menuRecord).id === size.id,
-          run: () =>
-            updateNode(menuRecord.id, {
-              metadata: { ...(menuRecord.metadata ?? {}), textSize: size.id },
-            }),
-        })),
-        { label: "Text löschen", run: () => deleteNode(menuRecord.id) },
-      ]
-    : menuRecord?.type === "shape"
-    ? [
-        ...SHAPES.map((shape) => ({
-          label: shape.label,
-          active: shapeKind(menuRecord).id === shape.id,
-          run: () =>
-            updateNode(menuRecord.id, {
-              metadata: { ...(menuRecord.metadata ?? {}), shape: shape.id },
-            }),
-        })),
-        ...ZONE_COLORS.map((shapeColor) => ({
-          label: shapeColor.name,
-          swatch: shapeColor.value,
-          active: (menuRecord.color ?? "var(--chat)") === shapeColor.value,
-          run: () => updateNode(menuRecord.id, { color: shapeColor.value }),
-        })),
-        {
-          label: "90° drehen",
-          run: () =>
-            updateNode(menuRecord.id, {
-              metadata: {
-                ...(menuRecord.metadata ?? {}),
-                rotation:
-                  ((Number((menuRecord.metadata as Record<string, unknown> | null)?.["rotation"] ?? 0) + 90) % 360),
-              },
-            }),
-        },
-        { label: "Form löschen", run: () => deleteNode(menuRecord.id) },
-      ]
-    : menuRecord?.type === "zone"
-    ? [
-        {
-          label: readAgent(menuRecord) ? "Agent bearbeiten" : "Als Agent einrichten",
-          icon: Workflow,
-          run: () => openInspector(menuRecord.id, "agent"),
-        },
-        ...(readAgent(menuRecord)
+  const menuItems =
+    menuRecord?.type === "text"
+      ? [
+          ...TEXT_SIZES.map((size) => ({
+            label: size.label,
+            active: textSize(menuRecord).id === size.id,
+            run: () =>
+              updateNode(menuRecord.id, {
+                metadata: { ...(menuRecord.metadata ?? {}), textSize: size.id },
+              }),
+          })),
+          { label: "Text löschen", run: () => deleteNode(menuRecord.id) },
+        ]
+      : menuRecord?.type === "shape"
+        ? [
+            ...SHAPES.map((shape) => ({
+              label: shape.label,
+              active: shapeKind(menuRecord).id === shape.id,
+              run: () =>
+                updateNode(menuRecord.id, {
+                  metadata: { ...(menuRecord.metadata ?? {}), shape: shape.id },
+                }),
+            })),
+            ...ZONE_COLORS.map((shapeColor) => ({
+              label: shapeColor.name,
+              swatch: shapeColor.value,
+              active: (menuRecord.color ?? "var(--chat)") === shapeColor.value,
+              run: () => updateNode(menuRecord.id, { color: shapeColor.value }),
+            })),
+            {
+              label: "90° drehen",
+              run: () =>
+                updateNode(menuRecord.id, {
+                  metadata: {
+                    ...(menuRecord.metadata ?? {}),
+                    rotation:
+                      (Number(
+                        (menuRecord.metadata as Record<string, unknown> | null)?.["rotation"] ?? 0,
+                      ) +
+                        90) %
+                      360,
+                  },
+                }),
+            },
+            { label: "Form löschen", run: () => deleteNode(menuRecord.id) },
+          ]
+        : menuRecord?.type === "zone"
           ? [
               {
-                label: "Feld jetzt analysieren",
+                label: readAgent(menuRecord) ? "Agent bearbeiten" : "Als Agent einrichten",
                 icon: Workflow,
-                run: () => runAgent(menuRecord.id),
+                run: () => openInspector(menuRecord.id, "agent"),
               },
-            ]
-          : []),
-        {
-          label: "Chat zu diesem Feld",
-          icon: MessageSquare,
-          run: () =>
-            void createRecord({
-              type: "chat",
-              title: `Chat: ${menuRecord.title ?? "Feld"}`,
-              position_x: menuRecord.position_x + 24,
-              position_y: menuRecord.position_y + 56,
-              metadata: { model: "openai/gpt-6-astra", zoneId: menuRecord.id, zoneAuto: false },
-            }).catch((error: unknown) =>
-              toast.error(error instanceof Error ? error.message : "Chat konnte nicht angelegt werden"),
-            ),
-        },
-        {
-          label: "Inhalte des Feldes zusammenfassen",
-          icon: NotebookPen,
-          run: () => void summarizeZone(menuRecord),
-        },
-        {
-          label: "Als eigene Vorlage speichern",
-          icon: PanelsTopLeft,
-          run: () => void saveGroupAsTemplate(menuRecord),
-        },
-        {
-          label: "Vorlagen verwalten …",
-          icon: PanelsTopLeft,
-          run: () => setTemplateOpen(true),
-        },
-        {
-          label:
-            (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
-              ? "Feld entsperren"
-              : "Feld sperren",
-          icon:
-            (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
-              ? LockOpen
-              : Lock,
-          run: () =>
-            updateNode(menuRecord.id, {
-              metadata: {
-                ...(menuRecord.metadata ?? {}),
-                locked:
-                  (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] !== true,
-              },
-            }),
-        },
-        ...ZONE_COLORS.map((zoneColor) => ({
-          label: zoneColor.name,
-          swatch: zoneColor.value,
-          active: (menuRecord.color ?? ZONE_WHITE) === zoneColor.value,
-          run: () => updateNode(menuRecord.id, { color: zoneColor.value }),
-        })),
-        {
-          label: "Als App bereitstellen …",
-          icon: AppWindow,
-          run: () => {
-            const ids = zoneMembers(menuRecord.id, Object.values(records))
-              .filter((item) => !NON_BLOCKING_TYPES.has(item.type))
-              .map((item) => item.id)
-              .slice(0, MAX_APP_MODULES);
-            setAppPreselect(ids);
-            setAppOpen(true);
-          },
-        },
-        { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
-      ]
-    : menu?.nodeId
-    ? [
-        ...(selectedModuleCount >= 2
-          ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
-          : []),
-        {
-          label: "Zu App hinzufügen …",
-          icon: AppWindow,
-          run: () => {
-            const selected = nodes
-              .filter((node) => node.selected)
-              .map((node) => node.id)
-              .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""));
-            const ids = selected.includes(menu.nodeId!) ? selected : [menu.nodeId!, ...selected];
-            setAppPreselect(ids.slice(0, MAX_APP_MODULES));
-            setAppOpen(true);
-          },
-        },
-        {
-          label: "Im Kontextfenster öffnen",
-          icon: PanelsTopLeft,
-          run: () => openInspector(menu.nodeId!),
-        },
-        {
-          label: "Strukturierte Daten herauslösen",
-          icon: Workflow,
-          run: () => extractStructure(menu.nodeId!),
-        },
-        {
-          label: "Faktor daneben anlegen",
-          icon: NotebookPen,
-          run: () =>
-            void createRecord({
-              type: "note",
-              title: "Faktor",
-              content: "",
-              position_x: menu.flowX + 40,
-              position_y: menu.flowY + 40,
-            }),
-        },
-        {
-          label: "Modul kopieren",
-          icon: Copy,
-          run: () => copyModules([menu.nodeId!]),
-        },
-        ...(selectedModuleCount >= 2
-          ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
-          : []),
-        {
-          label: "Modul duplizieren",
-          icon: CopyPlus,
-          run: () => void duplicateModules([menu.nodeId!]),
-        },
-        ...(selectedModuleCount >= 2
-          ? [{ label: "Auswahl duplizieren", icon: CopyPlus, run: () => void duplicateModules() }]
-          : []),
-        {
-
-          label: "In Bibliothek speichern",
-          icon: Library,
-          run: () => {
-            librarySelection.current = [menu.nodeId!];
-            setLibraryOpen(true);
-          },
-        },
-        {
-          label: "Auswahl in Bibliothek speichern",
-          icon: Library,
-          run: () => {
-            librarySelection.current = null;
-            setLibraryOpen(true);
-          },
-        },
-        { label: "Modul löschen", run: () => deleteNode(menu.nodeId!) },
-      ]
-    : [
-        {
-          label: "Link einfügen …",
-          icon: Link2,
-          run: () => setLinkPrompt({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
-        },
-        {
-          label: "Datei hochladen …",
-          icon: Upload,
-          run: () => {
-            filePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
-            fileRef.current?.click();
-          },
-        },
-        {
-          label: "Faktor",
-          icon: NotebookPen,
-          run: () =>
-            void createRecord({
-              type: "note",
-              title: "Faktor",
-              content: "",
-              position_x: menu?.flowX ?? 0,
-              position_y: menu?.flowY ?? 0,
-            }),
-        },
-        {
-          label: "Chat-Modul",
-          icon: MessageSquare,
-          run: () =>
-            void createRecord({
-              type: "chat",
-              title: "Chat",
-              position_x: menu?.flowX ?? 0,
-              position_y: menu?.flowY ?? 0,
-              metadata: { model: "openai/gpt-6-astra" },
-            }),
-        },
-        {
-          label: "Text",
-          icon: Type,
-          run: () =>
-            void createRecord({
-              type: "text",
-              title: "Text",
-              content: "",
-              position_x: menu?.flowX ?? 0,
-              position_y: menu?.flowY ?? 0,
-            }),
-        },
-        {
-          label: "Hintergrundfeld",
-          icon: PanelsTopLeft,
-          run: () =>
-            void createRecord({
-              type: "zone",
-              title: "Feld",
-              color: ZONE_WHITE,
-              position_x: menu?.flowX ?? 0,
-              position_y: menu?.flowY ?? 0,
-            }).catch((error: unknown) =>
-              toast.error(error instanceof Error ? error.message : "Feld konnte nicht angelegt werden"),
-            ),
-        },
-        {
-          label: "Vorlage einfügen …",
-          icon: PanelsTopLeft,
-          run: () => {
-            templatePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
-            setTemplateOpen(true);
-          },
-        },
-        ...(clipboard.current?.nodes.length
-          ? [
+              ...(readAgent(menuRecord)
+                ? [
+                    {
+                      label: "Feld jetzt analysieren",
+                      icon: Workflow,
+                      run: () => runAgent(menuRecord.id),
+                    },
+                  ]
+                : []),
               {
-                label: "Hier einfügen",
-                icon: ClipboardPaste,
+                label: "Chat zu diesem Feld",
+                icon: MessageSquare,
                 run: () =>
-                  void pasteModules({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
+                  void createRecord({
+                    type: "chat",
+                    title: `Chat: ${menuRecord.title ?? "Feld"}`,
+                    position_x: menuRecord.position_x + 24,
+                    position_y: menuRecord.position_y + 56,
+                    metadata: {
+                      model: "openai/gpt-6-astra",
+                      zoneId: menuRecord.id,
+                      zoneAuto: false,
+                    },
+                  }).catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error ? error.message : "Chat konnte nicht angelegt werden",
+                    ),
+                  ),
               },
+              {
+                label: "Inhalte des Feldes zusammenfassen",
+                icon: NotebookPen,
+                run: () => void summarizeZone(menuRecord),
+              },
+              {
+                label: "Als eigene Vorlage speichern",
+                icon: PanelsTopLeft,
+                run: () => void saveGroupAsTemplate(menuRecord),
+              },
+              {
+                label: "Vorlagen verwalten …",
+                icon: PanelsTopLeft,
+                run: () => setTemplateOpen(true),
+              },
+              {
+                label:
+                  (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
+                    ? "Feld entsperren"
+                    : "Feld sperren",
+                icon:
+                  (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] === true
+                    ? LockOpen
+                    : Lock,
+                run: () =>
+                  updateNode(menuRecord.id, {
+                    metadata: {
+                      ...(menuRecord.metadata ?? {}),
+                      locked:
+                        (menuRecord.metadata as Record<string, unknown> | null)?.["locked"] !==
+                        true,
+                    },
+                  }),
+              },
+              ...ZONE_COLORS.map((zoneColor) => ({
+                label: zoneColor.name,
+                swatch: zoneColor.value,
+                active: (menuRecord.color ?? ZONE_WHITE) === zoneColor.value,
+                run: () => updateNode(menuRecord.id, { color: zoneColor.value }),
+              })),
+              {
+                label: "Als App bereitstellen …",
+                icon: AppWindow,
+                run: () => {
+                  const ids = zoneMembers(menuRecord.id, Object.values(records))
+                    .filter((item) => !NON_BLOCKING_TYPES.has(item.type))
+                    .map((item) => item.id)
+                    .slice(0, MAX_APP_MODULES);
+                  setAppPreselect(ids);
+                  setAppOpen(true);
+                },
+              },
+              { label: "Feld löschen", run: () => deleteNode(menuRecord.id) },
             ]
-          : []),
-        ...(selectedModuleCount >= 1
-          ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
-          : []),
-        ...(selectedModuleCount >= 1
-          ? [{ label: "Auswahl duplizieren", icon: CopyPlus, run: () => void duplicateModules() }]
-          : []),
-        ...(selectedModuleCount >= 2
-          ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
-          : []),
-        { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
+          : menu?.nodeId
+            ? [
+                ...(selectedModuleCount >= 2
+                  ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
+                  : []),
+                {
+                  label: "Zu App hinzufügen …",
+                  icon: AppWindow,
+                  run: () => {
+                    const selected = nodes
+                      .filter((node) => node.selected)
+                      .map((node) => node.id)
+                      .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""));
+                    const ids = selected.includes(menu.nodeId!)
+                      ? selected
+                      : [menu.nodeId!, ...selected];
+                    setAppPreselect(ids.slice(0, MAX_APP_MODULES));
+                    setAppOpen(true);
+                  },
+                },
+                {
+                  label: "Im Kontextfenster öffnen",
+                  icon: PanelsTopLeft,
+                  run: () => openInspector(menu.nodeId!),
+                },
+                {
+                  label: "Strukturierte Daten herauslösen",
+                  icon: Workflow,
+                  run: () => extractStructure(menu.nodeId!),
+                },
+                {
+                  label: "Faktor daneben anlegen",
+                  icon: NotebookPen,
+                  run: () =>
+                    void createRecord({
+                      type: "note",
+                      title: "Faktor",
+                      content: "",
+                      position_x: menu.flowX + 40,
+                      position_y: menu.flowY + 40,
+                    }),
+                },
+                {
+                  label: "Modul kopieren",
+                  icon: Copy,
+                  run: () => copyModules([menu.nodeId!]),
+                },
+                ...(selectedModuleCount >= 2
+                  ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
+                  : []),
+                {
+                  label: "Modul duplizieren",
+                  icon: CopyPlus,
+                  run: () => void duplicateModules([menu.nodeId!]),
+                },
+                ...(selectedModuleCount >= 2
+                  ? [
+                      {
+                        label: "Auswahl duplizieren",
+                        icon: CopyPlus,
+                        run: () => void duplicateModules(),
+                      },
+                    ]
+                  : []),
+                {
+                  label: "In Bibliothek speichern",
+                  icon: Library,
+                  run: () => {
+                    librarySelection.current = [menu.nodeId!];
+                    setLibraryOpen(true);
+                  },
+                },
+                {
+                  label: "Auswahl in Bibliothek speichern",
+                  icon: Library,
+                  run: () => {
+                    librarySelection.current = null;
+                    setLibraryOpen(true);
+                  },
+                },
+                { label: "Modul löschen", run: () => deleteNode(menu.nodeId!) },
+              ]
+            : [
+                {
+                  label: "Link einfügen …",
+                  icon: Link2,
+                  run: () => setLinkPrompt({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
+                },
+                {
+                  label: "Datei hochladen …",
+                  icon: Upload,
+                  run: () => {
+                    filePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
+                    fileRef.current?.click();
+                  },
+                },
+                {
+                  label: "Faktor",
+                  icon: NotebookPen,
+                  run: () =>
+                    void createRecord({
+                      type: "note",
+                      title: "Faktor",
+                      content: "",
+                      position_x: menu?.flowX ?? 0,
+                      position_y: menu?.flowY ?? 0,
+                    }),
+                },
+                {
+                  label: "Chat-Modul",
+                  icon: MessageSquare,
+                  run: () =>
+                    void createRecord({
+                      type: "chat",
+                      title: "Chat",
+                      position_x: menu?.flowX ?? 0,
+                      position_y: menu?.flowY ?? 0,
+                      metadata: { model: "openai/gpt-6-astra" },
+                    }),
+                },
+                {
+                  label: "Text",
+                  icon: Type,
+                  run: () =>
+                    void createRecord({
+                      type: "text",
+                      title: "Text",
+                      content: "",
+                      position_x: menu?.flowX ?? 0,
+                      position_y: menu?.flowY ?? 0,
+                    }),
+                },
+                {
+                  label: "Hintergrundfeld",
+                  icon: PanelsTopLeft,
+                  run: () =>
+                    void createRecord({
+                      type: "zone",
+                      title: "Feld",
+                      color: ZONE_WHITE,
+                      position_x: menu?.flowX ?? 0,
+                      position_y: menu?.flowY ?? 0,
+                    }).catch((error: unknown) =>
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Feld konnte nicht angelegt werden",
+                      ),
+                    ),
+                },
+                {
+                  label: "Vorlage einfügen …",
+                  icon: PanelsTopLeft,
+                  run: () => {
+                    templatePosition.current = { x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 };
+                    setTemplateOpen(true);
+                  },
+                },
+                ...(clipboard.current?.nodes.length
+                  ? [
+                      {
+                        label: "Hier einfügen",
+                        icon: ClipboardPaste,
+                        run: () => void pasteModules({ x: menu?.flowX ?? 0, y: menu?.flowY ?? 0 }),
+                      },
+                    ]
+                  : []),
+                ...(selectedModuleCount >= 1
+                  ? [{ label: "Auswahl kopieren", icon: Copy, run: () => void copyModules() }]
+                  : []),
+                ...(selectedModuleCount >= 1
+                  ? [
+                      {
+                        label: "Auswahl duplizieren",
+                        icon: CopyPlus,
+                        run: () => void duplicateModules(),
+                      },
+                    ]
+                  : []),
+                ...(selectedModuleCount >= 2
+                  ? [{ label: "Auswahl anordnen", icon: LayoutGrid, run: arrangeSelection }]
+                  : []),
+                { label: "Auswahl gruppieren", icon: Workflow, run: () => void groupSelection() },
 
-        {
-          label: "Bibliothek öffnen …",
-          icon: Library,
-          run: () => {
-            librarySelection.current = null;
-            setLibraryOpen(true);
-          },
-        },
-      ];
+                {
+                  label: "Bibliothek öffnen …",
+                  icon: Library,
+                  run: () => {
+                    librarySelection.current = null;
+                    setLibraryOpen(true);
+                  },
+                },
+              ];
 
   return (
     <div className="flex h-screen flex-col bg-canvas">
@@ -3323,41 +3454,41 @@ function BoardPage() {
           <GlobalSearch />
 
           <div className="hidden sm:contents">
-          <VersionDialog
-            boardId={boardId}
-            canEdit={canEdit}
-            onRestored={() => window.location.reload()}
-          />
+            <VersionDialog
+              boardId={boardId}
+              canEdit={canEdit}
+              onRestored={() => window.location.reload()}
+            />
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-9 rounded-lg"
-                aria-label="Sicherung herunterladen"
-                onClick={() => void downloadBackup()}
-              >
-                <Download className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Sicherung herunterladen</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-9 rounded-lg"
+                  aria-label="Sicherung herunterladen"
+                  onClick={() => void downloadBackup()}
+                >
+                  <Download className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Sicherung herunterladen</TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-9 rounded-lg"
-                aria-label="Bauplan herunterladen"
-                onClick={() => void downloadManifest()}
-              >
-                <FileCode2 className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Bauplan herunterladen (YAML + Markdown)</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-9 rounded-lg"
+                  aria-label="Bauplan herunterladen"
+                  onClick={() => void downloadManifest()}
+                >
+                  <FileCode2 className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Bauplan herunterladen (YAML + Markdown)</TooltipContent>
+            </Tooltip>
           </div>
 
           {isOwner ? (
@@ -3397,7 +3528,6 @@ function BoardPage() {
             (record): record is NonNullable<typeof record> =>
               Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? ""),
           )}
-
       />
 
       <LibraryDialog
@@ -3419,7 +3549,8 @@ function BoardPage() {
           canEdit
             ? async (name) => {
                 try {
-                  const { catalogModulePayload } = await import("@/lib/runtime/catalog/instantiate");
+                  const { catalogModulePayload } =
+                    await import("@/lib/runtime/catalog/instantiate");
                   const payload = catalogModulePayload(name);
                   const at = screenToFlowPosition({
                     x: window.innerWidth / 2 - payload.bounds.width / 2,
@@ -3428,7 +3559,11 @@ function BoardPage() {
                   await insertPayload(payload, at);
                   toast.success(`${payload.nodes[0]?.title ?? "Baustein"} platziert`);
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Baustein konnte nicht platziert werden");
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Baustein konnte nicht platziert werden",
+                  );
                 }
               }
             : undefined
@@ -3452,7 +3587,6 @@ function BoardPage() {
           }
         }}
       />
-
 
       <input
         ref={fileRef}
@@ -3484,523 +3618,612 @@ function BoardPage() {
       >
         <BoardContext.Provider value={api}>
           <div ref={flowWrapRef} className="relative min-w-0 flex-1">
-          <ReactFlow
-            nodes={guardedNodes}
-            edges={edges}
-            onMouseMove={(event) => {
-              if (peers.length === 0) return;
-              const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-              sendCursor(Math.round(flow.x), Math.round(flow.y));
-            }}
+            <ReactFlow
+              nodes={guardedNodes}
+              edges={edges}
+              onMouseMove={(event) => {
+                if (peers.length === 0) return;
+                const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+                sendCursor(Math.round(flow.x), Math.round(flow.y));
+              }}
 
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            defaultEdgeOptions={{
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-                width: 14,
-                height: 14,
-                color: "var(--edge)",
-              },
-            }}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={(_, node) => {
-              if (manualSize.current.has(node.id)) return;
-              ensureReadableLayout(node.id);
-              scheduleAutoHeight(node.id);
-            }}
-            onNodeDragStart={(_, node) => {
-              interacting.current = true;
-              suppressMeasure.current = Date.now() + 800;
-              captureDragStart([node.id]);
-              setMenu(null);
-            }}
-            onNodeDragStop={(_, node) => {
-              interacting.current = false;
-              suppressMeasure.current = Date.now() + 500;
-              recordMove([node]);
-              updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
-              syncZone(node.id, node.position.x, node.position.y);
-            }}
-            onSelectionDragStart={(_, dragged) => {
-              interacting.current = true;
-              suppressMeasure.current = Date.now() + 800;
-              captureDragStart(dragged.map((node) => node.id));
-            }}
-            onSelectionDragStop={(_, dragged) => {
-              interacting.current = false;
-              suppressMeasure.current = Date.now() + 500;
-              recordMove(dragged);
-              for (const node of dragged) {
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              defaultEdgeOptions={{
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  width: 14,
+                  height: 14,
+                  color: "var(--edge)",
+                },
+              }}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={(_, node) => {
+                if (manualSize.current.has(node.id)) return;
+                ensureReadableLayout(node.id);
+                scheduleAutoHeight(node.id);
+              }}
+              onNodeDragStart={(_, node) => {
+                interacting.current = true;
+                suppressMeasure.current = Date.now() + 800;
+                captureDragStart([node.id]);
+                setMenu(null);
+              }}
+              onNodeDragStop={(_, node) => {
+                interacting.current = false;
+                suppressMeasure.current = Date.now() + 500;
+                recordMove([node]);
                 updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
                 syncZone(node.id, node.position.x, node.position.y);
-              }
-            }}
-            onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
-            onEdgesDelete={(deleted) => {
-              if (deleted.length) {
-                recordHistory({ kind: "edges.remove", edges: deleted.map(snapEdge) });
-              }
-              deleted.forEach((e) => {
-                markSelfWrite(e.id);
-                saveOp(boardId, { kind: "edge.delete", ids: [e.id] });
-              });
-            }}
-            onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
-            onPaneClick={() => setMenu(null)}
-            onMoveStart={() => setMenu(null)}
-            nodesDraggable={canEdit}
-            nodesConnectable={canEdit}
-            elementsSelectable={canEdit}
-            deleteKeyCode={canEdit ? ["Backspace", "Delete"] : null}
-            onPaneContextMenu={(event) => {
-              event.preventDefault();
-              if (!canEdit) return;
-              const mouse = event as unknown as MouseEvent;
-              const flow = screenToFlowPosition({ x: mouse.clientX, y: mouse.clientY });
-              setMenu({ x: mouse.clientX, y: mouse.clientY, flowX: flow.x, flowY: flow.y });
-            }}
-            onNodeContextMenu={(event, node) => {
-              event.preventDefault();
-              if (!canEdit) {
-                // Lesen und Kommentieren: nur das Rechte- und Kommentarfenster
-                setAccessFor(node.id);
-                return;
-              }
-              const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-              setMenu({
-                x: event.clientX,
-                y: event.clientY,
-                flowX: flow.x,
-                flowY: flow.y,
-                nodeId: node.id,
-              });
-            }}
-            fitView={ready}
-            onlyRenderVisibleElements
-            minZoom={0.15}
-            maxZoom={2.5}
-            selectionOnDrag
-            selectionMode={SelectionMode.Partial}
-            multiSelectionKeyCode={["Shift"]}
-            zoomActivationKeyCode={["Meta", "Control"]}
-            zoomOnScroll
-            zoomOnPinch
-            panOnScroll
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background
-              variant={BackgroundVariant.Dots}
-              gap={22}
-              size={1.6}
-              color="var(--canvas-dot)"
-            />
-            <Controls showInteractive={false} />
-            <MiniMap pannable zoomable className="!hidden !bg-card lg:!block" />
-            <PresenceLayer peers={peers} nodes={nodes} />
-
-          </ReactFlow>
-
-          <ConflictBar onChoose={resolveWith} />
-
-          <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
-            <div
-              className={cn(
-                "pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur",
-                !canEdit && "hidden",
-              )}
+              }}
+              onSelectionDragStart={(_, dragged) => {
+                interacting.current = true;
+                suppressMeasure.current = Date.now() + 800;
+                captureDragStart(dragged.map((node) => node.id));
+              }}
+              onSelectionDragStop={(_, dragged) => {
+                interacting.current = false;
+                suppressMeasure.current = Date.now() + 500;
+                recordMove(dragged);
+                for (const node of dragged) {
+                  updateNode(node.id, { position_x: node.position.x, position_y: node.position.y });
+                  syncZone(node.id, node.position.x, node.position.y);
+                }
+              }}
+              onNodesDelete={(deleted) => deleted.forEach((n) => deleteNode(n.id))}
+              onEdgesDelete={(deleted) => {
+                if (deleted.length) {
+                  recordHistory({ kind: "edges.remove", edges: deleted.map(snapEdge) });
+                }
+                deleted.forEach((e) => {
+                  markSelfWrite(e.id);
+                  saveOp(boardId, { kind: "edge.delete", ids: [e.id] });
+                });
+              }}
+              onEdgeDoubleClick={(_, edge) => calcForEdge(edge.id)}
+              onPaneClick={() => setMenu(null)}
+              onMoveStart={() => setMenu(null)}
+              nodesDraggable={canEdit}
+              nodesConnectable={canEdit}
+              elementsSelectable={canEdit}
+              deleteKeyCode={canEdit ? ["Backspace", "Delete"] : null}
+              onPaneContextMenu={(event) => {
+                event.preventDefault();
+                if (!canEdit) return;
+                const mouse = event as unknown as MouseEvent;
+                const flow = screenToFlowPosition({ x: mouse.clientX, y: mouse.clientY });
+                setMenu({ x: mouse.clientX, y: mouse.clientY, flowX: flow.x, flowY: flow.y });
+              }}
+              onNodeContextMenu={(event, node) => {
+                event.preventDefault();
+                if (!canEdit) {
+                  // Lesen und Kommentieren: nur das Rechte- und Kommentarfenster
+                  setAccessFor(node.id);
+                  return;
+                }
+                const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+                setMenu({
+                  x: event.clientX,
+                  y: event.clientY,
+                  flowX: flow.x,
+                  flowY: flow.y,
+                  nodeId: node.id,
+                });
+              }}
+              fitView={ready}
+              onlyRenderVisibleElements
+              minZoom={0.15}
+              maxZoom={2.5}
+              selectionOnDrag
+              selectionMode={SelectionMode.Partial}
+              multiSelectionKeyCode={["Shift"]}
+              zoomActivationKeyCode={["Meta", "Control"]}
+              zoomOnScroll
+              zoomOnPinch
+              panOnScroll
+              proOptions={{ hideAttribution: true }}
             >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn(templateOpen)}
-                    aria-label="Vorlagen"
-                    aria-pressed={templateOpen}
-                    onClick={() => {
-                      templatePosition.current = null;
-                      setTemplateOpen(true);
-                    }}
-                  >
-                    <LayoutTemplate className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Vorlagen</TooltipContent>
-              </Tooltip>
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={22}
+                size={1.6}
+                color="var(--canvas-dot)"
+              />
+              <Controls showInteractive={false} />
+              <MiniMap pannable zoomable className="!hidden !bg-card lg:!block" />
+              <PresenceLayer peers={peers} nodes={nodes} />
+            </ReactFlow>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn(libraryOpen)}
-                    aria-label="Bibliothek"
-                    aria-pressed={libraryOpen}
-                    onClick={() => {
-                      librarySelection.current = null;
-                      setLibraryOpen(true);
-                    }}
-                  >
-                    <Library className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Bibliothek</TooltipContent>
-              </Tooltip>
+            <ConflictBar onChoose={resolveWith} />
 
+            <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
+              <div
+                className={cn(
+                  "pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur",
+                  !canEdit && "hidden",
+                )}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn(templateOpen)}
+                      aria-label="Vorlagen"
+                      aria-pressed={templateOpen}
+                      onClick={() => {
+                        templatePosition.current = null;
+                        setTemplateOpen(true);
+                      }}
+                    >
+                      <LayoutTemplate className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Vorlagen</TooltipContent>
+                </Tooltip>
 
-              <div className="mx-1 h-6 w-px shrink-0 bg-border/70" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn(libraryOpen)}
+                      aria-label="Bibliothek"
+                      aria-pressed={libraryOpen}
+                      onClick={() => {
+                        librarySelection.current = null;
+                        setLibraryOpen(true);
+                      }}
+                    >
+                      <Library className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Bibliothek</TooltipContent>
+                </Tooltip>
 
-              {selectedModuleCount >= 2 ? (
+                <div className="mx-1 h-6 w-px shrink-0 bg-border/70" />
+
+                {selectedModuleCount >= 2 ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={toolBtn()}
+                        aria-label="Ausgewählte Module anordnen"
+                        onClick={arrangeSelection}
+                      >
+                        <LayoutGrid className="size-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Auswahl anordnen</TooltipContent>
+                  </Tooltip>
+                ) : null}
+
+                {selectedModuleCount > 0 ? (
+                  <span className="mx-1 flex h-8 shrink-0 items-center rounded-lg bg-secondary px-2.5 text-xs font-medium text-secondary-foreground">
+                    {selectedModuleCount} ausgewählt
+                  </span>
+                ) : null}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn(appOpen)}
+                      aria-label="App-Ansicht"
+                      aria-pressed={appOpen}
+                      onClick={() => {
+                        setAppPreselect(
+                          nodes
+                            .filter((node) => node.selected)
+                            .map((node) => node.id)
+                            .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""))
+                            .slice(0, MAX_APP_MODULES),
+                        );
+                        setAppOpen(true);
+                      }}
+                    >
+                      <AppWindow className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    App-Ansicht
+                    {selectedModuleCount > 0
+                      ? ` · ${Math.min(selectedModuleCount, MAX_APP_MODULES)}/${MAX_APP_MODULES} gewählt`
+                      : ""}
+                  </TooltipContent>
+                </Tooltip>
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       size="icon"
                       variant="ghost"
                       className={toolBtn()}
-                      aria-label="Ausgewählte Module anordnen"
-                      onClick={arrangeSelection}
+                      aria-label="Rückgängig"
+                      disabled={!canEdit || !canUndo}
+                      onClick={() => undo()}
                     >
-                      <LayoutGrid className="size-5" />
+                      <Undo2 className="size-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Auswahl anordnen</TooltipContent>
+                  <TooltipContent side="top">Rückgängig (⌘Z)</TooltipContent>
                 </Tooltip>
-              ) : null}
 
-              {selectedModuleCount > 0 ? (
-                <span className="mx-1 flex h-8 shrink-0 items-center rounded-lg bg-secondary px-2.5 text-xs font-medium text-secondary-foreground">
-                  {selectedModuleCount} ausgewählt
-                </span>
-              ) : null}
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn(appOpen)}
-                    aria-label="App-Ansicht"
-                    aria-pressed={appOpen}
-                    onClick={() => {
-                      setAppPreselect(
-                        nodes
-                          .filter((node) => node.selected)
-                          .map((node) => node.id)
-                          .filter((id) => !NON_BLOCKING_TYPES.has(records[id]?.type ?? ""))
-                          .slice(0, MAX_APP_MODULES),
-                      );
-                      setAppOpen(true);
-                    }}
-                  >
-                    <AppWindow className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  App-Ansicht
-                  {selectedModuleCount > 0
-                    ? ` · ${Math.min(selectedModuleCount, MAX_APP_MODULES)}/${MAX_APP_MODULES} gewählt`
-                    : ""}
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Rückgängig"
-                    disabled={!canEdit || !canUndo}
-                    onClick={() => undo()}
-                  >
-                    <Undo2 className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Rückgängig (⌘Z)</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Wiederholen"
-                    disabled={!canEdit || !canRedo}
-                    onClick={() => redo()}
-                  >
-                    <Redo2 className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Wiederholen (⌘⇧Z)</TooltipContent>
-              </Tooltip>
-
-
-              <DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost" className={toolBtn()} aria-label="Inhalt hinzufügen">
-                        <Plus className="size-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label="Wiederholen"
+                      disabled={!canEdit || !canRedo}
+                      onClick={() => redo()}
+                    >
+                      <Redo2 className="size-5" />
+                    </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Inhalt hinzufügen</TooltipContent>
+                  <TooltipContent side="top">Wiederholen (⌘⇧Z)</TooltipContent>
                 </Tooltip>
-                <DropdownMenuContent side="top" align="center">
-                  <DropdownMenuItem onSelect={() => setLinkPrompt(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }))}>
-                    <Link2 className="size-4" /> Link einfügen
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {
-                    filePosition.current = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                    fileRef.current?.click();
-                  }}>
-                    <FileUp className="size-4" /> Datei hochladen
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {
-                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                    void createRecord({ type: "text", title: "Text", content: "", position_x: at.x, position_y: at.y });
-                  }}>
-                    <Type className="size-4" /> Text
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {
-                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                    void createRecord({ type: "source", title: "Quelle", position_x: at.x, position_y: at.y });
-                  }}>
-                    <FileUp className="size-4" /> Datenquelle
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {
-                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                    void createRecord({ type: "action", title: "Aktion", position_x: at.x, position_y: at.y });
-                  }}>
-                    <Send className="size-4" /> Aktion (Ablagefach)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {
-                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                    void createRecord({ type: "output", title: "Ergebnis", position_x: at.x, position_y: at.y });
-                  }}>
-                    <Download className="size-4" /> Ergebnis (Ausgang)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {
-                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                    void createRecord({ type: "note", title: "Notiz", content: "", position_x: at.x, position_y: at.y });
-                  }}>
-                    <StickyNote className="size-4" /> Notiz
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => {
-                    const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                    void createRecord({ type: "chat", title: "Chat", position_x: at.x, position_y: at.y, metadata: { model: "openai/gpt-6-astra" } });
-                  }}>
-                    <MessageSquare className="size-4" /> Chat
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
 
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className={toolBtn()}
-                        aria-label="Form einfügen"
-                      >
-                        <Shapes className="size-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Form einfügen</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent side="top" align="center">
-                  {SHAPES.map((shape) => (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={toolBtn()}
+                          aria-label="Inhalt hinzufügen"
+                        >
+                          <Plus className="size-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Inhalt hinzufügen</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent side="top" align="center">
                     <DropdownMenuItem
-                      key={shape.id}
+                      onSelect={() =>
+                        setLinkPrompt(
+                          screenToFlowPosition({
+                            x: window.innerWidth / 2,
+                            y: window.innerHeight / 2,
+                          }),
+                        )
+                      }
+                    >
+                      <Link2 className="size-4" /> Link einfügen
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        filePosition.current = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        fileRef.current?.click();
+                      }}
+                    >
+                      <FileUp className="size-4" /> Datei hochladen
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       onSelect={() => {
                         const at = screenToFlowPosition({
                           x: window.innerWidth / 2,
                           y: window.innerHeight / 2,
                         });
                         void createRecord({
-                          type: "shape",
-                          title: shape.label,
+                          type: "text",
+                          title: "Text",
                           content: "",
-                          color: "var(--chat)",
                           position_x: at.x,
                           position_y: at.y,
-                          metadata: { shape: shape.id },
                         });
                       }}
                     >
-                      {shape.label}
+                      <Type className="size-4" /> Text
                     </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn(edgeLabelsOn)}
-                    aria-label="Beschriftung der Verbindungen"
-                    aria-pressed={edgeLabelsOn}
-                    onClick={() => setEdgeLabelsVisible(!edgeLabelsOn)}
-                  >
-                    <Tag className="size-5" style={{ opacity: edgeLabelsOn ? 1 : 0.45 }} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {edgeLabelsOn ? "Beschriftung ausblenden" : "Beschriftung einblenden"}
-                </TooltipContent>
-              </Tooltip>
-
-
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className={toolBtn()}
-                        aria-label="Kennzahlen"
-                      >
-                        <Gauge className="size-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Kennzahlen</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent side="top" align="center">
-                  {DASHBOARD_MODULES.map((module) => (
                     <DropdownMenuItem
-                      key={module.id}
                       onSelect={() => {
                         const at = screenToFlowPosition({
                           x: window.innerWidth / 2,
                           y: window.innerHeight / 2,
                         });
                         void createRecord({
-                          type: module.id,
-                          title: module.title,
+                          type: "source",
+                          title: "Quelle",
                           position_x: at.x,
                           position_y: at.y,
-                          metadata: { ...module.metadata },
                         });
                       }}
                     >
-                      {module.label}
+                      <FileUp className="size-4" /> Datenquelle
                     </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "action",
+                          title: "Aktion",
+                          position_x: at.x,
+                          position_y: at.y,
+                        });
+                      }}
+                    >
+                      <Send className="size-4" /> Aktion (Ablagefach)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "output",
+                          title: "Ergebnis",
+                          position_x: at.x,
+                          position_y: at.y,
+                        });
+                      }}
+                    >
+                      <Download className="size-4" /> Ergebnis (Ausgang)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "note",
+                          title: "Notiz",
+                          content: "",
+                          position_x: at.x,
+                          position_y: at.y,
+                        });
+                      }}
+                    >
+                      <StickyNote className="size-4" /> Notiz
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "chat",
+                          title: "Chat",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { model: "openai/gpt-6-astra" },
+                        });
+                      }}
+                    >
+                      <MessageSquare className="size-4" /> Chat
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="API-Modul anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({
-                        type: "api",
-                        title: "API",
-                        content: "",
-                        position_x: at.x,
-                        position_y: at.y,
-                        metadata: { url: "", method: "GET", params: [], headers: [], pick: "" },
-                      });
-                    }}
-                  >
-                    <Globe className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">API-Modul anlegen</TooltipContent>
-              </Tooltip>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={toolBtn()}
+                          aria-label="Form einfügen"
+                        >
+                          <Shapes className="size-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Form einfügen</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent side="top" align="center">
+                    {SHAPES.map((shape) => (
+                      <DropdownMenuItem
+                        key={shape.id}
+                        onSelect={() => {
+                          const at = screenToFlowPosition({
+                            x: window.innerWidth / 2,
+                            y: window.innerHeight / 2,
+                          });
+                          void createRecord({
+                            type: "shape",
+                            title: shape.label,
+                            content: "",
+                            color: "var(--chat)",
+                            position_x: at.x,
+                            position_y: at.y,
+                            metadata: { shape: shape.id },
+                          });
+                        }}
+                      >
+                        {shape.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="MCP-Werkzeug anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({
-                        type: "mcp",
-                        title: "MCP-Werkzeug",
-                        content: "",
-                        position_x: at.x,
-                        position_y: at.y,
-                        metadata: { mcpServerId: "", mcpTool: "", mcpArgs: "{}", pick: "" },
-                      });
-                    }}
-                  >
-                    <Plug className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">MCP-Werkzeug anlegen</TooltipContent>
-              </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn(edgeLabelsOn)}
+                      aria-label="Beschriftung der Verbindungen"
+                      aria-pressed={edgeLabelsOn}
+                      onClick={() => setEdgeLabelsVisible(!edgeLabelsOn)}
+                    >
+                      <Tag className="size-5" style={{ opacity: edgeLabelsOn ? 1 : 0.45 }} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {edgeLabelsOn ? "Beschriftung ausblenden" : "Beschriftung einblenden"}
+                  </TooltipContent>
+                </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="MCP-Hub anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({
-                        type: "mcphub",
-                        title: "MCP-Hub",
-                        content: "",
-                        position_x: at.x,
-                        position_y: at.y,
-                        metadata: { mcpServerId: "", mcpServerName: "" },
-                      });
-                    }}
-                  >
-                    <Server className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">MCP-Hub anlegen</TooltipContent>
-              </Tooltip>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={toolBtn()}
+                          aria-label="Kennzahlen"
+                        >
+                          <Gauge className="size-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Kennzahlen</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent side="top" align="center">
+                    {DASHBOARD_MODULES.map((module) => (
+                      <DropdownMenuItem
+                        key={module.id}
+                        onSelect={() => {
+                          const at = screenToFlowPosition({
+                            x: window.innerWidth / 2,
+                            y: window.innerHeight / 2,
+                          });
+                          void createRecord({
+                            type: module.id,
+                            title: module.title,
+                            position_x: at.x,
+                            position_y: at.y,
+                            metadata: { ...module.metadata },
+                          });
+                        }}
+                      >
+                        {module.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className={toolBtn()}
-                    aria-label="Entscheidungs-Modul anlegen"
-                    onClick={() => {
-                      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                      void createRecord({
-                        type: "decision",
-                        title: "Entscheidung",
-                        position_x: at.x,
-                        position_y: at.y,
-                        metadata: { questions: [], answers: [] },
-                      });
-                    }}
-                  >
-                    <Scale className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Entscheidungs-Modul anlegen</TooltipContent>
-              </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label="API-Modul anlegen"
+                      onClick={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "api",
+                          title: "API",
+                          content: "",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { url: "", method: "GET", params: [], headers: [], pick: "" },
+                        });
+                      }}
+                    >
+                      <Globe className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">API-Modul anlegen</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label="MCP-Werkzeug anlegen"
+                      onClick={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "mcp",
+                          title: "MCP-Werkzeug",
+                          content: "",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { mcpServerId: "", mcpTool: "", mcpArgs: "{}", pick: "" },
+                        });
+                      }}
+                    >
+                      <Plug className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">MCP-Werkzeug anlegen</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label="MCP-Hub anlegen"
+                      onClick={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "mcphub",
+                          title: "MCP-Hub",
+                          content: "",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { mcpServerId: "", mcpServerName: "" },
+                        });
+                      }}
+                    >
+                      <Server className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">MCP-Hub anlegen</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label="Entscheidungs-Modul anlegen"
+                      onClick={() => {
+                        const at = screenToFlowPosition({
+                          x: window.innerWidth / 2,
+                          y: window.innerHeight / 2,
+                        });
+                        void createRecord({
+                          type: "decision",
+                          title: "Entscheidung",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: { questions: [], answers: [] },
+                        });
+                      }}
+                    >
+                      <Scale className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Entscheidungs-Modul anlegen</TooltipContent>
+                </Tooltip>
+              </div>
             </div>
-          </div>
           </div>
 
           {inspector && (
@@ -4039,7 +4262,9 @@ function BoardPage() {
                     />
                   ) : null}
                   <span className="flex-1">{item.label}</span>
-                  {"active" in item && item.active ? <Check className="size-3.5 text-primary" /> : null}
+                  {"active" in item && item.active ? (
+                    <Check className="size-3.5 text-primary" />
+                  ) : null}
                 </button>
               );
             })}
@@ -4076,7 +4301,9 @@ function BoardPage() {
           <div className="absolute inset-0 z-50 flex items-start justify-center bg-background/40 pt-32">
             <div className="w-96 rounded-2xl border border-border/70 bg-card p-5 shadow-[var(--shadow-float)]">
               <p className="mb-1 font-display text-lg font-semibold">Link einfügen</p>
-              <p className="mb-4 text-sm text-muted-foreground">Füge einen Link zu einem Video, Podcast oder Artikel ein.</p>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Füge einen Link zu einem Video, Podcast oder Artikel ein.
+              </p>
               <Input
                 autoFocus
                 value={linkValue}
@@ -4092,7 +4319,12 @@ function BoardPage() {
                 }}
               />
               <div className="mt-3 flex justify-end gap-2">
-                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setLinkPrompt(null)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="rounded-full"
+                  onClick={() => setLinkPrompt(null)}
+                >
                   Abbrechen
                 </Button>
                 <Button
@@ -4115,17 +4347,55 @@ function BoardPage() {
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
             <div className="pointer-events-auto w-full max-w-md rounded-xl border border-dashed bg-card/90 p-6 text-center shadow-[var(--shadow-card)]">
               <p className="font-display text-lg font-semibold">Ersten Inhalt hinzufügen</p>
-              <p className="mt-1 text-sm text-muted-foreground">Starte mit einer Notiz, einem Link oder einer Datei.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Starte mit einer Notiz, einem Link oder einer Datei.
+              </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <Button size="sm" onClick={() => {
-                  const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                  void createRecord({ type: "note", title: "Notiz", content: "", position_x: at.x, position_y: at.y });
-                }}><StickyNote className="size-4" />Notiz</Button>
-                <Button size="sm" variant="outline" onClick={() => setLinkPrompt(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }))}><Link2 className="size-4" />Link</Button>
-                <Button size="sm" variant="outline" onClick={() => {
-                  filePosition.current = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-                  fileRef.current?.click();
-                }}><FileUp className="size-4" />Datei</Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const at = screenToFlowPosition({
+                      x: window.innerWidth / 2,
+                      y: window.innerHeight / 2,
+                    });
+                    void createRecord({
+                      type: "note",
+                      title: "Notiz",
+                      content: "",
+                      position_x: at.x,
+                      position_y: at.y,
+                    });
+                  }}
+                >
+                  <StickyNote className="size-4" />
+                  Notiz
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setLinkPrompt(
+                      screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }),
+                    )
+                  }
+                >
+                  <Link2 className="size-4" />
+                  Link
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    filePosition.current = screenToFlowPosition({
+                      x: window.innerWidth / 2,
+                      y: window.innerHeight / 2,
+                    });
+                    fileRef.current?.click();
+                  }}
+                >
+                  <FileUp className="size-4" />
+                  Datei
+                </Button>
               </div>
             </div>
           </div>
@@ -4185,9 +4455,19 @@ function SaveIndicator() {
     status === "saving"
       ? { icon: CloudUpload, text: "Speichert …", className: "text-muted-foreground", spin: true }
       : status === "error"
-        ? { icon: CloudOff, text: "Fehler beim Speichern", className: "text-destructive", spin: false }
+        ? {
+            icon: CloudOff,
+            text: "Fehler beim Speichern",
+            className: "text-destructive",
+            spin: false,
+          }
         : status === "saved"
-          ? { icon: CloudCheck, text: `Gespeichert${time ? ` · ${time}` : ""}`, className: "text-muted-foreground", spin: false }
+          ? {
+              icon: CloudCheck,
+              text: `Gespeichert${time ? ` · ${time}` : ""}`,
+              className: "text-muted-foreground",
+              spin: false,
+            }
           : null;
   if (!config) return null;
   const Icon = config.icon;
