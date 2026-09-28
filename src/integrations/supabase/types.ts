@@ -1244,6 +1244,7 @@ export type Database = {
           config: Json
           created_at: string
           id: string
+          last_used_at: string | null
           tags: string[]
           title: string
           user_id: string
@@ -1254,6 +1255,7 @@ export type Database = {
           config: Json
           created_at?: string
           id?: string
+          last_used_at?: string | null
           tags?: string[]
           title: string
           user_id: string
@@ -1264,6 +1266,7 @@ export type Database = {
           config?: Json
           created_at?: string
           id?: string
+          last_used_at?: string | null
           tags?: string[]
           title?: string
           user_id?: string
