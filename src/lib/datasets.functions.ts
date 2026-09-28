@@ -212,6 +212,6 @@ export const runDatasetSqlQuery = createServerFn({ method: "POST" })
     return {
       version: loaded.version,
       columns: loaded.columns,
-      rows: JSON.parse(JSON.stringify(loaded.rows)) as Record<string, unknown>[],
+      rows: JSON.parse(JSON.stringify(loaded.rows)) as Record<string, string | number | boolean | null>[],
     };
   });
