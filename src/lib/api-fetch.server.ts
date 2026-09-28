@@ -39,7 +39,7 @@ export type ApiCall = {
  * Ruft eine https-API auf. Erst die serverseitigen Schlüssel, danach die Eingabewerte
  * ({{input.x}}, in Adressen kodiert) – so kann eine Eingabe nie einen Schlüssel anfordern. Host bleibt geprüft.
  */
-export async function callApi(call: ApiCall, input: FlowInput = {}) {
+export async function callApi(call: ApiCall, input: FlowInput = {}, signal?: AbortSignal) {
   const url = safeUrl(fillInputs(fillSecrets(call.url.trim()), input, "url"));
   for (const pair of call.params) {
     if (!pair.key.trim()) continue;
@@ -55,6 +55,10 @@ export async function callApi(call: ApiCall, input: FlowInput = {}) {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20_000);
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
   try {
     // "manual" instead of "error": the edge runtime rejects "error". Redirects are refused below.
     const init: RequestInit = { method: call.method, headers, signal: controller.signal, redirect: "manual" };
