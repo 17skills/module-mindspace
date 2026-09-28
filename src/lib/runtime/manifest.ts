@@ -7,6 +7,7 @@
  */
 import { parse as parseYamlText, stringify } from "yaml";
 import { z } from "zod";
+import { checksum } from "@/lib/runtime/source-protocol";
 
 export const MANIFEST_VERSION = "scopebuilder/v1";
 
@@ -43,6 +44,8 @@ const ModuleSchema = z.object({
   url: z.string().nullable().optional(),
   content: z.string().nullable().optional(),
   engine: EngineSchema.optional(),
+  /** Catalog building block this module was placed from. */
+  module: z.object({ name: z.string().min(1), version: z.string().default("") }).optional(),
   settings: z.record(z.string(), z.unknown()).default({}),
 });
 
@@ -62,12 +65,35 @@ const AppSchema = z.object({
   branding: z.record(z.string(), z.unknown()).default({}),
 });
 
+/** Version and origin of a blueprint file. */
+const ProvenanceSchema = z.object({
+  version: z.string().default("1.0.0"),
+  author: z.string().default(""),
+  createdAt: z.string().default(""),
+  origin: z.string().nullable().default(null),
+  checksum: z.string().default(""),
+});
+export type ManifestProvenance = z.infer<typeof ProvenanceSchema>;
+
+/** MCP server a module talks to — address and sign-in kind, never the token. */
+const McpServerSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().default(""),
+  url: z.string().min(1),
+  auth: z.string().default("none"),
+  header: z.string().nullable().default(null),
+});
+
 export const ManifestSchema = z.object({
   scopebuilder: z.literal(MANIFEST_VERSION),
   scope: z.object({
     title: z.string().default("Scope aus Manifest"),
     description: z.string().nullable().default(null),
   }),
+  provenance: ProvenanceSchema.optional(),
+  /** Scope-wide rules / ontology (guard rails over all modules). */
+  rules: z.record(z.string(), z.unknown()).default({}),
+  mcpServers: z.array(McpServerSchema).max(50).default([]),
   modules: z.array(ModuleSchema).max(2000).default([]),
   links: z.array(LinkSchema).max(4000).default([]),
   apps: z.array(AppSchema).max(50).default([]),
@@ -77,7 +103,12 @@ export type ScopeManifest = z.infer<typeof ManifestSchema>;
 /** Form der bestehenden Sicherung (backup.functions). */
 export type BackupShape = {
   version: number;
-  board: { title: string; description: string | null };
+  board: {
+    title: string;
+    description: string | null;
+    rules?: Record<string, unknown>;
+    provenance?: Record<string, unknown>;
+  };
   nodes: Record<string, unknown>[];
   edges: Record<string, unknown>[];
   mcpServers: Record<string, unknown>[];
@@ -131,14 +162,32 @@ function channelsOf(raw: unknown, kind: string): AppChannel[] {
 }
 
 /** Sicherung → Manifest. Kennungen werden zu lesbaren Namen. */
-export function backupToManifest(backup: BackupShape): ScopeManifest {
+export function backupToManifest(
+  backup: BackupShape,
+  info: { author?: string; origin?: string | null } = {},
+): ScopeManifest {
   const used = new Set<string>();
   const ids = new Map<string, string>();
   for (const node of backup.nodes) {
     ids.set(String(node["id"]), slug(str(node["title"]) || String(node["type"] ?? "modul"), used));
   }
+  const usedServers = new Set<string>();
+  const serverIds = new Map<string, string>();
+  const mcpServers = backup.mcpServers
+    .filter((server) => typeof server["url"] === "string")
+    .map((server) => {
+      const key = slug(`mcp-${str(server["name"]) || "server"}`, usedServers);
+      serverIds.set(String(server["id"]), key);
+      return {
+        id: key,
+        name: str(server["name"]) ?? "",
+        url: String(server["url"]),
+        auth: str(server["auth_kind"]) ?? "none",
+        header: str(server["header_name"]),
+      };
+    });
   const remap = (value: unknown): unknown => {
-    if (typeof value === "string") return ids.get(value) ?? value;
+    if (typeof value === "string") return ids.get(value) ?? serverIds.get(value) ?? value;
     if (Array.isArray(value)) return value.map(remap);
     if (value && typeof value === "object") {
       const out: Record<string, unknown> = {};
@@ -153,6 +202,8 @@ export function backupToManifest(backup: BackupShape): ScopeManifest {
     const meta = (node["metadata"] ?? {}) as Record<string, unknown>;
     const parent = str(node["parent_id"]);
     const engine = engineOf(type, meta);
+    const ref = str(meta["moduleRef"]);
+    const at = ref ? ref.lastIndexOf("@") : -1;
     return {
       id: ids.get(String(node["id"]))!,
       role: roleOf(type),
@@ -168,6 +219,7 @@ export function backupToManifest(backup: BackupShape): ScopeManifest {
       url: str(node["source_url"]),
       content: str(node["content"]),
       ...(engine ? { engine } : {}),
+      ...(ref ? { module: { name: at > 0 ? ref.slice(0, at) : ref, version: at > 0 ? ref.slice(at + 1) : "" } } : {}),
       settings: remap(stripData(meta)) as Record<string, unknown>,
     };
   });
@@ -195,13 +247,34 @@ export function backupToManifest(backup: BackupShape): ScopeManifest {
     };
   });
 
+  const rules = (backup.board.rules ?? {}) as Record<string, unknown>;
+  const previous = (backup.board.provenance ?? {}) as Record<string, unknown>;
   return {
     scopebuilder: MANIFEST_VERSION,
     scope: { title: backup.board.title, description: backup.board.description },
+    provenance: {
+      version: str(previous["version"]) ?? "1.0.0",
+      author: info.author ?? str(previous["author"]) ?? "",
+      createdAt: new Date().toISOString(),
+      origin: info.origin ?? str(previous["origin"]),
+      checksum: manifestChecksum({ modules, links, apps, rules }),
+    },
+    rules,
+    mcpServers,
     modules,
     links,
     apps,
   };
+}
+
+/** Stable fingerprint of the building plan (without provenance itself). */
+export function manifestChecksum(part: {
+  modules: unknown;
+  links: unknown;
+  apps: unknown;
+  rules: unknown;
+}): string {
+  return checksum(JSON.stringify([part.modules, part.links, part.apps, part.rules]));
 }
 
 function prune(value: unknown): unknown {
@@ -362,10 +435,35 @@ export function stripData(meta: Record<string, unknown>): Record<string, unknown
   };
 }
 
+/** The engine entry wins over settings, so swapping it in the file swaps the motor. */
+function applyEngine(type: string, meta: Record<string, unknown>, engine: ManifestEngine | undefined) {
+  if (!engine?.ref) return meta;
+  const out = { ...meta };
+  if (engine.kind === "mcp") {
+    const cut = engine.ref.lastIndexOf("/");
+    if (cut > 0) {
+      out["mcpServerName"] = engine.ref.slice(0, cut);
+      out["mcpTool"] = engine.ref.slice(cut + 1);
+    } else out["mcpTool"] = engine.ref;
+  } else if (engine.kind === "api") {
+    if (engine.ref.startsWith("https://")) out["url"] = engine.ref;
+  } else if ("model" in out || (type !== "zone" && !("agentModel" in out))) {
+    out["model"] = engine.ref;
+  } else {
+    out["agentModel"] = engine.ref;
+  }
+  return out;
+}
+
 export function manifestToBackup(manifest: ScopeManifest): BackupShape {
   return {
     version: 1,
-    board: { title: manifest.scope.title, description: manifest.scope.description },
+    board: {
+      title: manifest.scope.title,
+      description: manifest.scope.description,
+      rules: manifest.rules,
+      provenance: manifest.provenance ? { ...manifest.provenance } : {},
+    },
     nodes: manifest.modules.map((module) => ({
       id: module.id,
       parent_id: module.parent,
@@ -379,10 +477,16 @@ export function manifestToBackup(manifest: ScopeManifest): BackupShape {
       source_url: module.url ?? null,
       content: module.content ?? null,
       status: "ready",
-      metadata: sanitizeSettings(module.settings),
+      metadata: withModuleRef(applyEngine(module.type, sanitizeSettings(module.settings), module.engine), module.module),
     })),
     edges: manifest.links.map((link) => ({ source_id: link.from, target_id: link.to, label: link.label ?? null })),
-    mcpServers: [],
+    mcpServers: manifest.mcpServers.map((server) => ({
+      id: server.id,
+      name: server.name,
+      url: server.url,
+      auth_kind: server.auth,
+      header_name: server.header,
+    })),
     apps: manifest.apps.map((app) => ({
       title: app.title,
       kind: app.channels.includes("mobile") ? "capture" : app.kind,
@@ -399,9 +503,40 @@ export function manifestToBackup(manifest: ScopeManifest): BackupShape {
   };
 }
 
+function withModuleRef(meta: Record<string, unknown>, module: { name: string; version: string } | undefined) {
+  if (!module || typeof meta["moduleRef"] === "string") return meta;
+  return { ...meta, moduleRef: module.version ? `${module.name}@${module.version}` : module.name };
+}
+
+/**
+ * Klartext-Hinweise vor dem Übernehmen: benötigte MCP-Server, veraltete
+ * Bausteine, Freigabepflichten. Nie ein Abbruch.
+ */
+export function manifestNotices(manifest: ScopeManifest, catalogVersions: Map<string, string>): string[] {
+  const notes: string[] = [];
+  for (const server of manifest.mcpServers) {
+    notes.push(`Braucht MCP-Server „${server.name || server.url}“ (${server.url}) – wird Ihrem Server mit gleicher Adresse zugeordnet, sonst bitte danach verbinden.`);
+  }
+  for (const module of manifest.modules) {
+    if (!module.module) continue;
+    const current = catalogVersions.get(module.module.name);
+    if (!current) notes.push(`Modul „${module.id}“ nutzt den unbekannten Baustein „${module.module.name}“.`);
+    else if (module.module.version && module.module.version !== current) {
+      notes.push(`Modul „${module.id}“: Baustein „${module.module.name}“ ${module.module.version}, aktuell ist ${current}.`);
+    }
+  }
+  const approvals = manifest.modules.filter((m) => m.settings["requiresApproval"] === true).length;
+  if (approvals) notes.push(`${approvals} Modul(e) wirken nach außen und brauchen immer eine menschliche Freigabe.`);
+  if (manifest.provenance?.checksum) {
+    const now = manifestChecksum(manifest);
+    if (now !== manifest.provenance.checksum) notes.push("Die Datei wurde seit dem Export verändert (Prüfsumme weicht ab).");
+  }
+  return notes;
+}
+
 /** Kurzfassung für die Vorschau vor dem Übernehmen. */
 export function summarizeManifest(manifest: ScopeManifest): string {
   const roles = { source: 0, step: 0, output: 0, action: 0 };
   manifest.modules.forEach((m) => (roles[m.role ?? roleOf(m.type)] += 1));
-  return `${manifest.modules.length} Module (${roles.source} Quellen, ${roles.step} Schritte, ${roles.output} Ergebnisse, ${roles.action} Aktionen), ${manifest.links.length} Verbindungen, ${manifest.apps.length} Apps`;
+  return `${manifest.modules.length} Module (${roles.source} Quellen, ${roles.step} Schritte, ${roles.output} Ergebnisse, ${roles.action} Aktionen), ${manifest.links.length} Verbindungen, ${manifest.apps.length} Apps${manifest.mcpServers.length ? `, ${manifest.mcpServers.length} MCP-Server` : ""}${Object.keys(manifest.rules).length ? ", Scope-Regeln" : ""}`;
 }
