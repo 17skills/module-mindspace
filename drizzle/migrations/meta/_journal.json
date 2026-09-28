@@ -246,6 +246,13 @@
       "when": 1790622375166,
       "tag": "0034_dataset_expert_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790624179215,
+      "tag": "0035_create_query_templates",
+      "breakpoints": true
     }
   ]
 }

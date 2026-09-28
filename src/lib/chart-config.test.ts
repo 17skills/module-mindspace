@@ -86,3 +86,14 @@ describe("Schutz der freien Abfrage", () => {
     ).toBeNull();
   });
 });
+
+import { configColumns, missingTemplateColumns } from "./chart-config";
+describe("Abfragevorlagen", () => {
+  it("erkennt benötigte Spalten visuell und in SQL", () => {
+    expect(configColumns({ ...EMPTY_CHART_CONFIG, groupBy: "stadt", measure: "umsatz" }, [])).toEqual(["stadt", "umsatz"]);
+    expect(
+      configColumns({ ...EMPTY_CHART_CONFIG, mode: "sql", sql: "select stadt as name, count(*) as value from data group by 1" }, ["stadt", "umsatz", "name"]),
+    ).toEqual(["stadt", "name"]);
+    expect(missingTemplateColumns(["stadt", "umsatz"], ["stadt"])).toEqual(["umsatz"]);
+  });
+});
