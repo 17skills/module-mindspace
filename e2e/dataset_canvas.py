@@ -37,8 +37,8 @@ def setup():
         return rest("POST", "nodes", json={"board_id": board["id"], "user_id": USER, "type": type_, "title": title,
             "position_x": x, "position_y": y, "width": w, "height": h, "status": "ready", **extra})[0]
     s = node("source", "Tabelle", 0, 0, src["width"], src["height"], metadata=src["metadata"], content=src.get("content"))
-    m = node("map", "Karte", 700, -200, 420, 360, metadata={})
-    c = node("chart", "Diagramm", 700, 300, 420, 340, metadata={"columns": [], "rows": [], "chartType": "bar"})
+    m = node("map", "Karte", 520, -420, 420, 360, metadata={})
+    c = node("chart", "Diagramm", 520, 420, 420, 340, metadata={"columns": [], "rows": [], "chartType": "bar"})
     return board["id"], s["id"], m["id"], c["id"]
 
 async def drag(page, a, b):
@@ -66,9 +66,11 @@ async def main():
             await page.goto(f"{BASE}/board/{board}", wait_until="commit")
             await page.wait_for_selector(f'.react-flow__node[data-id="{c}"]', timeout=30000)
             await page.wait_for_timeout(1500)
+            await page.locator(".react-flow__controls-fitview").click()
+            await page.wait_for_timeout(800)
             out = page.locator(f'.react-flow__node[data-id="{s}"] .react-flow__handle.source').last
             for target in (m, c):
-                await drag(page, out, page.locator(f'.react-flow__node[data-id="{target}"] .react-flow__handle.target').first)
+                await drag(page, out, page.locator(f'.react-flow__node[data-id="{target}"] .react-flow__handle.target.react-flow__handle-left').first)
             edges = rest("GET", f"edges?board_id=eq.{board}&select=source_id,target_id")
             pairs = {(e["source_id"], e["target_id"]) for e in edges}
             if (s, m) not in pairs: failures.append("Verbindung Tabelle→Karte fehlt")
