@@ -3,7 +3,7 @@
 - [x] Knopf „Bauplan-Vorlagen" auf der Startseite
 - [x] Tägliche automatische Löschung einschalten
 - [x] Daten vom Scope trennen (Datenablage, Verweise, scope/scopem erweitert)
-- [ ] Karte/Diagramm/Agent: Datenverweis im Canvas direkt anzeigen (Server-Abfrage ist fertig)
+- [x] Karte/Diagramm/Agent lesen große Tabellen serverseitig (SQL statt Browser-Speicher)
 - [x] Vorlagen verlustfrei (Motor, MCP, Regeln, Herkunft) + Katalog-Bausteine im Canvas
 - [x] Token-Budget der Bausteine bei KI-Aufrufen hart erzwingen
 - [x] Headless-Start eines Scopes per Schnittstelle (Scope-Schlüssel)
