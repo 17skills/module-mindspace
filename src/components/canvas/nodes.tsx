@@ -1629,7 +1629,7 @@ type Msg = { id?: string; role: "user" | "assistant"; content: string };
 
 export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
-  const { collectContext, contextReport, addNoteFrom, focusNode } = useBoard();
+  const { collectContext, collectDatasets, contextReport, addNoteFrom, focusNode } = useBoard();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
