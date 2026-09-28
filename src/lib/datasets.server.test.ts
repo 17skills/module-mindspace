@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { runDatasetQuery } from "@/lib/datasets.server";
-import { queryRows } from "@/lib/datasets";
+import { queryRows, type DatasetQuery } from "@/lib/datasets";
 import type { DataRow } from "@/lib/runtime/source-protocol";
 
 const DATASET = "087f47ef-3a5e-4f0a-97be-4661e1ce48a7";
@@ -209,7 +209,7 @@ describe("Diagramm: serverseitige Aggregation einer verbundenen Tabelle", () => 
 
   it("summiert je Gruppe und stimmt mit der Referenzlogik überein", async () => {
     const { client, calls } = fakeClient(rows);
-    const query = { mode: "aggregate", fn: "sum", groupBy: "stadt", measure: "umsatz", filters: [] } as const;
+    const query: DatasetQuery = { mode: "aggregate", fn: "sum", groupBy: "stadt", measure: "umsatz", filters: [] };
     const { result } = await runDatasetQuery(client, DATASET, query);
     expect(calls[0]).toEqual({
       fn: "dataset_aggregate",
