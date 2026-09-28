@@ -25,6 +25,7 @@ import {
 } from "@/lib/share.functions";
 import { shareLink } from "@/lib/share-link";
 import { ApiKeysSection } from "@/components/canvas/ApiKeysSection";
+import { PrivacySection } from "@/components/canvas/PrivacySection";
 
 type Member = { id: string; userId: string; role: string; email: string };
 type ShareState = {
@@ -377,6 +378,7 @@ export function ShareDialog({
           </ul>
         </section>
         <ApiKeysSection boardId={boardId} isOwner={isOwner} />
+        <PrivacySection boardId={boardId} isOwner={isOwner} />
       </DialogContent>
     </Dialog>
   );
