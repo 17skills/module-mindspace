@@ -37,7 +37,7 @@ def setup():
         return rest("POST", "nodes", json={"board_id": board["id"], "user_id": USER, "type": type_, "title": title,
             "position_x": x, "position_y": y, "width": w, "height": h, "status": "ready", **extra})[0]
     s = node("source", "Tabelle", 0, 0, src["width"], src["height"], metadata=src["metadata"], content=src.get("content"))
-    m = node("map", "Karte", 520, -420, 420, 360, metadata={})
+    m = node("map", "Karte", 800, -300, 420, 360, metadata={})
     c = node("chart", "Diagramm", 520, 420, 420, 340, metadata={"columns": [], "rows": [], "chartType": "bar"})
     return board["id"], s["id"], m["id"], c["id"]
 
