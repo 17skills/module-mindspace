@@ -4032,7 +4032,86 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
       .filter((item): item is NodeRecord => Boolean(item));
   }, [edges, flowNodes, id]);
 
-  const points = useMemo(() => pointsFromSources(sources, config), [sources, config]);
+  /**
+   * Verbundene Datenablage: die Karte hält keine Zeilen, sondern fragt beim
+   * Bewegen nur den sichtbaren Ausschnitt ab (höchstens 300 Punkte).
+   */
+  const dataset = useMemo(() => {
+    for (const source of sources) {
+      const stored = readSource(source);
+      const ref = readDatasetRef(stored?.envelope);
+      const columns = stored?.envelope.facets.dataset?.columns ?? [];
+      const geo = detectGeoColumns(columns);
+      if (ref?.datasetId && geo) {
+        const label =
+          columns.find((c) => c.semantic === "identifier" || c.type === "text")?.key ?? null;
+        return { id: ref.datasetId, geo, label, title: source.title ?? "Datenablage" };
+      }
+    }
+    return null;
+  }, [sources]);
+
+  const [remote, setRemote] = useState<{ points: GeoPoint[]; matched: number; total: number } | null>(
+    null,
+  );
+  const runQuery = useServerFn(queryDataset);
+  const lastBox = useRef<string>("");
+
+  const loadBox = useCallback(
+    async (box: [number, number, number, number]) => {
+      if (!dataset) return;
+      const key = box.map((value) => value.toFixed(3)).join(",");
+      if (key === lastBox.current) return;
+      lastBox.current = key;
+      try {
+        const answer = await runQuery({
+          data: {
+            datasetId: dataset.id,
+            query: {
+              mode: "bbox",
+              mapping: {
+                lat: dataset.geo.lat,
+                lon: dataset.geo.lon,
+                ...(dataset.label ? { name: dataset.label } : {}),
+              },
+              bbox: box,
+              limit: 300,
+            },
+          },
+        });
+        const result = answer.result as unknown as {
+          points?: { lat: number; lon: number; name: string; index: number }[];
+          matched?: number;
+          total?: number;
+        };
+        setRemote({
+          points: (result.points ?? []).map((point) => ({
+            id: `${dataset.id}:${point.index}`,
+            label: point.name || `Zeile ${point.index}`,
+            lat: point.lat,
+            lon: point.lon,
+            klass: dataset.title,
+            impact: null,
+          })),
+          matched: result.matched ?? 0,
+          total: result.total ?? 0,
+        });
+      } catch {
+        // Kein Zugriff oder Dienst nicht erreichbar: die Karte bleibt nutzbar.
+      }
+    },
+    [dataset, runQuery],
+  );
+
+  useEffect(() => {
+    lastBox.current = "";
+    if (!dataset) setRemote(null);
+  }, [dataset]);
+
+  const points = useMemo(
+    () => [...pointsFromSources(sources, config), ...(remote?.points ?? [])],
+    [sources, config, remote],
+  );
   const summary = useMemo(() => mapText(points, config.weather), [points, config.weather]);
 
   // keep the chat / decision context in sync with what the map shows
