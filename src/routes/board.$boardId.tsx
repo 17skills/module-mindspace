@@ -1232,6 +1232,40 @@ function BoardPage() {
   }, []);
 
   /**
+   * Verbundene Datenquellen eines Moduls — nur die Verweise. Große Tabellen
+   * fließen nie als Text in den Chat; der Agent fragt sie gezielt ab.
+   */
+  const collectDatasets = useCallback((id: string) => {
+    const connected = new Set<string>();
+    for (const edge of edgesRef.current) {
+      if (edge.source === id) connected.add(edge.target);
+      if (edge.target === id) connected.add(edge.source);
+    }
+    for (const nodeId of [...connected]) {
+      const record = recordsRef.current[nodeId];
+      if (record?.type === "frame") {
+        for (const candidate of Object.values(recordsRef.current)) {
+          if (candidate.parent_id === nodeId) connected.add(candidate.id);
+        }
+      }
+    }
+    const own = readAssignment(recordsRef.current[id]);
+    if (own) {
+      for (const candidate of Object.values(recordsRef.current)) {
+        if (candidate.id !== id && readAssignment(candidate)?.zoneId === own.zoneId) {
+          connected.add(candidate.id);
+        }
+      }
+    }
+    const ids: string[] = [];
+    for (const nodeId of connected) {
+      const ref = readDatasetRef(readSource(recordsRef.current[nodeId])?.envelope);
+      if (ref?.datasetId && !ids.includes(ref.datasetId)) ids.push(ref.datasetId);
+    }
+    return ids.slice(0, 5);
+  }, []);
+
+  /**
    * Transparent breakdown for the chat module: which connected modules
    * actually feed the chat, and which are deliberately left out (and why).
    * Mirrors collectContext exactly — profile links never carry content.
