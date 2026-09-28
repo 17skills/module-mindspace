@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { streamText, type ModelMessage } from "ai";
+import { stepCountIs, streamText, type ModelMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { chatModel, isOpenAiModel, responsesModel } from "@/lib/ai-gateway.server";
@@ -21,6 +21,7 @@ import {
   redactionSummary,
   stricterMode,
 } from "@/lib/pii";
+import { datasetSchemaBrief } from "@/lib/datasets";
 
 const Body = z.object({
   nodeId: z.string().uuid().optional(),
