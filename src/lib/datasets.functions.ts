@@ -1,5 +1,7 @@
 /**
- * Datenablage: vollständige Tabellen liegen getrennt vom Canvas.
+ * Datenablage: vollständige Tabellen liegen getrennt vom Canvas, Zeile für
+ * Zeile in der Datenbank (`dataset_rows`). Gefiltert, gezählt und gerechnet
+ * wird in der Datenbank — der Server lädt nie die ganze Tabelle in den Speicher.
  * Rechte kommen aus den Scope-/Modulrechten (RLS auf `datasets`).
  */
 import { createServerFn } from "@tanstack/react-start";
@@ -7,14 +9,17 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   MAX_DATASET_ROWS,
+  PREVIEW_ROWS,
+  cellNumber,
+  detectGeoColumns,
   queryRows,
   rowsChecksum,
-  toJsonl,
   fromJsonl,
   evaluateColumnRule,
   type DatasetQuery,
+  type QueryResult,
 } from "@/lib/datasets";
-import type { DataRow, DatasetRef } from "@/lib/runtime/source-protocol";
+import type { ColumnSpec, DataRow, DatasetRef } from "@/lib/runtime/source-protocol";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
