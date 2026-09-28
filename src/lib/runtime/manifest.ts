@@ -277,7 +277,13 @@ export function manifestChecksum(part: {
   apps: unknown;
   rules: unknown;
 }): string {
-  return checksum(JSON.stringify([part.modules, part.links, part.apps, part.rules]));
+  // Long texts move into Markdown sections and come back trimmed.
+  const modules = Array.isArray(part.modules)
+    ? part.modules.map((m: Record<string, unknown>) =>
+        typeof m["content"] === "string" ? { ...m, content: (m["content"] as string).trim() } : m,
+      )
+    : part.modules;
+  return checksum(JSON.stringify([modules, part.links, part.apps, part.rules]));
 }
 
 function prune(value: unknown): unknown {
