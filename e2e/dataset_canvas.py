@@ -61,9 +61,9 @@ async def main():
             browser = await p.chromium.launch(headless=True)
             ctx = await browser.new_context(viewport={"width": 1280, "height": 1800})
             page = await ctx.new_page()
-            await page.goto(BASE)
+            await page.goto(BASE, wait_until="domcontentloaded")
             await page.evaluate(f"localStorage.setItem({json.dumps(SESSION['storage_key'])}, {json.dumps(json.dumps(SESSION['session']))})")
-            await page.goto(f"{BASE}/board/{board}")
+            await page.goto(f"{BASE}/board/{board}", wait_until="commit")
             await page.wait_for_selector(f'.react-flow__node[data-id="{c}"]', timeout=30000)
             await page.wait_for_timeout(1500)
             out = page.locator(f'.react-flow__node[data-id="{s}"] .react-flow__handle.source').last
