@@ -148,7 +148,12 @@ describe("Geo-Spalten und Schema-Kurzfassung", () => {
 
   it("gibt dem Agenten nur Spalten, niemals Zeilen", () => {
     const brief = datasetSchemaBrief(
-      { columns: [{ key: "stadt", label: "Stadt", type: "text" }, { key: "umsatz", label: "Umsatz", type: "number" }] },
+      {
+        columns: [
+          { key: "stadt", label: "Stadt", type: "text", unit: null, semantic: null, filled: 5000, total: 5000 },
+          { key: "umsatz", label: "Umsatz", type: "number", unit: null, semantic: null, filled: 5000, total: 5000 },
+        ],
+      },
       5000,
       "abc",
     );
