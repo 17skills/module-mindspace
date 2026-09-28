@@ -92,7 +92,7 @@ export function DataTab({ record }: { record: NodeRecord }) {
         </div>
 
         {record.type === "chart" && (
-          <div className="grid grid-cols-3 gap-2">
+          <>
             <Select
               value={data.chartType}
               onValueChange={(value) => save(columns, rows, { chartType: value })}
@@ -108,37 +108,8 @@ export function DataTab({ record }: { record: NodeRecord }) {
                 ))}
               </SelectContent>
             </Select>
-            <Select
-              value={String(data.labelColumn)}
-              onValueChange={(value) => save(columns, rows, { labelColumn: Number(value) })}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Beschriftung" />
-              </SelectTrigger>
-              <SelectContent>
-                {columns.map((column, index) => (
-                  <SelectItem key={index} value={String(index)} className="text-xs">
-                    {column || `Spalte ${index + 1}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={String(data.valueColumn)}
-              onValueChange={(value) => save(columns, rows, { valueColumn: Number(value) })}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Wert" />
-              </SelectTrigger>
-              <SelectContent>
-                {columns.map((column, index) => (
-                  <SelectItem key={index} value={String(index)} className="text-xs">
-                    {column || `Spalte ${index + 1}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <ChartDataSection record={record} />
+          </>
         )}
       </div>
 
