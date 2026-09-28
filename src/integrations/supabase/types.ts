@@ -1530,6 +1530,10 @@ export type Database = {
         }[]
       }
       purge_audit_log: { Args: never; Returns: undefined }
+      verify_cron_token: {
+        Args: { _name: string; _token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       ai_provider: "openai" | "anthropic" | "google" | "openrouter"

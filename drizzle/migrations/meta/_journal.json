@@ -225,6 +225,13 @@
       "when": 1790607910208,
       "tag": "0031_enable_cron_for_runs_purge",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790607942522,
+      "tag": "0032_runs_purge_cron_token",
+      "breakpoints": true
     }
   ]
 }
