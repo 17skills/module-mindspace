@@ -6,8 +6,10 @@ import { chatModel, isOpenAiModel, responsesModel } from "@/lib/ai-gateway.serve
 import { assertActiveUser } from "@/lib/guard.server";
 import { rateLimit } from "@/lib/rate-limit.server";
 import { UNTRUSTED_NOTICE, wrapUntrusted } from "@/lib/untrusted";
+import { BUDGET_NOTICE, BudgetMeter, DEFAULT_BUDGET, checkInputBudget, readBudget } from "@/lib/budget";
 
 const Body = z.object({
+  nodeId: z.string().uuid().optional(),
   model: z
     .string()
     .max(80)
@@ -80,6 +82,36 @@ export const Route = createFileRoute("/api/chat")({
           (m) => ({ role: m.role, content: m.content }) as ModelMessage,
         );
 
+        // Harte Budgetbremse: Grenzen des Bausteins gelten, sonst der Standarddeckel.
+        let budget = DEFAULT_BUDGET;
+        if (body.nodeId) {
+          const scoped = createClient(
+            process.env["SUPABASE_URL"]!,
+            process.env["SUPABASE_PUBLISHABLE_KEY"]!,
+            {
+              auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+              global: { headers: { Authorization: request.headers.get("authorization") ?? "" } },
+            },
+          );
+          const { data: node } = await scoped
+            .from("nodes")
+            .select("metadata")
+            .eq("id", body.nodeId)
+            .maybeSingle();
+          if (node) budget = readBudget(node.metadata as Record<string, unknown>);
+        }
+        const check = checkInputBudget(
+          instructions + history.map((m) => m.content).join("\n"),
+          budget,
+        );
+        if (!check.ok) {
+          return new Response(check.reason, {
+            status: 413,
+            headers: { "x-budget": "exceeded" },
+          });
+        }
+        const meter = new BudgetMeter(budget, check.inputTokens);
+
         const onError = ({ error }: { error: unknown }) => {
           console.error("chat error", error);
         };
@@ -116,6 +148,10 @@ export const Route = createFileRoute("/api/chat")({
               try {
                 for await (const chunk of result.textStream) {
                   controller.enqueue(encoder.encode(chunk));
+                  if (meter.add(chunk)) {
+                    controller.enqueue(encoder.encode(`\n\n${BUDGET_NOTICE}`));
+                    break;
+                  }
                 }
               } catch (streamError) {
                 const detail =
@@ -124,6 +160,21 @@ export const Route = createFileRoute("/api/chat")({
                 controller.enqueue(encoder.encode(`\n\n⚠️ Fehler: ${detail}`));
               }
               controller.close();
+              try {
+                const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+                await supabaseAdmin.from("ai_usage").insert({
+                  user_id: userId,
+                  provider: "lovable",
+                  fn: "chat",
+                  model: modelId,
+                  input_tokens: meter.inputTokens,
+                  output_tokens: meter.outputTokens,
+                  cost_usd: meter.costUsd,
+                  ok: !meter.exceeded,
+                });
+              } catch (logError) {
+                console.error("usage log", logError);
+              }
             },
           });
 
