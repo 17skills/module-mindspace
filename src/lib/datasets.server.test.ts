@@ -52,12 +52,12 @@ function fakeClient(rows: DataRow[], opts: { failRpc?: boolean; storagePath?: st
     calls.push({ fn, args });
     if (opts.failRpc) return { data: null, error: { message: "boom" } };
     if (fn === "dataset_bbox") {
-      const s = args._south as number | undefined;
-      const w = args._west as number | undefined;
-      const nn = args._north as number | undefined;
-      const e = args._east as number | undefined;
+      const s = args["_south"] as number | undefined;
+      const w = args["_west"] as number | undefined;
+      const nn = args["_north"] as number | undefined;
+      const e = args["_east"] as number | undefined;
       const hits = rows
-        .map((r) => ({ r, lat: num(r.values.lat), lon: num(r.values.lon) }))
+        .map((r) => ({ r, lat: num(r.values["lat"]), lon: num(r.values["lon"]) }))
         .filter(
           (h) =>
             h.lat !== null &&
@@ -67,8 +67,8 @@ function fakeClient(rows: DataRow[], opts: { failRpc?: boolean; storagePath?: st
             (w === undefined || h.lon >= w) &&
             (e === undefined || h.lon <= e),
         );
-      const limit = Math.min(Math.max((args._limit as number) ?? 300, 1), 1000);
-      const nameCol = args._name_col as string | undefined;
+      const limit = Math.min(Math.max((args["_limit"] as number) ?? 300, 1), 1000);
+      const nameCol = args["_name_col"] as string | undefined;
       return {
         data: hits.slice(0, limit).map((h) => ({
           row_index: h.r.index,
@@ -82,10 +82,10 @@ function fakeClient(rows: DataRow[], opts: { failRpc?: boolean; storagePath?: st
       };
     }
     if (fn === "dataset_aggregate") {
-      const filters = (args._filters ?? []) as { column: string; op: string; value?: unknown }[];
+      const filters = (args["_filters"] ?? []) as { column: string; op: string; value?: unknown }[];
       const matched = rows.filter((r) => matchFilters(r, filters));
-      const groupBy = args._group_by as string | undefined;
-      const measure = args._measure as string | undefined;
+      const groupBy = args["_group_by"] as string | undefined;
+      const measure = args["_measure"] as string | undefined;
       const buckets = new Map<string, DataRow[]>();
       for (const r of matched) {
         const key = groupBy ? String(r.values[groupBy] ?? "–") : "Gesamt";
@@ -94,13 +94,13 @@ function fakeClient(rows: DataRow[], opts: { failRpc?: boolean; storagePath?: st
       const out = [...buckets.entries()].map(([bucket, list]) => {
         const vals = list.map((r) => num(r.values[measure ?? ""]) ?? 0);
         const value =
-          args._fn === "count"
+          args["_fn"] === "count"
             ? list.length
-            : args._fn === "sum"
+            : args["_fn"] === "sum"
               ? vals.reduce((a, b) => a + b, 0)
-              : args._fn === "avg"
+              : args["_fn"] === "avg"
                 ? vals.reduce((a, b) => a + b, 0) / vals.length
-                : args._fn === "min"
+                : args["_fn"] === "min"
                   ? Math.min(...vals)
                   : Math.max(...vals);
         return { bucket, value: String(value), cnt: list.length, matched: matched.length, total: rows.length };
@@ -177,7 +177,7 @@ describe("Karte: Bounding-Box-Abfrage einer verbundenen Tabelle", () => {
       mapping: { lat: "lat", lon: "lon" },
       limit: 999_999,
     });
-    expect(calls[0]!.args._limit).toBe(1000);
+    expect(calls[0]!.args["_limit"]).toBe(1000);
     expect(calls[0]!.args).not.toHaveProperty("_south");
     expect(calls[0]!.args).not.toHaveProperty("_name_col");
     expect(result.points).toHaveLength(1000);
