@@ -483,5 +483,12 @@ export function validateReadOnlySql(sql: string): string | null {
   for (const phrase of SQL_PHRASES) {
     if (lower.includes(phrase)) return `Nicht erlaubter Ausdruck: ${phrase}`;
   }
+  // Nur die eigene Tabelle darf gelesen werden; sie heißt immer "data".
+  for (const match of lower.matchAll(/\b(from|join)\s+([a-z0-9_."]+)/g)) {
+    const target = (match[2] ?? "").replace(/"/g, "");
+    if (target !== "data") {
+      return `Nur die Tabelle "data" ist lesbar, nicht "${target}".`;
+    }
+  }
   return null;
 }
