@@ -45,6 +45,18 @@ export const Route = createFileRoute("/")({
   component: LibraryPage,
 });
 
+/** Mitgelieferte Prozess-Baupläne; eingespielt über denselben Weg wie eine Datei. */
+const BLUEPRINTS: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob("/templates/*.scope.yaml", { query: "?raw", import: "default", eager: true }) as Record<string, string>,
+  ).map(([path, text]) => [path.split("/").pop()!.replace(".scope.yaml", ""), text]),
+);
+
+function blueprintTitle(text: string, fallback: string): string {
+  const match = /^\s*title:\s*["']?(.+?)["']?\s*$/m.exec(text);
+  return match?.[1] ?? fallback;
+}
+
 function LibraryPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -54,8 +66,8 @@ function LibraryPage() {
   const restoreRef = useRef<HTMLInputElement>(null);
 
   const restoreBackup = useMutation({
-    mutationFn: async (file: File) => {
-      const text = await file.text();
+    mutationFn: async (file: File | string) => {
+      const text = typeof file === "string" ? file : await file.text();
       const m = await import("@/lib/runtime/manifest");
       const { catalogVersions } = await import("@/lib/runtime/catalog/instantiate");
       let parsed: { manifest: import("@/lib/runtime/manifest").ScopeManifest; warnings: string[] } | null = null;
@@ -262,6 +274,23 @@ function LibraryPage() {
             >
               Sicherung oder Bauplan einspielen
             </Button>
+            <select
+              aria-label="Bauplan-Vorlagen"
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+              value=""
+              disabled={restoreBackup.isPending}
+              onChange={(event) => {
+                const text = BLUEPRINTS[event.target.value];
+                if (text) restoreBackup.mutate(text);
+              }}
+            >
+              <option value="">Bauplan-Vorlagen …</option>
+              {Object.keys(BLUEPRINTS).map((name) => (
+                <option key={name} value={name}>
+                  {blueprintTitle(BLUEPRINTS[name]!, name)}
+                </option>
+              ))}
+            </select>
             <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
               Neuer Scope
             </Button>
