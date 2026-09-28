@@ -4251,7 +4251,7 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
               zoom={points.length ? 6 : config.zoom}
               selectedId={picked}
               highlightIds={focus.ids}
-
+              {...(dataset ? { onBounds: (box: [number, number, number, number]) => void loadBox(box) } : {})}
               onSelect={setPicked}
             />
           </Suspense>
@@ -4259,6 +4259,12 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
         {!points.length && (
           <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-card/90 px-2 py-1 text-[10px] text-muted-foreground">
             Keine Objekte – eine Tabelle mit Spalten für Breitengrad und Längengrad verbinden.
+          </div>
+        )}
+        {remote && remote.matched > remote.points.length && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-card/90 px-2 py-1 text-[10px] text-muted-foreground">
+            {remote.matched.toLocaleString("de-DE")} Objekte im Ausschnitt – {remote.points.length}{" "}
+            werden gezeigt. Ausschnitt verkleinern.
           </div>
         )}
       </div>
