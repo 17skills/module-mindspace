@@ -8,7 +8,7 @@ import { callApi } from "@/lib/api-fetch.server";
 import { readApi } from "@/lib/api-module";
 import { retentionDays, expiresAt, sha256Hex } from "@/lib/runs";
 import { datasetRefOf } from "@/lib/datasets";
-import { readBudget } from "@/lib/budget";
+import { RUN_MAX_SECONDS, TimeoutError, readBudget, withTimeout } from "@/lib/budget";
 
 type Db = {
   from: (table: string) => any;
@@ -17,7 +17,7 @@ type Db = {
 export type FlowStep = {
   nodeId: string;
   title: string;
-  status: "done" | "failed";
+  status: "done" | "failed" | "timeout";
   error: string | null;
   points: ReturnType<typeof readPoints>;
 };
@@ -74,16 +74,23 @@ export async function runFlow(args: RunFlowArgs): Promise<FlowResult> {
   const steps: FlowStep[] = [];
   const outputs: FlowResult["outputs"] = [];
 
+  const runDeadline = Date.now() + RUN_MAX_SECONDS * 1000;
+  let halted = false;
+
   for (const stepId of next(startNodeId).slice(0, maxSteps)) {
+    if (halted) break;
     const node = byId.get(stepId);
     if (!node || node.type !== "api") continue;
     const meta = (node.metadata ?? {}) as Record<string, unknown>;
     const cfg = readApi({ metadata: meta } as never);
     const title = String(node.title || "Schritt");
+    const stepMs = Math.min(readBudget(meta).timeoutSeconds * 1000, runDeadline - Date.now());
     let step: FlowStep;
     let body = "";
+    const started = Date.now();
     try {
-      const answer = await callApi(cfg, input);
+      if (stepMs <= 0) throw new TimeoutError(RUN_MAX_SECONDS);
+      const answer = await withTimeout((signal) => callApi(cfg, input, signal), stepMs);
       body = answer.body;
       if (answer.status >= 400) throw new Error(`Dienst antwortet mit Status ${answer.status}`);
       const spec = readPointSpec(meta["points"]);
@@ -96,11 +103,17 @@ export async function runFlow(args: RunFlowArgs): Promise<FlowResult> {
       };
     } catch (err) {
       console.error("flow step", stepId, err);
+      const timedOut = err instanceof TimeoutError;
+      if (timedOut) halted = true; // folgende Schritte laufen nicht stillschweigend weiter
       step = {
         nodeId: stepId,
         title,
-        status: "failed",
-        error: err instanceof Error ? err.message : "Fehler",
+        status: timedOut ? "timeout" : "failed",
+        error: timedOut
+          ? `${err.message} nach ${Math.round((Date.now() - started) / 1000)} s`
+          : err instanceof Error
+            ? err.message
+            : "Fehler",
         points: [],
       };
     }
