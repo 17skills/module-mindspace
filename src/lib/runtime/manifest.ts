@@ -249,7 +249,7 @@ export function backupToManifest(
 
   const rules = (backup.board.rules ?? {}) as Record<string, unknown>;
   const previous = (backup.board.provenance ?? {}) as Record<string, unknown>;
-  return {
+  const manifest: ScopeManifest = {
     scopebuilder: MANIFEST_VERSION,
     scope: { title: backup.board.title, description: backup.board.description },
     provenance: {
@@ -257,7 +257,7 @@ export function backupToManifest(
       author: info.author ?? str(previous["author"]) ?? "",
       createdAt: new Date().toISOString(),
       origin: info.origin ?? str(previous["origin"]),
-      checksum: manifestChecksum({ modules, links, apps, rules }),
+      checksum: "",
     },
     rules,
     mcpServers,
@@ -265,6 +265,9 @@ export function backupToManifest(
     links,
     apps,
   };
+  // Fingerprint over the normalized file form, so a clean round trip matches.
+  manifest.provenance!.checksum = manifestChecksum(ManifestSchema.parse(prune(manifest)));
+  return manifest;
 }
 
 /** Stable fingerprint of the building plan (without provenance itself). */
