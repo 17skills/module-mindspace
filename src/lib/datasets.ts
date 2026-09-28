@@ -398,3 +398,90 @@ export function datasetRefOf(metadata: unknown): {
     sourceUrl: ref.sourceUrl,
   };
 }
+
+/**
+ * Experten-Modus: Voraberkennung unerlaubter Abfragen.
+ *
+ * Die verbindliche Prüfung läuft in der Datenbank (`dataset_sql`: nur Lesen,
+ * feste Zeitgrenze, Zeilendeckel, Rechte des Nutzers). Diese Funktion gibt dem
+ * Nutzer sofort eine verständliche Rückmeldung, bevor etwas gesendet wird.
+ */
+const SQL_KEYWORDS = [
+  "insert",
+  "update",
+  "delete",
+  "drop",
+  "alter",
+  "create",
+  "truncate",
+  "grant",
+  "revoke",
+  "copy",
+  "merge",
+  "call",
+  "do",
+  "vacuum",
+  "comment",
+  "listen",
+  "notify",
+  "reset",
+  "begin",
+  "commit",
+  "rollback",
+  "lock",
+  "refresh",
+  "prepare",
+  "declare",
+  "move",
+  "execute",
+  "set",
+  "setof",
+  "into",
+];
+
+const SQL_PHRASES = [
+  "pg_catalog",
+  "pg_class",
+  "pg_shadow",
+  "pg_authid",
+  "pg_user",
+  "pg_sleep",
+  "pg_read",
+  "pg_ls",
+  "pg_stat",
+  "pg_settings",
+  "information_schema",
+  "current_setting",
+  "set_config",
+  "lo_import",
+  "lo_export",
+  "dblink",
+  "pg_file",
+  "pg_logdir",
+  "auth.",
+  "storage.",
+  "vault.",
+  "public.",
+  "extensions.",
+  "graphql.",
+  "realtime.",
+  "--",
+  "/*",
+];
+
+export function validateReadOnlySql(sql: string): string | null {
+  const cleaned = sql.trim().replace(/;\s*$/, "").trim();
+  if (!cleaned) return "Bitte eine Abfrage eingeben.";
+  if (cleaned.includes(";")) return "Mehrere Anweisungen sind nicht erlaubt.";
+  const lower = cleaned.toLowerCase();
+  if (!/^(select|with)[\s(]/.test(lower)) return "Nur Leseabfragen (SELECT) sind erlaubt.";
+  for (const word of SQL_KEYWORDS) {
+    if (new RegExp(`(^|[^a-z0-9_])${word}([^a-z0-9_]|$)`).test(lower)) {
+      return `Nicht erlaubtes Schlüsselwort: ${word}`;
+    }
+  }
+  for (const phrase of SQL_PHRASES) {
+    if (lower.includes(phrase)) return `Nicht erlaubter Ausdruck: ${phrase}`;
+  }
+  return null;
+}
