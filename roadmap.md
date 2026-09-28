@@ -7,5 +7,6 @@
 - [x] Vorlagen verlustfrei (Motor, MCP, Regeln, Herkunft) + Katalog-Bausteine im Canvas
 - [x] Token-Budget der Bausteine bei KI-Aufrufen hart erzwingen
 - [x] Headless-Start eines Scopes per Schnittstelle (Scope-Schlüssel)
-- [ ] Zeitlimit (timeoutSeconds) je Baustein erzwingen
-- [ ] Datenschutz-Filter vor KI-Aufrufen (PII maskieren)
+- [x] Zeitlimit (timeoutSeconds) je Baustein erzwingen
+- [x] Datenschutz-Filter vor KI-Aufrufen (PII maskieren)
+- [ ] Datenschutz-Modus je Scope in der Oberfläche umschaltbar (heute nur über Scope-Regeln `privacy`)

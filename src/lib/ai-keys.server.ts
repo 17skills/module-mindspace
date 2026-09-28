@@ -473,7 +473,12 @@ export async function recordUsage(entry: {
  * Auswahl je Funktion, sonst – und bei jedem Fehler des eigenen Anbieters –
  * der Lovable-KI-Zugang. Liefert bereinigten JSON-Text zurück.
  */
-export async function runStructured(cfg: AiKeyConfig, req: StructuredRequest): Promise<string> {
+export async function runStructured(cfg: AiKeyConfig, input: StructuredRequest): Promise<string> {
+  // Datenschutz-Filter: persönliche Daten und Schlüssel gehen nie an ein Modell.
+  const redaction = redactPii(input.prompt, "strict");
+  const req: StructuredRequest = { ...input, prompt: redaction.text };
+  const summary = redactionSummary(redaction.counts);
+  if (summary) console.info("ai privacy", req.fn, summary);
   const route = resolveRoute(cfg, req.fn);
   const promptSize = req.prompt + (req.image ? "x".repeat(2000) : "");
 

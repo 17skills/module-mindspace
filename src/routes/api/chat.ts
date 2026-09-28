@@ -6,7 +6,21 @@ import { chatModel, isOpenAiModel, responsesModel } from "@/lib/ai-gateway.serve
 import { assertActiveUser } from "@/lib/guard.server";
 import { rateLimit } from "@/lib/rate-limit.server";
 import { UNTRUSTED_NOTICE, wrapUntrusted } from "@/lib/untrusted";
-import { BUDGET_NOTICE, BudgetMeter, DEFAULT_BUDGET, checkInputBudget, readBudget } from "@/lib/budget";
+import {
+  BUDGET_NOTICE,
+  BudgetMeter,
+  DEFAULT_BUDGET,
+  checkInputBudget,
+  declaresTimeout,
+  readBudget,
+} from "@/lib/budget";
+import {
+  type PrivacyMode,
+  readPrivacyMode,
+  redactPii,
+  redactionSummary,
+  stricterMode,
+} from "@/lib/pii";
 
 const Body = z.object({
   nodeId: z.string().uuid().optional(),
@@ -74,16 +88,11 @@ export const Route = createFileRoute("/api/chat")({
 
         const modelId = body.model ?? "openai/gpt-6-astra";
         const history = body.messages.slice(-24);
-        const context = body.context ?? "";
-        const instructions = context
-          ? `${SYSTEM}\n\nVerbundene Inhalte:\n\n${wrapUntrusted("verbundene Module", context)}`
-          : SYSTEM;
-        const messages: ModelMessage[] = history.map(
-          (m) => ({ role: m.role, content: m.content }) as ModelMessage,
-        );
 
-        // Harte Budgetbremse: Grenzen des Bausteins gelten, sonst der Standarddeckel.
+        // Harte Budgetbremse und Zeitlimit: Grenzen des Bausteins, sonst Standarddeckel.
         let budget = DEFAULT_BUDGET;
+        let timeoutMs: number | null = null;
+        let privacy: PrivacyMode = "strict";
         if (body.nodeId) {
           const scoped = createClient(
             process.env["SUPABASE_URL"]!,
@@ -95,11 +104,39 @@ export const Route = createFileRoute("/api/chat")({
           );
           const { data: node } = await scoped
             .from("nodes")
-            .select("metadata")
+            .select("metadata,board_id")
             .eq("id", body.nodeId)
             .maybeSingle();
-          if (node) budget = readBudget(node.metadata as Record<string, unknown>);
+          if (node) {
+            const meta = node.metadata as Record<string, unknown>;
+            budget = readBudget(meta);
+            if (declaresTimeout(meta)) timeoutMs = budget.timeoutSeconds * 1000;
+            const { data: board } = await scoped
+              .from("boards")
+              .select("rules")
+              .eq("id", node.board_id)
+              .maybeSingle();
+            privacy = stricterMode(readPrivacyMode(board?.rules), readPrivacyMode(meta));
+          }
         }
+
+        // Datenschutz-Filter: persönliche Daten verlassen den Server nicht.
+        const redactions: Record<string, number> = {};
+        const scrub = (text: string) => {
+          const r = redactPii(text, privacy);
+          for (const [k, n] of Object.entries(r.counts)) redactions[k] = (redactions[k] ?? 0) + (n ?? 0);
+          return r.text;
+        };
+        const context = scrub(body.context ?? "");
+        const instructions = context
+          ? `${SYSTEM}\n\nVerbundene Inhalte:\n\n${wrapUntrusted("verbundene Module", context)}`
+          : SYSTEM;
+        const messages: ModelMessage[] = history.map(
+          (m) => ({ role: m.role, content: scrub(m.content) }) as ModelMessage,
+        );
+        const summary = redactionSummary(redactions);
+        if (summary) console.info("chat privacy", privacy, summary);
+
         const check = checkInputBudget(
           instructions + history.map((m) => m.content).join("\n"),
           budget,
@@ -112,6 +149,17 @@ export const Route = createFileRoute("/api/chat")({
         }
         const meter = new BudgetMeter(budget, check.inputTokens);
 
+        // Zeitlimit nur, wenn der Baustein es deklariert; Stop des Nutzers bricht immer ab.
+        const controller = new AbortController();
+        request.signal.addEventListener("abort", () => controller.abort(), { once: true });
+        let timedOut = false;
+        const timer = timeoutMs
+          ? setTimeout(() => {
+              timedOut = true;
+              controller.abort();
+            }, timeoutMs)
+          : undefined;
+
         const onError = ({ error }: { error: unknown }) => {
           console.error("chat error", error);
         };
@@ -122,7 +170,7 @@ export const Route = createFileRoute("/api/chat")({
                 model: responsesModel(modelId),
                 instructions,
                 messages,
-                abortSignal: request.signal,
+                abortSignal: controller.signal,
                 onError,
                 providerOptions: {
                   openai: {
@@ -138,28 +186,38 @@ export const Route = createFileRoute("/api/chat")({
                 model: chatModel(modelId),
                 instructions,
                 messages,
-                abortSignal: request.signal,
+                abortSignal: controller.signal,
                 onError,
               });
 
           const encoder = new TextEncoder();
           const stream = new ReadableStream<Uint8Array>({
-            async start(controller) {
+            async start(out) {
+              if (summary) out.enqueue(encoder.encode(`🔒 ${summary} (Datenschutz-Filter)\n\n`));
               try {
                 for await (const chunk of result.textStream) {
-                  controller.enqueue(encoder.encode(chunk));
+                  out.enqueue(encoder.encode(chunk));
                   if (meter.add(chunk)) {
-                    controller.enqueue(encoder.encode(`\n\n${BUDGET_NOTICE}`));
+                    out.enqueue(encoder.encode(`\n\n${BUDGET_NOTICE}`));
+                    controller.abort();
                     break;
                   }
                 }
               } catch (streamError) {
-                const detail =
-                  streamError instanceof Error ? streamError.message : "Antwort fehlgeschlagen";
-                console.error("chat stream error", detail);
-                controller.enqueue(encoder.encode(`\n\n⚠️ Fehler: ${detail}`));
+                if (!timedOut) {
+                  const detail =
+                    streamError instanceof Error ? streamError.message : "Antwort fehlgeschlagen";
+                  console.error("chat stream error", detail);
+                  out.enqueue(encoder.encode(`\n\n⚠️ Fehler: ${detail}`));
+                }
               }
-              controller.close();
+              clearTimeout(timer);
+              if (timedOut) {
+                out.enqueue(
+                  encoder.encode(`\n\n⏱️ Zeitlimit überschritten (${budget.timeoutSeconds} s) – die Antwort wurde abgebrochen.`),
+                );
+              }
+              out.close();
               try {
                 const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
                 await supabaseAdmin.from("ai_usage").insert({
