@@ -32,6 +32,10 @@ export type DatasetQuery =
       measure?: string | null;
       fn: "count" | "sum" | "avg" | "min" | "max";
       filters?: RowFilter[];
+      /** Sortierung der Gruppen: nach Wert oder nach Beschriftung. */
+      sort?: "desc" | "asc" | "label";
+      /** Top N Gruppen (höchstens 200). */
+      limit?: number;
     }
   | {
       mode: "bbox";
