@@ -1,4 +1,5 @@
 // ============= Server-only: BYOK-Schlüssel, Anbieter-Adapter, zentrale KI-Auflösung =============
+import { redactPii, redactionSummary } from "@/lib/pii";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { settingsFrom } from "@/lib/settings";
 import { AI_PROVIDER_META, isAiProvider, type AiProvider } from "@/lib/ai-providers";
