@@ -62,7 +62,7 @@ export function QueryTemplates({
       columns: configColumns(config, available),
     });
     setBusy(false);
-    if (error) return toast.error("Vorlage konnte nicht gespeichert werden.");
+    if (error) { toast.error("Vorlage konnte nicht gespeichert werden."); return; }
     setName("");
     toast.success("Abfragevorlage gespeichert");
     void load();
@@ -80,7 +80,7 @@ export function QueryTemplates({
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("query_templates").delete().eq("id", id);
-    if (error) return toast.error("Löschen fehlgeschlagen.");
+    if (error) { toast.error("Löschen fehlgeschlagen."); return; }
     setRows((current) => current.filter((r) => r.id !== id));
   };
 
