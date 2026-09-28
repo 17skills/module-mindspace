@@ -15,6 +15,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { detectGeoColumns, readDatasetRef } from "@/lib/datasets";
 import { queryDataset, runDatasetSqlQuery } from "@/lib/datasets.functions";
 import {
+  EMPTY_CHART_CONFIG as EMPTY_CHART,
   describeChartConfig,
   parseChartPrompt,
   readChartConfig,
