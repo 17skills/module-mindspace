@@ -277,8 +277,15 @@ export function queryRows(rows: DataRow[], query: DatasetQuery): QueryResult {
                     : 0;
         return { key, value: Math.round(value * 1000) / 1000, count: b.count };
       })
-      .sort((a, b) => b.value - a.value);
-    const limited = groups.slice(0, 200);
+      .sort((a, b) =>
+        query.sort === "label"
+          ? a.key.localeCompare(b.key, "de")
+          : query.sort === "asc"
+            ? a.value - b.value
+            : b.value - a.value,
+      );
+    const cap = Math.max(1, Math.min(200, Math.floor(query.limit ?? 200)));
+    const limited = groups.slice(0, cap);
     return {
       mode: "aggregate",
       total,

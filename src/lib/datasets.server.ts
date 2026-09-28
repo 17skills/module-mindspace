@@ -77,10 +77,13 @@ export async function runDatasetQuery(
   }
 
   if (query.mode === "aggregate") {
+    const cap = Math.max(1, Math.min(200, Math.floor(query.limit ?? 200)));
     const { data, error } = await supabase.rpc("dataset_aggregate", {
       _dataset: datasetId,
       _filters: (query.filters ?? []) as never,
       _fn: query.fn,
+      _sort: query.sort ?? "desc",
+      _limit: cap,
       ...(query.groupBy ? { _group_by: query.groupBy } : {}),
       ...(query.measure ? { _measure: query.measure } : {}),
     });
@@ -98,7 +101,7 @@ export async function runDatasetQuery(
         total: Number(first?.total ?? meta.rowCount),
         matched: Number(first?.matched ?? 0),
         groups,
-        truncated: groups.length >= 200,
+        truncated: groups.length >= cap,
       },
     };
   }
