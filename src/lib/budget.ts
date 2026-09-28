@@ -29,9 +29,10 @@ function clamp(value: unknown, min: number, max: number, fallback: number): numb
 
 /** Liest das deklarierte Budget aus den Modul-Einstellungen. */
 export function readBudget(metadata: Record<string, unknown> | null | undefined): Budget {
-  const raw = (metadata ?? {})["governance"];
-  if (!raw || typeof raw !== "object") return DEFAULT_BUDGET;
-  const g = raw as Record<string, unknown>;
+  const meta = metadata ?? {};
+  const raw = meta["governance"];
+  const g = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const timeout = g["timeoutSeconds"] ?? meta["timeoutSeconds"];
   return {
     maxSteps: clamp(g["maxSteps"], 1, 50, DEFAULT_BUDGET.maxSteps),
     maxTokenBudget: clamp(
@@ -40,8 +41,47 @@ export function readBudget(metadata: Record<string, unknown> | null | undefined)
       HARD_TOKEN_CEILING,
       DEFAULT_BUDGET.maxTokenBudget,
     ),
-    timeoutSeconds: clamp(g["timeoutSeconds"], 1, 300, DEFAULT_BUDGET.timeoutSeconds),
+    timeoutSeconds: clamp(timeout, 1, 300, DEFAULT_BUDGET.timeoutSeconds),
   };
+}
+
+/** true, wenn das Modul selbst ein Zeitlimit deklariert. */
+export function declaresTimeout(metadata: Record<string, unknown> | null | undefined): boolean {
+  const meta = metadata ?? {};
+  const g = meta["governance"] as Record<string, unknown> | undefined;
+  return typeof (g?.["timeoutSeconds"] ?? meta["timeoutSeconds"]) === "number";
+}
+
+/** Obergrenze für einen ganzen Durchlauf, egal wie viele Schritte. */
+export const RUN_MAX_SECONDS = 300;
+
+export class TimeoutError extends Error {
+  readonly seconds: number;
+  constructor(seconds: number) {
+    super(`Zeitlimit überschritten (${seconds} s)`);
+    this.name = "TimeoutError";
+    this.seconds = seconds;
+  }
+}
+
+/** Führt eine Aufgabe mit hartem Zeitlimit aus; das Signal bricht laufende Anfragen ab. */
+export async function withTimeout<T>(
+  task: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new TimeoutError(Math.round(ms / 1000)));
+    }, Math.max(1, ms));
+  });
+  try {
+    return await Promise.race([task(controller.signal), deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export type BudgetCheck =
