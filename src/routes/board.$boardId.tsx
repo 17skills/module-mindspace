@@ -146,6 +146,8 @@ import {
   zoneMembers,
 } from "@/lib/zones";
 import { runZoneAgent } from "@/lib/agent.functions";
+import { readSource } from "@/lib/source-node";
+import { readDatasetRef } from "@/lib/datasets";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
