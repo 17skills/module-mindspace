@@ -22,7 +22,16 @@ type Row = {
   columns: string[];
   category: string;
   tags: string[];
+  lastUsed: string | null;
 };
+
+type SortMode = "new" | "alpha" | "used";
+
+const SORT_MODES: { id: SortMode; label: string }[] = [
+  { id: "new", label: "Neueste" },
+  { id: "alpha", label: "A–Z" },
+  { id: "used", label: "Zuletzt verwendet" },
+];
 
 /** "Umsatz, regional ,umsatz" → ["umsatz", "regional"] */
 export function parseTags(input: string): string[] {
@@ -51,11 +60,15 @@ export function QueryTemplates({
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortMode>("new");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCategory, setEditCategory] = useState("");
+  const [editTags, setEditTags] = useState("");
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from("query_templates")
-      .select("id,title,config,columns,category,tags")
+      .select("id,title,config,columns,category,tags,last_used_at")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) return;
@@ -71,6 +84,7 @@ export function QueryTemplates({
                 columns: r.columns ?? [],
                 category: r.category ?? "",
                 tags: r.tags ?? [],
+                lastUsed: r.last_used_at ?? null,
               },
             ]
           : [];
@@ -93,7 +107,7 @@ export function QueryTemplates({
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter(
+    const filtered = rows.filter(
       (r) =>
         (!activeCategory || r.category === activeCategory) &&
         (!activeTag || r.tags.includes(activeTag)) &&
@@ -102,7 +116,12 @@ export function QueryTemplates({
           r.category.toLowerCase().includes(q) ||
           r.tags.some((t) => t.includes(q))),
     );
-  }, [rows, search, activeCategory, activeTag]);
+    if (sort === "alpha")
+      return [...filtered].sort((a, b) => a.title.localeCompare(b.title, "de"));
+    if (sort === "used")
+      return [...filtered].sort((a, b) => (b.lastUsed ?? "").localeCompare(a.lastUsed ?? ""));
+    return filtered;
+  }, [rows, search, activeCategory, activeTag, sort]);
 
   const canSave = config.mode === "sql" ? !!config.sql.trim() : !!config.groupBy;
 
@@ -136,7 +155,34 @@ export function QueryTemplates({
       return;
     }
     onApply(row.config);
+    const now = new Date().toISOString();
+    setRows((current) => current.map((r) => (r.id === row.id ? { ...r, lastUsed: now } : r)));
+    void supabase.from("query_templates").update({ last_used_at: now }).eq("id", row.id);
     toast.success(`„${row.title}" angewendet`);
+  };
+
+  const startEdit = (row: Row) => {
+    setEditingId(row.id);
+    setEditCategory(row.category);
+    setEditTags(row.tags.join(", "));
+  };
+
+  const saveEdit = async (row: Row) => {
+    const category = editCategory.trim().slice(0, 60);
+    const tags = parseTags(editTags);
+    const { error } = await supabase
+      .from("query_templates")
+      .update({ category, tags })
+      .eq("id", row.id);
+    if (error) {
+      toast.error("Änderungen konnten nicht gespeichert werden.");
+      return;
+    }
+    setRows((current) =>
+      current.map((r) => (r.id === row.id ? { ...r, category, tags } : r)),
+    );
+    setEditingId(null);
+    toast.success("Vorlage aktualisiert");
   };
 
   const remove = async (id: string) => {
