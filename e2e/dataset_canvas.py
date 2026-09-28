@@ -90,6 +90,28 @@ async def main():
             labels = await chart.locator(".recharts-cartesian-axis-tick-value").all_inner_texts()
             print("Balken:", bars, "Achse:", labels)
             if bars == 0: failures.append("Diagramm zeigt keine Balken")
+            # Diagramm-Konfiguration: Vorschlag übernehmen und per Anweisung ändern
+            apply_btn = chart.get_by_role("button", name="Übernehmen")
+            if await apply_btn.count():
+                await apply_btn.first.click()
+                await page.wait_for_timeout(3000)
+            cfg = rest("GET", f"nodes?id=eq.{c}&select=metadata")[0]["metadata"].get("chartConfig")
+            print("Konfiguration nach Vorschlag:", cfg)
+            if not cfg or not cfg.get("groupBy"):
+                failures.append("Vorschlag wurde nicht übernommen")
+            elif cfg["groupBy"] in ("name", "lat", "lon"):
+                failures.append(f"Vorschlag wählte eine unbrauchbare Spalte: {cfg['groupBy']}")
+            box = chart.locator("input[placeholder^='z. B.']").first
+            await box.fill("Top 5 anzahl je stadt")
+            await chart.get_by_role("button", name="Anwenden").first.click()
+            await page.wait_for_timeout(3000)
+            cfg2 = rest("GET", f"nodes?id=eq.{c}&select=metadata")[0]["metadata"].get("chartConfig")
+            print("Konfiguration nach Anweisung:", cfg2)
+            if not cfg2 or cfg2.get("limit") != 5 or cfg2.get("fn") != "count":
+                failures.append("Anweisung wurde nicht übernommen")
+            bars2 = await chart.locator(".recharts-bar-rectangle").count()
+            print("Balken nach Anweisung:", bars2)
+            if bars2 == 0: failures.append("Diagramm zeigt nach der Anweisung keine Balken")
             await map_node.screenshot(path=str(OUT / "map.png"))
             await chart.screenshot(path=str(OUT / "chart.png"))
             await browser.close()
