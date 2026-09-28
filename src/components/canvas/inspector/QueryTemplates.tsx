@@ -234,7 +234,21 @@ export function QueryTemplates({
         <p className="text-[11px] text-muted-foreground">Noch keine gespeicherten Auswertungen.</p>
       ) : (
         <>
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Vorlagen suchen" className="h-7 text-xs" />
+          <div className="flex gap-1">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Vorlagen suchen" className="h-7 flex-1 text-xs" />
+            <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
+              <SelectTrigger className="h-7 w-[8.5rem] text-xs" aria-label="Sortierung">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_MODES.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-1">
               <button className={chip(!activeCategory)} onClick={() => setActiveCategory(null)}>
@@ -263,33 +277,68 @@ export function QueryTemplates({
               {visible.map((row) => {
                 const missing = missingTemplateColumns(row.columns, available);
                 return (
-                  <li key={row.id} className="flex items-start gap-1 text-[11px]">
-                    <div className="min-w-0 flex-1" title={row.columns.join(", ")}>
-                      <p className="truncate">
-                        {row.title}
-                        <span className="ml-1 text-muted-foreground">
-                          ({row.config.mode === "sql" ? "SQL" : "Auswahl"})
-                        </span>
-                      </p>
-                      <p className="truncate text-[10px] text-muted-foreground">
-                        {[row.category, ...row.tags.map((t) => `#${t}`)].filter(Boolean).join(" · ")}
-                      </p>
-                      {missing.length ? <p className="text-[10px] text-destructive">fehlt: {missing.join(", ")}</p> : null}
+                  <li key={row.id} className="text-[11px]">
+                    <div className="flex items-start gap-1">
+                      <div className="min-w-0 flex-1" title={row.columns.join(", ")}>
+                        <p className="truncate">
+                          {row.title}
+                          <span className="ml-1 text-muted-foreground">
+                            ({row.config.mode === "sql" ? "SQL" : "Auswahl"})
+                          </span>
+                        </p>
+                        <p className="truncate text-[10px] text-muted-foreground">
+                          {[row.category, ...row.tags.map((t) => `#${t}`)].filter(Boolean).join(" · ")}
+                        </p>
+                        {missing.length ? <p className="text-[10px] text-destructive">fehlt: {missing.join(", ")}</p> : null}
+                      </div>
+                      <button
+                        className="rounded-full border px-2 py-0.5 hover:bg-secondary disabled:opacity-40"
+                        disabled={missing.length > 0}
+                        onClick={() => apply(row)}
+                      >
+                        Anwenden
+                      </button>
+                      <button
+                        className="px-1 text-muted-foreground hover:text-foreground"
+                        aria-label="Kategorie und Tags bearbeiten"
+                        title="Kategorie und Tags bearbeiten"
+                        onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className="px-1 text-muted-foreground hover:text-foreground"
+                        aria-label="Vorlage löschen"
+                        onClick={() => void remove(row.id)}
+                      >
+                        ×
+                      </button>
                     </div>
-                    <button
-                      className="rounded-full border px-2 py-0.5 hover:bg-secondary disabled:opacity-40"
-                      disabled={missing.length > 0}
-                      onClick={() => apply(row)}
-                    >
-                      Anwenden
-                    </button>
-                    <button
-                      className="px-1 text-muted-foreground hover:text-foreground"
-                      aria-label="Vorlage löschen"
-                      onClick={() => void remove(row.id)}
-                    >
-                      ×
-                    </button>
+                    {editingId === row.id && (
+                      <div className="mt-1 space-y-1 rounded border p-1.5">
+                        <Input
+                          value={editCategory}
+                          onChange={(e) => setEditCategory(e.target.value)}
+                          placeholder="Kategorie"
+                          list="query-template-categories"
+                          className="h-7 text-xs"
+                        />
+                        <Input
+                          value={editTags}
+                          onChange={(e) => setEditTags(e.target.value)}
+                          placeholder="Tags, mit Komma"
+                          className="h-7 text-xs"
+                        />
+                        <div className="flex gap-1">
+                          <Button size="sm" className="h-6 flex-1 text-[11px]" onClick={() => void saveEdit(row)}>
+                            Speichern
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setEditingId(null)}>
+                            Abbrechen
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 );
               })}
