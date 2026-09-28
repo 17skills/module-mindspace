@@ -42,6 +42,7 @@ import {
   shareLibraryEntry,
 } from "@/lib/library.functions";
 import { cn } from "@/lib/utils";
+import { CatalogList } from "@/components/canvas/CatalogList";
 import { shareLink } from "@/lib/share-link";
 
 export type CapturedSelection = {
@@ -57,6 +58,8 @@ type Props = {
   /** Current selection on the canvas, ready to be stored. */
   captureSelection: () => CapturedSelection | null;
   onInsert: (entry: LibraryEntry, mode: "empty" | "full") => void | Promise<void>;
+  /** Place a building block from the core catalog. */
+  onInsertModule?: (name: string) => void | Promise<void>;
 };
 
 const VIEW_KEY = "library-view";
@@ -118,7 +121,7 @@ function Meta({ entry }: { entry: LibraryEntry }) {
   );
 }
 
-export function LibraryDialog({ open, onOpenChange, userId, captureSelection, onInsert }: Props) {
+export function LibraryDialog({ open, onOpenChange, userId, captureSelection, onInsert, onInsertModule }: Props) {
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [shared, setShared] = useState<LibraryEntry[]>([]);
   const [view, setView] = useState<"gallery" | "list">("gallery");
@@ -389,8 +392,9 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
           />
         ) : null}
 
-        <Tabs defaultValue="own">
+        <Tabs defaultValue={onInsertModule ? "catalog" : "own"}>
           <TabsList>
+            {onInsertModule ? <TabsTrigger value="catalog">Bausteine</TabsTrigger> : null}
             <TabsTrigger value="own">Eigene ({entries.length})</TabsTrigger>
             <TabsTrigger value="shared">Mit mir geteilt ({shared.length})</TabsTrigger>
           </TabsList>
@@ -417,6 +421,18 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
               </div>
             )}
           </TabsContent>
+
+          {onInsertModule ? (
+            <TabsContent value="catalog" className="mt-4">
+              <CatalogList
+                query={query}
+                onPick={async (name) => {
+                  await onInsertModule(name);
+                  onOpenChange(false);
+                }}
+              />
+            </TabsContent>
+          ) : null}
         </Tabs>
       </DialogContent>
     </Dialog>
