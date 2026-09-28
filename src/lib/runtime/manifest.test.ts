@@ -78,3 +78,55 @@ apps:
     expect(() => parseManifest("title: nichts")).toThrow(/Scope-Manifest/);
   });
 });
+
+import { manifestNotices } from "./manifest";
+import { catalogModulePayload, catalogVersions } from "./catalog/instantiate";
+
+describe("Vorlage verlustfrei", () => {
+  const rich: BackupShape = {
+    ...backup,
+    board: { title: "Reich", description: null, rules: { name: "dsgvo", rules: [{ id: "r1" }] }, provenance: { version: "2.1.0" } },
+    nodes: [
+      ...backup.nodes,
+      { id: "d4", type: "mcp", title: "Werkzeug", position_x: 0, position_y: 300, metadata: { mcpServerId: "srv-uuid", mcpServerName: "docs", mcpTool: "search", moduleRef: "mcp-tool-call@1.0.0" } },
+    ],
+    mcpServers: [{ id: "srv-uuid", name: "docs", url: "https://mcp.example.com", auth_kind: "bearer", header_name: null }],
+  };
+
+  it("behält Motor, MCP, Regeln, Herkunft und Baustein im Rundlauf", () => {
+    const m = backupToManifest(rich, { author: "a@b.de", origin: "scope:x" });
+    const back = parseManifest(manifestToMarkdown(m)).manifest;
+    expect(back.rules).toEqual(rich.board.rules);
+    expect(back.provenance?.version).toBe("2.1.0");
+    expect(back.provenance?.author).toBe("a@b.de");
+    expect(back.mcpServers[0]?.url).toBe("https://mcp.example.com");
+    const tool = back.modules.find((x) => x.id === "werkzeug")!;
+    expect(tool.module).toEqual({ name: "mcp-tool-call", version: "1.0.0" });
+    expect(manifestNotices(back, new Map([["mcp-tool-call", "1.0.0"]])).some((n) => n.includes("Prüfsumme"))).toBe(false);
+    const b = manifestToBackup(back);
+    expect(b.board.rules).toEqual(rich.board.rules);
+    const node = b.nodes.find((n) => n["id"] === "werkzeug")!;
+    const meta = node["metadata"] as Record<string, unknown>;
+    expect(meta["mcpServerId"]).toBe(b.mcpServers[0]?.["id"]);
+    expect(meta["mcpTool"]).toBe("search");
+  });
+
+  it("Motor-Tausch in der Datei tauscht nur den Motor", () => {
+    const m = backupToManifest(rich);
+    m.modules[1]!.engine = { kind: "agent", ref: "openai/gpt-6-astra", params: {} };
+    const b = manifestToBackup(m);
+    expect((b.nodes[1]!["metadata"] as Record<string, unknown>)["model"]).toBe("openai/gpt-6-astra");
+    expect(b.edges).toHaveLength(2);
+    expect(manifestNotices(m, new Map()).some((n) => n.includes("Prüfsumme"))).toBe(true);
+  });
+
+  it("platziert Katalog-Bausteine mit Version und Schutz", () => {
+    const payload = catalogModulePayload("webhook-dispatch");
+    const meta = payload.nodes[0]!.metadata;
+    expect(String(meta["moduleRef"])).toMatch(/^webhook-dispatch@/);
+    expect(meta["requiresApproval"]).toBe(true);
+    expect(catalogVersions().get("llm-inference")).toBeTruthy();
+    const llm = catalogModulePayload("llm-inference").nodes[0]!.metadata;
+    expect(llm["governance"]).toBeTruthy();
+  });
+});
