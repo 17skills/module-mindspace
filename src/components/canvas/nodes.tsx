@@ -1751,9 +1751,10 @@ export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps
         return;
       }
       void runSql({ data: { datasetId: linked.datasetId, sql: config.sql } })
-        .then((answer) => {
+        .then((result) => {
           if (!active) return;
-          const rows = answer.rows.slice(0, 200).map((row) => {
+          const answer = result as { rows: Record<string, unknown>[] };
+          const rows = answer.rows.slice(0, 200).map((row: Record<string, unknown>) => {
             const keys = Object.keys(row);
             const nameKey = keys.find((k) => k === "name") ?? keys[0] ?? "";
             const valueKey =
