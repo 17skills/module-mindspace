@@ -74,16 +74,11 @@ export const Route = createFileRoute("/api/chat")({
 
         const modelId = body.model ?? "openai/gpt-6-astra";
         const history = body.messages.slice(-24);
-        const context = body.context ?? "";
-        const instructions = context
-          ? `${SYSTEM}\n\nVerbundene Inhalte:\n\n${wrapUntrusted("verbundene Module", context)}`
-          : SYSTEM;
-        const messages: ModelMessage[] = history.map(
-          (m) => ({ role: m.role, content: m.content }) as ModelMessage,
-        );
 
-        // Harte Budgetbremse: Grenzen des Bausteins gelten, sonst der Standarddeckel.
+        // Harte Budgetbremse und Zeitlimit: Grenzen des Bausteins, sonst Standarddeckel.
         let budget = DEFAULT_BUDGET;
+        let timeoutMs: number | null = null;
+        let privacy: PrivacyMode = "strict";
         if (body.nodeId) {
           const scoped = createClient(
             process.env["SUPABASE_URL"]!,
@@ -95,11 +90,39 @@ export const Route = createFileRoute("/api/chat")({
           );
           const { data: node } = await scoped
             .from("nodes")
-            .select("metadata")
+            .select("metadata,board_id")
             .eq("id", body.nodeId)
             .maybeSingle();
-          if (node) budget = readBudget(node.metadata as Record<string, unknown>);
+          if (node) {
+            const meta = node.metadata as Record<string, unknown>;
+            budget = readBudget(meta);
+            if (declaresTimeout(meta)) timeoutMs = budget.timeoutSeconds * 1000;
+            const { data: board } = await scoped
+              .from("boards")
+              .select("rules")
+              .eq("id", node.board_id)
+              .maybeSingle();
+            privacy = stricterMode(readPrivacyMode(board?.rules), readPrivacyMode(meta));
+          }
         }
+
+        // Datenschutz-Filter: persönliche Daten verlassen den Server nicht.
+        const redactions: Record<string, number> = {};
+        const scrub = (text: string) => {
+          const r = redactPii(text, privacy);
+          for (const [k, n] of Object.entries(r.counts)) redactions[k] = (redactions[k] ?? 0) + (n ?? 0);
+          return r.text;
+        };
+        const context = scrub(body.context ?? "");
+        const instructions = context
+          ? `${SYSTEM}\n\nVerbundene Inhalte:\n\n${wrapUntrusted("verbundene Module", context)}`
+          : SYSTEM;
+        const messages: ModelMessage[] = history.map(
+          (m) => ({ role: m.role, content: scrub(m.content) }) as ModelMessage,
+        );
+        const summary = redactionSummary(redactions);
+        if (summary) console.info("chat privacy", privacy, summary);
+
         const check = checkInputBudget(
           instructions + history.map((m) => m.content).join("\n"),
           budget,
@@ -111,6 +134,17 @@ export const Route = createFileRoute("/api/chat")({
           });
         }
         const meter = new BudgetMeter(budget, check.inputTokens);
+
+        // Zeitlimit nur, wenn der Baustein es deklariert; Stop des Nutzers bricht immer ab.
+        const controller = new AbortController();
+        request.signal.addEventListener("abort", () => controller.abort(), { once: true });
+        let timedOut = false;
+        const timer = timeoutMs
+          ? setTimeout(() => {
+              timedOut = true;
+              controller.abort();
+            }, timeoutMs)
+          : undefined;
 
         const onError = ({ error }: { error: unknown }) => {
           console.error("chat error", error);
