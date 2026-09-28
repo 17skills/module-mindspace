@@ -148,23 +148,6 @@ const querySchema = z.discriminatedUnion("mode", [
   }),
 ]);
 
-async function loadRows(
-  supabase: { from: (t: "datasets") => any },
-  datasetId: string,
-): Promise<{ rows: DataRow[]; version: number; checksum: string }> {
-  const { data: row, error } = await supabase
-    .from("datasets")
-    .select("id,storage_path,version,checksum,verified")
-    .eq("id", datasetId)
-    .maybeSingle();
-  if (error || !row) throw new Error("Datenquelle nicht gefunden oder kein Zugriff.");
-  if (!row.storage_path) return { rows: [], version: row.version, checksum: row.checksum };
-  const db = await admin();
-  const { data: file, error: fileError } = await db.storage.from("uploads").download(row.storage_path);
-  if (fileError || !file) throw new Error("Daten konnten nicht geladen werden.");
-  return { rows: fromJsonl(await file.text()), version: row.version, checksum: row.checksum };
-}
-
 /** Gefilterte, begrenzte Abfrage für Karte, Diagramm, Agent und Regelwerk. */
 export const queryDataset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -174,12 +157,17 @@ export const queryDataset = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertRate } = await import("@/lib/rate-limit.server");
     assertRate(`dataset-q:${context.userId}`, 120, 60_000);
-    const loaded = await loadRows(context.supabase as never, data.datasetId);
+    const { runDatasetQuery } = await import("@/lib/datasets.server");
+    const loaded = await runDatasetQuery(
+      context.supabase as never,
+      data.datasetId,
+      data.query as DatasetQuery,
+    );
     return {
       version: loaded.version,
       checksum: loaded.checksum,
       // JSON-Rundlauf: Zellwerte sind reine JSON-Werte.
-      result: JSON.parse(JSON.stringify(queryRows(loaded.rows, data.query as DatasetQuery))) as Record<string, never>,
+      result: JSON.parse(JSON.stringify(loaded.result)) as QueryResult,
     };
   });
 
@@ -199,6 +187,6 @@ export const checkDatasetRule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertRate } = await import("@/lib/rate-limit.server");
     assertRate(`dataset-q:${context.userId}`, 120, 60_000);
-    const loaded = await loadRows(context.supabase as never, data.datasetId);
-    return { version: loaded.version, ...evaluateColumnRule(loaded.rows, data) };
+    const { runDatasetRule } = await import("@/lib/datasets.server");
+    return runDatasetRule(context.supabase as never, data.datasetId, data);
   });
