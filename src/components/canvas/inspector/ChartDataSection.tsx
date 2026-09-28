@@ -28,6 +28,7 @@ import {
   type ChartConfig,
 } from "@/lib/chart-config";
 import type { ColumnSpec } from "@/lib/runtime/source-protocol";
+import { QueryTemplates } from "./QueryTemplates";
 
 export function ChartDataSection({
   record,
@@ -248,6 +249,17 @@ export function ChartDataSection({
           </Button>
         </div>
       )}
+      <QueryTemplates
+        config={config}
+        available={datasetColumns.map((c) => c.key)}
+        onApply={(next) => {
+          setSql(next.sql || chartConfigToSql(next));
+          setSqlProblem(null);
+          updateNode(record.id, {
+            metadata: { ...(record.metadata ?? {}), chartConfig: next },
+          });
+        }}
+      />
     </div>
   );
 }

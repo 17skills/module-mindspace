@@ -205,3 +205,20 @@ export function parseChartPrompt(
     limit: limit ? Math.max(1, Math.min(MAX_CHART_GROUPS, limit)) : base.limit,
   };
 }
+
+/** Spalten, auf die eine Auswertung angewiesen ist — für Vorlagen auf anderen Tabellen. */
+export function configColumns(config: ChartConfig, available: string[]): string[] {
+  if (config.mode === "sql") {
+    const text = config.sql.toLowerCase();
+    return available.filter((key) =>
+      new RegExp(`(^|[^a-z0-9_"])"?${key.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"?([^a-z0-9_"]|$)`).test(text),
+    );
+  }
+  return [config.groupBy, config.measure].filter((k): k is string => !!k);
+}
+
+/** Welche Spalten einer Vorlage fehlen in der Zieltabelle? */
+export function missingTemplateColumns(required: string[], available: string[]): string[] {
+  const set = new Set(available);
+  return required.filter((key) => !set.has(key));
+}
