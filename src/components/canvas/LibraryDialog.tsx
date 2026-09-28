@@ -59,7 +59,7 @@ type Props = {
   captureSelection: () => CapturedSelection | null;
   onInsert: (entry: LibraryEntry, mode: "empty" | "full") => void | Promise<void>;
   /** Place a building block from the core catalog. */
-  onInsertModule?: (name: string) => void | Promise<void>;
+  onInsertModule?: ((name: string) => void | Promise<void>) | undefined;
 };
 
 const VIEW_KEY = "library-view";
