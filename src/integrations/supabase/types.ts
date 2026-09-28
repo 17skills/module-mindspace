@@ -1544,22 +1544,41 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      dataset_aggregate: {
-        Args: {
-          _dataset: string
-          _filters?: Json
-          _fn?: string
-          _group_by?: string
-          _measure?: string
-        }
-        Returns: {
-          bucket: string
-          cnt: number
-          matched: number
-          total: number
-          value: number
-        }[]
-      }
+      dataset_aggregate:
+        | {
+            Args: {
+              _dataset: string
+              _filters?: Json
+              _fn?: string
+              _group_by?: string
+              _measure?: string
+            }
+            Returns: {
+              bucket: string
+              cnt: number
+              matched: number
+              total: number
+              value: number
+            }[]
+          }
+        | {
+            Args: {
+              _dataset: string
+              _filters?: Json
+              _fn?: string
+              _group_by?: string
+              _limit?: number
+              _measure?: string
+              _sort?: string
+            }
+            Returns: {
+              bucket: string
+              cnt: number
+              matched: number
+              total: number
+              value: number
+            }[]
+          }
       dataset_bbox: {
         Args: {
           _dataset: string
@@ -1606,6 +1625,12 @@ export type Database = {
           failed_rows: number[]
           passed: number
           total: number
+        }[]
+      }
+      dataset_sql: {
+        Args: { _dataset: string; _sql: string }
+        Returns: {
+          row_json: Json
         }[]
       }
       end_user_sessions: {
