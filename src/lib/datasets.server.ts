@@ -136,12 +136,13 @@ export async function runDatasetQuery(
   const isPreview = query.mode === "preview";
   const limit = isPreview ? PREVIEW_ROWS : clamp(query.limit, 100);
   const offset = isPreview ? 0 : Math.max(0, Math.floor(query.offset ?? 0));
+  const columns = isPreview ? null : (query.columns ?? null);
   const { data, error } = await supabase.rpc("dataset_query_rows", {
     _dataset: datasetId,
     _filters: (isPreview ? [] : (query.filters ?? [])) as never,
-    _columns: isPreview || !query.columns?.length ? undefined : query.columns,
     _limit: limit,
     _offset: offset,
+    ...(columns?.length ? { _columns: columns } : {}),
   });
   if (error) throw new Error("Zeilen konnten nicht geladen werden.");
   const rows = (data ?? []).map((row) => ({
