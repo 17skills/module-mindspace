@@ -239,6 +239,13 @@
       "when": 1790609844326,
       "tag": "0033_create_dataset_rows_compute",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790622375166,
+      "tag": "0034_dataset_expert_sql",
+      "breakpoints": true
     }
   ]
 }

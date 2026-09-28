@@ -213,7 +213,15 @@ describe("Diagramm: serverseitige Aggregation einer verbundenen Tabelle", () => 
     const { result } = await runDatasetQuery(client, DATASET, query);
     expect(calls[0]).toEqual({
       fn: "dataset_aggregate",
-      args: { _dataset: DATASET, _filters: [], _fn: "sum", _group_by: "stadt", _measure: "umsatz" },
+      args: {
+        _dataset: DATASET,
+        _filters: [],
+        _fn: "sum",
+        _group_by: "stadt",
+        _measure: "umsatz",
+        _sort: "desc",
+        _limit: 200,
+      },
     });
     expect(result.groups).toHaveLength(5);
     expect(result.matched).toBe(5000);
@@ -232,7 +240,13 @@ describe("Diagramm: serverseitige Aggregation einer verbundenen Tabelle", () => 
   it("zählt ohne Kennzahl und lässt leere Argumente weg", async () => {
     const { client, calls } = fakeClient(rows);
     const { result } = await runDatasetQuery(client, DATASET, { mode: "aggregate", fn: "count" });
-    expect(calls[0]!.args).toEqual({ _dataset: DATASET, _filters: [], _fn: "count" });
+    expect(calls[0]!.args).toEqual({
+      _dataset: DATASET,
+      _filters: [],
+      _fn: "count",
+      _sort: "desc",
+      _limit: 200,
+    });
     expect(result.groups).toEqual([{ key: "Gesamt", value: 5000, count: 5000 }]);
   });
 

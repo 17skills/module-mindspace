@@ -139,6 +139,8 @@ const querySchema = z.discriminatedUnion("mode", [
     measure: z.string().nullable().optional(),
     fn: z.enum(["count", "sum", "avg", "min", "max"]),
     filters: z.array(filterSchema).max(20).optional(),
+    sort: z.enum(["desc", "asc", "label"]).optional(),
+    limit: z.number().int().min(1).max(200).optional(),
   }),
   z.object({
     mode: z.literal("bbox"),
@@ -189,4 +191,27 @@ export const checkDatasetRule = createServerFn({ method: "POST" })
     assertRate(`dataset-q:${context.userId}`, 120, 60_000);
     const { runDatasetRule } = await import("@/lib/datasets.server");
     return runDatasetRule(context.supabase as never, data.datasetId, data);
+  });
+
+/**
+ * Experten-Modus: freie Leseabfrage. Die Datenbank prüft mit, führt nur lesend
+ * aus, bricht nach drei Sekunden ab und gibt höchstens 500 Zeilen zurück.
+ */
+export const runDatasetSqlQuery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({ datasetId: z.string().uuid(), sql: z.string().min(1).max(4000) })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertRate } = await import("@/lib/rate-limit.server");
+    assertRate(`dataset-sql:${context.userId}`, 30, 60_000);
+    const { runDatasetSql } = await import("@/lib/datasets.server");
+    const loaded = await runDatasetSql(context.supabase as never, data.datasetId, data.sql);
+    return {
+      version: loaded.version,
+      columns: loaded.columns,
+      rows: JSON.parse(JSON.stringify(loaded.rows)) as Record<string, string | number | boolean | null>[],
+    };
   });

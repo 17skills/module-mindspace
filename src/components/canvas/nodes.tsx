@@ -13,7 +13,15 @@ import {
 import { ClientOnly } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { detectGeoColumns, readDatasetRef } from "@/lib/datasets";
-import { queryDataset } from "@/lib/datasets.functions";
+import { queryDataset, runDatasetSqlQuery } from "@/lib/datasets.functions";
+import {
+  EMPTY_CHART_CONFIG as EMPTY_CHART,
+  describeChartConfig,
+  parseChartPrompt,
+  readChartConfig,
+  suggestChartConfig,
+  type ChartConfig,
+} from "@/lib/chart-config";
 import {
   mapText,
   pointsFromSources,
@@ -1679,8 +1687,9 @@ export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps
   /**
    * Verbundene Datenablage: das Diagramm rechnet nicht im Browser, sondern
    * lässt die Werte serverseitig gruppieren — zurück kommen nur die Balken.
+   * Welche Spalten das sind, bestimmt immer der Nutzer.
    */
-  const chartSource = useMemo(() => {
+  const linked = useMemo(() => {
     if (type !== "chart") return null;
     const byId = Object.fromEntries(
       flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
@@ -1692,31 +1701,95 @@ export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps
       const ref = readDatasetRef(stored?.envelope);
       const cols = stored?.envelope.facets.dataset?.columns ?? [];
       if (!ref?.datasetId || !cols.length) continue;
-      const group = cols.find((c) => c.type === "text")?.key ?? cols[0]!.key;
-      const measure = cols.find((c) => c.type === "number")?.key ?? null;
-      return { datasetId: ref.datasetId, group, measure };
+      return { datasetId: ref.datasetId, columns: cols };
     }
     return null;
   }, [type, edges, flowNodes, id]);
 
+  const config = useMemo(() => readChartConfig(record.metadata), [record.metadata]);
+  const suggestion = useMemo(
+    () => (linked && !config ? suggestChartConfig(linked.columns) : null),
+    [linked, config],
+  );
+  const [prompt, setPrompt] = useState("");
+
+  const saveConfig = (next: ChartConfig) =>
+    updateNode(record.id, { metadata: { ...(record.metadata ?? {}), chartConfig: next } });
+
+  const applyPrompt = () => {
+    if (!linked) return;
+    const next = parseChartPrompt(prompt, linked.columns, config ?? suggestion ?? EMPTY_CHART);
+    if (!next) {
+      toast.error("Die Anweisung passt zu keiner Spalte dieser Tabelle.");
+      return;
+    }
+    saveConfig(next);
+    setPrompt("");
+  };
+
   const [serverRows, setServerRows] = useState<{ name: string; value: number }[] | null>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
   const runQuery = useServerFn(queryDataset);
+  const runSql = useServerFn(runDatasetSqlQuery);
 
   useEffect(() => {
-    if (!chartSource) {
+    if (!linked || !config) {
       setServerRows(null);
       return;
     }
     let active = true;
+    setQueryError(null);
+    const fail = (error: unknown) => {
+      if (!active) return;
+      setServerRows([]);
+      setQueryError(error instanceof Error ? error.message : "Abfrage fehlgeschlagen.");
+    };
+
+    if (config.mode === "sql") {
+      if (!config.sql.trim()) {
+        setServerRows(null);
+        return;
+      }
+      void runSql({ data: { datasetId: linked.datasetId, sql: config.sql } })
+        .then((result) => {
+          if (!active) return;
+          const answer = result as { rows: Record<string, unknown>[] };
+          const rows = answer.rows.slice(0, 200).map((row: Record<string, unknown>) => {
+            const keys = Object.keys(row);
+            const nameKey = keys.find((k) => k === "name") ?? keys[0] ?? "";
+            const valueKey =
+              keys.find((k) => k === "value") ??
+              keys.find((k) => k !== nameKey && typeof row[k] === "number") ??
+              keys[1] ??
+              nameKey;
+            return {
+              name: String(row[nameKey] ?? ""),
+              value: Number(row[valueKey] ?? 0) || 0,
+            };
+          });
+          setServerRows(rows);
+        })
+        .catch(fail);
+      return () => {
+        active = false;
+      };
+    }
+
+    if (!config.groupBy) {
+      setServerRows(null);
+      return;
+    }
     void runQuery({
       data: {
-        datasetId: chartSource.datasetId,
+        datasetId: linked.datasetId,
         query: {
           mode: "aggregate",
-          fn: chartSource.measure ? "sum" : "count",
-          groupBy: chartSource.group,
-          measure: chartSource.measure,
+          fn: config.fn,
+          groupBy: config.groupBy,
+          measure: config.measure,
           filters: [],
+          sort: config.sort,
+          limit: config.limit,
         },
       },
     })
@@ -1724,16 +1797,14 @@ export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps
         const groups = (answer.result as unknown as { groups?: { key: string; value: number }[] })
           .groups;
         if (active && groups) {
-          setServerRows(groups.slice(0, 25).map((g) => ({ name: g.key, value: Number(g.value) })));
+          setServerRows(groups.map((g) => ({ name: g.key, value: Number(g.value) })));
         }
       })
-      .catch(() => {
-        // Ohne Zugriff bleibt das Diagramm bei den Werten der Karte.
-      });
+      .catch(fail);
     return () => {
       active = false;
     };
-  }, [chartSource, runQuery]);
+  }, [linked, config, runQuery, runSql]);
 
   const chartRows = serverRows ?? localRows;
 
@@ -1764,6 +1835,56 @@ export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps
 
       {type === "chart" && (
         <>
+          {linked && suggestion && (
+            <div className="space-y-1.5 border-b bg-accent/40 px-3 py-2 text-[10px]">
+              <p className="font-semibold text-foreground">
+                Vorschlag: {describeChartConfig(suggestion, linked.columns)}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="nodrag rounded-full border border-primary bg-background px-2 py-0.5 font-semibold"
+                  onClick={() => saveConfig(suggestion)}
+                >
+                  Übernehmen
+                </button>
+                <button
+                  className="nodrag rounded-full border px-2 py-0.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => openInspector(record.id, "data")}
+                >
+                  Anpassen
+                </button>
+              </div>
+            </div>
+          )}
+          {linked && (
+            <div className="flex items-center gap-1.5 border-b px-3 py-1.5">
+              <input
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") applyPrompt();
+                }}
+                placeholder="z. B. Top 5 Umsatz je Stadt"
+                className="nodrag min-w-0 flex-1 rounded border bg-transparent px-2 py-1 text-[10px] outline-none"
+              />
+              <button
+                className="nodrag rounded border px-2 py-1 text-[10px] font-semibold hover:bg-secondary"
+                onClick={applyPrompt}
+              >
+                Anwenden
+              </button>
+            </div>
+          )}
+          {linked && config && (
+            <div className="border-b px-3 py-1 text-[10px] text-muted-foreground">
+              {describeChartConfig(config, linked.columns)}
+            </div>
+          )}
+          {queryError && (
+            <div className="border-b bg-destructive/10 px-3 py-1 text-[10px] text-destructive">
+              {queryError}
+            </div>
+          )}
           <div className="flex gap-1 border-b px-3 py-1.5">
             {(["bar", "line", "pie"] as const).map((option) => (
               <button

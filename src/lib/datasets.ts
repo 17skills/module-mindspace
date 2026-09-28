@@ -32,6 +32,10 @@ export type DatasetQuery =
       measure?: string | null;
       fn: "count" | "sum" | "avg" | "min" | "max";
       filters?: RowFilter[];
+      /** Sortierung der Gruppen: nach Wert oder nach Beschriftung. */
+      sort?: "desc" | "asc" | "label";
+      /** Top N Gruppen (höchstens 200). */
+      limit?: number;
     }
   | {
       mode: "bbox";
@@ -273,8 +277,15 @@ export function queryRows(rows: DataRow[], query: DatasetQuery): QueryResult {
                     : 0;
         return { key, value: Math.round(value * 1000) / 1000, count: b.count };
       })
-      .sort((a, b) => b.value - a.value);
-    const limited = groups.slice(0, 200);
+      .sort((a, b) =>
+        query.sort === "label"
+          ? a.key.localeCompare(b.key, "de")
+          : query.sort === "asc"
+            ? a.value - b.value
+            : b.value - a.value,
+      );
+    const cap = Math.max(1, Math.min(200, Math.floor(query.limit ?? 200)));
+    const limited = groups.slice(0, cap);
     return {
       mode: "aggregate",
       total,
@@ -386,4 +397,98 @@ export function datasetRefOf(metadata: unknown): {
     verified: ref.verified,
     sourceUrl: ref.sourceUrl,
   };
+}
+
+/**
+ * Experten-Modus: Voraberkennung unerlaubter Abfragen.
+ *
+ * Die verbindliche Prüfung läuft in der Datenbank (`dataset_sql`: nur Lesen,
+ * feste Zeitgrenze, Zeilendeckel, Rechte des Nutzers). Diese Funktion gibt dem
+ * Nutzer sofort eine verständliche Rückmeldung, bevor etwas gesendet wird.
+ */
+const SQL_KEYWORDS = [
+  "insert",
+  "update",
+  "delete",
+  "drop",
+  "alter",
+  "create",
+  "truncate",
+  "grant",
+  "revoke",
+  "copy",
+  "merge",
+  "call",
+  "do",
+  "vacuum",
+  "comment",
+  "listen",
+  "notify",
+  "reset",
+  "begin",
+  "commit",
+  "rollback",
+  "lock",
+  "refresh",
+  "prepare",
+  "declare",
+  "move",
+  "execute",
+  "set",
+  "setof",
+  "into",
+];
+
+const SQL_PHRASES = [
+  "pg_catalog",
+  "pg_class",
+  "pg_shadow",
+  "pg_authid",
+  "pg_user",
+  "pg_sleep",
+  "pg_read",
+  "pg_ls",
+  "pg_stat",
+  "pg_settings",
+  "information_schema",
+  "current_setting",
+  "set_config",
+  "lo_import",
+  "lo_export",
+  "dblink",
+  "pg_file",
+  "pg_logdir",
+  "auth.",
+  "storage.",
+  "vault.",
+  "public.",
+  "extensions.",
+  "graphql.",
+  "realtime.",
+  "--",
+  "/*",
+];
+
+export function validateReadOnlySql(sql: string): string | null {
+  const cleaned = sql.trim().replace(/;\s*$/, "").trim();
+  if (!cleaned) return "Bitte eine Abfrage eingeben.";
+  if (cleaned.includes(";")) return "Mehrere Anweisungen sind nicht erlaubt.";
+  const lower = cleaned.toLowerCase();
+  if (!/^(select|with)[\s(]/.test(lower)) return "Nur Leseabfragen (SELECT) sind erlaubt.";
+  for (const word of SQL_KEYWORDS) {
+    if (new RegExp(`(^|[^a-z0-9_])${word}([^a-z0-9_]|$)`).test(lower)) {
+      return `Nicht erlaubtes Schlüsselwort: ${word}`;
+    }
+  }
+  for (const phrase of SQL_PHRASES) {
+    if (lower.includes(phrase)) return `Nicht erlaubter Ausdruck: ${phrase}`;
+  }
+  // Nur die eigene Tabelle darf gelesen werden; sie heißt immer "data".
+  for (const match of lower.matchAll(/\b(from|join)\s+([a-z0-9_."]+)/g)) {
+    const target = (match[2] ?? "").replace(/"/g, "");
+    if (target !== "data") {
+      return `Nur die Tabelle "data" ist lesbar, nicht "${target}".`;
+    }
+  }
+  return null;
 }
