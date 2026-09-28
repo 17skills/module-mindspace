@@ -253,6 +253,13 @@
       "when": 1790624179215,
       "tag": "0035_create_query_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790624302328,
+      "tag": "0036_query_templates_category_tags",
+      "breakpoints": true
     }
   ]
 }

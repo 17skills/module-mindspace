@@ -1239,26 +1239,32 @@ export type Database = {
       }
       query_templates: {
         Row: {
+          category: string
           columns: string[]
           config: Json
           created_at: string
           id: string
+          tags: string[]
           title: string
           user_id: string
         }
         Insert: {
+          category?: string
           columns?: string[]
           config: Json
           created_at?: string
           id?: string
+          tags?: string[]
           title: string
           user_id: string
         }
         Update: {
+          category?: string
           columns?: string[]
           config?: Json
           created_at?: string
           id?: string
+          tags?: string[]
           title?: string
           user_id?: string
         }
