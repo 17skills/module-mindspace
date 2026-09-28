@@ -6,7 +6,21 @@ import { chatModel, isOpenAiModel, responsesModel } from "@/lib/ai-gateway.serve
 import { assertActiveUser } from "@/lib/guard.server";
 import { rateLimit } from "@/lib/rate-limit.server";
 import { UNTRUSTED_NOTICE, wrapUntrusted } from "@/lib/untrusted";
-import { BUDGET_NOTICE, BudgetMeter, DEFAULT_BUDGET, checkInputBudget, readBudget } from "@/lib/budget";
+import {
+  BUDGET_NOTICE,
+  BudgetMeter,
+  DEFAULT_BUDGET,
+  checkInputBudget,
+  declaresTimeout,
+  readBudget,
+} from "@/lib/budget";
+import {
+  type PrivacyMode,
+  readPrivacyMode,
+  redactPii,
+  redactionSummary,
+  stricterMode,
+} from "@/lib/pii";
 
 const Body = z.object({
   nodeId: z.string().uuid().optional(),
@@ -156,7 +170,7 @@ export const Route = createFileRoute("/api/chat")({
                 model: responsesModel(modelId),
                 instructions,
                 messages,
-                abortSignal: request.signal,
+                abortSignal: controller.signal,
                 onError,
                 providerOptions: {
                   openai: {
@@ -172,28 +186,38 @@ export const Route = createFileRoute("/api/chat")({
                 model: chatModel(modelId),
                 instructions,
                 messages,
-                abortSignal: request.signal,
+                abortSignal: controller.signal,
                 onError,
               });
 
           const encoder = new TextEncoder();
           const stream = new ReadableStream<Uint8Array>({
-            async start(controller) {
+            async start(out) {
+              if (summary) out.enqueue(encoder.encode(`🔒 ${summary} (Datenschutz-Filter)\n\n`));
               try {
                 for await (const chunk of result.textStream) {
-                  controller.enqueue(encoder.encode(chunk));
+                  out.enqueue(encoder.encode(chunk));
                   if (meter.add(chunk)) {
-                    controller.enqueue(encoder.encode(`\n\n${BUDGET_NOTICE}`));
+                    out.enqueue(encoder.encode(`\n\n${BUDGET_NOTICE}`));
+                    controller.abort();
                     break;
                   }
                 }
               } catch (streamError) {
-                const detail =
-                  streamError instanceof Error ? streamError.message : "Antwort fehlgeschlagen";
-                console.error("chat stream error", detail);
-                controller.enqueue(encoder.encode(`\n\n⚠️ Fehler: ${detail}`));
+                if (!timedOut) {
+                  const detail =
+                    streamError instanceof Error ? streamError.message : "Antwort fehlgeschlagen";
+                  console.error("chat stream error", detail);
+                  out.enqueue(encoder.encode(`\n\n⚠️ Fehler: ${detail}`));
+                }
               }
-              controller.close();
+              clearTimeout(timer);
+              if (timedOut) {
+                out.enqueue(
+                  encoder.encode(`\n\n⏱️ Zeitlimit überschritten (${budget.timeoutSeconds} s) – die Antwort wurde abgebrochen.`),
+                );
+              }
+              out.close();
               try {
                 const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
                 await supabaseAdmin.from("ai_usage").insert({
