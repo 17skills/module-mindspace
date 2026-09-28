@@ -75,6 +75,18 @@ ausschließlich über das Werkzeug dataset_query. Rate nie einen Wert und rechne
 
 ${UNTRUSTED_NOTICE}`;
 
+/** Auch Werkzeug-Ergebnisse laufen durch den Datenschutz-Filter. */
+function scrubValues(
+  values: Record<string, unknown>,
+  scrub: (text: string) => string,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    out[key] = typeof value === "string" ? scrub(value) : value;
+  }
+  return out;
+}
+
 async function userIdFrom(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
