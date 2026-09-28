@@ -580,7 +580,12 @@ function BoardPage() {
     try {
       const backup = await exportBoard({ data: { boardId } });
       const { backupToManifest, manifestToMarkdown } = await import("@/lib/runtime/manifest");
-      const text = manifestToMarkdown(backupToManifest(JSON.parse(backup.json)));
+      const text = manifestToMarkdown(
+        backupToManifest(JSON.parse(backup.json), {
+          author: user?.email ?? "",
+          origin: `scope:${boardId}`,
+        }),
+      );
       const blob = new Blob([text], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
