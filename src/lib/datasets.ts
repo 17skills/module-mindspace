@@ -218,16 +218,14 @@ export function queryRows(rows: DataRow[], query: DatasetQuery): QueryResult {
     const limit = clampLimit(query.limit);
     const offset = Math.max(0, Math.floor(query.offset ?? 0));
     const cols = query.columns?.length ? new Set(query.columns) : null;
-    const page = matched
-      .slice(offset, offset + limit)
-      .map((row) =>
-        cols
-          ? {
-              index: row.index,
-              values: Object.fromEntries(Object.entries(row.values).filter(([k]) => cols.has(k))),
-            }
-          : row,
-      );
+    const page = matched.slice(offset, offset + limit).map((row) =>
+      cols
+        ? {
+            index: row.index,
+            values: Object.fromEntries(Object.entries(row.values).filter(([k]) => cols.has(k))),
+          }
+        : row,
+    );
     return {
       mode: "rows",
       total,
@@ -371,9 +369,7 @@ export function agentBrief(dataset: TabularDataset, ref: DatasetRef | null): str
 }
 
 /** Verweis einer Karte für den Durchlauf-Nachweis (nur Id, Version, Prüfsumme). */
-export function datasetRefOf(
-  metadata: unknown,
-): {
+export function datasetRefOf(metadata: unknown): {
   datasetId: string | null;
   version: number;
   checksum: string;
