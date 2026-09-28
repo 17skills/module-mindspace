@@ -78,6 +78,10 @@ export function catalogSummary(): {
   inputs: { port: string; semantic: string; required: boolean; title: string }[];
   outputs: { port: string; semantic: string; title: string }[];
   requiresApproval: boolean;
+  derivedFrom: string | null;
+  executionMode: string;
+  schedule: string | null;
+  secrets: string[];
 }[] {
   return coreModules().map((module) => ({
     name: module.metadata.name,
@@ -100,5 +104,9 @@ export function catalogSummary(): {
       title: def.title,
     })),
     requiresApproval: module.spec.action.requiresApproval,
+    derivedFrom: module.spec.extends?.ref ?? null,
+    executionMode: module.spec.execution.mode,
+    schedule: module.spec.execution.schedule,
+    secrets: module.spec.requirements.secrets.map((secret) => secret.name),
   }));
 }

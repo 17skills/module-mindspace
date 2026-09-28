@@ -3414,6 +3414,24 @@ function BoardPage() {
             toast.error(error instanceof Error ? error.message : "Einfügen fehlgeschlagen");
           }
         }}
+        onInsertModule={
+          canEdit
+            ? async (name) => {
+                try {
+                  const { catalogModulePayload } = await import("@/lib/runtime/catalog/instantiate");
+                  const payload = catalogModulePayload(name);
+                  const at = screenToFlowPosition({
+                    x: window.innerWidth / 2 - payload.bounds.width / 2,
+                    y: window.innerHeight / 2 - payload.bounds.height / 2,
+                  });
+                  await insertPayload(payload, at);
+                  toast.success(`${payload.nodes[0]?.title ?? "Baustein"} platziert`);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Baustein konnte nicht platziert werden");
+                }
+              }
+            : undefined
+        }
       />
 
       <TemplateDialog
