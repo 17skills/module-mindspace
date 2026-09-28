@@ -296,6 +296,11 @@ export const Route = createFileRoute("/api/chat")({
           console.error("chat error", error);
         };
 
+        // Werkzeug-Runden sind hart gedeckelt (Deckel des Bausteins, höchstens 5).
+        const toolOptions = tools
+          ? { tools, stopWhen: stepCountIs(Math.max(2, Math.min(budget.maxSteps, 5))) }
+          : {};
+
         try {
           const result = isOpenAiModel(modelId)
             ? streamText({
@@ -304,6 +309,7 @@ export const Route = createFileRoute("/api/chat")({
                 messages,
                 abortSignal: controller.signal,
                 onError,
+                ...toolOptions,
                 providerOptions: {
                   openai: {
                     forceReasoning: true,
@@ -320,6 +326,7 @@ export const Route = createFileRoute("/api/chat")({
                 messages,
                 abortSignal: controller.signal,
                 onError,
+                ...toolOptions,
               });
 
           const encoder = new TextEncoder();
