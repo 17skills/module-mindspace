@@ -4,4 +4,5 @@
 - [ ] Tägliche automatische Löschung einschalten
 - [x] Daten vom Scope trennen (Datenablage, Verweise, scope/scopem erweitert)
 - [ ] Karte/Diagramm/Agent: Datenverweis im Canvas direkt anzeigen (Server-Abfrage ist fertig)
-- [ ] Vorlagen-Bibliothek im Canvas
+- [x] Vorlagen verlustfrei (Motor, MCP, Regeln, Herkunft) + Katalog-Bausteine im Canvas
+- [ ] Token-Budget/Zeitlimit der Bausteine bei der Ausführung erzwingen

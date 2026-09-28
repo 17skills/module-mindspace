@@ -56,17 +56,35 @@ function LibraryPage() {
   const restoreBackup = useMutation({
     mutationFn: async (file: File) => {
       const text = await file.text();
-      const { isManifestText, parseManifest, manifestToBackup, summarizeManifest } = await import(
-        "@/lib/runtime/manifest"
-      );
-      if (isManifestText(text)) {
-        const { manifest, warnings } = parseManifest(text);
-        const hint = warnings.length ? `\n\nHinweise: ${warnings.slice(0, 3).join(" ")}` : "";
+      const m = await import("@/lib/runtime/manifest");
+      const { catalogVersions } = await import("@/lib/runtime/catalog/instantiate");
+      let parsed: { manifest: import("@/lib/runtime/manifest").ScopeManifest; warnings: string[] } | null = null;
+      const specMod = await import("@/lib/runtime/scope-spec");
+      if (m.isManifestText(text)) {
+        parsed = m.parseManifest(text);
+      } else if (specMod.isScopeSpecText(text)) {
+        // Prozess-Bauplan (.scope.yaml): gegen den Katalog prüfen, dann derselbe Weg.
+        const { coreCatalog } = await import("@/lib/runtime/catalog");
+        const spec = specMod.parseScopeSpec(text);
+        const catalog = coreCatalog();
+        const check = specMod.validateScopeSpec(spec, catalog);
+        if (check.errors.length) {
+          throw new Error(`Bauplan kann nicht aufgebaut werden: ${check.errors.slice(0, 3).join(" ")}`);
+        }
+        parsed = { manifest: specMod.scopeSpecToManifest(spec, catalog), warnings: check.warnings };
+      }
+      if (parsed) {
+        const { manifest, warnings } = parsed;
+        const notes = [...warnings, ...m.manifestNotices(manifest, catalogVersions())];
+        const origin = manifest.provenance
+          ? `\nVersion ${manifest.provenance.version}${manifest.provenance.author ? ` von ${manifest.provenance.author}` : ""}.`
+          : "";
+        const hint = notes.length ? `\n\nHinweise:\n• ${notes.slice(0, 6).join("\n• ")}` : "";
         const ok = window.confirm(
-          `Bauplan „${manifest.scope.title}“ einspielen?\n\nEs wird ein neuer Scope angelegt: ${summarizeManifest(manifest)}.\nSchlüssel, Passwörter und Freigaben aus der Datei werden nicht übernommen. Apps werden nicht öffentlich – veröffentlichen Sie sie danach bewusst.${hint}`,
+          `Bauplan „${manifest.scope.title}“ einspielen?${origin}\n\nEs wird ein neuer Scope angelegt: ${m.summarizeManifest(manifest)}.\nSchlüssel, Passwörter und Freigaben aus der Datei werden nicht übernommen. Apps werden nicht öffentlich – veröffentlichen Sie sie danach bewusst.${hint}`,
         );
         if (!ok) return null;
-        return importBoard({ data: { backupJson: JSON.stringify(manifestToBackup(manifest)) } });
+        return importBoard({ data: { backupJson: JSON.stringify(m.manifestToBackup(manifest)) } });
       }
       return importBoard({ data: { backupJson: text } });
     },
@@ -75,7 +93,7 @@ function LibraryPage() {
       toast.success(
         `Aufgebaut: ${result.nodes} Module, ${result.edges} Verbindungen, ${result.apps} Apps` +
           (result.missingServers
-            ? ` – ${result.missingServers} MCP-Zugang fehlt noch`
+            ? ` – MCP-Server fehlt noch: ${result.missingServerNames.join(", ")} (unter Konto → MCP verbinden)`
             : ""),
       );
       void navigate({ to: "/board/$boardId", params: { boardId: result.boardId } });

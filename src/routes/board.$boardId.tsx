@@ -580,7 +580,12 @@ function BoardPage() {
     try {
       const backup = await exportBoard({ data: { boardId } });
       const { backupToManifest, manifestToMarkdown } = await import("@/lib/runtime/manifest");
-      const text = manifestToMarkdown(backupToManifest(JSON.parse(backup.json)));
+      const text = manifestToMarkdown(
+        backupToManifest(JSON.parse(backup.json), {
+          author: user?.email ?? "",
+          origin: `scope:${boardId}`,
+        }),
+      );
       const blob = new Blob([text], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -592,7 +597,7 @@ function BoardPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Bauplan fehlgeschlagen");
     }
-  }, [boardId]);
+  }, [boardId, user?.email]);
 
   // Offline: Warteschlange starten und bei Netz automatisch übertragen
   useEffect(
@@ -3409,6 +3414,24 @@ function BoardPage() {
             toast.error(error instanceof Error ? error.message : "Einfügen fehlgeschlagen");
           }
         }}
+        onInsertModule={
+          canEdit
+            ? async (name) => {
+                try {
+                  const { catalogModulePayload } = await import("@/lib/runtime/catalog/instantiate");
+                  const payload = catalogModulePayload(name);
+                  const at = screenToFlowPosition({
+                    x: window.innerWidth / 2 - payload.bounds.width / 2,
+                    y: window.innerHeight / 2 - payload.bounds.height / 2,
+                  });
+                  await insertPayload(payload, at);
+                  toast.success(`${payload.nodes[0]?.title ?? "Baustein"} platziert`);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Baustein konnte nicht platziert werden");
+                }
+              }
+            : undefined
+        }
       />
 
       <TemplateDialog

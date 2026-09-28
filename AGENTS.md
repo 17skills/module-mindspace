@@ -22,3 +22,5 @@
 
 
 - Canvas hält nur Referenzen: vollständige Tabellen liegen versioniert in `datasets` (+ JSONL im Speicher), die Karte trägt `facets.datasetRef` und max. 20 Vorschauzeilen; Karte/Diagramm/Agent/Regelwerk lesen über `queryDataset`/`checkDatasetRule` (gedeckelt), Baupläne (`stripData`) tragen nie Zeilen; scope deklariert `spec.datasets` + `mapping`, scopem nutzt `data:table-ref`. Warum: Daten skalieren und bleiben geschützt, ohne den Scope aufzublähen.
+- Katalog ist die einzige Quelle für platzierbare Bausteine: Platzieren läuft über `catalogModulePayload` → `scopeSpecToManifest`, jede Karte trägt `moduleRef` (name@version). Warum: Hand-Platzierung und Bauplan erzeugen identische Module, Updates bleiben nachvollziehbar.
+- Manifest ist verlustfrei: `engine` hat beim Import Vorrang vor Einstellungen, `mcpServers` (ohne Token), `rules` und `provenance` (Prüfsumme über normalisierte Form) liegen in `boards.rules`/`boards.provenance`. Warum: Vorlage = vollständiger Scope ohne Daten und Schlüssel.

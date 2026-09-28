@@ -40,7 +40,7 @@ export const exportBoard = createServerFn({ method: "POST" })
     await assertBoardRole(context.userId, data.boardId, "viewer");
     const db = await admin();
     const [boardRes, nodeRes, edgeRes, appRes] = await Promise.all([
-      db.from("boards").select("title,description").eq("id", data.boardId).maybeSingle(),
+      db.from("boards").select("title,description,rules,provenance").eq("id", data.boardId).maybeSingle(),
       db.from("nodes").select(NODE_COLUMNS.join(",")).eq("board_id", data.boardId),
       db.from("edges").select("id,source_id,target_id,label").eq("board_id", data.boardId),
       db.from("apps").select("title,kind,node_ids,description,access_mode,branding,channels").eq("board_id", data.boardId),
@@ -73,6 +73,8 @@ export const exportBoard = createServerFn({ method: "POST" })
         board: {
           title: boardRes.data.title,
           description: boardRes.data.description ?? null,
+          rules: boardRes.data.rules ?? {},
+          provenance: boardRes.data.provenance ?? {},
         },
         nodes,
         edges: (edgeRes.data ?? []) as unknown as Record<string, unknown>[],
@@ -84,7 +86,12 @@ export const exportBoard = createServerFn({ method: "POST" })
 
 const BackupSchema = z.object({
   version: z.number(),
-  board: z.object({ title: z.string().default("Wiederhergestellter Scope"), description: z.string().nullable().default(null) }),
+  board: z.object({
+    title: z.string().default("Wiederhergestellter Scope"),
+    description: z.string().nullable().default(null),
+    rules: z.record(z.string(), z.unknown()).default({}),
+    provenance: z.record(z.string(), z.unknown()).default({}),
+  }),
   nodes: z.array(z.record(z.string(), z.unknown())).max(2000),
   edges: z.array(z.record(z.string(), z.unknown())).max(4000),
   mcpServers: z.array(z.record(z.string(), z.unknown())).max(50).default([]),
@@ -139,6 +146,9 @@ export const importBoard = createServerFn({ method: "POST" })
         org_id: (orgId as { id?: string } | null)?.id ?? null,
         title: data.title?.trim() || backup.board.title,
         description: backup.board.description,
+        rules: backup.board.rules as never,
+        // Herkunft der Vorlage bleibt erhalten; der Import selbst wird dazugeschrieben.
+        provenance: { ...backup.board.provenance, importedAt: new Date().toISOString() } as never,
       })
       .select("id")
       .single();
@@ -253,5 +263,9 @@ export const importBoard = createServerFn({ method: "POST" })
       edges: edgeRows.length,
       apps: appCount,
       missingServers,
+      missingServerNames: backup.mcpServers
+        .filter((server) => !serverMap.has(String(server["id"])))
+        .map((server) => String(server["name"] || server["url"] || "MCP-Server"))
+        .slice(0, 10),
     };
   });

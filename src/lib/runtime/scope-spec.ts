@@ -357,6 +357,9 @@ export function scopeSpecToManifest(spec: ScopeSpec, catalog: ModuleCatalog): Sc
         settings["constraints"] = module.spec.ontology.constraints;
       }
       settings["executionMode"] = module.spec.execution.mode;
+      settings["timeoutSeconds"] = module.spec.execution.timeoutSeconds;
+      if (module.spec.execution.schedule) settings["schedule"] = module.spec.execution.schedule;
+      if (module.spec.engine.governance) settings["governance"] = module.spec.engine.governance;
       if (module.spec.action.hasSideEffects) settings["requiresApproval"] = true;
     }
     return {
@@ -370,6 +373,7 @@ export function scopeSpecToManifest(spec: ScopeSpec, catalog: ModuleCatalog): Sc
       color: layout?.color ?? null,
       url: typeof settings["url"] === "string" ? (settings["url"] as string) : null,
       content: module?.metadata.description || null,
+      ...(module ? { module: { name: module.metadata.name, version: module.metadata.version } } : {}),
       settings,
     };
   });
@@ -463,6 +467,15 @@ export function scopeSpecToManifest(spec: ScopeSpec, catalog: ModuleCatalog): Sc
       title: spec.metadata.title,
       description: spec.metadata.description || null,
     },
+    provenance: {
+      version: spec.metadata.version,
+      author: spec.metadata.author,
+      createdAt: "",
+      origin: `scope:${spec.metadata.name}`,
+      checksum: "",
+    },
+    rules: spec.spec.ontology.rules.length ? (spec.spec.ontology as unknown as Record<string, unknown>) : {},
+    mcpServers: [],
     modules: [...datasetModules, ...modules],
     links,
     apps: spec.spec.apps.map((app) => ({
