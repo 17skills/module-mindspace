@@ -9,12 +9,22 @@ import {
 import { validateReadOnlySql } from "./datasets";
 import type { ColumnSpec } from "./runtime/source-protocol";
 
+const col = (key: string, label: string, type: ColumnSpec["type"]): ColumnSpec => ({
+  key,
+  label,
+  type,
+  unit: null,
+  semantic: null,
+  filled: 10,
+  total: 10,
+});
+
 const columns: ColumnSpec[] = [
-  { key: "name", label: "Name", type: "string" },
-  { key: "stadt", label: "Stadt", type: "string" },
-  { key: "umsatz", label: "Umsatz", type: "number" },
-  { key: "lat", label: "lat", type: "number" },
-  { key: "lon", label: "lon", type: "number" },
+  col("name", "Name", "text"),
+  col("stadt", "Stadt", "text"),
+  col("umsatz", "Umsatz", "number"),
+  col("lat", "lat", "number"),
+  col("lon", "lon", "number"),
 ];
 
 describe("Diagramm-Konfiguration", () => {
