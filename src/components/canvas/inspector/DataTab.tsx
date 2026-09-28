@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { readStructure, structureText } from "@/lib/structure";
+import { ChartDataSection } from "@/components/canvas/inspector/ChartDataSection";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
 
 const KINDS = [
@@ -108,7 +109,12 @@ export function DataTab({ record }: { record: NodeRecord }) {
                 ))}
               </SelectContent>
             </Select>
-            <ChartDataSection record={record} />
+            <ChartDataSection
+              record={record}
+              columns={columns}
+              onSaveMeta={(extra) => save(columns, rows, extra)}
+            />
+
           </>
         )}
       </div>
