@@ -1237,6 +1237,33 @@ export type Database = {
         }
         Relationships: []
       }
+      query_templates: {
+        Row: {
+          columns: string[]
+          config: Json
+          created_at: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          columns?: string[]
+          config: Json
+          created_at?: string
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          columns?: string[]
+          config?: Json
+          created_at?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       run_events: {
         Row: {
           action: string
