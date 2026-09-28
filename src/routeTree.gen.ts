@@ -43,6 +43,7 @@ import { Route as AuthenticatedKontoNutzerUserIdRouteImport } from './routes/_au
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
 import { Route as ApiPublicAppAppIdTeamsCardRouteImport } from './routes/api/public/app.$appId.teams-card'
 import { Route as ApiPublicAppAppIdTeamsManifestRouteImport } from './routes/api/public/app.$appId.teams-manifest'
+import { Route as ApiPublicScopesScopeIdRunRouteImport } from './routes/api/public/scopes.$scopeId.run'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -223,6 +224,12 @@ const ApiPublicAppAppIdTeamsManifestRoute =
     path: '/api/public/app/$appId/teams-manifest',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicScopesScopeIdRunRoute =
+  ApiPublicScopesScopeIdRunRouteImport.update({
+    id: '/api/public/scopes/$scopeId/run',
+    path: '/api/public/scopes/$scopeId/run',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -258,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
   '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
+  '/api/public/scopes/$scopeId/run': typeof ApiPublicScopesScopeIdRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -292,6 +300,7 @@ export interface FileRoutesByTo {
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
   '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
+  '/api/public/scopes/$scopeId/run': typeof ApiPublicScopesScopeIdRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -329,6 +338,7 @@ export interface FileRoutesById {
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
   '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
+  '/api/public/scopes/$scopeId/run': typeof ApiPublicScopesScopeIdRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
     | '/api/public/app/$appId/teams-manifest'
+    | '/api/public/scopes/$scopeId/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
     | '/api/public/app/$appId/teams-manifest'
+    | '/api/public/scopes/$scopeId/run'
   id:
     | '__root__'
     | '/'
@@ -436,6 +448,7 @@ export interface FileRouteTypes {
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
     | '/api/public/app/$appId/teams-manifest'
+    | '/api/public/scopes/$scopeId/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -459,6 +472,7 @@ export interface RootRouteChildren {
   ApiPublicAppAppIdMcpRoute: typeof ApiPublicAppAppIdMcpRoute
   ApiPublicAppAppIdTeamsCardRoute: typeof ApiPublicAppAppIdTeamsCardRoute
   ApiPublicAppAppIdTeamsManifestRoute: typeof ApiPublicAppAppIdTeamsManifestRoute
+  ApiPublicScopesScopeIdRunRoute: typeof ApiPublicScopesScopeIdRunRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -701,6 +715,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAppAppIdTeamsManifestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/scopes/$scopeId/run': {
+      id: '/api/public/scopes/$scopeId/run'
+      path: '/api/public/scopes/$scopeId/run'
+      fullPath: '/api/public/scopes/$scopeId/run'
+      preLoaderRoute: typeof ApiPublicScopesScopeIdRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -772,6 +793,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAppAppIdMcpRoute: ApiPublicAppAppIdMcpRoute,
   ApiPublicAppAppIdTeamsCardRoute: ApiPublicAppAppIdTeamsCardRoute,
   ApiPublicAppAppIdTeamsManifestRoute: ApiPublicAppAppIdTeamsManifestRoute,
+  ApiPublicScopesScopeIdRunRoute: ApiPublicScopesScopeIdRunRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

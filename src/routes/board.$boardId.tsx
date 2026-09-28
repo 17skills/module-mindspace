@@ -1895,6 +1895,7 @@ function BoardPage() {
       try {
         const { postChat } = await import("@/lib/chat-client");
         const response = await postChat({
+            nodeId: zone.id,
             model: "openai/gpt-6-astra",
             context,
             messages: [

@@ -64,6 +64,50 @@ export type Database = {
           },
         ]
       }
+      api_keys: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          key_hash: string
+          last_used_at: string | null
+          name: string
+          prefix: string
+          revoked_at: string | null
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash: string
+          last_used_at?: string | null
+          name?: string
+          prefix?: string
+          revoked_at?: string | null
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          key_hash?: string
+          last_used_at?: string | null
+          name?: string
+          prefix?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_permissions: {
         Row: {
           app_id: string
@@ -1190,6 +1234,7 @@ export type Database = {
       }
       runs: {
         Row: {
+          api_key_id: string | null
           app_id: string | null
           board_id: string
           context_checksum: string
@@ -1204,6 +1249,7 @@ export type Database = {
           input_refs: Json
           input_sha256: string | null
           model: string
+          origin: string
           output_node_id: string
           provider: string
           purged_at: string | null
@@ -1213,6 +1259,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          api_key_id?: string | null
           app_id?: string | null
           board_id: string
           context_checksum?: string
@@ -1227,6 +1274,7 @@ export type Database = {
           input_refs?: Json
           input_sha256?: string | null
           model?: string
+          origin?: string
           output_node_id: string
           provider?: string
           purged_at?: string | null
@@ -1236,6 +1284,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          api_key_id?: string | null
           app_id?: string | null
           board_id?: string
           context_checksum?: string
@@ -1250,6 +1299,7 @@ export type Database = {
           input_refs?: Json
           input_sha256?: string | null
           model?: string
+          origin?: string
           output_node_id?: string
           provider?: string
           purged_at?: string | null

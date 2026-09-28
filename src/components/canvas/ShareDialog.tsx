@@ -24,6 +24,7 @@ import {
   updateShareSettings,
 } from "@/lib/share.functions";
 import { shareLink } from "@/lib/share-link";
+import { ApiKeysSection } from "@/components/canvas/ApiKeysSection";
 
 type Member = { id: string; userId: string; role: string; email: string };
 type ShareState = {
@@ -375,6 +376,7 @@ export function ShareDialog({
             ) : null}
           </ul>
         </section>
+        <ApiKeysSection boardId={boardId} isOwner={isOwner} />
       </DialogContent>
     </Dialog>
   );

@@ -5,4 +5,7 @@
 - [x] Daten vom Scope trennen (Datenablage, Verweise, scope/scopem erweitert)
 - [ ] Karte/Diagramm/Agent: Datenverweis im Canvas direkt anzeigen (Server-Abfrage ist fertig)
 - [x] Vorlagen verlustfrei (Motor, MCP, Regeln, Herkunft) + Katalog-Bausteine im Canvas
-- [ ] Token-Budget/Zeitlimit der Bausteine bei der Ausführung erzwingen
+- [x] Token-Budget der Bausteine bei KI-Aufrufen hart erzwingen
+- [x] Headless-Start eines Scopes per Schnittstelle (Scope-Schlüssel)
+- [ ] Zeitlimit (timeoutSeconds) je Baustein erzwingen
+- [ ] Datenschutz-Filter vor KI-Aufrufen (PII maskieren)

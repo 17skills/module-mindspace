@@ -1673,7 +1673,7 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
 
     try {
       const { postChat } = await import("@/lib/chat-client");
-      const response = await postChat({ model, context, messages: next });
+      const response = await postChat({ nodeId: record.id, model, context, messages: next });
       if (!response.ok || !response.body) {
         throw new Error((await response.text()) || "Antwort fehlgeschlagen");
       }
