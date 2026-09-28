@@ -49,7 +49,7 @@ describe("Diagramm-Konfiguration", () => {
       fn: "sum",
       limit: 10,
     });
-    expect(sql).toContain("select");
+    expect(sql.toLowerCase()).toContain("select");
     expect(sql.toLowerCase()).toContain("from data");
     expect(validateReadOnlySql(sql)).toBeNull();
   });
