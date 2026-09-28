@@ -80,9 +80,9 @@ export async function runDatasetQuery(
     const { data, error } = await supabase.rpc("dataset_aggregate", {
       _dataset: datasetId,
       _filters: (query.filters ?? []) as never,
-      _group_by: query.groupBy ?? undefined,
-      _measure: query.measure ?? undefined,
       _fn: query.fn,
+      ...(query.groupBy ? { _group_by: query.groupBy } : {}),
+      ...(query.measure ? { _measure: query.measure } : {}),
     });
     if (error) throw new Error("Auswertung fehlgeschlagen.");
     const groups = (data ?? []).map((row) => ({
