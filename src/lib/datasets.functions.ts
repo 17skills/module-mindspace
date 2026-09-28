@@ -139,6 +139,8 @@ const querySchema = z.discriminatedUnion("mode", [
     measure: z.string().nullable().optional(),
     fn: z.enum(["count", "sum", "avg", "min", "max"]),
     filters: z.array(filterSchema).max(20).optional(),
+    sort: z.enum(["desc", "asc", "label"]).optional(),
+    limit: z.number().int().min(1).max(200).optional(),
   }),
   z.object({
     mode: z.literal("bbox"),
