@@ -9,6 +9,8 @@ import {
   rowsChecksum,
   toJsonl,
   datasetRefOf,
+  detectGeoColumns,
+  datasetSchemaBrief,
 } from "./datasets";
 import { ingestText } from "./runtime/ingestion";
 import { stripData, sanitizeSettings } from "./runtime/manifest";
