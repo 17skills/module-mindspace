@@ -30,6 +30,8 @@ const Body = z.object({
     .regex(/^[a-z0-9-]+\/[a-z0-9.\-:]+$/i)
     .optional(),
   context: z.string().max(400_000).optional(),
+  /** Verbundene Datenquellen: der Agent fragt sie ab, statt Zeilen zu lesen. */
+  datasetIds: z.array(z.string().uuid()).max(5).optional(),
   messages: z
     .array(
       z.object({
@@ -39,6 +41,28 @@ const Body = z.object({
     )
     .min(1)
     .max(200),
+});
+
+const filterSchema = z.object({
+  column: z.string().max(200).describe("Spaltenname exakt wie im Aufbau angegeben"),
+  op: z.enum(["eq", "neq", "gt", "gte", "lt", "lte", "contains", "oneOf", "filled"]),
+  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional(),
+});
+
+const toolInput = z.object({
+  datasetId: z.string().uuid().describe("Kennung der Datenquelle aus dem Aufbau"),
+  mode: z
+    .enum(["aggregate", "rows"])
+    .describe("aggregate für Zahlen über alle Zeilen, rows für einzelne Treffer"),
+  fn: z
+    .enum(["count", "sum", "avg", "min", "max"])
+    .optional()
+    .describe("Berechnung bei mode=aggregate"),
+  measure: z.string().max(200).optional().describe("Wertspalte für sum, avg, min, max"),
+  groupBy: z.string().max(200).optional().describe("Spalte, nach der gruppiert wird"),
+  columns: z.array(z.string().max(200)).max(20).optional().describe("Spalten bei mode=rows"),
+  filters: z.array(filterSchema).max(10).optional(),
+  limit: z.number().int().min(1).max(30).optional().describe("Zeilen bei mode=rows, höchstens 30"),
 });
 
 const SYSTEM = `Du bist der KI-Assistent eines Wissens-Canvas. Der Nutzer verbindet Inhalte
