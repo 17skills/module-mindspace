@@ -13,7 +13,14 @@ import {
 import { ClientOnly } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { detectGeoColumns, readDatasetRef } from "@/lib/datasets";
-import { queryDataset } from "@/lib/datasets.functions";
+import { queryDataset, runDatasetSqlQuery } from "@/lib/datasets.functions";
+import {
+  describeChartConfig,
+  parseChartPrompt,
+  readChartConfig,
+  suggestChartConfig,
+  type ChartConfig,
+} from "@/lib/chart-config";
 import {
   mapText,
   pointsFromSources,
