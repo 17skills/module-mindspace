@@ -92,9 +92,13 @@ async function userIdFrom(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   if (!token) return null;
-  const client = createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_PUBLISHABLE_KEY"]!, {
-    auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
-  });
+  const client = createClient(
+    process.env["SUPABASE_URL"]!,
+    process.env["SUPABASE_PUBLISHABLE_KEY"]!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+    },
+  );
   const { data, error } = await client.auth.getUser(token);
   return error || !data.user ? null : data.user.id;
 }
@@ -112,10 +116,13 @@ export const Route = createFileRoute("/api/chat")({
         }
         const limit = rateLimit(`chat:${userId}`, 30, 60_000);
         if (!limit.ok) {
-          return new Response(`Zu viele Anfragen. Bitte in ${limit.retryAfter} s erneut versuchen.`, {
-            status: 429,
-            headers: { "retry-after": String(limit.retryAfter) },
-          });
+          return new Response(
+            `Zu viele Anfragen. Bitte in ${limit.retryAfter} s erneut versuchen.`,
+            {
+              status: 429,
+              headers: { "retry-after": String(limit.retryAfter) },
+            },
+          );
         }
 
         let body: z.infer<typeof Body>;
@@ -196,7 +203,8 @@ export const Route = createFileRoute("/api/chat")({
         const redactions: Record<string, number> = {};
         const scrub = (text: string) => {
           const r = redactPii(text, privacy);
-          for (const [k, n] of Object.entries(r.counts)) redactions[k] = (redactions[k] ?? 0) + (n ?? 0);
+          for (const [k, n] of Object.entries(r.counts))
+            redactions[k] = (redactions[k] ?? 0) + (n ?? 0);
           return r.text;
         };
         const context = scrub(body.context ?? "");
@@ -221,9 +229,9 @@ export const Route = createFileRoute("/api/chat")({
           ? {
               dataset_query: {
                 description:
-                  "Fragt eine verbundene Datenquelle ab. mode=aggregate liefert Summe, Mittelwert, "
-                  + "Minimum, Maximum oder Anzahl über alle Zeilen (optional gruppiert); "
-                  + "mode=rows liefert einzelne, gefilterte Zeilen.",
+                  "Fragt eine verbundene Datenquelle ab. mode=aggregate liefert Summe, Mittelwert, " +
+                  "Minimum, Maximum oder Anzahl über alle Zeilen (optional gruppiert); " +
+                  "mode=rows liefert einzelne, gefilterte Zeilen.",
                 inputSchema: toolInput,
                 execute: async (input: z.infer<typeof toolInput>) => {
                   if (!allowedDatasets.has(input.datasetId)) {
@@ -353,7 +361,9 @@ export const Route = createFileRoute("/api/chat")({
               clearTimeout(timer);
               if (timedOut) {
                 out.enqueue(
-                  encoder.encode(`\n\n⏱️ Zeitlimit überschritten (${budget.timeoutSeconds} s) – die Antwort wurde abgebrochen.`),
+                  encoder.encode(
+                    `\n\n⏱️ Zeitlimit überschritten (${budget.timeoutSeconds} s) – die Antwort wurde abgebrochen.`,
+                  ),
                 );
               }
               out.close();

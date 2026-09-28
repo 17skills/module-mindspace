@@ -17,7 +17,11 @@ function ringColor(weather: WeatherValue | undefined): string {
  * Meldet den sichtbaren Ausschnitt. Große Tabellen werden darüber nachgeladen:
  * der Server liefert nur die Punkte im Fenster, nie die ganze Tabelle.
  */
-function BoundsWatcher({ onBounds }: { onBounds: (box: [number, number, number, number]) => void }) {
+function BoundsWatcher({
+  onBounds,
+}: {
+  onBounds: (box: [number, number, number, number]) => void;
+}) {
   const map = useMapEvents({
     moveend: () => {
       const b = map.getBounds();
@@ -118,4 +122,3 @@ export default function LeafletMap({
     </MapContainer>
   );
 }
-
