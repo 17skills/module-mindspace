@@ -9,9 +9,18 @@ export const Route = createFileRoute("/api/public/runs-purge")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const denied = await authenticateCronRequest(request);
-        if (denied) return denied;
         const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+        // Zeitplan in der Datenbank sendet ein Token, das die Datenbank nie verlässt.
+        const cronToken = request.headers.get("x-cron-token") ?? "";
+        let allowed = false;
+        if (/^[0-9a-f]{64}$/.test(cronToken)) {
+          const { data } = await db.rpc("verify_cron_token", { _name: "runs_purge", _token: cronToken });
+          allowed = data === true;
+        }
+        if (!allowed) {
+          const denied = await authenticateCronRequest(request);
+          if (denied) return denied;
+        }
         const { data: due, error } = await db
           .from("runs")
           .select("id,board_id,input_path")
