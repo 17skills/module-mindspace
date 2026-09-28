@@ -168,7 +168,13 @@ export async function runDatasetRule(
   supabase: Client,
   datasetId: string,
   rule: { column: string; operator: string; value?: unknown },
-): Promise<{ version: number; total: number; passed: number; failed: number; failedRows: number[] }> {
+): Promise<{
+  version: number;
+  total: number;
+  passed: number;
+  failed: number;
+  failedRows: number[];
+}> {
   const meta = await loadDatasetMeta(supabase, datasetId);
   if (meta.storagePath) {
     const rows = await legacyRows(meta.storagePath);

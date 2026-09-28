@@ -85,7 +85,8 @@ export function fromJsonl(text: string): DataRow[] {
     if (!line.trim()) continue;
     try {
       const row = JSON.parse(line) as DataRow;
-      if (row && typeof row === "object" && row.values && typeof row.values === "object") out.push(row);
+      if (row && typeof row === "object" && row.values && typeof row.values === "object")
+        out.push(row);
     } catch {
       // Kaputte Zeile überspringen, nie abbrechen.
     }
@@ -166,14 +167,17 @@ export function matchesFilter(row: DataRow, filter: RowFilter): boolean {
     case "filled":
       return filled(cell);
     case "contains":
-      return String(cell ?? "").toLowerCase().includes(String(filter.value ?? "").toLowerCase());
+      return String(cell ?? "")
+        .toLowerCase()
+        .includes(String(filter.value ?? "").toLowerCase());
     case "oneOf":
       return Array.isArray(filter.value) && filter.value.map(String).includes(String(cell));
     case "eq":
     case "neq": {
       const a = num(cell);
       const b = num(filter.value);
-      const same = a !== null && b !== null ? a === b : String(cell ?? "") === String(filter.value ?? "");
+      const same =
+        a !== null && b !== null ? a === b : String(cell ?? "") === String(filter.value ?? "");
       return filter.op === "eq" ? same : !same;
     }
     default: {
@@ -201,23 +205,43 @@ function clampLimit(limit: number | undefined): number {
 export function queryRows(rows: DataRow[], query: DatasetQuery): QueryResult {
   const total = rows.length;
   if (query.mode === "preview") {
-    return { mode: "preview", total, matched: total, rows: rows.slice(0, PREVIEW_ROWS), truncated: total > PREVIEW_ROWS };
+    return {
+      mode: "preview",
+      total,
+      matched: total,
+      rows: rows.slice(0, PREVIEW_ROWS),
+      truncated: total > PREVIEW_ROWS,
+    };
   }
   if (query.mode === "rows") {
     const matched = applyFilters(rows, query.filters);
     const limit = clampLimit(query.limit);
     const offset = Math.max(0, Math.floor(query.offset ?? 0));
     const cols = query.columns?.length ? new Set(query.columns) : null;
-    const page = matched.slice(offset, offset + limit).map((row) =>
-      cols
-        ? { index: row.index, values: Object.fromEntries(Object.entries(row.values).filter(([k]) => cols.has(k))) }
-        : row,
-    );
-    return { mode: "rows", total, matched: matched.length, rows: page, truncated: matched.length > offset + limit };
+    const page = matched
+      .slice(offset, offset + limit)
+      .map((row) =>
+        cols
+          ? {
+              index: row.index,
+              values: Object.fromEntries(Object.entries(row.values).filter(([k]) => cols.has(k))),
+            }
+          : row,
+      );
+    return {
+      mode: "rows",
+      total,
+      matched: matched.length,
+      rows: page,
+      truncated: matched.length > offset + limit,
+    };
   }
   if (query.mode === "aggregate") {
     const matched = applyFilters(rows, query.filters);
-    const buckets = new Map<string, { sum: number; count: number; min: number; max: number; n: number }>();
+    const buckets = new Map<
+      string,
+      { sum: number; count: number; min: number; max: number; n: number }
+    >();
     for (const row of matched) {
       const key = query.groupBy ? String(row.values[query.groupBy] ?? "–") : "Gesamt";
       const bucket = buckets.get(key) ?? { sum: 0, count: 0, min: Infinity, max: -Infinity, n: 0 };
@@ -234,16 +258,32 @@ export function queryRows(rows: DataRow[], query: DatasetQuery): QueryResult {
     const groups = [...buckets.entries()]
       .map(([key, b]) => {
         const value =
-          query.fn === "count" ? b.count
-          : query.fn === "sum" ? b.sum
-          : query.fn === "avg" ? (b.n ? b.sum / b.n : 0)
-          : query.fn === "min" ? (b.n ? b.min : 0)
-          : b.n ? b.max : 0;
+          query.fn === "count"
+            ? b.count
+            : query.fn === "sum"
+              ? b.sum
+              : query.fn === "avg"
+                ? b.n
+                  ? b.sum / b.n
+                  : 0
+                : query.fn === "min"
+                  ? b.n
+                    ? b.min
+                    : 0
+                  : b.n
+                    ? b.max
+                    : 0;
         return { key, value: Math.round(value * 1000) / 1000, count: b.count };
       })
       .sort((a, b) => b.value - a.value);
     const limited = groups.slice(0, 200);
-    return { mode: "aggregate", total, matched: matched.length, groups: limited, truncated: groups.length > limited.length };
+    return {
+      mode: "aggregate",
+      total,
+      matched: matched.length,
+      groups: limited,
+      truncated: groups.length > limited.length,
+    };
   }
   const limit = clampLimit(query.limit ?? MAX_QUERY_ROWS);
   const points: NonNullable<QueryResult["points"]> = [];
@@ -271,7 +311,16 @@ export function parseColumnSubject(subject: string): { dataset: string; column: 
   return match ? { dataset: match[1]!, column: match[2]! } : null;
 }
 
-const RULE_OP: Record<string, FilterOp> = { lte: "lte", gte: "gte", lt: "lt", gt: "gt", eq: "eq", neq: "neq", oneOf: "oneOf", required: "filled" };
+const RULE_OP: Record<string, FilterOp> = {
+  lte: "lte",
+  gte: "gte",
+  lt: "lt",
+  gt: "gt",
+  eq: "eq",
+  neq: "neq",
+  oneOf: "oneOf",
+  required: "filled",
+};
 
 /**
  * Spaltenregel über alle Zeilen: Ergebnis sind nur Zähler und wenige
@@ -295,15 +344,23 @@ export function evaluateColumnRule(
 }
 
 /** Spalten eines Datensatzes auf Port-Felder abbilden (`mapping { lat: "Breite" }`). */
-export function missingMappedColumns(dataset: Pick<TabularDataset, "columns">, mapping: Record<string, string>): string[] {
+export function missingMappedColumns(
+  dataset: Pick<TabularDataset, "columns">,
+  mapping: Record<string, string>,
+): string[] {
   const keys = new Set(dataset.columns.flatMap((c) => [c.key, c.label]));
   return Object.values(mapping).filter((column) => !keys.has(column));
 }
 
 /** Kompakte, verpackbare Beschreibung für Agenten: Aufbau, Kennzahlen, kleine Auswahl. */
 export function agentBrief(dataset: TabularDataset, ref: DatasetRef | null): string {
-  const columns = dataset.columns.map((c) => `${c.label} (${c.type}${c.unit ? `, ${c.unit}` : ""})`).join("; ");
-  const sample = dataset.rows.slice(0, 5).map((row) => JSON.stringify(row.values)).join("\n");
+  const columns = dataset.columns
+    .map((c) => `${c.label} (${c.type}${c.unit ? `, ${c.unit}` : ""})`)
+    .join("; ");
+  const sample = dataset.rows
+    .slice(0, 5)
+    .map((row) => JSON.stringify(row.values))
+    .join("\n");
   return [
     `Tabelle mit ${ref?.rowCount ?? dataset.rowCount} Zeilen${ref?.verified ? " (geprüfte Quelle)" : ""}.`,
     `Spalten: ${columns}`,
@@ -316,9 +373,15 @@ export function agentBrief(dataset: TabularDataset, ref: DatasetRef | null): str
 /** Verweis einer Karte für den Durchlauf-Nachweis (nur Id, Version, Prüfsumme). */
 export function datasetRefOf(
   metadata: unknown,
-): { datasetId: string | null; version: number; checksum: string; verified: boolean; sourceUrl: string | null } | null {
-  const ref = (metadata as { source?: { envelope?: SourceEnvelope } } | null | undefined)?.source?.envelope?.facets
-    ?.datasetRef;
+): {
+  datasetId: string | null;
+  version: number;
+  checksum: string;
+  verified: boolean;
+  sourceUrl: string | null;
+} | null {
+  const ref = (metadata as { source?: { envelope?: SourceEnvelope } } | null | undefined)?.source
+    ?.envelope?.facets?.datasetRef;
   if (!ref) return null;
   return {
     datasetId: ref.datasetId,
