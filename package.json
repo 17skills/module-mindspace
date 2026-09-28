@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "scripts/test-db.sh",
+    "test:e2e": "python3 e2e/dataset_canvas.py"
   },
   "overrides": {
     "rolldown": "1.2.1"
