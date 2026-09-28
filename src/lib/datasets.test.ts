@@ -125,3 +125,34 @@ describe("scope mit Datenquellen", () => {
     expect(warnings.some((w) => w.includes("„lon"))).toBe(true);
   });
 });
+
+describe("Geo-Spalten und Schema-Kurzfassung", () => {
+  it("erkennt Breiten- und Längengrad an gängigen Namen", () => {
+    expect(detectGeoColumns([{ key: "lat", label: "lat" }, { key: "lon", label: "lon" }])).toEqual({
+      lat: "lat",
+      lon: "lon",
+    });
+    expect(
+      detectGeoColumns([
+        { key: "breitengrad", label: "Breitengrad" },
+        { key: "laengengrad", label: "Längengrad" },
+      ]),
+    ).toEqual({ lat: "breitengrad", lon: "laengengrad" });
+  });
+
+  it("meldet keine Geo-Spalten, wenn eine Angabe fehlt", () => {
+    expect(detectGeoColumns([{ key: "lat", label: "lat" }, { key: "umsatz", label: "Umsatz" }])).toBeNull();
+  });
+
+  it("gibt dem Agenten nur Spalten, niemals Zeilen", () => {
+    const brief = datasetSchemaBrief(
+      { columns: [{ key: "stadt", label: "Stadt", type: "text" }, { key: "umsatz", label: "Umsatz", type: "number" }] },
+      5000,
+      "abc",
+    );
+    expect(brief).toContain("stadt (text)");
+    expect(brief).toContain("5.000 Zeilen");
+    expect(brief).toContain("dataset_query");
+    expect(brief).not.toContain("Kunde");
+  });
+});
