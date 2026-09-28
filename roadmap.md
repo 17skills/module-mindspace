@@ -1,7 +1,7 @@
 # Roadmap
 - [x] Kamera-Modul, API mit {{input.*}}, Karte/Ergebnis aus API, Bauplan, Gastnutzung
-- [ ] Knopf „Bauplan-Vorlagen" auf der Startseite
-- [ ] Tägliche automatische Löschung einschalten
+- [x] Knopf „Bauplan-Vorlagen" auf der Startseite
+- [x] Tägliche automatische Löschung einschalten
 - [x] Daten vom Scope trennen (Datenablage, Verweise, scope/scopem erweitert)
 - [ ] Karte/Diagramm/Agent: Datenverweis im Canvas direkt anzeigen (Server-Abfrage ist fertig)
 - [x] Vorlagen verlustfrei (Motor, MCP, Regeln, Herkunft) + Katalog-Bausteine im Canvas
@@ -9,4 +9,4 @@
 - [x] Headless-Start eines Scopes per Schnittstelle (Scope-Schlüssel)
 - [x] Zeitlimit (timeoutSeconds) je Baustein erzwingen
 - [x] Datenschutz-Filter vor KI-Aufrufen (PII maskieren)
-- [ ] Datenschutz-Modus je Scope in der Oberfläche umschaltbar (heute nur über Scope-Regeln `privacy`)
+- [x] Datenschutz-Modus je Scope in der Oberfläche umschaltbar (heute nur über Scope-Regeln `privacy`)
