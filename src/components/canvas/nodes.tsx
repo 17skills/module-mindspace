@@ -1663,6 +1663,7 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
     if (!prompt || streaming) return;
     setInput("");
     const context = collectContext(record.id);
+    const datasetIds = collectDatasets(record.id);
     const next: Msg[] = [...messages, { role: "user", content: prompt }];
     setMessages([...next, { role: "assistant", content: "" }]);
     setStreaming(true);
@@ -1673,7 +1674,7 @@ export const ChatNode = memo(function ChatNode({ data, selected }: NodeProps) {
 
     try {
       const { postChat } = await import("@/lib/chat-client");
-      const response = await postChat({ nodeId: record.id, model, context, messages: next });
+      const response = await postChat({ nodeId: record.id, model, context, datasetIds, messages: next });
       if (!response.ok || !response.body) {
         throw new Error((await response.text()) || "Antwort fehlgeschlagen");
       }
