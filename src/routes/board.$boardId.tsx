@@ -597,7 +597,7 @@ function BoardPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Bauplan fehlgeschlagen");
     }
-  }, [boardId]);
+  }, [boardId, user?.email]);
 
   // Offline: Warteschlange starten und bei Netz automatisch übertragen
   useEffect(
