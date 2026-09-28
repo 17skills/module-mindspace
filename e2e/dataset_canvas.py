@@ -88,8 +88,11 @@ async def main():
             chart = page.locator(f'.react-flow__node[data-id="{c}"]')
             bars = await chart.locator(".recharts-bar-rectangle").count()
             labels = await chart.locator(".recharts-cartesian-axis-tick-value").all_inner_texts()
-            print("Balken:", bars, "Achse:", labels)
-            if bars == 0: failures.append("Diagramm zeigt keine Balken")
+            print("Balken vor der Konfiguration:", bars, "Achse:", labels)
+            # Ohne bestätigte Konfiguration zeigt das Diagramm bewusst noch nichts,
+            # sondern den Vorschlag zur Bestätigung durch den Nutzer.
+            if not await chart.get_by_role("button", name="Übernehmen").count():
+                failures.append("Diagramm zeigt keinen Vorschlag")
             # Diagramm-Konfiguration: Vorschlag übernehmen und per Anweisung ändern
             apply_btn = chart.get_by_role("button", name="Übernehmen")
             if await apply_btn.count():
