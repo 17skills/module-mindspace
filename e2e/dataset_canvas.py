@@ -69,10 +69,14 @@ async def main():
             await page.locator(".react-flow__controls-fitview").click()
             await page.wait_for_timeout(800)
             out = page.locator(f'.react-flow__node[data-id="{s}"] .react-flow__handle.source').last
-            for target in (c, m):
-                await drag(page, out, page.locator(f'.react-flow__node[data-id="{target}"] .react-flow__handle.target.react-flow__handle-left').first)
-            edges = rest("GET", f"edges?board_id=eq.{board}&select=source_id,target_id")
-            pairs = {(e["source_id"], e["target_id"]) for e in edges}
+            def pairs():
+                return {(e["source_id"], e["target_id"]) for e in rest("GET", f"edges?board_id=eq.{board}&select=source_id,target_id")}
+            for target in (m, c):
+                handle = page.locator(f'.react-flow__node[data-id="{target}"] .react-flow__handle.target.react-flow__handle-left').first
+                for _ in range(3):  # erster Zug nach dem Laden wird von React Flow gelegentlich verschluckt
+                    await drag(page, out, handle)
+                    if (s, target) in pairs(): break
+            pairs = pairs()
             if (s, m) not in pairs: failures.append("Verbindung Tabelle→Karte fehlt")
             if (s, c) not in pairs: failures.append("Verbindung Tabelle→Diagramm fehlt")
             await page.wait_for_timeout(4000)
