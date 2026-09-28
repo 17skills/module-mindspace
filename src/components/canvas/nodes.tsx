@@ -1485,13 +1485,76 @@ function tableData(record: NodeRecord): TableData {
 
 const CHART_COLORS = ["var(--primary)", "var(--video)", "var(--audio)", "var(--doc)", "var(--note)"];
 
-export const DataNode = memo(function DataNode({ data, selected }: NodeProps) {
+export const DataNode = memo(function DataNode({ id, data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode, openInspector } = useBoard();
   const { columns, rows, chartType } = tableData(record);
   const type = record.type;
+  const edges = useEdges();
+  const flowNodes = useStore((state) => state.nodes);
 
-  const chartRows = useMemo(() => chartSeries(readStructure(record)), [record]);
+  const localRows = useMemo(() => chartSeries(readStructure(record)), [record]);
+
+  /**
+   * Verbundene Datenablage: das Diagramm rechnet nicht im Browser, sondern
+   * lässt die Werte serverseitig gruppieren — zurück kommen nur die Balken.
+   */
+  const chartSource = useMemo(() => {
+    if (type !== "chart") return null;
+    const byId = Object.fromEntries(
+      flowNodes.map((n) => [n.id, (n.data as { record: NodeRecord }).record]),
+    ) as Record<string, NodeRecord>;
+    for (const edge of edges) {
+      const otherId = edge.target === id ? edge.source : edge.source === id ? edge.target : null;
+      if (!otherId) continue;
+      const stored = readSource(byId[otherId]);
+      const ref = readDatasetRef(stored?.envelope);
+      const cols = stored?.envelope.facets.dataset?.columns ?? [];
+      if (!ref?.datasetId || !cols.length) continue;
+      const group = cols.find((c) => c.type === "text")?.key ?? cols[0]!.key;
+      const measure = cols.find((c) => c.type === "number")?.key ?? null;
+      return { datasetId: ref.datasetId, group, measure };
+    }
+    return null;
+  }, [type, edges, flowNodes, id]);
+
+  const [serverRows, setServerRows] = useState<{ name: string; value: number }[] | null>(null);
+  const runQuery = useServerFn(queryDataset);
+
+  useEffect(() => {
+    if (!chartSource) {
+      setServerRows(null);
+      return;
+    }
+    let active = true;
+    void runQuery({
+      data: {
+        datasetId: chartSource.datasetId,
+        query: {
+          mode: "aggregate",
+          fn: chartSource.measure ? "sum" : "count",
+          groupBy: chartSource.group,
+          measure: chartSource.measure,
+          filters: [],
+        },
+      },
+    })
+      .then((answer) => {
+        const groups = (answer.result as unknown as { groups?: { key: string; value: number }[] })
+          .groups;
+        if (active && groups) {
+          setServerRows(groups.slice(0, 25).map((g) => ({ name: g.key, value: Number(g.value) })));
+        }
+      })
+      .catch(() => {
+        // Ohne Zugriff bleibt das Diagramm bei den Werten der Karte.
+      });
+    return () => {
+      active = false;
+    };
+  }, [chartSource, runQuery]);
+
+  const chartRows = serverRows ?? localRows;
 
   return (
     <Shell type={type} selected={selected} locked={Boolean(record.parent_id)} minHeight={200}>
