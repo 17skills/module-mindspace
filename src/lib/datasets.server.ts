@@ -15,6 +15,7 @@ import {
   evaluateColumnRule,
   fromJsonl,
   queryRows,
+  validateReadOnlySql,
   type DatasetQuery,
   type QueryResult,
 } from "@/lib/datasets";
@@ -198,4 +199,37 @@ export async function runDatasetRule(
     failed: Number(row?.failed ?? 0),
     failedRows: row?.failed_rows ?? [],
   };
+}
+
+/**
+ * Experten-Modus: freie Leseabfrage gegen eine Tabelle.
+ *
+ * Die Datenbank ist die verbindliche Schranke: `dataset_sql` läuft mit den
+ * Rechten des Nutzers (RLS), erlaubt ausschließlich Lesen, bricht nach drei
+ * Sekunden ab und gibt höchstens 500 Zeilen zurück.
+ */
+export async function runDatasetSql(
+  supabase: Client,
+  datasetId: string,
+  sql: string,
+): Promise<{
+  version: number;
+  checksum: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+}> {
+  const problem = validateReadOnlySql(sql);
+  if (problem) throw new Error(problem);
+  const meta = await loadDatasetMeta(supabase, datasetId);
+  if (meta.storagePath) {
+    throw new Error("Für diese ältere Tabelle ist der Experten-Modus nicht verfügbar.");
+  }
+  const { data, error } = await supabase.rpc("dataset_sql", {
+    _dataset: datasetId,
+    _sql: sql,
+  });
+  if (error) throw new Error(error.message || "Abfrage fehlgeschlagen.");
+  const rows = (data ?? []).map((row) => (row.row_json ?? {}) as Record<string, unknown>);
+  const columns = rows.length ? Object.keys(rows[0]!) : [];
+  return { version: meta.version, checksum: meta.checksum, columns, rows };
 }
