@@ -108,12 +108,9 @@ export async function runDatasetQuery(
     const box = query.bbox ?? null;
     const { data, error } = await supabase.rpc("dataset_bbox", {
       _dataset: datasetId,
-      _south: box ? box[0] : undefined,
-      _west: box ? box[1] : undefined,
-      _north: box ? box[2] : undefined,
-      _east: box ? box[3] : undefined,
-      _name_col: query.mapping.name ?? undefined,
       _limit: limit,
+      ...(box ? { _south: box[0], _west: box[1], _north: box[2], _east: box[3] } : {}),
+      ...(query.mapping.name ? { _name_col: query.mapping.name } : {}),
     });
     if (error) throw new Error("Kartenausschnitt konnte nicht geladen werden.");
     const points = (data ?? []).map((row) => ({
