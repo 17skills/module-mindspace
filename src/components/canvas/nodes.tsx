@@ -1,5 +1,8 @@
-import { Fragment, lazy, memo, Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Fragment, lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ClientOnly } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { detectGeoColumns, readDatasetRef } from "@/lib/datasets";
+import { queryDataset } from "@/lib/datasets.functions";
 import {
   mapText,
   pointsFromSources,
