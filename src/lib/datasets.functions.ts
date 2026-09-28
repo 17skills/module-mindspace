@@ -63,16 +63,6 @@ export const storeDataset = createServerFn({ method: "POST" })
     const checksum = verified ? "" : rowsChecksum(rows);
     const fetchedAt = new Date().toISOString();
 
-    let storagePath: string | null = null;
-    if (!verified) {
-      storagePath = `datasets/${node.board_id}/${data.nodeId}/${version}.jsonl`;
-      const db = await admin();
-      const { error } = await db.storage
-        .from("uploads")
-        .upload(storagePath, new Blob([toJsonl(rows)], { type: "application/x-ndjson" }), { upsert: false });
-      if (error) throw new Error("Daten konnten nicht gespeichert werden.");
-    }
-
     // Einfügen als Nutzer: RLS verlangt Bearbeitungsrecht am Modul.
     const { data: inserted, error } = await context.supabase
       .from("datasets")
@@ -83,7 +73,7 @@ export const storeDataset = createServerFn({ method: "POST" })
         checksum,
         schema: data.columns as never,
         row_count: verified ? 0 : rows.length,
-        storage_path: storagePath,
+        storage_path: null,
         origin_kind: data.originKind,
         verified,
         source_url: data.sourceUrl,
@@ -93,8 +83,29 @@ export const storeDataset = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error || !inserted) {
-      if (storagePath) await (await admin()).storage.from("uploads").remove([storagePath]);
       throw new Error("Keine Berechtigung, Daten an diesem Modul abzulegen.");
+    }
+
+    // Zeilen relational ablegen: Filter und Berechnungen laufen später in der
+    // Datenbank, nicht im Serverspeicher.
+    if (!verified && rows.length) {
+      const geo = detectGeoColumns(data.columns as ColumnSpec[]);
+      const payload = rows.map((row) => ({
+        dataset_id: inserted.id,
+        row_index: row.index,
+        data: row.values as never,
+        lat: geo ? cellNumber(row.values[geo.lat]) : null,
+        lon: geo ? cellNumber(row.values[geo.lon]) : null,
+      }));
+      for (let i = 0; i < payload.length; i += 2000) {
+        const { error: rowError } = await context.supabase
+          .from("dataset_rows")
+          .insert(payload.slice(i, i + 2000));
+        if (rowError) {
+          await (await admin()).from("datasets").delete().eq("id", inserted.id);
+          throw new Error("Daten konnten nicht gespeichert werden.");
+        }
+      }
     }
     return {
       datasetId: inserted.id,
