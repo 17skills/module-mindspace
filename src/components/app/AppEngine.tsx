@@ -710,7 +710,7 @@ function FreeAppLayout({
           <span className="pointer-events-none absolute inset-y-0 z-20 w-px bg-ring" style={{ left: `calc(1rem + (100% - 2rem) * ${guides.vertical - 1} / 12)` }} />
         ) : null}
         {guides.horizontal != null ? (
-          <span className="pointer-events-none absolute inset-x-0 z-20 h-px bg-ring" style={{ top: `${16 + (guides.horizontal - 1) * (APP_GRID_ROW_HEIGHT + 12)}px` }} />
+          <span className="pointer-events-none absolute inset-x-0 z-20 h-px bg-ring" style={{ top: `${16 + (guides.horizontal - 1) * (rowHeight + 12)}px` }} />
         ) : null}
       {nodes.map((node) => {
         const item = layout.find((entry) => entry.id === node.id);
