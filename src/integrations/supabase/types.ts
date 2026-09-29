@@ -432,6 +432,7 @@ export type Database = {
           id: string
           is_public: boolean
           org_id: string | null
+          project: string | null
           provenance: Json
           rules: Json
           share_expires_at: string | null
@@ -449,6 +450,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           org_id?: string | null
+          project?: string | null
           provenance?: Json
           rules?: Json
           share_expires_at?: string | null
@@ -466,6 +468,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           org_id?: string | null
+          project?: string | null
           provenance?: Json
           rules?: Json
           share_expires_at?: string | null
