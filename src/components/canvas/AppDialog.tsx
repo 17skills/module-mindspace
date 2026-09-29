@@ -17,6 +17,7 @@ import {
   Pencil,
   PlugZap,
   Smartphone,
+  Tablet,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -333,7 +334,7 @@ export function AppDialog({
   const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [device, setDevice] = useState<PreviewDevice>("desktop");
   const [previewChannel, setPreviewChannel] = useState<PreviewChannel>("cockpit");
   const [scope, setScope] = useState<"read" | "write">("read");
   const [channels, setChannels] = useState<Channels>(DEFAULT_CHANNELS);
