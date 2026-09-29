@@ -169,7 +169,12 @@ export function buildFreeLayout(
 ): AppGridItem[] {
   const result: AppGridItem[] = [];
   const minWidth = minModuleWidth(device);
-  for (const node of nodes) {
+  // Gespeicherte Module zuerst setzen, damit neue sie nicht verdrängen.
+  const ordered = [
+    ...nodes.filter((node) => saved.some((item) => item.id === node.id)),
+    ...nodes.filter((node) => !saved.some((item) => item.id === node.id)),
+  ];
+  for (const node of ordered) {
     const stored = saved.find((item) => item.id === node.id);
     const preset = defaultModuleSize(node.type, device);
     const width = Math.min(12, Math.max(minWidth, stored?.width ?? preset.width));
@@ -199,7 +204,7 @@ export function buildFreeLayout(
     }
     result.push(candidate);
   }
-  return result;
+  return nodes.map((node) => result.find((item) => item.id === node.id)!);
 }
 
 /** Wendet eine Verschiebung/Größenänderung nur an, wenn sie gültig und kollisionsfrei ist. */
