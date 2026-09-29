@@ -127,6 +127,7 @@ function AppStage() {
           nodes={nodes}
           layout={branding.layout}
           moduleLayout={branding.moduleLayout}
+          deviceLayouts={branding.deviceLayouts}
           actions={canUpdateData ? {
             setStatus: (nodeId, finding, status) => {
               void appSetFindingStatus({

@@ -3,6 +3,9 @@ import {
   APP_LAYOUTS,
   alignFreeLayout,
   buildFreeLayout,
+  deviceForWidth,
+  minModuleWidth,
+  savedLayoutFor,
   resolveLayout,
   snapFreeLayout,
   TILE_TYPES,
@@ -115,5 +118,29 @@ describe("freie Fläche", () => {
       { id: mapNode.id, col: 6, row: 1, width: 4, height: 3 },
     ];
     expect(alignFreeLayout(layout, [metricNode.id, mapNode.id], "left")).toEqual(layout);
+  });
+});
+
+describe("Anordnung je Gerät", () => {
+  const grid = (id: string, col: number, row: number, width: number, height: number) => ({ id, col, row, width, height });
+  it("ordnet Fensterbreiten den Geräteklassen zu", () => {
+    expect(deviceForWidth(390)).toBe("mobile");
+    expect(deviceForWidth(767)).toBe("mobile");
+    expect(deviceForWidth(768)).toBe("tablet");
+    expect(deviceForWidth(1023)).toBe("tablet");
+    expect(deviceForWidth(1024)).toBe("desktop");
+  });
+  it("wählt die gespeicherte Anordnung je Gerät", () => {
+    const desk = [grid("a", 1, 1, 8, 4)];
+    const tab = [grid("a", 1, 1, 12, 4)];
+    expect(savedLayoutFor("desktop", desk, { tablet: tab })).toBe(desk);
+    expect(savedLayoutFor("tablet", desk, {})).toBe(desk);
+    expect(savedLayoutFor("tablet", desk, { tablet: tab })).toBe(tab);
+    expect(savedLayoutFor("mobile", desk, undefined)).toEqual([]);
+  });
+  it("hält auf dem Handy mindestens halbe Breite", () => {
+    const layout = [grid("a", 1, 1, 12, 2)];
+    expect(updateFreeLayout(layout, "a", { width: 3 }, minModuleWidth("mobile"))[0]!.width).toBe(6);
+    expect(updateFreeLayout(layout, "a", { width: 3 })[0]!.width).toBe(3);
   });
 });

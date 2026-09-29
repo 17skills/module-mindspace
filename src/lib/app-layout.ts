@@ -13,9 +13,42 @@ export const APP_GRID_ROW_HEIGHT_TABLET = 56;
 /** Geräteklassen der Vorschau. „auto“ folgt der echten Fensterbreite. */
 export type AppPreviewDevice = "auto" | "desktop" | "tablet" | "mobile";
 
+/** Konkrete Geräteklasse, für die eine eigene Anordnung gespeichert wird. */
+export type LayoutDevice = Exclude<AppPreviewDevice, "auto">;
+
+/** Eigene Anordnungen für Tablet und Handy; Desktop steht in `moduleLayout`. */
+export type DeviceLayouts = Partial<Record<"tablet" | "mobile", AppGridItem[]>>;
+
 /** Zeilenhöhe der freien Fläche je Geräteklasse. */
 export function gridRowHeight(device: AppPreviewDevice): number {
   return device === "tablet" ? APP_GRID_ROW_HEIGHT_TABLET : APP_GRID_ROW_HEIGHT;
+}
+
+/** Geräteklasse aus der Fensterbreite: unter 768 px Handy, unter 1024 px Tablet. */
+export function deviceForWidth(width: number): LayoutDevice {
+  if (width < 768) return "mobile";
+  if (width < 1024) return "tablet";
+  return "desktop";
+}
+
+/** Auf dem Handy ist ein Modul mindestens eine halbe Breite, sonst unlesbar. */
+export function minModuleWidth(device: AppPreviewDevice): number {
+  return device === "mobile" ? 6 : 2;
+}
+
+/**
+ * Welche gespeicherte Anordnung für ein Gerät gilt. Tablet übernimmt ohne
+ * eigene Anordnung die Desktop-Anordnung, das Handy startet als Stapel.
+ */
+export function savedLayoutFor(
+  device: LayoutDevice,
+  moduleLayout: AppGridItem[],
+  deviceLayouts: DeviceLayouts | undefined,
+): AppGridItem[] {
+  if (device === "desktop") return moduleLayout;
+  const own = deviceLayouts?.[device];
+  if (own?.length) return own;
+  return device === "tablet" ? moduleLayout : [];
 }
 
 
@@ -84,7 +117,13 @@ export const TILE_TYPES = new Set(["metric", "gauge", "calc", "sheet", "api"]);
  * Startgröße eines Moduls auf der freien Fläche. Gewichtige Module (Karte,
  * Tabelle, Risiko) bekommen viel Fläche, Kennzahlen bleiben kompakt.
  */
-export function defaultModuleSize(type: string): { width: number; height: number } {
+export function defaultModuleSize(
+  type: string,
+  device: AppPreviewDevice = "desktop",
+): { width: number; height: number } {
+  if (device === "mobile") {
+    return { width: 12, height: TILE_TYPES.has(type) ? 2 : WIDE_TYPES.has(type) ? 5 : 3 };
+  }
   if (TILE_TYPES.has(type)) return { width: 4, height: 2 };
   if (WIDE_TYPES.has(type)) return { width: 8, height: 6 };
   return { width: 6, height: 3 };
@@ -110,12 +149,12 @@ function overlaps(a: AppGridItem, b: AppGridItem) {
 export type FreeLayoutAlignment = "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
 export type FreeLayoutGuides = { vertical?: number; horizontal?: number };
 
-function validLayout(layout: AppGridItem[]) {
+function validLayout(layout: AppGridItem[], minWidth = 2) {
   return layout.every(
     (item, index) =>
       item.col >= 1 &&
       item.row >= 1 &&
-      item.width >= 2 &&
+      item.width >= minWidth &&
       item.height >= 2 &&
       item.col + item.width <= APP_GRID_COLUMNS + 1 &&
       !layout.some((other, otherIndex) => index !== otherIndex && overlaps(item, other)),
@@ -123,12 +162,22 @@ function validLayout(layout: AppGridItem[]) {
 }
 
 /** Füllt fehlende Positionen kollisionsfrei auf; gespeicherte Positionen bleiben erhalten. */
-export function buildFreeLayout(nodes: NodeRecord[], saved: AppGridItem[]): AppGridItem[] {
+export function buildFreeLayout(
+  nodes: NodeRecord[],
+  saved: AppGridItem[],
+  device: AppPreviewDevice = "desktop",
+): AppGridItem[] {
   const result: AppGridItem[] = [];
-  for (const node of nodes) {
+  const minWidth = minModuleWidth(device);
+  // Gespeicherte Module zuerst setzen, damit neue sie nicht verdrängen.
+  const ordered = [
+    ...nodes.filter((node) => saved.some((item) => item.id === node.id)),
+    ...nodes.filter((node) => !saved.some((item) => item.id === node.id)),
+  ];
+  for (const node of ordered) {
     const stored = saved.find((item) => item.id === node.id);
-    const preset = defaultModuleSize(node.type);
-    const width = Math.min(12, Math.max(2, stored?.width ?? preset.width));
+    const preset = defaultModuleSize(node.type, device);
+    const width = Math.min(12, Math.max(minWidth, stored?.width ?? preset.width));
     const height = Math.min(10, Math.max(2, stored?.height ?? preset.height));
 
     let candidate: AppGridItem = {
@@ -155,7 +204,7 @@ export function buildFreeLayout(nodes: NodeRecord[], saved: AppGridItem[]): AppG
     }
     result.push(candidate);
   }
-  return result;
+  return nodes.map((node) => result.find((item) => item.id === node.id)!);
 }
 
 /** Wendet eine Verschiebung/Größenänderung nur an, wenn sie gültig und kollisionsfrei ist. */
@@ -163,10 +212,11 @@ export function updateFreeLayout(
   layout: AppGridItem[],
   id: string,
   patch: Partial<Pick<AppGridItem, "col" | "row" | "width" | "height">>,
+  minWidth = 2,
 ): AppGridItem[] {
   const current = layout.find((item) => item.id === id);
   if (!current) return layout;
-  const width = Math.min(APP_GRID_COLUMNS, Math.max(2, patch.width ?? current.width));
+  const width = Math.min(APP_GRID_COLUMNS, Math.max(minWidth, patch.width ?? current.width));
   const next: AppGridItem = {
     ...current,
     ...patch,
@@ -184,6 +234,7 @@ export function alignFreeLayout(
   layout: AppGridItem[],
   ids: string[],
   alignment: FreeLayoutAlignment,
+  minWidth = 2,
 ): AppGridItem[] {
   const selected = layout.filter((item) => ids.includes(item.id));
   if (selected.length < 2) return layout;
@@ -202,7 +253,7 @@ export function alignFreeLayout(
     if (alignment === "bottom") return { ...item, row: bottom - item.height };
     return { ...item, row: Math.round((top + bottom - item.height) / 2) };
   });
-  return validLayout(next) ? next : layout;
+  return validLayout(next, minWidth) ? next : layout;
 }
 
 function nearestDelta(own: number[], targets: number[], threshold: number) {
@@ -224,12 +275,13 @@ export function snapFreeLayout(
   patch: Partial<Pick<AppGridItem, "col" | "row" | "width" | "height">>,
   kind: "move" | "resize",
   enabled: boolean,
+  minWidth = 2,
 ): { layout: AppGridItem[]; guides: FreeLayoutGuides } {
   const current = layout.find((item) => item.id === id);
   if (!current) return { layout, guides: {} };
-  if (!enabled) return { layout: updateFreeLayout(layout, id, patch), guides: {} };
+  if (!enabled) return { layout: updateFreeLayout(layout, id, patch, minWidth), guides: {} };
 
-  const width = Math.min(APP_GRID_COLUMNS, Math.max(2, patch.width ?? current.width));
+  const width = Math.min(APP_GRID_COLUMNS, Math.max(minWidth, patch.width ?? current.width));
   const candidate = {
     ...current,
     ...patch,
@@ -260,9 +312,9 @@ export function snapFreeLayout(
         col: candidate.col + (xSnap?.delta ?? 0),
         row: candidate.row + (ySnap?.delta ?? 0),
       };
-  const snapped = updateFreeLayout(layout, id, snappedPatch);
+  const snapped = updateFreeLayout(layout, id, snappedPatch, minWidth);
   if (snapped === layout) {
-    return { layout: updateFreeLayout(layout, id, patch), guides: {} };
+    return { layout: updateFreeLayout(layout, id, patch, minWidth), guides: {} };
   }
   const guides: FreeLayoutGuides = {};
   if (xSnap) guides.vertical = xSnap.target;
