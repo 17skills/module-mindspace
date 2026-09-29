@@ -670,6 +670,25 @@ function BoardPage() {
     }
   }, [boardId, user?.email]);
 
+  // Entwickler-Werkzeuge nur für Administratoren und die Gruppe „Entwickler“.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { getMyRoles } = await import("@/lib/account.functions");
+        const roles = await getMyRoles();
+        if (!cancelled) setMaySeeCode(Boolean(roles.isDeveloper));
+      } catch {
+        if (!cancelled) setMaySeeCode(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+
   // Offline: Warteschlange starten und bei Netz automatisch übertragen
   useEffect(
     () =>
