@@ -521,16 +521,17 @@ function FreeAppLayout({
   actions,
   saved,
   editable,
-  compact,
+  device,
   onChange,
 }: {
   nodes: NodeRecord[];
   actions?: ModuleAction | undefined;
   saved: AppGridItem[];
   editable: boolean;
-  compact: boolean;
+  device: AppPreviewDevice;
   onChange?: ((layout: AppGridItem[]) => void) | undefined;
 }) {
+
   const gridRef = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState(() => buildFreeLayout(nodes, saved));
   const [gesture, setGesture] = useState<Gesture | null>(null);
