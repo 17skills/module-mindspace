@@ -111,6 +111,38 @@ export const adminSetRole = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Entwicklerrolle vergeben oder entziehen – gibt Zugriff auf Code- und Schnittstellen-Werkzeuge. */
+export const adminSetDeveloper = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ userId: z.string().uuid(), isDeveloper: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const db = await admin();
+    if (data.isDeveloper) {
+      const { error } = await db
+        .from("user_roles")
+        .upsert({ user_id: data.userId, role: "developer" }, { onConflict: "user_id,role" });
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await db
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.userId)
+        .eq("role", "developer");
+      if (error) throw new Error(error.message);
+    }
+    await db.from("audit_log").insert({
+      actor_id: context.userId,
+      subject_user_id: data.userId,
+      action: data.isDeveloper ? "role.developer_granted" : "role.developer_revoked",
+      object_type: "user",
+      object_id: data.userId,
+    });
+    return { ok: true };
+  });
+
 /** Konto sperren oder entsperren. */
 export const adminSetBlocked = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
