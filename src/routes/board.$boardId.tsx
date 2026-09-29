@@ -555,6 +555,21 @@ function BoardPage() {
   const [linkValue, setLinkValue] = useState("");
   const edgeLabelsOn = useEdgeLabelsVisible();
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [dock, setDock] = useState<"bottom" | "left" | "right">("bottom");
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("canvas-dock");
+    if (stored === "bottom" || stored === "left" || stored === "right") setDock(stored);
+  }, []);
+
+  const cycleDock = () => {
+    setDock((current) => {
+      const next = current === "bottom" ? "left" : current === "left" ? "right" : "bottom";
+      window.localStorage.setItem("canvas-dock", next);
+      return next;
+    });
+  };
+
   const [libraryOpen, setLibraryOpen] = useState(false);
   /** Module ids chosen through the context menu; empty means "use the canvas selection". */
   const librarySelection = useRef<string[] | null>(null);
