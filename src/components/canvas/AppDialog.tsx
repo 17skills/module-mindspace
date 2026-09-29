@@ -215,7 +215,7 @@ function DeploymentPreview({
   channels: Channels;
   onDeviceChange: (device: PreviewDevice) => void;
   onChannelChange: (channel: PreviewChannel) => void;
-  onModuleLayoutChange: (moduleLayout: AppBranding["moduleLayout"]) => void;
+  onModuleLayoutChange: (moduleLayout: AppBranding["moduleLayout"], device: LayoutDevice) => void;
   scenario: PreviewScenario;
   onScenarioChange: (scenario: PreviewScenario) => void;
   onInteraction: (label: string) => void;
@@ -303,6 +303,7 @@ function DeploymentPreview({
                   nodes={nodes}
                   layout={branding.layout}
                   moduleLayout={branding.moduleLayout}
+                  deviceLayouts={branding.deviceLayouts}
                   previewDevice={device}
                   editable={resolveLayout(branding.layout, nodes.map((node) => node.type)) === "free"}
                   onModuleLayoutChange={onModuleLayoutChange}
@@ -778,6 +779,7 @@ export function AppDialog({
                       logo: b.logo,
                       layout: b.layout,
                       moduleLayout: b.moduleLayout,
+                      ...(b.deviceLayouts ? { deviceLayouts: b.deviceLayouts } : {}),
                     }))
                   }
                   className="rounded-full border border-border px-3 py-1 text-xs hover:bg-accent"
@@ -1183,7 +1185,9 @@ export function AppDialog({
               channels={channels}
               onDeviceChange={setDevice}
               onChannelChange={setPreviewChannel}
-              onModuleLayoutChange={(moduleLayout) => setBranding((value) => ({ ...value, moduleLayout }))}
+              onModuleLayoutChange={(moduleLayout, target) => setBranding((value) => target === "desktop"
+                ? { ...value, moduleLayout }
+                : { ...value, deviceLayouts: { ...value.deviceLayouts, [target]: moduleLayout } })}
               scenario={previewScenario}
               onScenarioChange={setPreviewScenario}
               onInteraction={(label) => toast.success(`${label} geöffnet · Vorschau`)}
@@ -1205,7 +1209,9 @@ export function AppDialog({
               channels={channels}
               onDeviceChange={setDevice}
               onChannelChange={setPreviewChannel}
-              onModuleLayoutChange={(moduleLayout) => setBranding((value) => ({ ...value, moduleLayout }))}
+              onModuleLayoutChange={(moduleLayout, target) => setBranding((value) => target === "desktop"
+                ? { ...value, moduleLayout }
+                : { ...value, deviceLayouts: { ...value.deviceLayouts, [target]: moduleLayout } })}
               scenario={previewScenario}
               onScenarioChange={setPreviewScenario}
               onInteraction={(label) => toast.success(`${label} geöffnet · Vorschau`)}

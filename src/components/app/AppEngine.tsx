@@ -47,7 +47,11 @@ import {
   alignFreeLayout,
   buildFreeLayout,
   gridRowHeight,
-  stackHeight,
+  deviceForWidth,
+  minModuleWidth,
+  savedLayoutFor,
+  type DeviceLayouts,
+  type LayoutDevice,
 
   type FreeLayoutAlignment,
   type FreeLayoutGuides,
