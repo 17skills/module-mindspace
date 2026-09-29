@@ -173,7 +173,7 @@ function LibraryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boards")
-        .select("id,title,description,updated_at,user_id")
+        .select("id,title,description,updated_at,user_id,project")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data;
