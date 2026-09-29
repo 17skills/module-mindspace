@@ -520,10 +520,10 @@ export function QueryTemplates({
               {(
                 [
                   ["skip", "Überspringen"],
-                  ["update", "Aktualisieren (Kategorie, Tags ergänzen)"],
+                  ["update", "Aktualisieren (Tags ergänzen)"],
                 ] as const
               ).map(([id, label]) => (
-                <label key={id} className="flex items-start gap-2 py-0.5 text-[11px] max-sm:py-2 max-sm:text-xs">
+                <label key={id} className="flex items-start gap-2 py-0.5 text-[11px] max-sm:py-1 max-sm:text-xs">
                   <input
                     type="radio"
                     className="mt-0.5 max-sm:size-4"
