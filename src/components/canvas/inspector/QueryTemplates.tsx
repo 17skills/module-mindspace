@@ -40,6 +40,19 @@ const SORT_MODES: { id: SortMode; label: string }[] = [
   { id: "used", label: "Zuletzt verwendet" },
 ];
 
+/** Zeitstempel → „Zuletzt verwendet: heute / gestern / vor 3 Tagen / 12.09.2026“. */
+export function formatLastUsed(iso: string | null, now: Date = new Date()): string {
+  if (!iso) return "Noch nie verwendet";
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "Noch nie verwendet";
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOfDay(now) - startOfDay(then)) / 86_400_000);
+  if (days <= 0) return "Zuletzt verwendet: heute";
+  if (days === 1) return "Zuletzt verwendet: gestern";
+  if (days < 7) return `Zuletzt verwendet: vor ${days} Tagen`;
+  return `Zuletzt verwendet: ${then.toLocaleDateString("de-DE")}`;
+}
+
 /** "Umsatz, regional ,umsatz" → ["umsatz", "regional"] */
 export function parseTags(input: string): string[] {
   const seen = new Set<string>();
@@ -69,6 +82,7 @@ export function QueryTemplates({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sort, setSort] = useState<SortMode>("new");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editTags, setEditTags] = useState("");
 
@@ -170,23 +184,29 @@ export function QueryTemplates({
 
   const startEdit = (row: Row) => {
     setEditingId(row.id);
+    setEditTitle(row.title);
     setEditCategory(row.category);
     setEditTags(row.tags.join(", "));
   };
 
   const saveEdit = async (row: Row) => {
+    const title = editTitle.trim().slice(0, 120);
+    if (!title) {
+      toast.error("Der Name darf nicht leer sein.");
+      return;
+    }
     const category = editCategory.trim().slice(0, 60);
     const tags = parseTags(editTags);
     const { error } = await supabase
       .from("query_templates")
-      .update({ category, tags })
+      .update({ title, category, tags })
       .eq("id", row.id);
     if (error) {
       toast.error("Änderungen konnten nicht gespeichert werden.");
       return;
     }
     setRows((current) =>
-      current.map((r) => (r.id === row.id ? { ...r, category, tags } : r)),
+      current.map((r) => (r.id === row.id ? { ...r, title, category, tags } : r)),
     );
     setEditingId(null);
     toast.success("Vorlage aktualisiert");
@@ -296,6 +316,12 @@ export function QueryTemplates({
                         <p className="truncate text-[10px] text-muted-foreground">
                           {[row.category, ...row.tags.map((t) => `#${t}`)].filter(Boolean).join(" · ")}
                         </p>
+                        <p
+                          className="truncate text-[10px] text-muted-foreground"
+                          title={row.lastUsed ? new Date(row.lastUsed).toLocaleString("de-DE") : undefined}
+                        >
+                          {formatLastUsed(row.lastUsed)}
+                        </p>
                         {missing.length ? <p className="text-[10px] text-destructive">fehlt: {missing.join(", ")}</p> : null}
                       </div>
                       <button
@@ -307,8 +333,8 @@ export function QueryTemplates({
                       </button>
                       <button
                         className="px-1 text-muted-foreground hover:text-foreground"
-                        aria-label="Kategorie und Tags bearbeiten"
-                        title="Kategorie und Tags bearbeiten"
+                        aria-label="Name, Kategorie und Tags bearbeiten"
+                        title="Name, Kategorie und Tags bearbeiten"
                         onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
                       >
                         ✎
@@ -323,6 +349,13 @@ export function QueryTemplates({
                     </div>
                     {editingId === row.id && (
                       <div className="mt-1 space-y-1 rounded border p-1.5">
+                        <Input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          placeholder="Name der Vorlage"
+                          maxLength={120}
+                          className="h-7 text-xs"
+                        />
                         <Input
                           value={editCategory}
                           onChange={(e) => setEditCategory(e.target.value)}
