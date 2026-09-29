@@ -3,7 +3,7 @@
  * und auf andere Tabellen anwenden. Kategorie und Tags helfen beim Wiederfinden.
  * Fehlende Spalten werden vor dem Anwenden genannt, nie still ersetzt.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,13 @@ import {
   readChartConfig,
   type ChartConfig,
 } from "@/lib/chart-config";
+import {
+  MAX_IMPORT_BYTES,
+  exportTemplates,
+  parseTemplateImport,
+  templateKey,
+} from "@/lib/query-template-io";
+
 
 type Row = {
   id: string;
@@ -85,6 +92,8 @@ export function QueryTemplates({
   const [editTitle, setEditTitle] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editTags, setEditTags] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -182,6 +191,73 @@ export function QueryTemplates({
     toast.success(`„${row.title}" angewendet`);
   };
 
+  const exportAll = () => {
+    const json = exportTemplates(rows);
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `abfragevorlagen-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`${rows.length} Vorlage${rows.length === 1 ? "" : "n"} exportiert`);
+  };
+
+  const importFile = async (file: File) => {
+    if (file.size > MAX_IMPORT_BYTES) {
+      toast.error("Die Datei ist zu groß (maximal 1 MB).");
+      return;
+    }
+    const parsed = parseTemplateImport(await file.text());
+    if (parsed.error) {
+      toast.error(parsed.error);
+      return;
+    }
+    const existing = new Set(rows.map(templateKey));
+    const fresh = parsed.templates.filter((t) => {
+      const key = templateKey(t);
+      if (existing.has(key)) return false;
+      existing.add(key);
+      return true;
+    });
+    const duplicates = parsed.templates.length - fresh.length;
+    if (fresh.length === 0) {
+      toast.info(
+        parsed.skipped || duplicates
+          ? `Nichts importiert: ${duplicates} bereits vorhanden, ${parsed.skipped} ungültig.`
+          : "Die Datei enthält keine Vorlagen.",
+      );
+      return;
+    }
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return;
+    setBusy(true);
+    const { error } = await supabase.from("query_templates").insert(
+      fresh.map((t) => ({
+        user_id: auth.user.id,
+        title: t.title,
+        config: t.config as never,
+        columns: t.columns,
+        category: t.category,
+        tags: t.tags,
+      })),
+    );
+    setBusy(false);
+    if (error) {
+      toast.error("Import fehlgeschlagen. Es wurde nichts übernommen.");
+      return;
+    }
+    const notes = [
+      duplicates ? `${duplicates} bereits vorhanden` : "",
+      parsed.skipped ? `${parsed.skipped} ungültig übersprungen` : "",
+    ].filter(Boolean);
+    toast.success(
+      `${fresh.length} Vorlage${fresh.length === 1 ? "" : "n"} importiert${notes.length ? ` (${notes.join(", ")})` : ""}`,
+    );
+    void load();
+  };
+
   const startEdit = (row: Row) => {
     setEditingId(row.id);
     setEditTitle(row.title);
@@ -255,7 +331,40 @@ export function QueryTemplates({
         <Button size="sm" className="h-7 w-full text-xs" disabled={!canSave || busy} onClick={() => void save()}>
           Aktuelle Auswertung speichern
         </Button>
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 flex-1 text-xs"
+            disabled={rows.length === 0}
+            onClick={exportAll}
+          >
+            Alle exportieren (JSON)
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 flex-1 text-xs"
+            disabled={busy}
+            onClick={() => fileInput.current?.click()}
+          >
+            Importieren (JSON)
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            aria-label="Abfragevorlagen importieren"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void importFile(file);
+            }}
+          />
+        </div>
       </div>
+
 
       {rows.length === 0 ? (
         <p className="text-[11px] text-muted-foreground">Noch keine gespeicherten Auswertungen.</p>
