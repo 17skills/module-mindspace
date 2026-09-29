@@ -61,6 +61,8 @@ import {
   WIDE_TYPES,
 } from "@/lib/app-layout";
 import type { AppGridItem, AppLayout } from "@/lib/zones";
+import { isTileRole, readModuleRole } from "@/lib/module-role";
+
 
 const LeafletMap = lazy(() => import("@/components/canvas/LeafletMap"));
 
