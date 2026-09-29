@@ -11,7 +11,9 @@ import { AgentTab } from "./AgentTab";
 import { FetchTab } from "./FetchTab";
 import { GuideTab } from "./GuideTab";
 import { RefreshTab } from "./RefreshTab";
+import { RoleSection } from "./RoleSection";
 import { useSegments } from "./use-segments";
+
 
 const DATA_TYPES = ["table", "list", "chart"];
 
@@ -121,7 +123,10 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
         </Tooltip>
       </header>
 
+      <RoleSection record={record} />
+
       <nav className="flex shrink-0 gap-1 overflow-x-auto border-b px-3 py-2">
+
         {tabs.map((item) => (
           <button
             key={item.id}

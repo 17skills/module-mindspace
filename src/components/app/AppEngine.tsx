@@ -61,6 +61,8 @@ import {
   WIDE_TYPES,
 } from "@/lib/app-layout";
 import type { AppGridItem, AppLayout } from "@/lib/zones";
+import { isTileRole, readModuleRole } from "@/lib/module-role";
+
 
 const LeafletMap = lazy(() => import("@/components/canvas/LeafletMap"));
 
@@ -395,8 +397,9 @@ export function AppModule({
   );
 }
 
-/** Ordnet die gewählten Module nach dem eingestellten Aufbau an. */
-export function AppEngine({
+/** Ordnet die gewählten Kachel-Module nach dem eingestellten Aufbau an. */
+function AppStage({
+
   nodes,
   layout,
   actions,
@@ -510,6 +513,94 @@ export function AppEngine({
     </main>
   );
 }
+
+/**
+ * App-Bühne mit Rollen: Kacheln kommen ins Raster, Leitfäden stehen als
+ * Einleitung darüber, Quellen und Absprünge stehen unten. System-Prompts und
+ * Arbeitsnotizen bleiben unsichtbar.
+ */
+export function AppEngine(props: React.ComponentProps<typeof AppStage>) {
+  const all = props.nodes;
+  const tiles = all.filter((node) => isTileRole(readModuleRole(node)));
+  const briefings = all.filter((node) => readModuleRole(node) === "briefing");
+  const rules = all.filter((node) => readModuleRole(node) === "rule");
+  const links = all.filter((node) => {
+    const role = readModuleRole(node);
+    return role === "reference" || role === "action";
+  });
+
+  if (tiles.length === all.length) return <AppStage {...props} />;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {briefings.length > 0 && (
+        <section className="space-y-2 border-b border-border/70 px-4 py-4">
+          {briefings.map((node) => (
+            <div key={node.id}>
+              {node.title ? <p className="text-sm font-medium">{node.title}</p> : null}
+              {node.content ? (
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{node.content}</p>
+              ) : null}
+            </div>
+          ))}
+        </section>
+      )}
+
+      <AppStage {...props} nodes={tiles} />
+
+      {(links.length > 0 || rules.length > 0) && (
+        <footer className="space-y-3 border-t border-border/70 px-4 py-4 text-sm">
+          {rules.length > 0 && (
+            <div>
+              <p className="module-eyebrow text-muted-foreground">Kriterien</p>
+              <ul className="mt-1 space-y-1 text-muted-foreground">
+                {rules.map((node) => (
+                  <li key={node.id} className="whitespace-pre-wrap">
+                    {node.title ? <span className="font-medium text-foreground">{node.title}: </span> : null}
+                    {node.content}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {links.length > 0 && (
+            <div>
+              <p className="module-eyebrow text-muted-foreground">Quellen &amp; Nachweise</p>
+              <ul className="mt-1 space-y-1">
+                {links.map((node) => {
+                  const label = node.title || node.source_url || "Quelle";
+                  const isAction = readModuleRole(node) === "action";
+                  return (
+                    <li key={node.id}>
+                      {node.source_url ? (
+                        <a
+                          href={node.source_url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className={
+                            isAction
+                              ? "inline-flex rounded-lg border border-border/70 px-3 py-1.5 text-sm hover:bg-accent/40"
+                              : "text-sm underline underline-offset-2"
+                          }
+                        >
+                          {label}
+                        </a>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{label}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </footer>
+      )}
+    </div>
+  );
+}
+
+
 
 /** Echte Geräteklasse aus der Fensterbreite; vor dem Laden gilt Desktop. */
 function useViewportDevice(): LayoutDevice {

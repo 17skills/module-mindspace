@@ -40,6 +40,16 @@ import { executiveView } from "@/lib/app-executive";
 import { deploymentIssues, previewExecutiveView, type PreviewScenario } from "@/lib/app-preview";
 import { APP_LAYOUTS, buildFreeLayout, resolveLayout, type LayoutDevice } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
+import {
+  CLASS_LABEL,
+  ROLE_LABEL,
+  TYPE_STANDARD,
+  isTileRole,
+  moduleClass,
+  readModuleRole,
+  type ModuleClass,
+} from "@/lib/module-role";
+
 import { deleteDeliveredApp, saveDeliveredApp, setDeliveredAppPublished } from "@/lib/app-config.functions";
 import {
   APP_DESIGN_PRESETS,
@@ -364,18 +374,37 @@ export function AppDialog({
         .filter((item): item is Candidate => Boolean(item)),
     [picked, candidates],
   );
-  const chosenTypes = useMemo(() => pickedNodes.map((node) => node.type), [pickedNodes]);
+  /** Nur Kachel-Module belegen einen Platz im Raster – Leitfaden und Quellen nicht. */
+  const tileNodes = useMemo(
+    () => pickedNodes.filter((node) => isTileRole(readModuleRole(node))),
+    [pickedNodes],
+  );
+  /** Auswahlliste nach Klasse gruppiert: Fachmodule, Analytik, Schnittstellen, Kontext. */
+  const grouped = useMemo(() => {
+    const order: ModuleClass[] = ["domain", "analytics", "io", "context"];
+    return order
+      .map((group) => ({
+        group,
+        items: candidates.filter((item) =>
+          isTileRole(readModuleRole(item)) ? moduleClass(item.type) === group : group === "context",
+        ),
+      }))
+      .filter((entry) => entry.items.length > 0);
+  }, [candidates]);
+  const chosenTypes = useMemo(() => tileNodes.map((node) => node.type), [tileNodes]);
   const kind: "capture" | "cockpit" =
     resolveLayout(branding.layout, chosenTypes) === "capture" ? "capture" : "cockpit";
-  const validation = useMemo(() => deploymentIssues({ title, leadQuestion, audience, nodes: pickedNodes }), [title, leadQuestion, audience, pickedNodes]);
+  const validation = useMemo(() => deploymentIssues({ title, leadQuestion, audience, nodes: tileNodes }), [title, leadQuestion, audience, tileNodes]);
   const validationMessages = Object.values(validation).filter((message): message is string => Boolean(message));
+
 
   useEffect(() => {
     if (branding.layout !== "free") return;
-    const next = buildFreeLayout(pickedNodes, branding.moduleLayout);
+    const next = buildFreeLayout(tileNodes, branding.moduleLayout);
     const before = JSON.stringify(branding.moduleLayout);
     if (JSON.stringify(next) !== before) setBranding((value) => ({ ...value, moduleLayout: next }));
-  }, [branding.layout, branding.moduleLayout, pickedNodes]);
+  }, [branding.layout, branding.moduleLayout, tileNodes]);
+
 
 
   const reload = async () => {
@@ -419,13 +448,20 @@ export function AppDialog({
   const toggle = (id: string) => {
     setPicked((list) => {
       if (list.includes(id)) return list.filter((item) => item !== id);
-      if (list.length >= MAX_APP_MODULES) {
-        toast.error(`Höchstens ${MAX_APP_MODULES} Module pro App`);
+      const candidate = candidates.find((item) => item.id === id);
+      const isTile = candidate ? isTileRole(readModuleRole(candidate)) : true;
+      const tiles = list.filter((other) => {
+        const node = candidates.find((item) => item.id === other);
+        return node ? isTileRole(readModuleRole(node)) : true;
+      });
+      if (isTile && tiles.length >= MAX_APP_MODULES) {
+        toast.error(`Höchstens ${MAX_APP_MODULES} Kachel-Module pro App`);
         return list;
       }
       return [...list, id];
     });
   };
+
 
   /** Reihenfolge der Module in der App verschieben. */
   const move = (index: number, delta: number) => {
@@ -675,24 +711,53 @@ export function AppDialog({
                 </button>
               </p>
             )}
-            <div className={`grid max-h-60 gap-1 overflow-auto rounded-lg border p-2 ${showValidation && validation.metrics ? "border-destructive" : "border-border/70"}`}>
-              {candidates.map((item) => (
-                <label key={item.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(item.id)}
-                    onChange={() => toggle(item.id)}
-                  />
-                  <span className="truncate">{moduleLabel(item.type, item.title ?? "")}</span>
-                </label>
+            <div className={`max-h-72 space-y-3 overflow-auto rounded-lg border p-2 ${showValidation && validation.metrics ? "border-destructive" : "border-border/70"}`}>
+              {grouped.map(({ group, items }) => (
+                <section key={group}>
+                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {CLASS_LABEL[group]}
+                  </p>
+                  <div className="grid gap-1">
+                    {items.map((item) => {
+                      const role = readModuleRole(item);
+                      const standard = TYPE_STANDARD[item.type];
+                      return (
+                        <label key={item.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={picked.includes(item.id)}
+                            onChange={() => toggle(item.id)}
+                          />
+                          <span className="truncate">{moduleLabel(item.type, item.title ?? "")}</span>
+                          {standard ? (
+                            <span className="shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {standard}
+                            </span>
+                          ) : null}
+                          {!isTileRole(role) ? (
+                            <span className="shrink-0 rounded-full bg-accent/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {ROLE_LABEL[role]}
+                            </span>
+                          ) : null}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
               {candidates.length === 0 && (
                 <p className="text-sm text-muted-foreground">Dieser Scope hat noch keine Module.</p>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {picked.length} / {MAX_APP_MODULES} gewählt
+              {tileNodes.length} / {MAX_APP_MODULES} Kachel-Module
+              {pickedNodes.length > tileNodes.length
+                ? ` · ${pickedNodes.length - tileNodes.length} Leitfaden/Quellen`
+                : ""}
               {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Die Rolle eines Text- oder Linkbausteins änderst du im Scope über das Kontextfenster.
             </p>
             {showValidation && validation.metrics && <p className="text-xs text-destructive">{validation.metrics}</p>}
             {pickedNodes.length > 0 && (
@@ -702,7 +767,10 @@ export function AppDialog({
                     key={node.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-sm"
                   >
-                    <span className="truncate">{moduleLabel(node.type, node.title ?? "")}</span>
+                    <span className="truncate">
+                      {moduleLabel(node.type, node.title ?? "")}
+                      {isTileRole(readModuleRole(node)) ? "" : ` · ${ROLE_LABEL[readModuleRole(node)]}`}
+                    </span>
                     <span className="flex shrink-0 gap-1">
                       <Button
                         size="sm"
@@ -725,6 +793,7 @@ export function AppDialog({
                 ))}
               </ul>
             )}
+
             <div>
               <span className="module-eyebrow text-muted-foreground">Aufbau</span>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">

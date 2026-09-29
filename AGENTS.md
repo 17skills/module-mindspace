@@ -29,3 +29,5 @@
 - Jeder Modellaufruf läuft durch `redactPii` (src/lib/pii.ts; Modus aus `boards.rules.privacy`, Baustein nur verschärfend) und jeder Ablaufschritt durch `withTimeout` (src/lib/budget.ts, Durchlauf max. 300 s). Warum: keine persönlichen Daten an Modelle, keine endlos laufenden Schritte.
 
 - Diagramme werden nie automatisch aus Spaltenreihenfolge befüllt: `metadata.chartConfig` (src/lib/chart-config.ts) hält die vom Nutzer bestätigte Auswahl; gerechnet wird in Postgres (`dataset_aggregate`) oder im Experten-Modus über `dataset_sql` (nur lesend, Alias `data`, 3 s, 500 Zeilen). Warum: der Nutzer bestimmt die Daten, die Datenbank die Last.
+
+- Jede Karte trägt eine Rolle (`metadata.moduleRole`, src/lib/module-role.ts): nur `module` belegt eine Kachel in der App, `briefing` rendert als Einleitung, `reference`/`action` als Fußbereich, `prompt`/`draft` nie. Warum: Textzettel und Links sind Prompt, Quelle oder Notiz — die App bleibt trotzdem aufgeräumt.
