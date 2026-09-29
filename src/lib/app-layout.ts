@@ -7,6 +7,17 @@ import type { AppGridItem, AppLayout } from "@/lib/zones";
 
 export const APP_GRID_COLUMNS = 12;
 export const APP_GRID_ROW_HEIGHT = 72;
+/** Auf dem Tablet bleiben zwölf Spalten, die Zeilen werden etwas flacher. */
+export const APP_GRID_ROW_HEIGHT_TABLET = 56;
+
+/** Geräteklassen der Vorschau. „auto“ folgt der echten Fensterbreite. */
+export type AppPreviewDevice = "auto" | "desktop" | "tablet" | "mobile";
+
+/** Zeilenhöhe der freien Fläche je Geräteklasse. */
+export function gridRowHeight(device: AppPreviewDevice): number {
+  return device === "tablet" ? APP_GRID_ROW_HEIGHT_TABLET : APP_GRID_ROW_HEIGHT;
+}
+
 
 export const APP_LAYOUTS: { id: AppLayout; label: string; hint: string }[] = [
   {
@@ -69,6 +80,24 @@ export const WIDE_TYPES = new Set(["map", "risk", "inspect", "table", "chart"]);
 /** Module, die als kompakte Kennzahl-Kachel dargestellt werden. */
 export const TILE_TYPES = new Set(["metric", "gauge", "calc", "sheet", "api"]);
 
+/**
+ * Startgröße eines Moduls auf der freien Fläche. Gewichtige Module (Karte,
+ * Tabelle, Risiko) bekommen viel Fläche, Kennzahlen bleiben kompakt.
+ */
+export function defaultModuleSize(type: string): { width: number; height: number } {
+  if (TILE_TYPES.has(type)) return { width: 4, height: 2 };
+  if (WIDE_TYPES.has(type)) return { width: 8, height: 6 };
+  return { width: 6, height: 3 };
+}
+
+/** Mindesthöhe in Pixeln, wenn die App einspaltig auf dem Handy läuft. */
+export function stackHeight(type: string): number {
+  if (TILE_TYPES.has(type)) return 110;
+  if (WIDE_TYPES.has(type)) return 360;
+  return 200;
+}
+
+
 function overlaps(a: AppGridItem, b: AppGridItem) {
   return !(
     a.col + a.width <= b.col ||
@@ -98,8 +127,10 @@ export function buildFreeLayout(nodes: NodeRecord[], saved: AppGridItem[]): AppG
   const result: AppGridItem[] = [];
   for (const node of nodes) {
     const stored = saved.find((item) => item.id === node.id);
-    const width = Math.min(12, Math.max(2, stored?.width ?? (TILE_TYPES.has(node.type) ? 4 : 6)));
-    const height = Math.min(10, Math.max(2, stored?.height ?? (WIDE_TYPES.has(node.type) ? 6 : 3)));
+    const preset = defaultModuleSize(node.type);
+    const width = Math.min(12, Math.max(2, stored?.width ?? preset.width));
+    const height = Math.min(10, Math.max(2, stored?.height ?? preset.height));
+
     let candidate: AppGridItem = {
       id: node.id,
       col: Math.min(13 - width, Math.max(1, stored?.col ?? 1)),

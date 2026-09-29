@@ -43,8 +43,12 @@ import {
 import {
   APP_GRID_COLUMNS,
   APP_GRID_ROW_HEIGHT,
+  type AppPreviewDevice,
   alignFreeLayout,
   buildFreeLayout,
+  gridRowHeight,
+  stackHeight,
+
   type FreeLayoutAlignment,
   type FreeLayoutGuides,
   resolveLayout,
@@ -394,7 +398,7 @@ export function AppEngine({
   actions,
   moduleLayout = [],
   editable = false,
-  compactPreview = false,
+  previewDevice = "auto",
   onModuleLayoutChange,
   executiveOverride,
   onModuleClick,
@@ -404,7 +408,7 @@ export function AppEngine({
   actions?: ModuleAction | undefined;
   moduleLayout?: AppGridItem[];
   editable?: boolean;
-  compactPreview?: boolean;
+  previewDevice?: AppPreviewDevice;
   onModuleLayoutChange?: (layout: AppGridItem[]) => void;
   executiveOverride?: Executive | undefined;
   onModuleClick?: ((nodeId: string) => void) | undefined;
@@ -427,11 +431,12 @@ export function AppEngine({
         actions={actions}
         saved={moduleLayout}
         editable={editable}
-        compact={compactPreview}
+        device={previewDevice}
         onChange={onModuleLayoutChange}
       />
     );
   }
+
 
   if (mode === "executive") {
     return <ExecutiveLayout nodes={nodes} actions={actions} viewOverride={executiveOverride} onModuleClick={onModuleClick} />;
@@ -520,17 +525,21 @@ function FreeAppLayout({
   actions,
   saved,
   editable,
-  compact,
+  device,
   onChange,
 }: {
   nodes: NodeRecord[];
   actions?: ModuleAction | undefined;
   saved: AppGridItem[];
   editable: boolean;
-  compact: boolean;
+  device: AppPreviewDevice;
   onChange?: ((layout: AppGridItem[]) => void) | undefined;
 }) {
+
+  const mobile = device === "mobile";
+  const rowHeight = gridRowHeight(device);
   const gridRef = useRef<HTMLElement>(null);
+
   const [layout, setLayout] = useState(() => buildFreeLayout(nodes, saved));
   const [gesture, setGesture] = useState<Gesture | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -587,7 +596,7 @@ function FreeAppLayout({
   };
 
   useEffect(() => {
-    if (!editable || compact) return;
+    if (!editable || mobile) return;
     const keydown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
       event.preventDefault();
@@ -596,7 +605,7 @@ function FreeAppLayout({
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
-  }, [editable, compact, layout, past, future]);
+  }, [editable, mobile, layout, past, future]);
 
   useEffect(() => {
     if (!gesture) return;
@@ -605,7 +614,7 @@ function FreeAppLayout({
       if (!gridWidth) return { layout: gesture.initialLayout, guides: {} };
       const columnStep = (gridWidth - 32 - 11 * 12) / APP_GRID_COLUMNS + 12;
       const dx = Math.round((event.clientX - gesture.startX) / columnStep);
-      const dy = Math.round((event.clientY - gesture.startY) / (APP_GRID_ROW_HEIGHT + 12));
+      const dy = Math.round((event.clientY - gesture.startY) / (rowHeight + 12));
       const patch = gesture.kind === "move"
         ? { col: gesture.initial.col + dx, row: gesture.initial.row + dy }
         : { width: gesture.initial.width + dx, height: gesture.initial.height + dy };
@@ -658,7 +667,9 @@ function FreeAppLayout({
     commit(layout, next);
   };
 
-  const mobile = compact;
+  // „auto“ folgt der Fensterbreite: unter 768 px eine Spalte, darüber das Raster.
+  const collapseClass = device === "auto" ? "max-md:!block max-md:space-y-3" : "";
+
   return (
     <main className="relative flex flex-1 flex-col" data-layout="free">
       {editable && !mobile ? (
@@ -690,15 +701,16 @@ function FreeAppLayout({
       <section
         ref={gridRef}
         data-grid-visible={showGrid && editable && !mobile}
-        className={`free-layout-grid relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : "max-md:!block max-md:space-y-3"}`}
-        style={mobile ? undefined : { gridAutoRows: `${APP_GRID_ROW_HEIGHT}px` }}
+        className={`free-layout-grid relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : collapseClass}`}
+        style={mobile ? undefined : { gridAutoRows: `${rowHeight}px` }}
+
         onClick={() => setSelected([])}
       >
         {guides.vertical != null ? (
           <span className="pointer-events-none absolute inset-y-0 z-20 w-px bg-ring" style={{ left: `calc(1rem + (100% - 2rem) * ${guides.vertical - 1} / 12)` }} />
         ) : null}
         {guides.horizontal != null ? (
-          <span className="pointer-events-none absolute inset-x-0 z-20 h-px bg-ring" style={{ top: `${16 + (guides.horizontal - 1) * (APP_GRID_ROW_HEIGHT + 12)}px` }} />
+          <span className="pointer-events-none absolute inset-x-0 z-20 h-px bg-ring" style={{ top: `${16 + (guides.horizontal - 1) * (rowHeight + 12)}px` }} />
         ) : null}
       {nodes.map((node) => {
         const item = layout.find((entry) => entry.id === node.id);
@@ -708,10 +720,11 @@ function FreeAppLayout({
             key={node.id}
             data-grid-id={node.id}
             className={`relative min-h-0 ${selected.includes(node.id) ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""} ${mobile ? "mb-3" : "max-md:mb-3"}`}
-            style={mobile ? undefined : {
+            style={mobile ? { minHeight: stackHeight(node.type) } : {
               gridColumn: `${item.col} / span ${item.width}`,
               gridRow: `${item.row} / span ${item.height}`,
             }}
+
             onClick={(event) => select(event, node.id)}
           >
             <AppModule node={node} nodes={nodes} actions={actions} className="h-full" />

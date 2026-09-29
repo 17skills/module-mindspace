@@ -17,6 +17,7 @@ import {
   Pencil,
   PlugZap,
   Smartphone,
+  Tablet,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -93,6 +94,22 @@ const BACKGROUNDS: { id: AppBackground; label: string }[] = [
   { id: "paper", label: "Papier" },
   { id: "grid", label: "Raster" },
 ];
+
+/** Geräteklassen der Vorschau – Handy einspaltig, Tablet und Desktop im Raster. */
+type PreviewDevice = "desktop" | "tablet" | "mobile";
+
+const DEVICES: { id: PreviewDevice; label: string; icon: typeof Monitor }[] = [
+  { id: "desktop", label: "Desktop-Vorschau (1200 px)", icon: Monitor },
+  { id: "tablet", label: "Tablet-Vorschau (820 px)", icon: Tablet },
+  { id: "mobile", label: "Handy-Vorschau (390 px)", icon: Smartphone },
+];
+
+const DEVICE_FRAME: Record<PreviewDevice, string> = {
+  desktop: "w-full",
+  tablet: "w-full max-w-[820px]",
+  mobile: "w-full max-w-[390px]",
+};
+
 
 const PROMPTS = [
   "Zeig mir alle offenen Befunde mit Dringlichkeit 1–3 und schlage eine Reihenfolge für diese Woche vor.",
@@ -193,10 +210,10 @@ function DeploymentPreview({
   leadQuestion: string;
   kind: "capture" | "cockpit";
   branding: AppBranding;
-  device: "desktop" | "mobile";
+  device: PreviewDevice;
   channel: PreviewChannel;
   channels: Channels;
-  onDeviceChange: (device: "desktop" | "mobile") => void;
+  onDeviceChange: (device: PreviewDevice) => void;
   onChannelChange: (channel: PreviewChannel) => void;
   onModuleLayoutChange: (moduleLayout: AppBranding["moduleLayout"]) => void;
   scenario: PreviewScenario;
@@ -229,20 +246,27 @@ function DeploymentPreview({
         )}
         {channel === "cockpit" && (
           <div className="ml-auto flex gap-1">
-            <Button size="icon" variant={device === "desktop" ? "secondary" : "ghost"} aria-label="Desktop-Vorschau" title="Desktop-Vorschau" onClick={() => onDeviceChange("desktop")}>
-              <Monitor className="size-3.5" />
-            </Button>
-            <Button size="icon" variant={device === "mobile" ? "secondary" : "ghost"} aria-label="Mobile Vorschau" title="Mobile Vorschau" onClick={() => onDeviceChange("mobile")}>
-              <Smartphone className="size-3.5" />
-            </Button>
+            {DEVICES.map(({ id, label, icon: Icon }) => (
+              <Button
+                key={id}
+                size="icon"
+                variant={device === id ? "secondary" : "ghost"}
+                aria-label={label}
+                title={label}
+                onClick={() => onDeviceChange(id)}
+              >
+                <Icon className="size-3.5" />
+              </Button>
+            ))}
           </div>
         )}
+
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
         {channel === "teams" ? (
           <TeamsCardPreview title={title} description={description} leadQuestion={leadQuestion} view={previewView} onOpen={() => onInteraction("Direktlink zum Cockpit")} onDriverOpen={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? "Kennzahl")} />
         ) : (
-          <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${device === "mobile" ? "w-full max-w-[390px]" : "w-full"}`}>
+          <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${DEVICE_FRAME[device]}`}>
             <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}>
               <header className="app-header grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-2.5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -252,7 +276,10 @@ function DeploymentPreview({
                     <div className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
                   )}
                   <div className="min-w-0">
-                    <span className="module-eyebrow block text-muted-foreground">Entscheider-Cockpit</span>
+                    <span className="module-eyebrow block text-muted-foreground">
+                      {APP_LAYOUTS.find((option) => option.id === branding.layout)?.label ?? "Entscheider-Cockpit"}
+                    </span>
+
                     <span className="block truncate font-display text-base font-semibold">{title.trim() || "Titel der App"}</span>
                   </div>
                 </div>
@@ -274,13 +301,15 @@ function DeploymentPreview({
               ) : (
                 <AppEngine
                   nodes={nodes}
-                  layout="executive"
+                  layout={branding.layout}
                   moduleLayout={branding.moduleLayout}
-                  compactPreview={device === "mobile"}
+                  previewDevice={device}
+                  editable={resolveLayout(branding.layout, nodes.map((node) => node.type)) === "free"}
                   onModuleLayoutChange={onModuleLayoutChange}
                   executiveOverride={previewView}
                   onModuleClick={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? nodes.find((node) => node.id === id)?.title ?? "Modul")}
                 />
+
               )}
             </div>
           </div>
@@ -308,7 +337,7 @@ export function AppDialog({
   const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [device, setDevice] = useState<PreviewDevice>("desktop");
   const [previewChannel, setPreviewChannel] = useState<PreviewChannel>("cockpit");
   const [scope, setScope] = useState<"read" | "write">("read");
   const [channels, setChannels] = useState<Channels>(DEFAULT_CHANNELS);
