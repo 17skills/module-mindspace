@@ -3753,13 +3753,48 @@ function BoardPage() {
 
             <ConflictBar onChoose={resolveWith} />
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 flex justify-center px-4">
+            <div
+              className={cn(
+                "pointer-events-none absolute z-20 flex",
+                dock === "bottom" && "inset-x-0 bottom-5 justify-center px-4",
+                dock === "left" && "inset-y-0 left-3 items-center py-16",
+                dock === "right" && "inset-y-0 right-3 items-center py-16",
+              )}
+            >
               <div
                 className={cn(
-                  "pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur",
+                  "pointer-events-auto flex gap-1 rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-[var(--shadow-float)] backdrop-blur",
+                  dock === "bottom"
+                    ? "max-w-full items-center overflow-x-auto"
+                    : "max-h-full flex-col items-center overflow-y-auto",
                   !canEdit && "hidden",
                 )}
               >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label={`Leiste andocken – aktuell ${
+                        dock === "bottom" ? "unten" : dock === "left" ? "links" : "rechts"
+                      }`}
+                      onClick={cycleDock}
+                    >
+                      {dock === "bottom" ? (
+                        <PanelBottom className="size-5" />
+                      ) : dock === "left" ? (
+                        <PanelLeft className="size-5" />
+                      ) : (
+                        <PanelRight className="size-5" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side={dock === "bottom" ? "top" : dock}>
+                    Leiste verschieben: unten, links, rechts
+                  </TooltipContent>
+                </Tooltip>
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
