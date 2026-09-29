@@ -20,6 +20,7 @@ import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
 import {
   Download,
+  Code2,
   FileCode2,
   Globe,
   LayoutGrid,
@@ -581,6 +582,8 @@ function BoardPage() {
   /** Module ids chosen through the context menu; empty means "use the canvas selection". */
   const librarySelection = useRef<string[] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
+  const [maySeeCode, setMaySeeCode] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
   const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
