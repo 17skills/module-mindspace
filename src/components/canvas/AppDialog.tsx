@@ -38,7 +38,7 @@ import { AppEngine } from "@/components/app/AppEngine";
 import { AppAccessManager } from "@/components/app/AppAccessManager";
 import { executiveView } from "@/lib/app-executive";
 import { deploymentIssues, previewExecutiveView, type PreviewScenario } from "@/lib/app-preview";
-import { APP_LAYOUTS, buildFreeLayout, resolveLayout } from "@/lib/app-layout";
+import { APP_LAYOUTS, buildFreeLayout, resolveLayout, type LayoutDevice } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
 import { deleteDeliveredApp, saveDeliveredApp, setDeliveredAppPublished } from "@/lib/app-config.functions";
 import {
