@@ -116,7 +116,29 @@ describe("Aufbauten", () => {
     expect(screen.queryByRole("button", { name: "Raster anzeigen" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /verschieben/ })).not.toBeInTheDocument();
   });
+
+  it("hält auf dem Tablet das mehrspaltige Raster mit flacheren Zeilen", () => {
+    const { container } = render(
+      <AppEngine nodes={[metricNode, mapNode]} layout="free" editable previewDevice="tablet" />,
+    );
+    const grid = container.querySelector("[data-layout='free'] section") as HTMLElement;
+    expect(grid.className).toContain("grid-cols-12");
+    expect(grid.className).not.toContain("!block");
+    expect(grid.style.gridAutoRows).toBe("56px");
+    expect(screen.getByRole("button", { name: /Netzkarte Größe ändern/ })).toBeInTheDocument();
+  });
+
+  it("stapelt auf dem Handy einspaltig mit modulgerechten Höhen", () => {
+    const { container } = render(
+      <AppEngine nodes={[metricNode, mapNode]} layout="free" previewDevice="mobile" />,
+    );
+    const tiles = Array.from(container.querySelectorAll("[data-grid-id]")) as HTMLElement[];
+    expect(tiles).toHaveLength(2);
+    expect(tiles[0]!.style.minHeight).toBe("110px");
+    expect(tiles[1]!.style.minHeight).toBe("360px");
+  });
 });
+
 
 describe("Vorschau auf Desktop und Handy", () => {
   const widths = [
