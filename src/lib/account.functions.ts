@@ -383,3 +383,15 @@ export const updateAppAccess = createServerFn({ method: "POST" })
     });
     return row;
   });
+
+/** Leichter Rollencheck für Oberflächen: Wer darf Entwickler-Werkzeuge sehen? */
+export const getMyRoles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [adminRole, devRole] = await Promise.all([
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "developer" }),
+    ]);
+    const isAdmin = Boolean(adminRole.data);
+    return { isAdmin, isDeveloper: isAdmin || Boolean(devRole.data) };
+  });
