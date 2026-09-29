@@ -85,6 +85,7 @@ export const getAccount = createServerFn({ method: "POST" })
 
     // Erstes Konto der Installation wird Administrator, sonst wäre der Bereich für niemanden erreichbar.
     let isAdmin = (roles.data ?? []).some((row) => row.role === "admin");
+    const isDeveloper = (roles.data ?? []).some((row) => row.role === "developer");
     if (!isAdmin) {
       const { count } = await db
         .from("user_roles")
@@ -110,6 +111,7 @@ export const getAccount = createServerFn({ method: "POST" })
       deletionRequestedAt: profile?.deletion_requested_at ?? null,
       settings: settingsFrom(profile?.settings),
       isAdmin,
+      isDeveloper: isDeveloper || isAdmin,
       consents: Object.fromEntries(
         (consents.data ?? []).map((row) => [row.purpose, { granted: row.granted, at: row.updated_at }]),
       ) as Record<string, { granted: boolean; at: string }>,
@@ -380,4 +382,16 @@ export const updateAppAccess = createServerFn({ method: "POST" })
       objectId: data.appId,
     });
     return row;
+  });
+
+/** Leichter Rollencheck für Oberflächen: Wer darf Entwickler-Werkzeuge sehen? */
+export const getMyRoles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [adminRole, devRole] = await Promise.all([
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "developer" }),
+    ]);
+    const isAdmin = Boolean(adminRole.data);
+    return { isAdmin, isDeveloper: isAdmin || Boolean(devRole.data) };
   });

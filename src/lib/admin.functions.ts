@@ -54,6 +54,7 @@ export const adminListUsers = createServerFn({ method: "POST" })
       scopeCount.set(row.user_id, (scopeCount.get(row.user_id) ?? 0) + 1);
     }
     const adminIds = new Set((roles.data ?? []).filter((r) => r.role === "admin").map((r) => r.user_id));
+    const devIds = new Set((roles.data ?? []).filter((r) => r.role === "developer").map((r) => r.user_id));
 
     return {
       total: profiles.count ?? 0,
@@ -70,6 +71,7 @@ export const adminListUsers = createServerFn({ method: "POST" })
         lastActive: profile.updated_at,
         scopes: scopeCount.get(profile.id) ?? 0,
         isAdmin: adminIds.has(profile.id),
+        isDeveloper: devIds.has(profile.id),
       })),
     };
   });
@@ -103,6 +105,38 @@ export const adminSetRole = createServerFn({ method: "POST" })
       actor_id: context.userId,
       subject_user_id: data.userId,
       action: data.isAdmin ? "role.admin_granted" : "role.admin_revoked",
+      object_type: "user",
+      object_id: data.userId,
+    });
+    return { ok: true };
+  });
+
+/** Entwicklerrolle vergeben oder entziehen – gibt Zugriff auf Code- und Schnittstellen-Werkzeuge. */
+export const adminSetDeveloper = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ userId: z.string().uuid(), isDeveloper: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const db = await admin();
+    if (data.isDeveloper) {
+      const { error } = await db
+        .from("user_roles")
+        .upsert({ user_id: data.userId, role: "developer" }, { onConflict: "user_id,role" });
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await db
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.userId)
+        .eq("role", "developer");
+      if (error) throw new Error(error.message);
+    }
+    await db.from("audit_log").insert({
+      actor_id: context.userId,
+      subject_user_id: data.userId,
+      action: data.isDeveloper ? "role.developer_granted" : "role.developer_revoked",
       object_type: "user",
       object_id: data.userId,
     });

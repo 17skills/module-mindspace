@@ -10,6 +10,7 @@ import {
   adminPurgeAuditLog,
   adminSetBlocked,
   adminSetRole,
+  adminSetDeveloper,
 } from "@/lib/admin.functions";
 import { adminCreateUser, adminUsageSummary } from "@/lib/admin-users.functions";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ function AdminPage() {
   const log = useQuery({ queryKey: ["admin-audit"], queryFn: () => adminListAuditLog() });
   const usage = useQuery({ queryKey: ["admin-usage"], queryFn: () => adminUsageSummary({ data: { days: 30 } }) });
   const total = users.data?.total ?? 0;
-  const [filter, setFilter] = useState<"all" | "admin" | "blocked" | "deletion">("all");
+  const [filter, setFilter] = useState<"all" | "admin" | "developer" | "blocked" | "deletion">("all");
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -62,6 +63,12 @@ function AdminPage() {
 
   const role = useMutation({
     mutationFn: (input: { userId: string; isAdmin: boolean }) => adminSetRole({ data: input }),
+    onSuccess: refresh,
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const developer = useMutation({
+    mutationFn: (input: { userId: string; isDeveloper: boolean }) => adminSetDeveloper({ data: input }),
     onSuccess: refresh,
     onError: (error: Error) => toast.error(error.message),
   });
@@ -135,6 +142,7 @@ function AdminPage() {
             <SelectContent>
               <SelectItem value="all">Alle Konten</SelectItem>
               <SelectItem value="admin">Administratoren</SelectItem>
+              <SelectItem value="developer">Entwickler</SelectItem>
               <SelectItem value="blocked">Gesperrt</SelectItem>
               <SelectItem value="deletion">Löschung vorgemerkt</SelectItem>
             </SelectContent>
@@ -148,6 +156,7 @@ function AdminPage() {
                 <TableHead>Scopes</TableHead>
                 <TableHead>Dabei seit</TableHead>
                 <TableHead>Administrator</TableHead>
+                <TableHead>Entwickler</TableHead>
                 <TableHead>Gesperrt</TableHead>
                 <TableHead>Details</TableHead>
               </TableRow>
@@ -157,11 +166,13 @@ function AdminPage() {
                 .filter((user) =>
                   filter === "admin"
                     ? user.isAdmin
-                    : filter === "blocked"
-                      ? user.blocked
-                      : filter === "deletion"
-                        ? Boolean(user.deletionRequestedAt)
-                        : true,
+                    : filter === "developer"
+                      ? user.isDeveloper
+                      : filter === "blocked"
+                        ? user.blocked
+                        : filter === "deletion"
+                          ? Boolean(user.deletionRequestedAt)
+                          : true,
                 )
                 .map((user) => (
                 <TableRow key={user.id}>
@@ -182,6 +193,15 @@ function AdminPage() {
                       checked={user.isAdmin}
                       aria-label={`Administrator für ${user.email}`}
                       onCheckedChange={(next) => role.mutate({ userId: user.id, isAdmin: next })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={user.isDeveloper}
+                      aria-label={`Entwickler für ${user.email}`}
+                      onCheckedChange={(next) =>
+                        developer.mutate({ userId: user.id, isDeveloper: next })
+                      }
                     />
                   </TableCell>
                   <TableCell>

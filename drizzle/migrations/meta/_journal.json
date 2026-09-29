@@ -274,6 +274,13 @@
       "when": 1790671356115,
       "tag": "0038_boards_project",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790694140626,
+      "tag": "0039_add_developer_role",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
 import {
   Download,
+  Code2,
   FileCode2,
   Globe,
   LayoutGrid,
@@ -166,6 +167,7 @@ import { readSource } from "@/lib/source-node";
 import { readDatasetRef } from "@/lib/datasets";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
+import { DeveloperDialog } from "@/components/canvas/DeveloperDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
 import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste, Undo2, Redo2 } from "lucide-react";
@@ -581,6 +583,8 @@ function BoardPage() {
   /** Module ids chosen through the context menu; empty means "use the canvas selection". */
   const librarySelection = useRef<string[] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
+  const [maySeeCode, setMaySeeCode] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
   const [appPreselect, setAppPreselect] = useState<string[]>([]);
   const [isOwner, setIsOwner] = useState(false);
@@ -666,6 +670,25 @@ function BoardPage() {
       toast.error(error instanceof Error ? error.message : "Bauplan fehlgeschlagen");
     }
   }, [boardId, user?.email]);
+
+  // Entwickler-Werkzeuge nur für Administratoren und die Gruppe „Entwickler“.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { getMyRoles } = await import("@/lib/account.functions");
+        const roles = await getMyRoles();
+        if (!cancelled) setMaySeeCode(Boolean(roles.isDeveloper));
+      } catch {
+        if (!cancelled) setMaySeeCode(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
 
   // Offline: Warteschlange starten und bei Netz automatisch übertragen
   useEffect(
@@ -3511,6 +3534,23 @@ function BoardPage() {
               </TooltipTrigger>
               <TooltipContent>Bauplan herunterladen (YAML + Markdown)</TooltipContent>
             </Tooltip>
+
+            {maySeeCode ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-9 rounded-lg"
+                    aria-label="Code und Schnittstelle"
+                    onClick={() => setDevOpen(true)}
+                  >
+                    <Code2 className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Code &amp; Schnittstelle (nur Entwickler)</TooltipContent>
+              </Tooltip>
+            ) : null}
           </div>
 
           {isOwner ? (
@@ -3537,6 +3577,16 @@ function BoardPage() {
       </header>
 
       <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
+
+      {maySeeCode ? (
+        <DeveloperDialog
+          open={devOpen}
+          onOpenChange={setDevOpen}
+          boardId={boardId}
+          isOwner={isOwner}
+          authorEmail={user?.email ?? ""}
+        />
+      ) : null}
 
       <AppDialog
         open={appOpen}
