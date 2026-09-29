@@ -322,6 +322,9 @@ const READABLE_WIDTH: Record<string, number> = {
 
 const MODULE_GAP = 32;
 const NON_BLOCKING_TYPES = new Set(["zone", "frame", "shape", "text"]);
+/** Reine Arbeitsflächen-Objekte ohne Rolle in einer App. */
+const APP_EXCLUDED_TYPES = new Set(["zone", "frame", "shape", "chat"]);
+
 const AUTO_HEIGHT_TYPES = new Set([
   "note",
   "calc",
@@ -3545,8 +3548,9 @@ function BoardPage() {
           .map((node) => records[node.id])
           .filter(
             (record): record is NonNullable<typeof record> =>
-              Boolean(record) && !NON_BLOCKING_TYPES.has(record?.type ?? ""),
+              Boolean(record) && !APP_EXCLUDED_TYPES.has(record?.type ?? ""),
           )}
+
       />
 
       <LibraryDialog
