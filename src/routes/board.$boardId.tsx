@@ -167,6 +167,7 @@ import { readSource } from "@/lib/source-node";
 import { readDatasetRef } from "@/lib/datasets";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
 import { ShareDialog } from "@/components/canvas/ShareDialog";
+import { DeveloperDialog } from "@/components/canvas/DeveloperDialog";
 import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@/lib/templates";
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
 import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste, Undo2, Redo2 } from "lucide-react";
@@ -3533,6 +3534,23 @@ function BoardPage() {
               </TooltipTrigger>
               <TooltipContent>Bauplan herunterladen (YAML + Markdown)</TooltipContent>
             </Tooltip>
+
+            {maySeeCode ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-9 rounded-lg"
+                    aria-label="Code und Schnittstelle"
+                    onClick={() => setDevOpen(true)}
+                  >
+                    <Code2 className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Code &amp; Schnittstelle (nur Entwickler)</TooltipContent>
+              </Tooltip>
+            ) : null}
           </div>
 
           {isOwner ? (
@@ -3559,6 +3577,16 @@ function BoardPage() {
       </header>
 
       <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} />
+
+      {maySeeCode ? (
+        <DeveloperDialog
+          open={devOpen}
+          onOpenChange={setDevOpen}
+          boardId={boardId}
+          isOwner={isOwner}
+          authorEmail={user?.email ?? ""}
+        />
+      ) : null}
 
       <AppDialog
         open={appOpen}
