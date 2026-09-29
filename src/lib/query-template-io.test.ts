@@ -3,6 +3,7 @@ import { EMPTY_CHART_CONFIG, type ChartConfig } from "@/lib/chart-config";
 import {
   TEMPLATE_FORMAT,
   classifyImport,
+  planUpdates,
   exportTemplates,
   parseTemplateImport,
   templateKey,
@@ -57,5 +58,21 @@ describe("Abfragevorlagen Export/Import", () => {
     const { fresh, duplicates } = classifyImport([a, b, { ...b }], [{ title: "a", config }]);
     expect(fresh.map((t) => t.title)).toEqual(["B"]);
     expect(duplicates.map((t) => t.title)).toEqual(["A", "B"]);
+  });
+
+  it("plant Aktualisierungen: Tags ergänzen, Kategorie setzen, Identisches ohne Hinweis", () => {
+    const existing = [
+      { id: "1", title: "A", config, columns: ["x"], category: "", tags: ["q3"] },
+      { id: "2", title: "B", config, columns: ["x"], category: "Fin", tags: ["a"] },
+    ];
+    const incoming = [
+      { title: "A", config, columns: ["x"], category: "Vertrieb", tags: ["q3", "nord"] },
+      { title: "B", config, columns: ["x"], category: "", tags: ["a"] },
+    ];
+    const plans = planUpdates(incoming, existing);
+    expect(plans[0]).toMatchObject({ id: "1", category: "Vertrieb", tags: ["q3", "nord"] });
+    expect(plans[0]!.note).toBe("Kategorie wird gesetzt · 1 Tag kommen dazu");
+    expect(plans[1]!.note).toBe("");
+    expect(plans[1]!.category).toBe("Fin");
   });
 });

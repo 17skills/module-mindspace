@@ -1,11 +1,33 @@
 /**
  * Abfragevorlagen: bewährte Diagramm-Auswertungen (Auswahl oder SQL) speichern
- * und auf andere Tabellen anwenden. Kategorie und Tags helfen beim Wiederfinden.
+ * und auf andere Tabellen anwenden. Bedienung bewusst schlank: wenige Symbolknöpfe,
+ * Erfassungsformular nur bei Bedarf, Sammelaktionen nur bei Auswahl.
  * Fehlende Spalten werden vor dem Anwenden genannt, nie still ersetzt.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  Check,
+  Clock,
+  Download,
+  MoreHorizontal,
+  Pencil,
+  Play,
+  Plus,
+  Search,
+  Tag,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,9 +48,10 @@ import {
   classifyImport,
   exportTemplates,
   parseTemplateImport,
+  planUpdates,
   type PortableTemplate,
+  type UpdatePlan,
 } from "@/lib/query-template-io";
-
 
 type Row = {
   id: string;
@@ -38,6 +61,17 @@ type Row = {
   category: string;
   tags: string[];
   lastUsed: string | null;
+};
+
+type ImportPreview = {
+  fileName: string;
+  fresh: PortableTemplate[];
+  updates: UpdatePlan[];
+  identical: number;
+  skipped: number;
+  mode: "skip" | "update";
+  pickedFresh: Set<number>;
+  pickedUpdates: Set<string>;
 };
 
 type SortMode = "new" | "alpha" | "used";
@@ -71,6 +105,35 @@ export function parseTags(input: string): string[] {
   return [...seen].slice(0, 20);
 }
 
+function IconBtn({
+  icon: Icon,
+  label,
+  active,
+  disabled,
+  onClick,
+}: {
+  icon: typeof Plus;
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border transition-colors disabled:opacity-40 ${
+        active ? "border-primary bg-accent/60" : "text-muted-foreground hover:bg-secondary"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
 export function QueryTemplates({
   config,
   available,
@@ -81,6 +144,8 @@ export function QueryTemplates({
   onApply: (config: ChartConfig) => void;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [showTags, setShowTags] = useState(false);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -95,15 +160,7 @@ export function QueryTemplates({
   const [editTags, setEditTags] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [preview, setPreview] = useState<{
-    fileName: string;
-    fresh: PortableTemplate[];
-    duplicates: PortableTemplate[];
-    skipped: number;
-    picked: Set<number>;
-  } | null>(null);
-
-
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -156,14 +213,13 @@ export function QueryTemplates({
           r.category.toLowerCase().includes(q) ||
           r.tags.some((t) => t.includes(q))),
     );
-    if (sort === "alpha")
-      return [...filtered].sort((a, b) => a.title.localeCompare(b.title, "de"));
-    if (sort === "used")
-      return [...filtered].sort((a, b) => (b.lastUsed ?? "").localeCompare(a.lastUsed ?? ""));
+    if (sort === "alpha") return [...filtered].sort((a, b) => a.title.localeCompare(b.title, "de"));
+    if (sort === "used") return [...filtered].sort((a, b) => (b.lastUsed ?? "").localeCompare(a.lastUsed ?? ""));
     return filtered;
   }, [rows, search, activeCategory, activeTag, sort]);
 
   const canSave = config.mode === "sql" ? !!config.sql.trim() : !!config.groupBy;
+  const currentColumns = useMemo(() => configColumns(config, available), [config, available]);
 
   const save = async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -173,7 +229,7 @@ export function QueryTemplates({
       user_id: auth.user.id,
       title: name.trim().slice(0, 120) || (config.mode === "sql" ? "SQL-Auswertung" : "Auswertung"),
       config: config as never,
-      columns: configColumns(config, available),
+      columns: currentColumns,
       category: category.trim().slice(0, 60),
       tags: parseTags(tagInput),
     });
@@ -183,7 +239,9 @@ export function QueryTemplates({
       return;
     }
     setName("");
+    setCategory("");
     setTagInput("");
+    setShowForm(false);
     toast.success("Abfragevorlage gespeichert");
     void load();
   };
@@ -214,10 +272,6 @@ export function QueryTemplates({
     toast.success(`${list.length} Vorlage${list.length === 1 ? "" : "n"} exportiert`);
   };
 
-  const exportAll = () => download(rows);
-
-  const exportSelected = () => download(rows.filter((r) => selected.has(r.id)));
-
   const toggleSelected = (id: string) =>
     setSelected((current) => {
       const next = new Set(current);
@@ -225,12 +279,20 @@ export function QueryTemplates({
       return next;
     });
 
-  const togglePicked = (index: number) =>
+  const togglePickedFresh = (index: number) =>
     setPreview((current) => {
       if (!current) return current;
-      const picked = new Set(current.picked);
+      const picked = new Set(current.pickedFresh);
       if (!picked.delete(index)) picked.add(index);
-      return { ...current, picked };
+      return { ...current, pickedFresh: picked };
+    });
+
+  const togglePickedUpdate = (id: string) =>
+    setPreview((current) => {
+      if (!current) return current;
+      const picked = new Set(current.pickedUpdates);
+      if (!picked.delete(id)) picked.add(id);
+      return { ...current, pickedUpdates: picked };
     });
 
   /** Liest die Datei und zeigt eine Vorschau — gespeichert wird erst nach Bestätigung. */
@@ -249,46 +311,67 @@ export function QueryTemplates({
       return;
     }
     const { fresh, duplicates } = classifyImport(parsed.templates, rows);
+    const plans = planUpdates(duplicates, rows);
+    const updates = plans.filter((p) => p.note);
     setPreview({
       fileName: file.name.slice(0, 60),
       fresh,
-      duplicates,
+      updates,
+      identical: duplicates.length - updates.length,
       skipped: parsed.skipped,
-      picked: new Set(fresh.map((_, index) => index)),
+      mode: updates.length ? "update" : "skip",
+      pickedFresh: new Set(fresh.map((_, index) => index)),
+      pickedUpdates: new Set(updates.map((u) => u.id)),
     });
   };
 
+  const importCount = preview
+    ? preview.pickedFresh.size + (preview.mode === "update" ? preview.pickedUpdates.size : 0)
+    : 0;
+
   const confirmImport = async () => {
-    if (!preview) return;
-    const fresh = preview.fresh.filter((_, index) => preview.picked.has(index));
-    if (fresh.length === 0) return;
-    const duplicates = preview.duplicates.length;
-    const parsed = { skipped: preview.skipped };
+    if (!preview || importCount === 0) return;
+    const fresh = preview.fresh.filter((_, index) => preview.pickedFresh.has(index));
+    const updates =
+      preview.mode === "update" ? preview.updates.filter((u) => preview.pickedUpdates.has(u.id)) : [];
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return;
     setBusy(true);
-    const { error } = await supabase.from("query_templates").insert(
-      fresh.map((t) => ({
-        user_id: auth.user.id,
-        title: t.title,
-        config: t.config as never,
-        columns: t.columns,
-        category: t.category,
-        tags: t.tags,
-      })),
-    );
-    setBusy(false);
-    if (error) {
-      toast.error("Import fehlgeschlagen. Es wurde nichts übernommen.");
-      return;
+    if (fresh.length) {
+      const { error } = await supabase.from("query_templates").insert(
+        fresh.map((t) => ({
+          user_id: auth.user.id,
+          title: t.title,
+          config: t.config as never,
+          columns: t.columns,
+          category: t.category,
+          tags: t.tags,
+        })),
+      );
+      if (error) {
+        setBusy(false);
+        toast.error("Import fehlgeschlagen. Es wurde nichts übernommen.");
+        return;
+      }
     }
-    const notes = [
-      duplicates ? `${duplicates} bereits vorhanden` : "",
-      parsed.skipped ? `${parsed.skipped} ungültig übersprungen` : "",
+    let failed = 0;
+    for (const u of updates) {
+      const { error } = await supabase
+        .from("query_templates")
+        .update({ category: u.category, tags: u.tags, columns: u.columns })
+        .eq("id", u.id);
+      if (error) failed += 1;
+    }
+    setBusy(false);
+    setPreview(null);
+    const parts = [
+      fresh.length ? `${fresh.length} neu` : "",
+      updates.length - failed ? `${updates.length - failed} aktualisiert` : "",
+      preview.skipped ? `${preview.skipped} ungültig übersprungen` : "",
+      failed ? `${failed} Aktualisierung${failed === 1 ? "" : "en"} fehlgeschlagen` : "",
     ].filter(Boolean);
-    toast.success(
-      `${fresh.length} Vorlage${fresh.length === 1 ? "" : "n"} importiert${notes.length ? ` (${notes.join(", ")})` : ""}`,
-    );
+    if (failed) toast.error(`Import teilweise: ${parts.join(", ")}`);
+    else toast.success(`Import abgeschlossen: ${parts.join(", ")}`);
     void load();
   };
 
@@ -307,17 +390,12 @@ export function QueryTemplates({
     }
     const category = editCategory.trim().slice(0, 60);
     const tags = parseTags(editTags);
-    const { error } = await supabase
-      .from("query_templates")
-      .update({ title, category, tags })
-      .eq("id", row.id);
+    const { error } = await supabase.from("query_templates").update({ title, category, tags }).eq("id", row.id);
     if (error) {
       toast.error("Änderungen konnten nicht gespeichert werden.");
       return;
     }
-    setRows((current) =>
-      current.map((r) => (r.id === row.id ? { ...r, title, category, tags } : r)),
-    );
+    setRows((current) => current.map((r) => (r.id === row.id ? { ...r, title, category, tags } : r)));
     setEditingId(null);
     toast.success("Vorlage aktualisiert");
   };
@@ -329,6 +407,11 @@ export function QueryTemplates({
       return;
     }
     setRows((current) => current.filter((r) => r.id !== id));
+    setSelected((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
   };
 
   const chip = (active: boolean) =>
@@ -338,133 +421,201 @@ export function QueryTemplates({
 
   return (
     <div className="space-y-2 border-t pt-2">
-      <p className="text-[11px] font-medium">Abfragevorlagen</p>
-
-      <div className="space-y-1">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name der Vorlage" className="h-7 text-xs" />
-        <div className="grid grid-cols-2 gap-1">
-          <Input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="Kategorie"
-            list="query-template-categories"
-            className="h-7 text-xs"
-          />
-          <Input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            placeholder="Tags, mit Komma"
-            className="h-7 text-xs"
-          />
-        </div>
-        <datalist id="query-template-categories">
-          {categories.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-        <Button size="sm" className="h-7 w-full text-xs" disabled={!canSave || busy} onClick={() => void save()}>
-          Aktuelle Auswertung speichern
-        </Button>
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 flex-1 text-xs"
-            disabled={rows.length === 0}
-            onClick={exportAll}
-          >
-            Alle exportieren (JSON)
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 flex-1 text-xs"
-            disabled={busy}
-            onClick={() => fileInput.current?.click()}
-          >
-            Importieren (JSON)
-          </Button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            aria-label="Abfragevorlagen importieren"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) void previewFile(file);
-            }}
-          />
-        </div>
-        {preview && (
-          <div className="space-y-1.5 rounded border p-1.5" role="region" aria-label="Import-Vorschau">
-            <p className="text-[11px] font-medium">
-              Vorschau: {preview.fileName}
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              {preview.fresh.length} neu · {preview.duplicates.length} bereits vorhanden (werden übersprungen) ·{" "}
-              {preview.skipped} ungültig
-            </p>
-            {preview.fresh.length > 0 && (
-              <ul className="max-h-40 space-y-0.5 overflow-y-auto">
-                {preview.fresh.map((t, index) => (
-                  <li key={index} className="flex items-start gap-1 text-[11px]">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={preview.picked.has(index)}
-                      onChange={() => togglePicked(index)}
-                      aria-label={`„${t.title}" importieren`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate">
-                        {t.title}
-                        <span className="ml-1 text-muted-foreground">({t.config.mode === "sql" ? "SQL" : "Auswahl"})</span>
-                      </p>
-                      <p className="truncate text-[10px] text-muted-foreground">
-                        {[t.category, ...t.tags.map((tag) => `#${tag}`)].filter(Boolean).join(" · ") || "ohne Kategorie"}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {preview.duplicates.length > 0 && (
-              <ul className="max-h-24 space-y-0.5 overflow-y-auto text-[10px] text-muted-foreground">
-                {preview.duplicates.map((t, index) => (
-                  <li key={index} className="truncate line-through">
-                    {t.title}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="flex gap-1">
-              <Button
-                size="sm"
-                className="h-6 flex-1 text-[11px]"
-                disabled={busy || preview.picked.size === 0}
-                onClick={() => void confirmImport()}
-              >
-                {preview.picked.size} importieren
-              </Button>
-              <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setPreview(null)}>
-                Abbrechen
-              </Button>
-            </div>
-          </div>
-        )}
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-[11px] font-semibold uppercase tracking-wide">
+          Abfragevorlagen{rows.length ? ` (${rows.length})` : ""}
+        </p>
+        <IconBtn
+          icon={showForm ? X : Plus}
+          label={showForm ? "Formular schließen" : "Aktuelle Auswertung als Vorlage speichern"}
+          active={showForm}
+          onClick={() => setShowForm((v) => !v)}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              title="Import und Export"
+              aria-label="Import und Export"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="text-xs">
+            <DropdownMenuItem disabled={busy} onSelect={() => fileInput.current?.click()}>
+              <Upload className="mr-2 h-3.5 w-3.5" /> Importieren (JSON)
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={rows.length === 0} onSelect={() => download(rows)}>
+              <Download className="mr-2 h-3.5 w-3.5" /> Alle exportieren (JSON)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={visible.length === 0}
+              onSelect={() => setSelected(new Set(visible.map((r) => r.id)))}
+            >
+              <Check className="mr-2 h-3.5 w-3.5" /> Alle angezeigten wählen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          aria-label="Abfragevorlagen importieren"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void previewFile(file);
+          }}
+        />
       </div>
 
+      {showForm && (
+        <div className="space-y-1.5 rounded-lg border bg-secondary/30 p-2">
+          <p className="text-[11px] font-medium">Neue Vorlage speichern</p>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name der Vorlage" className="h-7 text-xs" />
+          <div className="grid grid-cols-2 gap-1">
+            <Input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Kategorie"
+              list="query-template-categories"
+              className="h-7 text-xs"
+            />
+            <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="Tags, mit Komma" className="h-7 text-xs" />
+          </div>
+          <datalist id="query-template-categories">
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <p className="text-[10px] text-muted-foreground">
+            {canSave
+              ? `Spalten (automatisch): ${currentColumns.join(", ") || "keine"}`
+              : "Wähle zuerst eine Auswertung (Gruppierung oder SQL)."}
+          </p>
+          <div className="flex justify-end gap-1">
+            <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setShowForm(false)}>
+              Abbrechen
+            </Button>
+            <Button size="sm" className="h-6 text-[11px]" disabled={!canSave || busy} onClick={() => void save()}>
+              Speichern
+            </Button>
+          </div>
+        </div>
+      )}
 
-
+      {preview && (
+        <div className="space-y-1.5 rounded-lg border p-2" role="region" aria-label="Import-Vorschau">
+          <p className="truncate text-[11px] font-semibold">Import: {preview.fileName}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {preview.fresh.length} neu · {preview.updates.length + preview.identical} vorhanden
+            {preview.identical ? ` (${preview.identical} identisch)` : ""} · {preview.skipped} ungültig
+          </p>
+          {preview.updates.length > 0 && (
+            <div className="space-y-0.5 rounded-md border p-1.5">
+              <p className="text-[11px] font-medium">Bei gleichem Namen und gleicher Auswertung</p>
+              {(
+                [
+                  ["skip", "Überspringen"],
+                  ["update", "Aktualisieren (Kategorie, Tags ergänzen)"],
+                ] as const
+              ).map(([id, label]) => (
+                <label key={id} className="flex items-center gap-2 text-[11px]">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    checked={preview.mode === id}
+                    onChange={() => setPreview({ ...preview, mode: id })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          )}
+          <ul className="max-h-56 space-y-1 overflow-y-auto">
+            {preview.fresh.map((t, index) => (
+              <li key={`n${index}`} className="flex items-start gap-2 rounded-md border px-1.5 py-1">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={preview.pickedFresh.has(index)}
+                  onChange={() => togglePickedFresh(index)}
+                  aria-label={`„${t.title}" importieren`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-medium">
+                    <span className="mr-1 rounded bg-accent/60 px-1 text-[9px] uppercase">Neu</span>
+                    {t.title}
+                  </p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {[t.config.mode === "sql" ? "SQL" : "Auswahl", t.category, ...t.tags.map((tag) => `#${tag}`)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+              </li>
+            ))}
+            {preview.updates.map((u) => (
+              <li
+                key={u.id}
+                className={`flex items-start gap-2 rounded-md border px-1.5 py-1 ${preview.mode === "skip" ? "opacity-50" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  disabled={preview.mode === "skip"}
+                  checked={preview.mode === "update" && preview.pickedUpdates.has(u.id)}
+                  onChange={() => togglePickedUpdate(u.id)}
+                  aria-label={`„${u.title}" aktualisieren`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-medium">
+                    <span className="mr-1 rounded border px-1 text-[9px] uppercase">
+                      {preview.mode === "update" ? "Aktualisieren" : "Übersprungen"}
+                    </span>
+                    {u.title}
+                  </p>
+                  <p className="text-[10px] text-primary">{u.note}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              className="h-7 flex-1 gap-1 text-[11px]"
+              disabled={busy || importCount === 0}
+              onClick={() => void confirmImport()}
+            >
+              <Check className="h-3.5 w-3.5" /> {importCount} übernehmen
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setPreview(null)}>
+              Abbrechen
+            </Button>
+          </div>
+        </div>
+      )}
 
       {rows.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground">Noch keine gespeicherten Auswertungen.</p>
+        <p className="text-[11px] text-muted-foreground">
+          Noch keine gespeicherten Auswertungen. Mit + speicherst du die aktuelle als Vorlage.
+        </p>
       ) : (
         <>
           <div className="flex gap-1">
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Vorlagen suchen" className="h-7 flex-1 text-xs" />
+            <div className="flex h-7 flex-1 items-center gap-1 rounded-md border px-2">
+              <Search className="h-3 w-3 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Vorlagen suchen"
+                aria-label="Vorlagen suchen"
+                className="w-full bg-transparent text-xs outline-none"
+              />
+            </div>
             <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
               <SelectTrigger className="h-7 w-[8.5rem] text-xs" aria-label="Sortierung">
                 <SelectValue />
@@ -477,6 +628,14 @@ export function QueryTemplates({
                 ))}
               </SelectContent>
             </Select>
+            {allTags.length > 0 && (
+              <IconBtn
+                icon={Tag}
+                label="Nach Tag filtern"
+                active={showTags || !!activeTag}
+                onClick={() => setShowTags((v) => !v)}
+              />
+            )}
           </div>
           {categories.length > 0 && (
             <div className="flex flex-wrap gap-1">
@@ -490,7 +649,7 @@ export function QueryTemplates({
               ))}
             </div>
           )}
-          {allTags.length > 0 && (
+          {(showTags || activeTag) && allTags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {allTags.map((t) => (
                 <button key={t} className={chip(activeTag === t)} onClick={() => setActiveTag(activeTag === t ? null : t)}>
@@ -499,21 +658,16 @@ export function QueryTemplates({
               ))}
             </div>
           )}
-          {visible.length > 0 && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
-              <button className="underline hover:text-foreground" onClick={() => setSelected(new Set(visible.map((r) => r.id)))}>
-                Alle angezeigten wählen
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-accent/40 px-2 py-1 text-[11px]">
+              <span className="flex-1">{selected.size} gewählt</span>
+              <button
+                className="flex items-center gap-1 rounded-md border bg-background px-2 py-0.5 hover:bg-secondary"
+                onClick={() => download(rows.filter((r) => selected.has(r.id)))}
+              >
+                <Download className="h-3 w-3" /> Export ({selected.size})
               </button>
-              {selected.size > 0 && (
-                <>
-                  <button className="underline hover:text-foreground" onClick={() => setSelected(new Set())}>
-                    Auswahl aufheben
-                  </button>
-                  <Button size="sm" variant="outline" className="ml-auto h-6 text-[11px]" onClick={exportSelected}>
-                    Auswahl exportieren ({selected.size})
-                  </Button>
-                </>
-              )}
+              <IconBtn icon={X} label="Auswahl aufheben" onClick={() => setSelected(new Set())} />
             </div>
           )}
           {visible.length === 0 ? (
@@ -523,58 +677,68 @@ export function QueryTemplates({
               {visible.map((row) => {
                 const missing = missingTemplateColumns(row.columns, available);
                 return (
-                  <li key={row.id} className="text-[11px]">
-                    <div className="flex items-start gap-1">
+                  <li key={row.id} className="rounded-lg border px-2 py-1.5 text-[11px]">
+                    <div className="flex items-start gap-2">
                       <input
                         type="checkbox"
-                        className="mt-0.5"
+                        className="mt-1"
                         checked={selected.has(row.id)}
                         onChange={() => toggleSelected(row.id)}
                         aria-label={`„${row.title}" zum Export auswählen`}
                       />
                       <div className="min-w-0 flex-1" title={row.columns.join(", ")}>
-                        <p className="truncate">
+                        <p className="truncate font-medium">
                           {row.title}
-                          <span className="ml-1 text-muted-foreground">
+                          <span className="ml-1 font-normal text-muted-foreground">
                             ({row.config.mode === "sql" ? "SQL" : "Auswahl"})
                           </span>
                         </p>
-                        <p className="truncate text-[10px] text-muted-foreground">
-                          {[row.category, ...row.tags.map((t) => `#${t}`)].filter(Boolean).join(" · ")}
-                        </p>
-                        <p
-                          className="truncate text-[10px] text-muted-foreground"
-                          title={row.lastUsed ? new Date(row.lastUsed).toLocaleString("de-DE") : undefined}
-                        >
-                          {formatLastUsed(row.lastUsed)}
-                        </p>
-                        {missing.length ? <p className="text-[10px] text-destructive">fehlt: {missing.join(", ")}</p> : null}
+                        {row.category || row.tags.length ? (
+                          <p className="truncate text-[10px] text-muted-foreground">
+                            {[row.category, ...row.tags.map((t) => `#${t}`)].filter(Boolean).join(" · ")}
+                          </p>
+                        ) : null}
+                        {missing.length ? (
+                          <p className="text-[10px] text-destructive">Fehlt: {missing.join(", ")}</p>
+                        ) : (
+                          <p
+                            className="flex items-center gap-1 truncate text-[10px] text-muted-foreground"
+                            title={row.lastUsed ? new Date(row.lastUsed).toLocaleString("de-DE") : undefined}
+                          >
+                            <Clock className="h-3 w-3 shrink-0" />
+                            {formatLastUsed(row.lastUsed).replace("Zuletzt verwendet: ", "")}
+                          </p>
+                        )}
                       </div>
-                      <button
-                        className="rounded-full border px-2 py-0.5 hover:bg-secondary disabled:opacity-40"
+                      <IconBtn
+                        icon={Play}
+                        label={missing.length ? "Nicht anwendbar: Spalten fehlen" : "Auf diese Tabelle anwenden"}
                         disabled={missing.length > 0}
                         onClick={() => apply(row)}
-                      >
-                        Anwenden
-                      </button>
-                      <button
-                        className="px-1 text-muted-foreground hover:text-foreground"
-                        aria-label="Name, Kategorie und Tags bearbeiten"
-                        title="Name, Kategorie und Tags bearbeiten"
-                        onClick={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        className="px-1 text-muted-foreground hover:text-foreground"
-                        aria-label="Vorlage löschen"
-                        onClick={() => void remove(row.id)}
-                      >
-                        ×
-                      </button>
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Weitere Aktionen für „${row.title}"`}
+                            title="Mehr"
+                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary"
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="text-xs">
+                          <DropdownMenuItem onSelect={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}>
+                            <Pencil className="mr-2 h-3.5 w-3.5" /> Bearbeiten
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onSelect={() => void remove(row.id)}>
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Löschen
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     {editingId === row.id && (
-                      <div className="mt-1 space-y-1 rounded border p-1.5">
+                      <div className="mt-1.5 space-y-1 rounded-md border bg-secondary/30 p-1.5">
                         <Input
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
@@ -589,18 +753,13 @@ export function QueryTemplates({
                           list="query-template-categories"
                           className="h-7 text-xs"
                         />
-                        <Input
-                          value={editTags}
-                          onChange={(e) => setEditTags(e.target.value)}
-                          placeholder="Tags, mit Komma"
-                          className="h-7 text-xs"
-                        />
-                        <div className="flex gap-1">
-                          <Button size="sm" className="h-6 flex-1 text-[11px]" onClick={() => void saveEdit(row)}>
-                            Speichern
-                          </Button>
+                        <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="Tags, mit Komma" className="h-7 text-xs" />
+                        <div className="flex justify-end gap-1">
                           <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setEditingId(null)}>
                             Abbrechen
+                          </Button>
+                          <Button size="sm" className="h-6 text-[11px]" onClick={() => void saveEdit(row)}>
+                            Speichern
                           </Button>
                         </div>
                       </div>
