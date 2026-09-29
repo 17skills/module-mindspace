@@ -11,5 +11,5 @@
 - [x] Datenschutz-Filter vor KI-Aufrufen (PII maskieren)
 - [x] Datenschutz-Modus je Scope in der Oberfläche umschaltbar (heute nur über Scope-Regeln `privacy`)
 - [x] Entwürfe der Vorlagen-Navigation als Ansicht /entwuerfe zeigen
-- [ ] Importvorschau: vorhandene Vorlagen aktualisieren statt überspringen
-- [ ] Textknöpfe reduzieren, Navigation der Abfragevorlagen aufräumen
+- [x] Importvorschau: vorhandene Vorlagen aktualisieren statt überspringen
+- [x] Textknöpfe reduzieren, Navigation der Abfragevorlagen aufräumen
