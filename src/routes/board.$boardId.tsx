@@ -79,7 +79,11 @@ import {
   LockOpen,
   MessageSquare,
   NotebookPen,
+  PanelBottom,
+  PanelLeft,
+  PanelRight,
   PanelsTopLeft,
+
   Share2,
   StickyNote,
   Type,
