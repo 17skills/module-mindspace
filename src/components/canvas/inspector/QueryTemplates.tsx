@@ -125,7 +125,7 @@ function IconBtn({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border transition-colors disabled:opacity-40 ${
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border transition-colors max-sm:h-9 max-sm:w-9 disabled:opacity-40 ${
         active ? "border-primary bg-accent/60" : "text-muted-foreground hover:bg-secondary"
       }`}
     >
@@ -437,12 +437,12 @@ export function QueryTemplates({
               type="button"
               title="Import und Export"
               aria-label="Import und Export"
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary max-sm:h-9 max-sm:w-9"
             >
               <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="text-xs">
+          <DropdownMenuContent align="end" className="text-xs max-sm:text-sm [&_[role=menuitem]]:max-sm:py-2.5">
             <DropdownMenuItem disabled={busy} onSelect={() => fileInput.current?.click()}>
               <Upload className="mr-2 h-3.5 w-3.5" /> Importieren (JSON)
             </DropdownMenuItem>
@@ -606,18 +606,18 @@ export function QueryTemplates({
       ) : (
         <>
           <div className="flex gap-1">
-            <div className="flex h-7 flex-1 items-center gap-1 rounded-md border px-2">
-              <Search className="h-3 w-3 text-muted-foreground" />
+            <div className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md border px-2 max-sm:h-9">
+              <Search className="h-3 w-3 shrink-0 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Vorlagen suchen"
                 aria-label="Vorlagen suchen"
-                className="w-full bg-transparent text-xs outline-none"
+                className="w-full min-w-0 bg-transparent text-xs outline-none max-sm:text-base"
               />
             </div>
             <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
-              <SelectTrigger className="h-7 w-[8.5rem] text-xs" aria-label="Sortierung">
+              <SelectTrigger className="h-7 w-[7.5rem] shrink-0 text-xs max-sm:h-9 sm:w-[8.5rem]" aria-label="Sortierung">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -722,12 +722,12 @@ export function QueryTemplates({
                             type="button"
                             aria-label={`Weitere Aktionen für „${row.title}"`}
                             title="Mehr"
-                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary"
+                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary max-sm:h-9 max-sm:w-9"
                           >
                             <MoreHorizontal className="h-3.5 w-3.5" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="text-xs">
+                        <DropdownMenuContent align="end" className="text-xs max-sm:text-sm [&_[role=menuitem]]:max-sm:py-2.5">
                           <DropdownMenuItem onSelect={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}>
                             <Pencil className="mr-2 h-3.5 w-3.5" /> Bearbeiten
                           </DropdownMenuItem>
