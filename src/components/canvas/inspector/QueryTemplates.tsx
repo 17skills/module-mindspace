@@ -23,9 +23,10 @@ import {
 } from "@/lib/chart-config";
 import {
   MAX_IMPORT_BYTES,
+  classifyImport,
   exportTemplates,
   parseTemplateImport,
-  templateKey,
+  type PortableTemplate,
 } from "@/lib/query-template-io";
 
 
