@@ -394,7 +394,7 @@ export function AppEngine({
   actions,
   moduleLayout = [],
   editable = false,
-  compactPreview = false,
+  previewDevice = "auto",
   onModuleLayoutChange,
   executiveOverride,
   onModuleClick,
@@ -404,7 +404,7 @@ export function AppEngine({
   actions?: ModuleAction | undefined;
   moduleLayout?: AppGridItem[];
   editable?: boolean;
-  compactPreview?: boolean;
+  previewDevice?: AppPreviewDevice;
   onModuleLayoutChange?: (layout: AppGridItem[]) => void;
   executiveOverride?: Executive | undefined;
   onModuleClick?: ((nodeId: string) => void) | undefined;
@@ -427,11 +427,12 @@ export function AppEngine({
         actions={actions}
         saved={moduleLayout}
         editable={editable}
-        compact={compactPreview}
+        device={previewDevice}
         onChange={onModuleLayoutChange}
       />
     );
   }
+
 
   if (mode === "executive") {
     return <ExecutiveLayout nodes={nodes} actions={actions} viewOverride={executiveOverride} onModuleClick={onModuleClick} />;
