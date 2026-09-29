@@ -4,6 +4,7 @@
  * Erfassungsformular nur bei Bedarf, Sammelaktionen nur bei Auswahl.
  * Fehlende Spalten werden vor dem Anwenden genannt, nie still ersetzt.
  */
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -29,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,

@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -110,9 +111,14 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
           </p>
           <p className="truncate font-display text-sm font-semibold">{record.title ?? "Ohne Titel"}</p>
         </div>
-        <Button size="icon" variant="ghost" className="h-7 w-7 max-sm:h-9 max-sm:w-9" aria-label="Inspector schließen" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-7 w-7 max-sm:h-9 max-sm:w-9" aria-label="Inspector schließen" onClick={onClose}>
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Schließen</TooltipContent>
+        </Tooltip>
       </header>
 
       <nav className="flex shrink-0 gap-1 overflow-x-auto border-b px-3 py-2">
