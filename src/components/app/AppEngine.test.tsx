@@ -112,7 +112,7 @@ describe("Aufbauten", () => {
   });
 
   it("blendet Editorwerkzeuge in der Handy-Vorschau aus", () => {
-    render(<AppEngine nodes={[metricNode, riskNode]} layout="free" editable compactPreview />);
+    render(<AppEngine nodes={[metricNode, riskNode]} layout="free" editable previewDevice="mobile" />);
     expect(screen.queryByRole("button", { name: "Raster anzeigen" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /verschieben/ })).not.toBeInTheDocument();
   });
