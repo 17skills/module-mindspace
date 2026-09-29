@@ -596,7 +596,7 @@ function FreeAppLayout({
   };
 
   useEffect(() => {
-    if (!editable || compact) return;
+    if (!editable || mobile) return;
     const keydown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
       event.preventDefault();
