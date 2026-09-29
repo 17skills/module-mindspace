@@ -23,9 +23,10 @@ import {
 } from "@/lib/chart-config";
 import {
   MAX_IMPORT_BYTES,
+  classifyImport,
   exportTemplates,
   parseTemplateImport,
-  templateKey,
+  type PortableTemplate,
 } from "@/lib/query-template-io";
 
 
@@ -93,6 +94,15 @@ export function QueryTemplates({
   const [editCategory, setEditCategory] = useState("");
   const [editTags, setEditTags] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<{
+    fileName: string;
+    fresh: PortableTemplate[];
+    duplicates: PortableTemplate[];
+    skipped: number;
+    picked: Set<number>;
+  } | null>(null);
+
 
 
   const load = useCallback(async () => {
@@ -191,8 +201,8 @@ export function QueryTemplates({
     toast.success(`„${row.title}" angewendet`);
   };
 
-  const exportAll = () => {
-    const json = exportTemplates(rows);
+  const download = (list: Row[]) => {
+    const json = exportTemplates(list);
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
     const link = document.createElement("a");
     link.href = url;
@@ -201,10 +211,30 @@ export function QueryTemplates({
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    toast.success(`${rows.length} Vorlage${rows.length === 1 ? "" : "n"} exportiert`);
+    toast.success(`${list.length} Vorlage${list.length === 1 ? "" : "n"} exportiert`);
   };
 
-  const importFile = async (file: File) => {
+  const exportAll = () => download(rows);
+
+  const exportSelected = () => download(rows.filter((r) => selected.has(r.id)));
+
+  const toggleSelected = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  const togglePicked = (index: number) =>
+    setPreview((current) => {
+      if (!current) return current;
+      const picked = new Set(current.picked);
+      if (!picked.delete(index)) picked.add(index);
+      return { ...current, picked };
+    });
+
+  /** Liest die Datei und zeigt eine Vorschau — gespeichert wird erst nach Bestätigung. */
+  const previewFile = async (file: File) => {
     if (file.size > MAX_IMPORT_BYTES) {
       toast.error("Die Datei ist zu groß (maximal 1 MB).");
       return;
@@ -214,22 +244,26 @@ export function QueryTemplates({
       toast.error(parsed.error);
       return;
     }
-    const existing = new Set(rows.map(templateKey));
-    const fresh = parsed.templates.filter((t) => {
-      const key = templateKey(t);
-      if (existing.has(key)) return false;
-      existing.add(key);
-      return true;
-    });
-    const duplicates = parsed.templates.length - fresh.length;
-    if (fresh.length === 0) {
-      toast.info(
-        parsed.skipped || duplicates
-          ? `Nichts importiert: ${duplicates} bereits vorhanden, ${parsed.skipped} ungültig.`
-          : "Die Datei enthält keine Vorlagen.",
-      );
+    if (parsed.templates.length === 0 && parsed.skipped === 0) {
+      toast.info("Die Datei enthält keine Vorlagen.");
       return;
     }
+    const { fresh, duplicates } = classifyImport(parsed.templates, rows);
+    setPreview({
+      fileName: file.name.slice(0, 60),
+      fresh,
+      duplicates,
+      skipped: parsed.skipped,
+      picked: new Set(fresh.map((_, index) => index)),
+    });
+  };
+
+  const confirmImport = async () => {
+    if (!preview) return;
+    const fresh = preview.fresh.filter((_, index) => preview.picked.has(index));
+    if (fresh.length === 0) return;
+    const duplicates = preview.duplicates.length;
+    const parsed = { skipped: preview.skipped };
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return;
     setBusy(true);
@@ -359,11 +393,70 @@ export function QueryTemplates({
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
-              if (file) void importFile(file);
+              if (file) void previewFile(file);
             }}
           />
         </div>
+        {preview && (
+          <div className="space-y-1.5 rounded border p-1.5" role="region" aria-label="Import-Vorschau">
+            <p className="text-[11px] font-medium">
+              Vorschau: {preview.fileName}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {preview.fresh.length} neu · {preview.duplicates.length} bereits vorhanden (werden übersprungen) ·{" "}
+              {preview.skipped} ungültig
+            </p>
+            {preview.fresh.length > 0 && (
+              <ul className="max-h-40 space-y-0.5 overflow-y-auto">
+                {preview.fresh.map((t, index) => (
+                  <li key={index} className="flex items-start gap-1 text-[11px]">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={preview.picked.has(index)}
+                      onChange={() => togglePicked(index)}
+                      aria-label={`„${t.title}" importieren`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate">
+                        {t.title}
+                        <span className="ml-1 text-muted-foreground">({t.config.mode === "sql" ? "SQL" : "Auswahl"})</span>
+                      </p>
+                      <p className="truncate text-[10px] text-muted-foreground">
+                        {[t.category, ...t.tags.map((tag) => `#${tag}`)].filter(Boolean).join(" · ") || "ohne Kategorie"}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {preview.duplicates.length > 0 && (
+              <ul className="max-h-24 space-y-0.5 overflow-y-auto text-[10px] text-muted-foreground">
+                {preview.duplicates.map((t, index) => (
+                  <li key={index} className="truncate line-through">
+                    {t.title}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                className="h-6 flex-1 text-[11px]"
+                disabled={busy || preview.picked.size === 0}
+                onClick={() => void confirmImport()}
+              >
+                {preview.picked.size} importieren
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setPreview(null)}>
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
+
 
 
       {rows.length === 0 ? (
@@ -406,6 +499,23 @@ export function QueryTemplates({
               ))}
             </div>
           )}
+          {visible.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+              <button className="underline hover:text-foreground" onClick={() => setSelected(new Set(visible.map((r) => r.id)))}>
+                Alle angezeigten wählen
+              </button>
+              {selected.size > 0 && (
+                <>
+                  <button className="underline hover:text-foreground" onClick={() => setSelected(new Set())}>
+                    Auswahl aufheben
+                  </button>
+                  <Button size="sm" variant="outline" className="ml-auto h-6 text-[11px]" onClick={exportSelected}>
+                    Auswahl exportieren ({selected.size})
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
           {visible.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">Keine Vorlage passt zum Filter.</p>
           ) : (
@@ -415,6 +525,13 @@ export function QueryTemplates({
                 return (
                   <li key={row.id} className="text-[11px]">
                     <div className="flex items-start gap-1">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={selected.has(row.id)}
+                        onChange={() => toggleSelected(row.id)}
+                        aria-label={`„${row.title}" zum Export auswählen`}
+                      />
                       <div className="min-w-0 flex-1" title={row.columns.join(", ")}>
                         <p className="truncate">
                           {row.title}

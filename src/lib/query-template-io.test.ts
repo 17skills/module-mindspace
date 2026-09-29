@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_CHART_CONFIG, type ChartConfig } from "@/lib/chart-config";
 import {
   TEMPLATE_FORMAT,
+  classifyImport,
   exportTemplates,
   parseTemplateImport,
   templateKey,
@@ -48,5 +49,13 @@ describe("Abfragevorlagen Export/Import", () => {
 
   it("erkennt Duplikate über Name und Auswertung", () => {
     expect(templateKey({ title: " Je Stadt ", config })).toBe(templateKey({ title: "je stadt", config }));
+  });
+
+  it("trennt neue Vorlagen von vorhandenen und doppelten", () => {
+    const a = { title: "A", config, columns: [], category: "", tags: [] };
+    const b = { title: "B", config, columns: [], category: "", tags: [] };
+    const { fresh, duplicates } = classifyImport([a, b, { ...b }], [{ title: "a", config }]);
+    expect(fresh.map((t) => t.title)).toEqual(["B"]);
+    expect(duplicates.map((t) => t.title)).toEqual(["A", "B"]);
   });
 });

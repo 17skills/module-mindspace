@@ -106,3 +106,23 @@ export function parseTemplateImport(text: string): ImportResult {
 export function templateKey(t: { title: string; config: ChartConfig }): string {
   return `${t.title.trim().toLowerCase()}::${JSON.stringify(t.config)}`;
 }
+
+/** Teilt Importkandidaten in neu und bereits vorhanden (auch innerhalb der Datei doppelt). */
+export function classifyImport(
+  incoming: PortableTemplate[],
+  existing: { title: string; config: ChartConfig }[],
+): { fresh: PortableTemplate[]; duplicates: PortableTemplate[] } {
+  const seen = new Set(existing.map(templateKey));
+  const fresh: PortableTemplate[] = [];
+  const duplicates: PortableTemplate[] = [];
+  for (const t of incoming) {
+    const key = templateKey(t);
+    if (seen.has(key)) {
+      duplicates.push(t);
+    } else {
+      seen.add(key);
+      fresh.push(t);
+    }
+  }
+  return { fresh, duplicates };
+}
