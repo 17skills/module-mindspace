@@ -397,6 +397,7 @@ export function AppEngine({
   layout,
   actions,
   moduleLayout = [],
+  deviceLayouts,
   editable = false,
   previewDevice = "auto",
   onModuleLayoutChange,
@@ -407,13 +408,16 @@ export function AppEngine({
   layout: AppLayout;
   actions?: ModuleAction | undefined;
   moduleLayout?: AppGridItem[];
+  deviceLayouts?: DeviceLayouts | undefined;
   editable?: boolean;
   previewDevice?: AppPreviewDevice;
-  onModuleLayoutChange?: (layout: AppGridItem[]) => void;
+  onModuleLayoutChange?: (layout: AppGridItem[], device: LayoutDevice) => void;
   executiveOverride?: Executive | undefined;
   onModuleClick?: ((nodeId: string) => void) | undefined;
 }) {
   const mode = resolveLayout(layout, nodes.map((node) => node.type));
+  const viewportDevice = useViewportDevice();
+  const device: LayoutDevice = previewDevice === "auto" ? viewportDevice : previewDevice;
   if (!nodes.length) {
     return (
       <main className="flex-1 p-6 text-sm text-muted-foreground">
@@ -427,12 +431,13 @@ export function AppEngine({
   if (mode === "free") {
     return (
       <FreeAppLayout
+        key={device}
         nodes={nodes}
         actions={actions}
-        saved={moduleLayout}
+        saved={savedLayoutFor(device, moduleLayout, deviceLayouts)}
         editable={editable}
-        device={previewDevice}
-        onChange={onModuleLayoutChange}
+        device={device}
+        onChange={onModuleLayoutChange ? (next) => onModuleLayoutChange(next, device) : undefined}
       />
     );
   }
@@ -502,6 +507,24 @@ export function AppEngine({
   );
 }
 
+/** Echte Geräteklasse aus der Fensterbreite; vor dem Laden gilt Desktop. */
+function useViewportDevice(): LayoutDevice {
+  const [device, setDevice] = useState<LayoutDevice>("desktop");
+  useEffect(() => {
+    const update = () => setDevice(deviceForWidth(window.innerWidth));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return device;
+}
+
+const DEVICE_LABEL: Record<LayoutDevice, string> = {
+  desktop: "Desktop-Anordnung",
+  tablet: "Tablet-Anordnung",
+  mobile: "Handy-Anordnung",
+};
+
 type Gesture = {
   id: string;
   kind: "move" | "resize";
@@ -532,15 +555,14 @@ function FreeAppLayout({
   actions?: ModuleAction | undefined;
   saved: AppGridItem[];
   editable: boolean;
-  device: AppPreviewDevice;
+  device: LayoutDevice;
   onChange?: ((layout: AppGridItem[]) => void) | undefined;
 }) {
-
-  const mobile = device === "mobile";
+  const minWidth = minModuleWidth(device);
   const rowHeight = gridRowHeight(device);
   const gridRef = useRef<HTMLElement>(null);
 
-  const [layout, setLayout] = useState(() => buildFreeLayout(nodes, saved));
+  const [layout, setLayout] = useState(() => buildFreeLayout(nodes, saved, device));
   const [gesture, setGesture] = useState<Gesture | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [showGrid, setShowGrid] = useState(true);
@@ -552,7 +574,7 @@ function FreeAppLayout({
   const savedKey = JSON.stringify(saved);
 
   useEffect(() => {
-    const next = buildFreeLayout(nodes, saved);
+    const next = buildFreeLayout(nodes, saved, device);
     const nextKey = JSON.stringify(next);
     if (nextKey === emittedRef.current) return;
     setLayout(next);
@@ -596,7 +618,7 @@ function FreeAppLayout({
   };
 
   useEffect(() => {
-    if (!editable || mobile) return;
+    if (!editable) return;
     const keydown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
       event.preventDefault();
@@ -605,7 +627,7 @@ function FreeAppLayout({
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
-  }, [editable, mobile, layout, past, future]);
+  }, [editable, layout, past, future]);
 
   useEffect(() => {
     if (!gesture) return;
@@ -618,7 +640,7 @@ function FreeAppLayout({
       const patch = gesture.kind === "move"
         ? { col: gesture.initial.col + dx, row: gesture.initial.row + dy }
         : { width: gesture.initial.width + dx, height: gesture.initial.height + dy };
-      return snapFreeLayout(gesture.initialLayout, gesture.id, patch, gesture.kind, magnetic);
+      return snapFreeLayout(gesture.initialLayout, gesture.id, patch, gesture.kind, magnetic, minWidth);
     };
     const move = (event: PointerEvent) => {
       const preview = place(event);
@@ -663,16 +685,13 @@ function FreeAppLayout({
   };
 
   const align = (alignment: FreeLayoutAlignment) => {
-    const next = alignFreeLayout(layout, selected, alignment);
+    const next = alignFreeLayout(layout, selected, alignment, minWidth);
     commit(layout, next);
   };
 
-  // „auto“ folgt der Fensterbreite: unter 768 px eine Spalte, darüber das Raster.
-  const collapseClass = device === "auto" ? "max-md:!block max-md:space-y-3" : "";
-
   return (
-    <main className="relative flex flex-1 flex-col" data-layout="free">
-      {editable && !mobile ? (
+    <main className="relative flex flex-1 flex-col" data-layout="free" data-device={device}>
+      {editable ? (
         <div className="sticky top-0 z-30 flex flex-wrap items-center gap-1 border-b border-border/70 bg-background/95 px-3 py-2 backdrop-blur">
           <Button size="icon" variant={showGrid ? "secondary" : "ghost"} aria-label="Raster anzeigen" title="Raster anzeigen" onClick={() => setShowGrid((value) => !value)}>
             <Grid2X2 className="size-3.5" />
@@ -694,16 +713,15 @@ function FreeAppLayout({
             </Button>
           ))}
           <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-            {selected.length ? `${selected.length} gewählt` : "Module wählen"}
+            {DEVICE_LABEL[device]} · {selected.length ? `${selected.length} gewählt` : "Module wählen"}
           </span>
         </div>
       ) : null}
       <section
         ref={gridRef}
-        data-grid-visible={showGrid && editable && !mobile}
-        className={`free-layout-grid relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : collapseClass}`}
-        style={mobile ? undefined : { gridAutoRows: `${rowHeight}px` }}
-
+        data-grid-visible={showGrid && editable}
+        className="free-layout-grid relative grid flex-1 grid-cols-12 gap-3 p-4"
+        style={{ gridAutoRows: `${rowHeight}px` }}
         onClick={() => setSelected([])}
       >
         {guides.vertical != null ? (
@@ -719,16 +737,15 @@ function FreeAppLayout({
           <div
             key={node.id}
             data-grid-id={node.id}
-            className={`relative min-h-0 ${selected.includes(node.id) ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""} ${mobile ? "mb-3" : "max-md:mb-3"}`}
-            style={mobile ? { minHeight: stackHeight(node.type) } : {
+            className={`relative min-h-0 ${selected.includes(node.id) ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
+            style={{
               gridColumn: `${item.col} / span ${item.width}`,
               gridRow: `${item.row} / span ${item.height}`,
             }}
-
             onClick={(event) => select(event, node.id)}
           >
             <AppModule node={node} nodes={nodes} actions={actions} className="h-full" />
-            {editable && !mobile ? (
+            {editable ? (
               <>
                 <button
                   type="button"

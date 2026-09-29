@@ -155,6 +155,8 @@ export type AppBranding = {
   background: AppBackground;
   layout: AppLayout;
   moduleLayout: AppGridItem[];
+  /** Eigene Anordnungen für Tablet und Handy (Desktop = moduleLayout). */
+  deviceLayouts?: { tablet?: AppGridItem[]; mobile?: AppGridItem[] };
 };
 export type AppDesignProfile = {
   id: string;
@@ -224,8 +226,7 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
   const value = raw as Record<string, unknown>;
   const accent = value["accent"];
   const background = value["background"];
-  const rawModuleLayout = Array.isArray(value["moduleLayout"]) ? value["moduleLayout"] : [];
-  const moduleLayout: AppGridItem[] = rawModuleLayout.flatMap((item) => {
+  const parseGrid = (input: unknown): AppGridItem[] => (Array.isArray(input) ? input : []).flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const entry = item as Record<string, unknown>;
     if (typeof entry["id"] !== "string" || !entry["id"]) return [];
@@ -242,6 +243,17 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
       height: Math.min(10, Math.max(2, number("height", 4))),
     }];
   });
+  const moduleLayout = parseGrid(value["moduleLayout"]);
+  const rawDevices = value["deviceLayouts"] && typeof value["deviceLayouts"] === "object"
+    ? (value["deviceLayouts"] as Record<string, unknown>)
+    : {};
+  const tablet = parseGrid(rawDevices["tablet"]);
+  const mobile = parseGrid(rawDevices["mobile"]).map((item) =>
+    item.width >= 6 ? item : { ...item, width: 6, col: Math.min(item.col, 7) },
+  );
+  const deviceLayouts: NonNullable<AppBranding["deviceLayouts"]> = {};
+  if (tablet.length) deviceLayouts.tablet = tablet;
+  if (mobile.length) deviceLayouts.mobile = mobile;
   return {
     title: typeof value["title"] === "string" ? value["title"].slice(0, 80) : "",
     logo:
@@ -268,5 +280,6 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
         ? value["layout"]
         : "auto",
     moduleLayout,
+    ...(tablet.length || mobile.length ? { deviceLayouts } : {}),
   };
 }
