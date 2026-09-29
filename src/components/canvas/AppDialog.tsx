@@ -276,7 +276,10 @@ function DeploymentPreview({
                     <div className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
                   )}
                   <div className="min-w-0">
-                    <span className="module-eyebrow block text-muted-foreground">Entscheider-Cockpit</span>
+                    <span className="module-eyebrow block text-muted-foreground">
+                      {APP_LAYOUTS.find((option) => option.id === branding.layout)?.label ?? "Entscheider-Cockpit"}
+                    </span>
+
                     <span className="block truncate font-display text-base font-semibold">{title.trim() || "Titel der App"}</span>
                   </div>
                 </div>
