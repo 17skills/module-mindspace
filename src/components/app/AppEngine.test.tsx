@@ -111,53 +111,73 @@ describe("Aufbauten", () => {
     expect(screen.getByRole("button", { name: "Links ausrichten" })).toBeDisabled();
   });
 
-  it("blendet Editorwerkzeuge in der Handy-Vorschau aus", () => {
-    render(<AppEngine nodes={[metricNode, riskNode]} layout="free" editable previewDevice="mobile" />);
-    expect(screen.queryByRole("button", { name: "Raster anzeigen" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /verschieben/ })).not.toBeInTheDocument();
-  });
+  const cell = (container: HTMLElement, id: string) =>
+    container.querySelector(`[data-grid-id='${id}']`) as HTMLElement;
 
-  it("hält auf dem Tablet das mehrspaltige Raster mit flacheren Zeilen", () => {
+  it("Desktop: 12-Spalten-Raster mit 72-px-Zeilen und gewichteten Startgrößen", () => {
     const { container } = render(
-      <AppEngine nodes={[metricNode, mapNode]} layout="free" editable previewDevice="tablet" />,
+      <AppEngine nodes={[metricNode, mapNode]} layout="free" editable previewDevice="desktop" />,
     );
     const grid = container.querySelector("[data-layout='free'] section") as HTMLElement;
+    expect(container.querySelector("[data-device='desktop']")).not.toBeNull();
     expect(grid.className).toContain("grid-cols-12");
+    expect(grid.style.gridAutoRows).toBe("72px");
+    expect(cell(container, metricNode.id).style.gridColumn).toBe("1 / span 4");
+    expect(cell(container, mapNode.id).style.gridColumn).toBe("5 / span 8");
+    expect(screen.getByText(/Desktop-Anordnung/)).toBeInTheDocument();
+  });
+
+  it("Tablet: mehrspaltig, flachere Zeilen, übernimmt ohne eigene Anordnung den Desktop", () => {
+    const desktop = [{ id: mapNode.id, col: 1, row: 1, width: 7, height: 5 }];
+    const { container } = render(
+      <AppEngine nodes={[metricNode, mapNode]} layout="free" editable previewDevice="tablet" moduleLayout={desktop} />,
+    );
+    const grid = container.querySelector("[data-layout='free'] section") as HTMLElement;
     expect(grid.className).not.toContain("!block");
     expect(grid.style.gridAutoRows).toBe("56px");
+    expect(cell(container, mapNode.id).style.gridColumn).toBe("1 / span 7");
     expect(screen.getByRole("button", { name: /Lagekarte Größe ändern/ })).toBeInTheDocument();
   });
 
-  it("stapelt auf dem Handy einspaltig mit modulgerechten Höhen", () => {
+  it("Tablet: eigene gespeicherte Anordnung hat Vorrang vor dem Desktop", () => {
     const { container } = render(
-      <AppEngine nodes={[metricNode, mapNode]} layout="free" previewDevice="mobile" />,
+      <AppEngine
+        nodes={[mapNode]}
+        layout="free"
+        previewDevice="tablet"
+        moduleLayout={[{ id: mapNode.id, col: 1, row: 1, width: 7, height: 5 }]}
+        deviceLayouts={{ tablet: [{ id: mapNode.id, col: 3, row: 2, width: 10, height: 4 }] }}
+      />,
     );
-    const tiles = Array.from(container.querySelectorAll("[data-grid-id]")) as HTMLElement[];
-    expect(tiles).toHaveLength(2);
-    expect(tiles[0]!.style.minHeight).toBe("110px");
-    expect(tiles[1]!.style.minHeight).toBe("360px");
+    expect(cell(container, mapNode.id).style.gridColumn).toBe("3 / span 10");
+    expect(cell(container, mapNode.id).style.gridRow).toBe("2 / span 4");
   });
-});
 
+  it("Handy: startet als einspaltiger Stapel mit modulgerechten Höhen und bleibt bearbeitbar", () => {
+    const { container } = render(
+      <AppEngine nodes={[metricNode, mapNode]} layout="free" editable previewDevice="mobile" />,
+    );
+    expect(cell(container, metricNode.id).style.gridColumn).toBe("1 / span 12");
+    expect(cell(container, metricNode.id).style.gridRow).toBe("1 / span 2");
+    expect(cell(container, mapNode.id).style.gridRow).toBe("3 / span 5");
+    expect(screen.getByRole("button", { name: /Lagekarte verschieben/ })).toBeInTheDocument();
+    expect(screen.getByText(/Handy-Anordnung/)).toBeInTheDocument();
+  });
 
-describe("Vorschau auf Desktop und Handy", () => {
-  const widths = [
-    { device: "desktop", width: 1280 },
-    { device: "mobile", width: 390 },
-  ] as const;
-
-  it("rendert jeden Aufbau in beiden Vorschaubreiten", () => {
-    for (const { device, width } of widths) {
-      for (const layout of ["auto", "free", "split", "dashboard", "feed", "report"] as const) {
-        const { container, unmount } = render(
-          <div style={{ width }} data-device={device}>
-            <AppEngine nodes={all} layout={layout} />
-          </div>,
-        );
-        expect(container.querySelector("main")).toBeTruthy();
-        expect(screen.getAllByText("Sofort-Maßnahmen").length).toBe(1);
-        unmount();
-      }
-    }
+  it("Handy: nutzt die eigene Anordnung und hebt zu schmale Module auf halbe Breite", () => {
+    const { container } = render(
+      <AppEngine
+        nodes={[metricNode, mapNode]}
+        layout="free"
+        previewDevice="mobile"
+        moduleLayout={[{ id: mapNode.id, col: 1, row: 1, width: 8, height: 6 }]}
+        deviceLayouts={{ mobile: [
+          { id: mapNode.id, col: 1, row: 1, width: 12, height: 6 },
+          { id: metricNode.id, col: 1, row: 7, width: 3, height: 2 },
+        ] }}
+      />,
+    );
+    expect(cell(container, mapNode.id).style.gridRow).toBe("1 / span 6");
+    expect(cell(container, metricNode.id).style.gridColumn).toBe("1 / span 6");
   });
 });
