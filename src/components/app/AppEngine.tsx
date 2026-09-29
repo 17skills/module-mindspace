@@ -43,8 +43,12 @@ import {
 import {
   APP_GRID_COLUMNS,
   APP_GRID_ROW_HEIGHT,
+  type AppPreviewDevice,
   alignFreeLayout,
   buildFreeLayout,
+  gridRowHeight,
+  stackHeight,
+
   type FreeLayoutAlignment,
   type FreeLayoutGuides,
   resolveLayout,
