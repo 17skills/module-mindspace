@@ -701,8 +701,9 @@ function FreeAppLayout({
       <section
         ref={gridRef}
         data-grid-visible={showGrid && editable && !mobile}
-        className={`free-layout-grid relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : "max-md:!block max-md:space-y-3"}`}
-        style={mobile ? undefined : { gridAutoRows: `${APP_GRID_ROW_HEIGHT}px` }}
+        className={`free-layout-grid relative grid flex-1 grid-cols-12 gap-3 p-4 ${mobile ? "!block space-y-3" : collapseClass}`}
+        style={mobile ? undefined : { gridAutoRows: `${rowHeight}px` }}
+
         onClick={() => setSelected([])}
       >
         {guides.vertical != null ? (
