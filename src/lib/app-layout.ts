@@ -80,6 +80,24 @@ export const WIDE_TYPES = new Set(["map", "risk", "inspect", "table", "chart"]);
 /** Module, die als kompakte Kennzahl-Kachel dargestellt werden. */
 export const TILE_TYPES = new Set(["metric", "gauge", "calc", "sheet", "api"]);
 
+/**
+ * Startgröße eines Moduls auf der freien Fläche. Gewichtige Module (Karte,
+ * Tabelle, Risiko) bekommen viel Fläche, Kennzahlen bleiben kompakt.
+ */
+export function defaultModuleSize(type: string): { width: number; height: number } {
+  if (TILE_TYPES.has(type)) return { width: 4, height: 2 };
+  if (WIDE_TYPES.has(type)) return { width: 8, height: 6 };
+  return { width: 6, height: 3 };
+}
+
+/** Mindesthöhe in Pixeln, wenn die App einspaltig auf dem Handy läuft. */
+export function stackHeight(type: string): number {
+  if (TILE_TYPES.has(type)) return 110;
+  if (WIDE_TYPES.has(type)) return 360;
+  return 200;
+}
+
+
 function overlaps(a: AppGridItem, b: AppGridItem) {
   return !(
     a.col + a.width <= b.col ||
