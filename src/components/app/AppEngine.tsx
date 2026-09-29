@@ -395,8 +395,9 @@ export function AppModule({
   );
 }
 
-/** Ordnet die gewählten Module nach dem eingestellten Aufbau an. */
-export function AppEngine({
+/** Ordnet die gewählten Kachel-Module nach dem eingestellten Aufbau an. */
+function AppStage({
+
   nodes,
   layout,
   actions,
