@@ -249,7 +249,7 @@ function DeploymentPreview({
         {channel === "teams" ? (
           <TeamsCardPreview title={title} description={description} leadQuestion={leadQuestion} view={previewView} onOpen={() => onInteraction("Direktlink zum Cockpit")} onDriverOpen={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? "Kennzahl")} />
         ) : (
-          <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${device === "mobile" ? "w-full max-w-[390px]" : "w-full"}`}>
+          <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${DEVICE_FRAME[device]}`}>
             <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}>
               <header className="app-header grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-2.5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -281,13 +281,15 @@ function DeploymentPreview({
               ) : (
                 <AppEngine
                   nodes={nodes}
-                  layout="executive"
+                  layout={branding.layout}
                   moduleLayout={branding.moduleLayout}
-                  compactPreview={device === "mobile"}
+                  previewDevice={device}
+                  editable={resolveLayout(branding.layout, nodes.map((node) => node.type)) === "free"}
                   onModuleLayoutChange={onModuleLayoutChange}
                   executiveOverride={previewView}
                   onModuleClick={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? nodes.find((node) => node.id === id)?.title ?? "Modul")}
                 />
+
               )}
             </div>
           </div>
