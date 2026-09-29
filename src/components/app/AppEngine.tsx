@@ -532,7 +532,10 @@ function FreeAppLayout({
   onChange?: ((layout: AppGridItem[]) => void) | undefined;
 }) {
 
+  const mobile = device === "mobile";
+  const rowHeight = gridRowHeight(device);
   const gridRef = useRef<HTMLElement>(null);
+
   const [layout, setLayout] = useState(() => buildFreeLayout(nodes, saved));
   const [gesture, setGesture] = useState<Gesture | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
