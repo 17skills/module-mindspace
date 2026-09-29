@@ -91,15 +91,15 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
 
   return (
     <aside
-      className="relative flex h-full shrink-0 flex-col border-l bg-card"
-      style={{ width }}
+      className="relative flex h-full shrink-0 flex-col border-l bg-card max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-14 max-sm:z-40 max-sm:h-auto max-sm:border-l-0 sm:w-(--inspector-w)"
+      style={{ "--inspector-w": `${width}px` } as React.CSSProperties}
       onContextMenu={(event) => event.stopPropagation()}
     >
       <div
         onMouseDown={() => {
           dragging.current = true;
         }}
-        className="absolute inset-y-0 -left-1 w-2 cursor-col-resize"
+        className="absolute inset-y-0 -left-1 w-2 cursor-col-resize max-sm:hidden"
         aria-hidden
       />
 
@@ -110,17 +110,17 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
           </p>
           <p className="truncate font-display text-sm font-semibold">{record.title ?? "Ohne Titel"}</p>
         </div>
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onClose}>
+        <Button size="icon" variant="ghost" className="h-7 w-7 max-sm:h-9 max-sm:w-9" aria-label="Inspector schließen" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </header>
 
-      <nav className="flex shrink-0 gap-1 border-b px-3 py-2">
+      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b px-3 py-2">
         {tabs.map((item) => (
           <button
             key={item.id}
             onClick={() => onTab(item.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs transition-colors ${
               activeTab === item.id
                 ? "bg-accent/60 font-medium"
                 : "text-muted-foreground hover:bg-secondary"
