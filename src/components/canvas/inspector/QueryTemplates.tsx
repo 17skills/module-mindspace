@@ -112,7 +112,7 @@ type IconBtnProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title">
   /** Kurzer Name; zugleich zugängliche Beschriftung. */
   label: string;
   /** Ein Satz, der erklärt, was passiert. */
-  hint?: string;
+  hint?: string | undefined;
   /** Umschalter: gedrückt/nicht gedrückt. */
   active?: boolean;
   toggle?: boolean;
