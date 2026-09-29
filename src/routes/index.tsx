@@ -2,7 +2,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
+import { BarChart3, FileText, MoreHorizontal, Pencil, Plus, Upload } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -251,11 +261,7 @@ function LibraryPage() {
               deine Apps.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline">
-              <Link to="/ergebnisse">Ergebnisse</Link>
-            </Button>
-
+          <div className="flex items-center gap-2">
             <input
               ref={restoreRef}
               type="file"
@@ -267,35 +273,50 @@ function LibraryPage() {
                 event.target.value = "";
               }}
             />
-            <Button
-              variant="outline"
-              onClick={() => restoreRef.current?.click()}
-              disabled={restoreBackup.isPending}
-            >
-              Sicherung oder Bauplan einspielen
-            </Button>
-            <select
-              aria-label="Bauplan-Vorlagen"
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-              value=""
-              disabled={restoreBackup.isPending}
-              onChange={(event) => {
-                const text = BLUEPRINTS[event.target.value];
-                if (text) restoreBackup.mutate(text);
-              }}
-            >
-              <option value="">Bauplan-Vorlagen …</option>
-              {Object.keys(BLUEPRINTS).map((name) => (
-                <option key={name} value={name}>
-                  {blueprintTitle(BLUEPRINTS[name]!, name)}
-                </option>
-              ))}
-            </select>
             <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
+              <Plus aria-hidden="true" className="mr-1 h-4 w-4" />
               Neuer Scope
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Weitere Aktionen">
+                  <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger disabled={restoreBackup.isPending}>
+                    <FileText aria-hidden="true" className="mr-2 h-4 w-4" />
+                    Aus Scope-Template erstellen
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {Object.keys(BLUEPRINTS).map((name) => (
+                      <DropdownMenuItem
+                        key={name}
+                        onSelect={() => restoreBackup.mutate(BLUEPRINTS[name]!)}
+                      >
+                        {blueprintTitle(BLUEPRINTS[name]!, name)}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuItem
+                  disabled={restoreBackup.isPending}
+                  onSelect={() => restoreRef.current?.click()}
+                >
+                  <Upload aria-hidden="true" className="mr-2 h-4 w-4" />
+                  Scope-Template oder Sicherung einspielen …
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void navigate({ to: "/ergebnisse" })}>
+                  <BarChart3 aria-hidden="true" className="mr-2 h-4 w-4" />
+                  Ergebnisse anzeigen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
+
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {boards.data?.map((board) => (
