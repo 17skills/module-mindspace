@@ -4,14 +4,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   BarChart3,
+  ExternalLink,
   FileText,
   Folder,
   FolderPlus,
   LayoutGrid,
+  Link2,
   List as ListIcon,
   MoreHorizontal,
   Pencil,
   Plus,
+  Power,
   Search,
   Trash2,
   Upload,
@@ -103,6 +106,7 @@ function LibraryPage() {
   const [extraProjects, setExtraProjects] = useState<string[]>([]);
   const [newProject, setNewProject] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [appFilter, setAppFilter] = useState<"all" | "active" | "inactive">("all");
 
   useEffect(() => {
     const stored = window.localStorage.getItem("scopes-view");
@@ -298,6 +302,60 @@ function LibraryPage() {
       return `${board.title} ${board.description ?? ""}`.toLowerCase().includes(term);
     });
   }, [boards.data, owner, projectFilter, search, user?.id]);
+
+  const visibleApps = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (apps.data ?? []).filter((app) => {
+      if (appFilter === "active" && !app.is_public) return false;
+      if (appFilter === "inactive" && app.is_public) return false;
+      if (!term) return true;
+      return `${app.title} ${app.description ?? ""}`.toLowerCase().includes(term);
+    });
+  }, [apps.data, appFilter, search]);
+
+  function copyAppLink(id: string) {
+    void navigator.clipboard.writeText(`${window.location.origin}/app/${id}`);
+    toast.success("Link kopiert");
+  }
+
+  function appMenu(app: { id: string; description: string | null; is_public: boolean }) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="App-Menü">
+            <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onSelect={() => window.open(`/app/${app.id}`, "_blank", "noreferrer")}>
+            <ExternalLink aria-hidden="true" className="mr-2 h-4 w-4" />
+            Öffnen
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => copyAppLink(app.id)}>
+            <Link2 aria-hidden="true" className="mr-2 h-4 w-4" />
+            Link kopieren
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              setEditing({ kind: "app", id: app.id });
+              setDraft(app.description ?? "");
+            }}
+          >
+            <Pencil aria-hidden="true" className="mr-2 h-4 w-4" />
+            Beschreibung bearbeiten
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={togglePublic.isPending}
+            onSelect={() => togglePublic.mutate({ id: app.id, is_public: app.is_public })}
+          >
+            <Power aria-hidden="true" className="mr-2 h-4 w-4" />
+            {app.is_public ? "Abschalten" : "Aktivieren"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   function boardMenu(board: { id: string; description: string | null; user_id: string }) {
     return (
