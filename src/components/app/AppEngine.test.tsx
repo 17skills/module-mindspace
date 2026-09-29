@@ -125,7 +125,7 @@ describe("Aufbauten", () => {
     expect(grid.className).toContain("grid-cols-12");
     expect(grid.className).not.toContain("!block");
     expect(grid.style.gridAutoRows).toBe("56px");
-    expect(screen.getByRole("button", { name: /Netzkarte Größe ändern/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Lagekarte Größe ändern/ })).toBeInTheDocument();
   });
 
   it("stapelt auf dem Handy einspaltig mit modulgerechten Höhen", () => {
