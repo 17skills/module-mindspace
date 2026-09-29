@@ -94,6 +94,22 @@ const BACKGROUNDS: { id: AppBackground; label: string }[] = [
   { id: "grid", label: "Raster" },
 ];
 
+/** Geräteklassen der Vorschau – Handy einspaltig, Tablet und Desktop im Raster. */
+type PreviewDevice = "desktop" | "tablet" | "mobile";
+
+const DEVICES: { id: PreviewDevice; label: string; icon: typeof Monitor }[] = [
+  { id: "desktop", label: "Desktop-Vorschau (1200 px)", icon: Monitor },
+  { id: "tablet", label: "Tablet-Vorschau (820 px)", icon: Tablet },
+  { id: "mobile", label: "Handy-Vorschau (390 px)", icon: Smartphone },
+];
+
+const DEVICE_FRAME: Record<PreviewDevice, string> = {
+  desktop: "w-full",
+  tablet: "w-full max-w-[820px]",
+  mobile: "w-full max-w-[390px]",
+};
+
+
 const PROMPTS = [
   "Zeig mir alle offenen Befunde mit Dringlichkeit 1–3 und schlage eine Reihenfolge für diese Woche vor.",
   "Welche Kennzahlen hat diese App gerade? Fasse die Lage in fünf Sätzen zusammen.",
