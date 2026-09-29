@@ -4,6 +4,7 @@
  * Erfassungsformular nur bei Bedarf, Sammelaktionen nur bei Auswahl.
  * Fehlende Spalten werden vor dem Anwenden genannt, nie still ersetzt.
  */
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -29,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -105,34 +107,56 @@ export function parseTags(input: string): string[] {
   return [...seen].slice(0, 20);
 }
 
-function IconBtn({
-  icon: Icon,
-  label,
-  active,
-  disabled,
-  onClick,
-}: {
+type IconBtnProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> & {
   icon: typeof Plus;
+  /** Kurzer Name; zugleich zugängliche Beschriftung. */
   label: string;
+  /** Ein Satz, der erklärt, was passiert. */
+  hint?: string | undefined;
+  /** Umschalter: gedrückt/nicht gedrückt. */
   active?: boolean;
-  disabled?: boolean;
-  onClick?: () => void;
-}) {
-  return (
+  toggle?: boolean;
+  /** Beschriftung nur für Screenreader, falls sie länger sein soll als der Tooltip-Titel. */
+  srLabel?: string;
+};
+
+const IconBtn = React.forwardRef<HTMLButtonElement, IconBtnProps>(function IconBtn(
+  { icon: Icon, label, hint, active, toggle, srLabel, disabled, className, ...rest },
+  ref,
+) {
+  const btn = (
     <button
+      ref={ref}
       type="button"
-      title={label}
-      aria-label={label}
+      aria-label={srLabel ?? label}
+      aria-pressed={toggle ? !!active : undefined}
       disabled={disabled}
-      onClick={onClick}
-      className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border transition-colors max-sm:h-9 max-sm:w-9 disabled:opacity-40 ${
+      {...rest}
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-9 max-sm:w-9 disabled:opacity-40 ${
         active ? "border-primary bg-accent/60" : "text-muted-foreground hover:bg-secondary"
-      }`}
+      } ${className ?? ""}`}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
     </button>
   );
-}
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {disabled ? (
+          <span tabIndex={0} className="inline-flex shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {btn}
+          </span>
+        ) : (
+          btn
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[16rem] text-xs">
+        <p className="font-medium">{label}</p>
+        {hint ? <p className="text-[11px] opacity-80">{hint}</p> : null}
+      </TooltipContent>
+    </Tooltip>
+  );
+});
 
 export function QueryTemplates({
   config,
@@ -427,20 +451,15 @@ export function QueryTemplates({
         </p>
         <IconBtn
           icon={showForm ? X : Plus}
-          label={showForm ? "Formular schließen" : "Aktuelle Auswertung als Vorlage speichern"}
+          label={showForm ? "Formular schließen" : "Als Vorlage speichern"}
+          hint={showForm ? undefined : "Speichert die aktuelle Auswertung (ohne Datenzeilen) zur Wiederverwendung."}
+          toggle
           active={showForm}
           onClick={() => setShowForm((v) => !v)}
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              title="Import und Export"
-              aria-label="Import und Export"
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary max-sm:h-9 max-sm:w-9"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </button>
+            <IconBtn icon={MoreHorizontal} label="Import und Export" hint="Vorlagen als JSON sichern, übertragen oder mehrere auswählen." />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="text-xs max-sm:text-sm [&_[role=menuitem]]:max-sm:py-2.5">
             <DropdownMenuItem disabled={busy} onSelect={() => fileInput.current?.click()}>
@@ -633,6 +652,8 @@ export function QueryTemplates({
               <IconBtn
                 icon={Tag}
                 label="Nach Tag filtern"
+                hint="Blendet die Tag-Liste ein, um Vorlagen einzugrenzen."
+                toggle
                 active={showTags || !!activeTag}
                 onClick={() => setShowTags((v) => !v)}
               />
@@ -668,7 +689,7 @@ export function QueryTemplates({
               >
                 <Download className="h-3 w-3" /> Export ({selected.size})
               </button>
-              <IconBtn icon={X} label="Auswahl aufheben" onClick={() => setSelected(new Set())} />
+              <IconBtn icon={X} label="Auswahl aufheben" hint="Entfernt alle Häkchen." onClick={() => setSelected(new Set())} />
             </div>
           )}
           {visible.length === 0 ? (
@@ -713,20 +734,15 @@ export function QueryTemplates({
                       </div>
                       <IconBtn
                         icon={Play}
-                        label={missing.length ? "Nicht anwendbar: Spalten fehlen" : "Auf diese Tabelle anwenden"}
+                        label={missing.length ? "Nicht anwendbar" : "Anwenden"}
+                        srLabel={missing.length ? `„${row.title}" nicht anwendbar: Spalten fehlen` : `„${row.title}" auf diese Tabelle anwenden`}
+                        hint={missing.length ? `Auf dieser Tabelle fehlen: ${missing.join(", ")}.` : "Übernimmt die Auswertung für diese Tabelle."}
                         disabled={missing.length > 0}
                         onClick={() => apply(row)}
                       />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label={`Weitere Aktionen für „${row.title}"`}
-                            title="Mehr"
-                            className="grid h-7 w-7 shrink-0 place-items-center rounded-md border text-muted-foreground hover:bg-secondary max-sm:h-9 max-sm:w-9"
-                          >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </button>
+                          <IconBtn icon={MoreHorizontal} label="Mehr" srLabel={`Weitere Aktionen für „${row.title}"`} hint="Bearbeiten oder löschen." />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="text-xs max-sm:text-sm [&_[role=menuitem]]:max-sm:py-2.5">
                           <DropdownMenuItem onSelect={() => (editingId === row.id ? setEditingId(null) : startEdit(row))}>
