@@ -54,6 +54,7 @@ export const adminListUsers = createServerFn({ method: "POST" })
       scopeCount.set(row.user_id, (scopeCount.get(row.user_id) ?? 0) + 1);
     }
     const adminIds = new Set((roles.data ?? []).filter((r) => r.role === "admin").map((r) => r.user_id));
+    const devIds = new Set((roles.data ?? []).filter((r) => r.role === "developer").map((r) => r.user_id));
 
     return {
       total: profiles.count ?? 0,
@@ -70,6 +71,7 @@ export const adminListUsers = createServerFn({ method: "POST" })
         lastActive: profile.updated_at,
         scopes: scopeCount.get(profile.id) ?? 0,
         isAdmin: adminIds.has(profile.id),
+        isDeveloper: devIds.has(profile.id),
       })),
     };
   });
