@@ -605,7 +605,7 @@ function FreeAppLayout({
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
-  }, [editable, compact, layout, past, future]);
+  }, [editable, mobile, layout, past, future]);
 
   useEffect(() => {
     if (!gesture) return;
