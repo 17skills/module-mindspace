@@ -415,7 +415,7 @@ export function QueryTemplates({
   };
 
   const chip = (active: boolean) =>
-    `rounded-full border px-2 py-0.5 text-[10px] ${
+    `rounded-full border px-2 py-0.5 text-[10px] max-sm:px-3 max-sm:py-1.5 max-sm:text-xs ${
       active ? "border-primary bg-accent/60" : "text-muted-foreground hover:bg-secondary"
     }`;
 
@@ -475,16 +475,16 @@ export function QueryTemplates({
       {showForm && (
         <div className="space-y-1.5 rounded-lg border bg-secondary/30 p-2">
           <p className="text-[11px] font-medium">Neue Vorlage speichern</p>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name der Vorlage" className="h-7 text-xs" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name der Vorlage" className="h-7 text-xs max-sm:h-9 max-sm:text-base" />
           <div className="grid grid-cols-2 gap-1">
             <Input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="Kategorie"
               list="query-template-categories"
-              className="h-7 text-xs"
+              className="h-7 text-xs max-sm:h-9 max-sm:text-base"
             />
-            <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="Tags, mit Komma" className="h-7 text-xs" />
+            <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="Tags, mit Komma" className="h-7 text-xs max-sm:h-9 max-sm:text-base" />
           </div>
           <datalist id="query-template-categories">
             {categories.map((c) => (
@@ -497,10 +497,10 @@ export function QueryTemplates({
               : "Wähle zuerst eine Auswertung (Gruppierung oder SQL)."}
           </p>
           <div className="flex justify-end gap-1">
-            <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setShowForm(false)}>
+            <Button size="sm" variant="ghost" className="h-6 text-[11px] max-sm:h-9 max-sm:px-4 max-sm:text-xs" onClick={() => setShowForm(false)}>
               Abbrechen
             </Button>
-            <Button size="sm" className="h-6 text-[11px]" disabled={!canSave || busy} onClick={() => void save()}>
+            <Button size="sm" className="h-6 text-[11px] max-sm:h-9 max-sm:px-4 max-sm:text-xs" disabled={!canSave || busy} onClick={() => void save()}>
               Speichern
             </Button>
           </div>
@@ -509,7 +509,7 @@ export function QueryTemplates({
 
       {preview && (
         <div className="space-y-1.5 rounded-lg border p-2" role="region" aria-label="Import-Vorschau">
-          <p className="truncate text-[11px] font-semibold">Import: {preview.fileName}</p>
+          <p className="truncate text-[11px] font-semibold max-sm:text-xs">Import: {preview.fileName}</p>
           <p className="text-[10px] text-muted-foreground">
             {preview.fresh.length} neu · {preview.updates.length + preview.identical} vorhanden
             {preview.identical ? ` (${preview.identical} identisch)` : ""} · {preview.skipped} ungültig
@@ -523,9 +523,10 @@ export function QueryTemplates({
                   ["update", "Aktualisieren (Kategorie, Tags ergänzen)"],
                 ] as const
               ).map(([id, label]) => (
-                <label key={id} className="flex items-center gap-2 text-[11px]">
+                <label key={id} className="flex items-start gap-2 py-0.5 text-[11px] max-sm:py-2 max-sm:text-xs">
                   <input
                     type="radio"
+                    className="mt-0.5 max-sm:size-4"
                     name="import-mode"
                     checked={preview.mode === id}
                     onChange={() => setPreview({ ...preview, mode: id })}
@@ -535,18 +536,18 @@ export function QueryTemplates({
               ))}
             </div>
           )}
-          <ul className="max-h-56 space-y-1 overflow-y-auto">
+          <ul className="max-h-56 space-y-1 overflow-y-auto max-sm:max-h-[40dvh]">
             {preview.fresh.map((t, index) => (
               <li key={`n${index}`} className="flex items-start gap-2 rounded-md border px-1.5 py-1">
                 <input
                   type="checkbox"
-                  className="mt-0.5"
+                  className="mt-0.5 max-sm:size-5"
                   checked={preview.pickedFresh.has(index)}
                   onChange={() => togglePickedFresh(index)}
                   aria-label={`„${t.title}" importieren`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] font-medium">
+                  <p className="break-words text-[11px] font-medium">
                     <span className="mr-1 rounded bg-accent/60 px-1 text-[9px] uppercase">Neu</span>
                     {t.title}
                   </p>
@@ -565,14 +566,14 @@ export function QueryTemplates({
               >
                 <input
                   type="checkbox"
-                  className="mt-0.5"
+                  className="mt-0.5 max-sm:size-5"
                   disabled={preview.mode === "skip"}
                   checked={preview.mode === "update" && preview.pickedUpdates.has(u.id)}
                   onChange={() => togglePickedUpdate(u.id)}
                   aria-label={`„${u.title}" aktualisieren`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] font-medium">
+                  <p className="break-words text-[11px] font-medium">
                     <span className="mr-1 rounded border px-1 text-[9px] uppercase">
                       {preview.mode === "update" ? "Aktualisieren" : "Übersprungen"}
                     </span>
@@ -583,16 +584,16 @@ export function QueryTemplates({
               </li>
             ))}
           </ul>
-          <div className="flex gap-1">
+          <div className="sticky bottom-0 -mx-2 -mb-2 flex gap-1 rounded-b-lg border-t bg-card p-2">
             <Button
               size="sm"
-              className="h-7 flex-1 gap-1 text-[11px]"
+              className="h-7 flex-1 gap-1 text-[11px] max-sm:h-10 max-sm:text-sm"
               disabled={busy || importCount === 0}
               onClick={() => void confirmImport()}
             >
               <Check className="h-3.5 w-3.5" /> {importCount} übernehmen
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setPreview(null)}>
+            <Button size="sm" variant="ghost" className="h-7 text-[11px] max-sm:h-10 max-sm:text-sm" onClick={() => setPreview(null)}>
               Abbrechen
             </Button>
           </div>
@@ -662,7 +663,7 @@ export function QueryTemplates({
             <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-accent/40 px-2 py-1 text-[11px]">
               <span className="flex-1">{selected.size} gewählt</span>
               <button
-                className="flex items-center gap-1 rounded-md border bg-background px-2 py-0.5 hover:bg-secondary"
+                className="flex items-center gap-1 rounded-md border bg-background px-2 py-0.5 hover:bg-secondary max-sm:px-3 max-sm:py-2 max-sm:text-xs"
                 onClick={() => download(rows.filter((r) => selected.has(r.id)))}
               >
                 <Download className="h-3 w-3" /> Export ({selected.size})
@@ -681,20 +682,20 @@ export function QueryTemplates({
                     <div className="flex items-start gap-2">
                       <input
                         type="checkbox"
-                        className="mt-1"
+                        className="mt-1 max-sm:size-5"
                         checked={selected.has(row.id)}
                         onChange={() => toggleSelected(row.id)}
                         aria-label={`„${row.title}" zum Export auswählen`}
                       />
                       <div className="min-w-0 flex-1" title={row.columns.join(", ")}>
-                        <p className="truncate font-medium">
+                        <p className="line-clamp-2 break-words font-medium">
                           {row.title}
                           <span className="ml-1 font-normal text-muted-foreground">
                             ({row.config.mode === "sql" ? "SQL" : "Auswahl"})
                           </span>
                         </p>
                         {row.category || row.tags.length ? (
-                          <p className="truncate text-[10px] text-muted-foreground">
+                          <p className="line-clamp-2 break-words text-[10px] text-muted-foreground">
                             {[row.category, ...row.tags.map((t) => `#${t}`)].filter(Boolean).join(" · ")}
                           </p>
                         ) : null}
@@ -744,21 +745,21 @@ export function QueryTemplates({
                           onChange={(e) => setEditTitle(e.target.value)}
                           placeholder="Name der Vorlage"
                           maxLength={120}
-                          className="h-7 text-xs"
+                          className="h-7 text-xs max-sm:h-9 max-sm:text-base"
                         />
                         <Input
                           value={editCategory}
                           onChange={(e) => setEditCategory(e.target.value)}
                           placeholder="Kategorie"
                           list="query-template-categories"
-                          className="h-7 text-xs"
+                          className="h-7 text-xs max-sm:h-9 max-sm:text-base"
                         />
-                        <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="Tags, mit Komma" className="h-7 text-xs" />
+                        <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="Tags, mit Komma" className="h-7 text-xs max-sm:h-9 max-sm:text-base" />
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => setEditingId(null)}>
+                          <Button size="sm" variant="ghost" className="h-6 text-[11px] max-sm:h-9 max-sm:px-4 max-sm:text-xs" onClick={() => setEditingId(null)}>
                             Abbrechen
                           </Button>
-                          <Button size="sm" className="h-6 text-[11px]" onClick={() => void saveEdit(row)}>
+                          <Button size="sm" className="h-6 text-[11px] max-sm:h-9 max-sm:px-4 max-sm:text-xs" onClick={() => void saveEdit(row)}>
                             Speichern
                           </Button>
                         </div>
