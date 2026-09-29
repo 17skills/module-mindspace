@@ -40,6 +40,16 @@ import { executiveView } from "@/lib/app-executive";
 import { deploymentIssues, previewExecutiveView, type PreviewScenario } from "@/lib/app-preview";
 import { APP_LAYOUTS, buildFreeLayout, resolveLayout, type LayoutDevice } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
+import {
+  CLASS_LABEL,
+  ROLE_LABEL,
+  TYPE_STANDARD,
+  isTileRole,
+  moduleClass,
+  readModuleRole,
+  type ModuleClass,
+} from "@/lib/module-role";
+
 import { deleteDeliveredApp, saveDeliveredApp, setDeliveredAppPublished } from "@/lib/app-config.functions";
 import {
   APP_DESIGN_PRESETS,
