@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { readStructure, structureText } from "@/lib/structure";
 import { ChartDataSection } from "@/components/canvas/inspector/ChartDataSection";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
@@ -22,6 +23,46 @@ const CHART_TYPES = [
   { id: "line", label: "Linie" },
   { id: "pie", label: "Kreis" },
 ];
+
+function TableIconButton({
+  label,
+  hint,
+  symbol,
+  destructive = false,
+  unavailable = false,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  symbol: "▲" | "▼" | "✕";
+  destructive?: boolean;
+  unavailable?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={label}
+          aria-disabled={unavailable}
+          onClick={unavailable ? undefined : onClick}
+          className={`h-6 w-6 rounded-md text-[9px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 max-sm:h-11 max-sm:w-11 ${
+            destructive ? "text-muted-foreground hover:text-destructive" : "text-muted-foreground"
+          } ${unavailable ? "cursor-not-allowed opacity-35" : ""}`}
+        >
+          <span aria-hidden="true">{symbol}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[17rem] text-xs">
+        <p className="font-medium">{label}</p>
+        <p className="text-[11px] opacity-80">{hint}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function DataTab({ record }: { record: NodeRecord }) {
   const { updateNode } = useBoard();
@@ -121,36 +162,36 @@ export function DataTab({ record }: { record: NodeRecord }) {
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
         <table className="w-full border-collapse text-xs">
+          <caption className="sr-only">Daten der Tabelle bearbeiten, verschieben oder löschen</caption>
           <thead>
             <tr>
-              <th className="w-6" />
+              <th className="w-6" scope="col"><span className="sr-only">Zeilen verschieben</span></th>
               {columns.map((column, index) => (
                 <th key={index} className="p-1 align-bottom">
                   <div className="flex items-center gap-1">
                     <input
                       value={column}
+                      aria-label={`Name von Spalte ${index + 1}`}
                       onChange={(e) =>
                         save(
                           columns.map((c, i) => (i === index ? e.target.value : c)),
                           rows,
                         )
                       }
-                      className="w-full rounded border bg-transparent px-1.5 py-1 text-[11px] font-medium outline-none"
+                      className="w-full rounded border bg-transparent px-1.5 py-1 text-[11px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                     />
-                    <button
-                      type="button"
-                      title="Spalte löschen"
-                      aria-label={`Spalte „${columns[index] ?? index + 1}" löschen`}
-                      className="text-muted-foreground hover:text-destructive"
+                    <TableIconButton
+                      symbol="✕"
+                      destructive
+                      label={`Spalte „${columns[index] || index + 1}“ löschen`}
+                      hint={`Entfernt Spalte ${index + 1} und alle Werte dieser Spalte.`}
                       onClick={() =>
                         save(
                           columns.filter((_, i) => i !== index),
                           rows.map((row) => row.filter((_, i) => i !== index)),
                         )
                       }
-                    >
-                      ✕
-                    </button>
+                    />
                   </div>
                 </th>
               ))}
@@ -161,33 +202,40 @@ export function DataTab({ record }: { record: NodeRecord }) {
               <tr key={rowIndex}>
                 <td className="align-middle">
                   <div className="flex flex-col text-[9px] text-muted-foreground">
-                    <button type="button" onClick={() => moveRow(rowIndex, -1)} title="Zeile nach oben" aria-label={`Zeile ${rowIndex + 1} nach oben`}>
-                      <span aria-hidden="true">▲</span>
-                    </button>
-                    <button type="button" onClick={() => moveRow(rowIndex, 1)} title="Zeile nach unten" aria-label={`Zeile ${rowIndex + 1} nach unten`}>
-                      <span aria-hidden="true">▼</span>
-                    </button>
+                    <TableIconButton
+                      symbol="▲"
+                      label={`Zeile ${rowIndex + 1} nach oben verschieben`}
+                      hint={rowIndex === 0 ? "Diese Zeile steht bereits ganz oben." : `Verschiebt Zeile ${rowIndex + 1} vor Zeile ${rowIndex}.`}
+                      unavailable={rowIndex === 0}
+                      onClick={() => moveRow(rowIndex, -1)}
+                    />
+                    <TableIconButton
+                      symbol="▼"
+                      label={`Zeile ${rowIndex + 1} nach unten verschieben`}
+                      hint={rowIndex === rows.length - 1 ? "Diese Zeile steht bereits ganz unten." : `Verschiebt Zeile ${rowIndex + 1} hinter Zeile ${rowIndex + 2}.`}
+                      unavailable={rowIndex === rows.length - 1}
+                      onClick={() => moveRow(rowIndex, 1)}
+                    />
                   </div>
                 </td>
                 {columns.map((_, colIndex) => (
                   <td key={colIndex} className="p-1">
                     <input
                       value={row[colIndex] ?? ""}
+                      aria-label={`Zeile ${rowIndex + 1}, Spalte „${columns[colIndex] || colIndex + 1}“`}
                       onChange={(e) => setCell(rowIndex, colIndex, e.target.value)}
-                      className="w-full rounded border bg-transparent px-1.5 py-1 outline-none focus:border-primary"
+                      className="w-full rounded border bg-transparent px-1.5 py-1 outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                     />
                   </td>
                 ))}
                 <td className="pl-1">
-                  <button
-                    className="text-muted-foreground hover:text-destructive"
-                    type="button"
-                    title="Zeile löschen"
-                    aria-label={`Zeile ${rowIndex + 1} löschen`}
+                  <TableIconButton
+                    symbol="✕"
+                    destructive
+                    label={`Zeile ${rowIndex + 1} löschen`}
+                    hint={`Entfernt Zeile ${rowIndex + 1} und alle Werte dieser Zeile.`}
                     onClick={() => save(columns, rows.filter((_, i) => i !== rowIndex))}
-                  >
-                    ✕
-                  </button>
+                  />
                 </td>
               </tr>
             ))}
