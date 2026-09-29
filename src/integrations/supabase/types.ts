@@ -1700,7 +1700,7 @@ export type Database = {
     }
     Enums: {
       ai_provider: "openai" | "anthropic" | "google" | "openrouter"
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "developer"
       org_role: "owner" | "admin" | "member" | "guest"
     }
     CompositeTypes: {
@@ -1830,7 +1830,7 @@ export const Constants = {
   public: {
     Enums: {
       ai_provider: ["openai", "anthropic", "google", "openrouter"],
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "developer"],
       org_role: ["owner", "admin", "member", "guest"],
     },
   },
