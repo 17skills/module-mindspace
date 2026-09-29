@@ -193,10 +193,10 @@ function DeploymentPreview({
   leadQuestion: string;
   kind: "capture" | "cockpit";
   branding: AppBranding;
-  device: "desktop" | "mobile";
+  device: PreviewDevice;
   channel: PreviewChannel;
   channels: Channels;
-  onDeviceChange: (device: "desktop" | "mobile") => void;
+  onDeviceChange: (device: PreviewDevice) => void;
   onChannelChange: (channel: PreviewChannel) => void;
   onModuleLayoutChange: (moduleLayout: AppBranding["moduleLayout"]) => void;
   scenario: PreviewScenario;
@@ -229,14 +229,21 @@ function DeploymentPreview({
         )}
         {channel === "cockpit" && (
           <div className="ml-auto flex gap-1">
-            <Button size="icon" variant={device === "desktop" ? "secondary" : "ghost"} aria-label="Desktop-Vorschau" title="Desktop-Vorschau" onClick={() => onDeviceChange("desktop")}>
-              <Monitor className="size-3.5" />
-            </Button>
-            <Button size="icon" variant={device === "mobile" ? "secondary" : "ghost"} aria-label="Mobile Vorschau" title="Mobile Vorschau" onClick={() => onDeviceChange("mobile")}>
-              <Smartphone className="size-3.5" />
-            </Button>
+            {DEVICES.map(({ id, label, icon: Icon }) => (
+              <Button
+                key={id}
+                size="icon"
+                variant={device === id ? "secondary" : "ghost"}
+                aria-label={label}
+                title={label}
+                onClick={() => onDeviceChange(id)}
+              >
+                <Icon className="size-3.5" />
+              </Button>
+            ))}
           </div>
         )}
+
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
         {channel === "teams" ? (
