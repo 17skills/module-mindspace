@@ -7,6 +7,17 @@ import type { AppGridItem, AppLayout } from "@/lib/zones";
 
 export const APP_GRID_COLUMNS = 12;
 export const APP_GRID_ROW_HEIGHT = 72;
+/** Auf dem Tablet bleiben zwölf Spalten, die Zeilen werden etwas flacher. */
+export const APP_GRID_ROW_HEIGHT_TABLET = 56;
+
+/** Geräteklassen der Vorschau. „auto“ folgt der echten Fensterbreite. */
+export type AppPreviewDevice = "auto" | "desktop" | "tablet" | "mobile";
+
+/** Zeilenhöhe der freien Fläche je Geräteklasse. */
+export function gridRowHeight(device: AppPreviewDevice): number {
+  return device === "tablet" ? APP_GRID_ROW_HEIGHT_TABLET : APP_GRID_ROW_HEIGHT;
+}
+
 
 export const APP_LAYOUTS: { id: AppLayout; label: string; hint: string }[] = [
   {
