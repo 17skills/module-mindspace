@@ -522,8 +522,8 @@ function LibraryPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Scopes durchsuchen"
-              aria-label="Scopes durchsuchen"
+              placeholder="Scopes und Apps durchsuchen"
+              aria-label="Scopes und Apps durchsuchen"
               className="pl-9"
             />
           </div>
