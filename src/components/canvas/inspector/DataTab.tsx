@@ -138,7 +138,9 @@ export function DataTab({ record }: { record: NodeRecord }) {
                       className="w-full rounded border bg-transparent px-1.5 py-1 text-[11px] font-medium outline-none"
                     />
                     <button
+                      type="button"
                       title="Spalte löschen"
+                      aria-label={`Spalte „${columns[index] ?? index + 1}" löschen`}
                       className="text-muted-foreground hover:text-destructive"
                       onClick={() =>
                         save(
@@ -159,11 +161,11 @@ export function DataTab({ record }: { record: NodeRecord }) {
               <tr key={rowIndex}>
                 <td className="align-middle">
                   <div className="flex flex-col text-[9px] text-muted-foreground">
-                    <button onClick={() => moveRow(rowIndex, -1)} title="nach oben">
-                      ▲
+                    <button type="button" onClick={() => moveRow(rowIndex, -1)} title="Zeile nach oben" aria-label={`Zeile ${rowIndex + 1} nach oben`}>
+                      <span aria-hidden="true">▲</span>
                     </button>
-                    <button onClick={() => moveRow(rowIndex, 1)} title="nach unten">
-                      ▼
+                    <button type="button" onClick={() => moveRow(rowIndex, 1)} title="Zeile nach unten" aria-label={`Zeile ${rowIndex + 1} nach unten`}>
+                      <span aria-hidden="true">▼</span>
                     </button>
                   </div>
                 </td>
@@ -179,7 +181,9 @@ export function DataTab({ record }: { record: NodeRecord }) {
                 <td className="pl-1">
                   <button
                     className="text-muted-foreground hover:text-destructive"
+                    type="button"
                     title="Zeile löschen"
+                    aria-label={`Zeile ${rowIndex + 1} löschen`}
                     onClick={() => save(columns, rows.filter((_, i) => i !== rowIndex))}
                   >
                     ✕
