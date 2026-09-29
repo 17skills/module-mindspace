@@ -614,7 +614,7 @@ function FreeAppLayout({
       if (!gridWidth) return { layout: gesture.initialLayout, guides: {} };
       const columnStep = (gridWidth - 32 - 11 * 12) / APP_GRID_COLUMNS + 12;
       const dx = Math.round((event.clientX - gesture.startX) / columnStep);
-      const dy = Math.round((event.clientY - gesture.startY) / (APP_GRID_ROW_HEIGHT + 12));
+      const dy = Math.round((event.clientY - gesture.startY) / (rowHeight + 12));
       const patch = gesture.kind === "move"
         ? { col: gesture.initial.col + dx, row: gesture.initial.row + dy }
         : { width: gesture.initial.width + dx, height: gesture.initial.height + dy };
