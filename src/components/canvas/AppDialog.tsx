@@ -390,10 +390,11 @@ export function AppDialog({
 
   useEffect(() => {
     if (branding.layout !== "free") return;
-    const next = buildFreeLayout(pickedNodes, branding.moduleLayout);
+    const next = buildFreeLayout(tileNodes, branding.moduleLayout);
     const before = JSON.stringify(branding.moduleLayout);
     if (JSON.stringify(next) !== before) setBranding((value) => ({ ...value, moduleLayout: next }));
-  }, [branding.layout, branding.moduleLayout, pickedNodes]);
+  }, [branding.layout, branding.moduleLayout, tileNodes]);
+
 
 
   const reload = async () => {
@@ -437,13 +438,20 @@ export function AppDialog({
   const toggle = (id: string) => {
     setPicked((list) => {
       if (list.includes(id)) return list.filter((item) => item !== id);
-      if (list.length >= MAX_APP_MODULES) {
-        toast.error(`Höchstens ${MAX_APP_MODULES} Module pro App`);
+      const candidate = candidates.find((item) => item.id === id);
+      const isTile = candidate ? isTileRole(readModuleRole(candidate)) : true;
+      const tiles = list.filter((other) => {
+        const node = candidates.find((item) => item.id === other);
+        return node ? isTileRole(readModuleRole(node)) : true;
+      });
+      if (isTile && tiles.length >= MAX_APP_MODULES) {
+        toast.error(`Höchstens ${MAX_APP_MODULES} Kachel-Module pro App`);
         return list;
       }
       return [...list, id];
     });
   };
+
 
   /** Reihenfolge der Module in der App verschieben. */
   const move = (index: number, delta: number) => {
