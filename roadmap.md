@@ -10,6 +10,6 @@
 - [x] Zeitlimit (timeoutSeconds) je Baustein erzwingen
 - [x] Datenschutz-Filter vor KI-Aufrufen (PII maskieren)
 - [x] Datenschutz-Modus je Scope in der Oberfläche umschaltbar (heute nur über Scope-Regeln `privacy`)
-- [ ] Entwürfe der Vorlagen-Navigation als Ansicht /entwuerfe zeigen
+- [x] Entwürfe der Vorlagen-Navigation als Ansicht /entwuerfe zeigen
 - [ ] Importvorschau: vorhandene Vorlagen aktualisieren statt überspringen
 - [ ] Textknöpfe reduzieren, Navigation der Abfragevorlagen aufräumen
