@@ -91,7 +91,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
 
   return (
     <aside
-      className="relative flex h-full shrink-0 flex-col border-l bg-card max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-14 max-sm:z-40 max-sm:h-auto max-sm:border-l-0 sm:w-(--inspector-w)"
+      className="relative flex h-auto max-h-full shrink-0 flex-col self-start border-b border-l bg-card shadow-sm max-sm:fixed max-sm:inset-x-0 max-sm:top-14 max-sm:z-40 max-sm:max-h-[calc(100dvh-3.5rem)] max-sm:border-l-0 sm:w-(--inspector-w)"
       style={{ "--inspector-w": `${width}px` } as React.CSSProperties}
       onContextMenu={(event) => event.stopPropagation()}
     >
@@ -147,7 +147,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
         </div>
       )}
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {activeTab === "source" && source && (
           <SourceTab
             record={source}
