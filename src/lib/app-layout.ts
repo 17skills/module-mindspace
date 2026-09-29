@@ -127,8 +127,10 @@ export function buildFreeLayout(nodes: NodeRecord[], saved: AppGridItem[]): AppG
   const result: AppGridItem[] = [];
   for (const node of nodes) {
     const stored = saved.find((item) => item.id === node.id);
-    const width = Math.min(12, Math.max(2, stored?.width ?? (TILE_TYPES.has(node.type) ? 4 : 6)));
-    const height = Math.min(10, Math.max(2, stored?.height ?? (WIDE_TYPES.has(node.type) ? 6 : 3)));
+    const preset = defaultModuleSize(node.type);
+    const width = Math.min(12, Math.max(2, stored?.width ?? preset.width));
+    const height = Math.min(10, Math.max(2, stored?.height ?? preset.height));
+
     let candidate: AppGridItem = {
       id: node.id,
       col: Math.min(13 - width, Math.max(1, stored?.col ?? 1)),
