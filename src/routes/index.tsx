@@ -266,7 +266,100 @@ function LibraryPage() {
     onError: (error) => toast.error(error.message),
   });
 
+  const setProject = useMutation({
+    mutationFn: async (target: { id: string; project: string | null }) => {
+      const { error } = await supabase
+        .from("boards")
+        .update({ project: target.project })
+        .eq("id", target.id);
+      if (error) throw error;
+      return target;
+    },
+    onSuccess: (target) => {
+      toast.success(target.project ? `In „${target.project}“ verschoben` : "Aus Projekt entfernt");
+      void queryClient.invalidateQueries({ queryKey: ["boards"] });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const projectNames = useMemo(() => {
+    const names = new Set<string>(extraProjects);
+    for (const board of boards.data ?? []) if (board.project) names.add(board.project);
+    return [...names].sort((a, b) => a.localeCompare(b, "de"));
+  }, [boards.data, extraProjects]);
+
+  const visibleBoards = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (boards.data ?? []).filter((board) => {
+      if (owner === "mine" && board.user_id !== user?.id) return false;
+      if (owner === "shared" && board.user_id === user?.id) return false;
+      if (projectFilter && board.project !== projectFilter) return false;
+      if (!term) return true;
+      return `${board.title} ${board.description ?? ""}`.toLowerCase().includes(term);
+    });
+  }, [boards.data, owner, projectFilter, search, user?.id]);
+
+  function boardMenu(board: { id: string; description: string | null; user_id: string }) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Scope-Menü">
+            <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem
+            onSelect={() => {
+              setEditing({ kind: "scope", id: board.id });
+              setDraft(board.description ?? "");
+            }}
+          >
+            <Pencil aria-hidden="true" className="mr-2 h-4 w-4" />
+            Beschreibung bearbeiten
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Folder aria-hidden="true" className="mr-2 h-4 w-4" />
+              Projekt zuordnen
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {projectNames.map((name) => (
+                <DropdownMenuItem
+                  key={name}
+                  onSelect={() => setProject.mutate({ id: board.id, project: name })}
+                >
+                  {name}
+                </DropdownMenuItem>
+              ))}
+              {projectNames.length > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuItem onSelect={() => setNewProject("")}>
+                <FolderPlus aria-hidden="true" className="mr-2 h-4 w-4" />
+                Neues Projekt …
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setProject.mutate({ id: board.id, project: null })}>
+                Kein Projekt
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          {board.user_id === user?.id && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => setConfirmDelete(board.id)}
+              >
+                <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" />
+                Löschen
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
   if (loading || !user) {
+
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">…</div>;
   }
 
