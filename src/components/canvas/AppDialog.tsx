@@ -701,24 +701,53 @@ export function AppDialog({
                 </button>
               </p>
             )}
-            <div className={`grid max-h-60 gap-1 overflow-auto rounded-lg border p-2 ${showValidation && validation.metrics ? "border-destructive" : "border-border/70"}`}>
-              {candidates.map((item) => (
-                <label key={item.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(item.id)}
-                    onChange={() => toggle(item.id)}
-                  />
-                  <span className="truncate">{moduleLabel(item.type, item.title ?? "")}</span>
-                </label>
+            <div className={`max-h-72 space-y-3 overflow-auto rounded-lg border p-2 ${showValidation && validation.metrics ? "border-destructive" : "border-border/70"}`}>
+              {grouped.map(({ group, items }) => (
+                <section key={group}>
+                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {CLASS_LABEL[group]}
+                  </p>
+                  <div className="grid gap-1">
+                    {items.map((item) => {
+                      const role = readModuleRole(item);
+                      const standard = TYPE_STANDARD[item.type];
+                      return (
+                        <label key={item.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={picked.includes(item.id)}
+                            onChange={() => toggle(item.id)}
+                          />
+                          <span className="truncate">{moduleLabel(item.type, item.title ?? "")}</span>
+                          {standard ? (
+                            <span className="shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {standard}
+                            </span>
+                          ) : null}
+                          {!isTileRole(role) ? (
+                            <span className="shrink-0 rounded-full bg-accent/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {ROLE_LABEL[role]}
+                            </span>
+                          ) : null}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
               {candidates.length === 0 && (
                 <p className="text-sm text-muted-foreground">Dieser Scope hat noch keine Module.</p>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {picked.length} / {MAX_APP_MODULES} gewählt
+              {tileNodes.length} / {MAX_APP_MODULES} Kachel-Module
+              {pickedNodes.length > tileNodes.length
+                ? ` · ${pickedNodes.length - tileNodes.length} Leitfaden/Quellen`
+                : ""}
               {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Die Rolle eines Text- oder Linkbausteins änderst du im Scope über das Kontextfenster.
             </p>
             {showValidation && validation.metrics && <p className="text-xs text-destructive">{validation.metrics}</p>}
             {pickedNodes.length > 0 && (
@@ -728,7 +757,10 @@ export function AppDialog({
                     key={node.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-sm"
                   >
-                    <span className="truncate">{moduleLabel(node.type, node.title ?? "")}</span>
+                    <span className="truncate">
+                      {moduleLabel(node.type, node.title ?? "")}
+                      {isTileRole(readModuleRole(node)) ? "" : ` · ${ROLE_LABEL[readModuleRole(node)]}`}
+                    </span>
                     <span className="flex shrink-0 gap-1">
                       <Button
                         size="sm"
@@ -751,6 +783,7 @@ export function AppDialog({
                 ))}
               </ul>
             )}
+
             <div>
               <span className="module-eyebrow text-muted-foreground">Aufbau</span>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
