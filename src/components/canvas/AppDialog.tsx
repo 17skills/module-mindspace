@@ -364,11 +364,29 @@ export function AppDialog({
         .filter((item): item is Candidate => Boolean(item)),
     [picked, candidates],
   );
-  const chosenTypes = useMemo(() => pickedNodes.map((node) => node.type), [pickedNodes]);
+  /** Nur Kachel-Module belegen einen Platz im Raster – Leitfaden und Quellen nicht. */
+  const tileNodes = useMemo(
+    () => pickedNodes.filter((node) => isTileRole(readModuleRole(node))),
+    [pickedNodes],
+  );
+  /** Auswahlliste nach Klasse gruppiert: Fachmodule, Analytik, Schnittstellen, Kontext. */
+  const grouped = useMemo(() => {
+    const order: ModuleClass[] = ["domain", "analytics", "io", "context"];
+    return order
+      .map((group) => ({
+        group,
+        items: candidates.filter((item) =>
+          isTileRole(readModuleRole(item)) ? moduleClass(item.type) === group : group === "context",
+        ),
+      }))
+      .filter((entry) => entry.items.length > 0);
+  }, [candidates]);
+  const chosenTypes = useMemo(() => tileNodes.map((node) => node.type), [tileNodes]);
   const kind: "capture" | "cockpit" =
     resolveLayout(branding.layout, chosenTypes) === "capture" ? "capture" : "cockpit";
-  const validation = useMemo(() => deploymentIssues({ title, leadQuestion, audience, nodes: pickedNodes }), [title, leadQuestion, audience, pickedNodes]);
+  const validation = useMemo(() => deploymentIssues({ title, leadQuestion, audience, nodes: tileNodes }), [title, leadQuestion, audience, tileNodes]);
   const validationMessages = Object.values(validation).filter((message): message is string => Boolean(message));
+
 
   useEffect(() => {
     if (branding.layout !== "free") return;
