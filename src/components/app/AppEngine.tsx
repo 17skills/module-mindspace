@@ -667,7 +667,9 @@ function FreeAppLayout({
     commit(layout, next);
   };
 
-  const mobile = compact;
+  // „auto“ folgt der Fensterbreite: unter 768 px eine Spalte, darüber das Raster.
+  const collapseClass = device === "auto" ? "max-md:!block max-md:space-y-3" : "";
+
   return (
     <main className="relative flex flex-1 flex-col" data-layout="free">
       {editable && !mobile ? (
