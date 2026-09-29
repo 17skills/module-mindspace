@@ -96,6 +96,24 @@ function LibraryPage() {
   const [editing, setEditing] = useState<{ kind: "scope" | "app"; id: string } | null>(null);
   const [draft, setDraft] = useState("");
   const restoreRef = useRef<HTMLInputElement>(null);
+  const [view, setView] = useState<"gallery" | "list">("gallery");
+  const [search, setSearch] = useState("");
+  const [owner, setOwner] = useState<"all" | "mine" | "shared">("all");
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  const [extraProjects, setExtraProjects] = useState<string[]>([]);
+  const [newProject, setNewProject] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("scopes-view");
+    if (stored === "list" || stored === "gallery") setView(stored);
+  }, []);
+
+  function changeView(next: "gallery" | "list") {
+    setView(next);
+    window.localStorage.setItem("scopes-view", next);
+  }
+
 
   const restoreBackup = useMutation({
     mutationFn: async (file: File | string) => {
