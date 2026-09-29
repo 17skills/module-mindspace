@@ -720,10 +720,11 @@ function FreeAppLayout({
             key={node.id}
             data-grid-id={node.id}
             className={`relative min-h-0 ${selected.includes(node.id) ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""} ${mobile ? "mb-3" : "max-md:mb-3"}`}
-            style={mobile ? undefined : {
+            style={mobile ? { minHeight: stackHeight(node.type) } : {
               gridColumn: `${item.col} / span ${item.width}`,
               gridRow: `${item.row} / span ${item.height}`,
             }}
+
             onClick={(event) => select(event, node.id)}
           >
             <AppModule node={node} nodes={nodes} actions={actions} className="h-full" />
