@@ -772,120 +772,166 @@ function LibraryPage() {
 
 
         <div className="mt-14">
-          <h2 className="font-display text-xl font-semibold tracking-tight text-brand-navy">
-            Aktive Apps
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Aus Modulen gebaute Apps – als Link für Menschen und als Datenzugang für KI-Assistenten.
-          </p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {apps.data?.map((app) => (
-              <div
-                key={app.id}
-                className="group rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)]"
-              >
-                <ScopePreview
-                  seed={app.id}
-                  types={app.kind === "capture" ? ["inspect", "map", "note"] : ["map", "metric", "risk"]}
-                  label={app.kind === "capture" ? "Erfassung" : "Cockpit"}
-                  className="mb-3 h-24"
-                />
-                <div className="flex items-center gap-2">
-                  <h3 className="font-display text-base font-semibold">{app.title}</h3>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] ${
-                      app.is_public
-                        ? "bg-brand-sage/20 text-brand-navy"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {app.is_public ? "Aktiv" : "Inaktiv"}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                    {app.mcp_scope === "write" ? "KI schreibt" : "KI liest"}
-                  </span>
-                </div>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-brand-navy">
+                Aktive Apps
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Aus Modulen gebaute Apps – als Link für Menschen und als Datenzugang für
+                KI-Assistenten.
+              </p>
+            </div>
+          </div>
 
-                {editing?.kind === "app" && editing.id === app.id ? (
-                  <div className="mt-2 space-y-2">
-                    <Textarea
-                      autoFocus
-                      rows={3}
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      placeholder="Wofür ist diese App gedacht?"
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {(
+              [
+                { id: "all", label: "Alle" },
+                { id: "active", label: "Aktiv" },
+                { id: "inactive", label: "Inaktiv" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setAppFilter(option.id)}
+                aria-pressed={appFilter === option.id}
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  appFilter === option.id
+                    ? "border-transparent bg-brand-navy text-brand-navy-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          {view === "gallery" ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleApps.map((app) => (
+                <div
+                  key={app.id}
+                  className="group rounded-2xl border bg-card p-4 shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]"
+                >
+                  <a href={`/app/${app.id}`} target="_blank" rel="noreferrer" className="block">
+                    <ScopePreview
+                      seed={app.id}
+                      types={
+                        app.kind === "capture"
+                          ? ["inspect", "map", "note"]
+                          : ["map", "metric", "risk"]
+                      }
+                      label={app.kind === "capture" ? "Erfassung" : "Cockpit"}
+                      className="mb-3 h-24"
                     />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          saveDescription.mutate({ kind: "app", id: app.id, text: draft })
-                        }
+                  </a>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                    <div className="min-w-0">
+                      <a
+                        href={`/app/${app.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-display text-base font-semibold hover:underline"
                       >
-                        Speichern
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                        Abbrechen
-                      </Button>
+                        {app.title}
+                      </a>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] ${
+                            app.is_public
+                              ? "bg-brand-sage/20 text-brand-navy"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {app.is_public ? "Aktiv" : "Inaktiv"}
+                        </span>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                          {app.mcp_scope === "write" ? "KI schreibt" : "KI liest"}
+                        </span>
+                      </div>
                     </div>
+                    {appMenu(app)}
                   </div>
-                ) : (
-                  <div className="mt-1 flex items-start gap-2">
-                    <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">
+
+                  {editing?.kind === "app" && editing.id === app.id ? (
+                    <div className="mt-2 space-y-2">
+                      <Textarea
+                        autoFocus
+                        rows={3}
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        placeholder="Wofür ist diese App gedacht?"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            saveDescription.mutate({ kind: "app", id: app.id, text: draft })
+                          }
+                        >
+                          Speichern
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                          Abbrechen
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
                       {app.description || "Ohne Beschreibung"}
                     </p>
-                    <button
-                      title="Beschreibung bearbeiten"
-                      className="text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-foreground"
-                      onClick={() => {
-                        setEditing({ kind: "app", id: app.id });
-                        setDraft(app.description ?? "");
-                      }}
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                  </div>
-                )}
+                  )}
 
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {Array.isArray(app.node_ids) ? app.node_ids.length : 0} Module ·{" "}
-                  {new Date(app.updated_at).toLocaleDateString("de-DE")}
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={`/app/${app.id}`} target="_blank" rel="noreferrer">
-                      Öffnen
-                    </a>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(`${window.location.origin}/app/${app.id}`);
-                      toast.success("Link kopiert");
-                    }}
-                  >
-                    Link kopieren
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={togglePublic.isPending}
-                    onClick={() =>
-                      togglePublic.mutate({ id: app.id, is_public: app.is_public })
-                    }
-                  >
-                    {app.is_public ? "Abschalten" : "Aktivieren"}
-                  </Button>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {Array.isArray(app.node_ids) ? app.node_ids.length : 0} Module ·{" "}
+                    {new Date(app.updated_at).toLocaleDateString("de-DE")}
+                  </p>
                 </div>
-              </div>
-            ))}
-            {apps.data?.length === 0 && (
-              <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                Noch keine App. Wähle in einem Scope Module aus und klicke unten auf „App-Ansicht“.
-              </div>
-            )}
-          </div>
+              ))}
+              {visibleApps.length === 0 && (
+                <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+                  {apps.data?.length
+                    ? "Keine App passt zu Suche und Filter."
+                    : "Noch keine App. Wähle in einem Scope Module aus und klicke unten auf „App-Ansicht“."}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-5 divide-y rounded-2xl border bg-card">
+              {visibleApps.map((app) => (
+                <div
+                  key={app.id}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <a
+                      href={`/app/${app.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block truncate font-medium hover:underline"
+                    >
+                      {app.title}
+                    </a>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {app.is_public ? "Aktiv" : "Inaktiv"} ·{" "}
+                      {app.kind === "capture" ? "Erfassung" : "Cockpit"} ·{" "}
+                      {Array.isArray(app.node_ids) ? app.node_ids.length : 0} Module ·{" "}
+                      {new Date(app.updated_at).toLocaleDateString("de-DE")}
+                    </p>
+                  </div>
+                  {appMenu(app)}
+                </div>
+              ))}
+              {visibleApps.length === 0 && (
+                <div className="p-8 text-center text-sm text-muted-foreground">
+                  {apps.data?.length
+                    ? "Keine App passt zu Suche und Filter."
+                    : "Noch keine App. Wähle in einem Scope Module aus."}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
