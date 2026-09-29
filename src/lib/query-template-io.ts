@@ -126,3 +126,48 @@ export function classifyImport(
   }
   return { fresh, duplicates };
 }
+
+export type ExistingTemplate = {
+  id: string;
+  title: string;
+  config: ChartConfig;
+  columns: string[];
+  category: string;
+  tags: string[];
+};
+
+export type UpdatePlan = {
+  id: string;
+  title: string;
+  category: string;
+  tags: string[];
+  columns: string[];
+  /** Kurzer Hinweis, was sich ändert; leer, wenn nichts zu aktualisieren ist. */
+  note: string;
+};
+
+/**
+ * Plant Aktualisierungen für Duplikate: Kategorie aus der Datei (nur wenn dort gesetzt),
+ * Tags werden ergänzt (nie entfernt), Spalten aus der Datei. Name und Auswertung bleiben unberührt.
+ */
+export function planUpdates(duplicates: PortableTemplate[], existing: ExistingTemplate[]): UpdatePlan[] {
+  const byKey = new Map(existing.map((e) => [templateKey(e), e]));
+  const plans: UpdatePlan[] = [];
+  const seen = new Set<string>();
+  for (const dup of duplicates) {
+    const key = templateKey(dup);
+    const current = byKey.get(key);
+    if (!current || seen.has(key)) continue;
+    seen.add(key);
+    const category = dup.category || current.category;
+    const tags = [...new Set([...current.tags, ...dup.tags])].slice(0, 20);
+    const columns = dup.columns.length ? dup.columns : current.columns;
+    const notes: string[] = [];
+    if (category !== current.category) notes.push(current.category ? "Kategorie wird geändert" : "Kategorie wird gesetzt");
+    const added = tags.length - current.tags.length;
+    if (added > 0) notes.push(`${added} Tag${added === 1 ? "" : "s"} kommen dazu`);
+    if (columns.join("|") !== current.columns.join("|")) notes.push("Spalten werden aktualisiert");
+    plans.push({ id: current.id, title: current.title, category, tags, columns, note: notes.join(" · ") });
+  }
+  return plans;
+}
