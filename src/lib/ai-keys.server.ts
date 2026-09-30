@@ -10,7 +10,9 @@ import {
   type AiRouting,
 } from "@/lib/ai-functions";
 import { estimateCost, estimateTokens } from "@/lib/ai-pricing";
+import type { ModuleEngineBinding } from "@/lib/module-engine";
 import type { Database } from "@/integrations/supabase/types";
+
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 
@@ -249,13 +251,14 @@ function anthropicImage(url: string): { type: "image"; source: Record<string, un
 }
 
 async function openAiCompatibleStructured(
-  provider: AiProvider,
+  provider: AiProvider | "local",
   entry: AiKeyEntry,
   req: { prompt: string; image?: string; schemaName?: string; schema?: Record<string, unknown>; maxTokens?: number },
 ): Promise<string> {
-  const meta = AI_PROVIDER_META[provider];
-  const baseUrl = (entry.baseUrl || meta.baseUrl).replace(/\/+$/, "");
-  const model = entry.modelHint?.trim() || meta.model;
+  const meta = provider === "local" ? null : AI_PROVIDER_META[provider];
+  const baseUrl = (entry.baseUrl || meta?.baseUrl || "").replace(/\/+$/, "");
+  const model = entry.modelHint?.trim() || meta?.model || "";
+
   const content: Record<string, unknown>[] = [{ type: "text", text: req.prompt }];
   if (req.image) content.push({ type: "image_url", image_url: { url: req.image } });
 
