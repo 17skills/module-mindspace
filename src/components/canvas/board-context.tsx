@@ -21,7 +21,15 @@ export type NodeRecord = {
   metadata: Record<string, unknown> | null;
 };
 
-export type InspectorTab = "source" | "data" | "refresh" | "assign" | "guide" | "agent" | "fetch";
+export type InspectorTab =
+  | "source"
+  | "data"
+  | "refresh"
+  | "assign"
+  | "guide"
+  | "agent"
+  | "fetch"
+  | "trigger";
 
 export type StructureItem = {
   kind: "table" | "list" | "chart";

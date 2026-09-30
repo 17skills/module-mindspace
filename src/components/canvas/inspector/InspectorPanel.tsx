@@ -11,6 +11,7 @@ import { AgentTab } from "./AgentTab";
 import { FetchTab } from "./FetchTab";
 import { GuideTab } from "./GuideTab";
 import { RefreshTab } from "./RefreshTab";
+import { TriggerTab } from "./TriggerTab";
 import { RoleSection } from "./RoleSection";
 import { useSegments } from "./use-segments";
 import { useTranslation } from "@/lib/i18n";
@@ -89,6 +90,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
     { id: "source", label: l("Quelle") },
     ...(isData ? [{ id: "data" as const, label: l("Daten") }] : []),
     { id: "refresh", label: l("Aktualisieren") },
+    { id: "trigger", label: l("Auslöser") },
     ...(isZone ? [] : [{ id: "assign" as const, label: l("Zuordnung") }]),
     { id: "guide", label: l("Leitfaden") },
   ];
