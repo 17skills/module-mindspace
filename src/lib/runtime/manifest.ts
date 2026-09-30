@@ -482,9 +482,12 @@ export function manifestToBackup(manifest: ScopeManifest): BackupShape {
     board: {
       title: manifest.scope.title,
       description: manifest.scope.description,
-      rules: manifest.rules,
+      rules: manifest.governance
+        ? { ...manifest.rules, governance: manifest.governance }
+        : manifest.rules,
       provenance: manifest.provenance ? { ...manifest.provenance } : {},
     },
+
     nodes: manifest.modules.map((module) => ({
       id: module.id,
       parent_id: module.parent,
