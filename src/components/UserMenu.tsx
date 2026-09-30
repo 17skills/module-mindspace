@@ -1,6 +1,20 @@
+import { useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Check, LogOut, Settings, ShieldCheck, User } from "lucide-react";
+import {
+  Building2,
+  Check,
+  Languages,
+  LogOut,
+  Monitor,
+  Moon,
+  Settings,
+  ShieldCheck,
+  Sun,
+  User,
+} from "lucide-react";
+import { useTheme, type ThemeMode } from "@/lib/theme";
+import { useTranslation } from "@/lib/i18n";
 import { getAccount } from "@/lib/account.functions";
 import { listMyOrgs, setActiveOrg } from "@/lib/org.functions";
 import { supabase } from "@/integrations/supabase/client";
