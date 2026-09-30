@@ -295,6 +295,13 @@
       "when": 1790774931827,
       "tag": "0041_create_trigger_events",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790775125581,
+      "tag": "0042_trigger_log_privacy",
+      "breakpoints": true
     }
   ]
 }

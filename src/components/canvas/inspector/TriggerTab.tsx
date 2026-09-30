@@ -76,6 +76,8 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
   const [probeUrl, setProbeUrl] = useState("");
   const [matchMode, setMatchMode] = useState<"any" | "all">("any");
   const [conditions, setConditions] = useState<TriggerCondition[]>([]);
+  const [logValues, setLogValues] = useState(false);
+  const [logExclude, setLogExclude] = useState("");
   const [secret, setSecret] = useState<string | null>(null);
   const [sample, setSample] = useState('{\n  "wind": 82\n}');
   const [check, setCheck] = useState<TriggerEvaluation | null>(null);
@@ -87,6 +89,8 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
     setIntervalMinutes(existing.interval_minutes ?? 60);
     setProbeUrl(existing.probe_url ?? "");
     setMatchMode(existing.match_mode === "all" ? "all" : "any");
+    setLogValues(existing.log_values === true);
+    setLogExclude((existing.log_exclude ?? []).join(", "));
     setConditions(Array.isArray(existing.conditions) ? (existing.conditions as TriggerCondition[]) : []);
   }, [existing?.id]);
 
@@ -104,6 +108,8 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
           probeUrl: probeUrl.trim() || null,
           matchMode,
           conditions: conditions.filter((c) => c.path.trim()),
+          logValues,
+          logExclude: logExclude.split(",").map((p) => p.trim()).filter(Boolean),
         },
       }),
     onSuccess: (result) => {
@@ -209,6 +215,17 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
           </p>
         </section>
       )}
+
+      <section className="space-y-2 rounded-lg border p-2.5">
+        <p className="text-xs font-medium text-muted-foreground">Protokoll & Datenschutz</p>
+        <label className="flex items-center justify-between gap-2 text-xs">
+          <span>Geprüfte Werte im Verlauf zeigen</span>
+          <input type="checkbox" checked={logValues} onChange={(e) => setLogValues(e.target.checked)} aria-label="Geprüfte Werte im Verlauf zeigen" />
+        </label>
+        <p className="text-[11px] text-muted-foreground">Standard: aus. Werte erscheinen dann nur als •••.</p>
+        <Input value={logExclude} onChange={(e) => setLogExclude(e.target.value)} placeholder="user, kunde.email" aria-label="Sensible Felder vom Protokoll ausschließen" className="h-8 text-xs" />
+        <p className="text-[11px] text-muted-foreground">Diese Felder (samt Unterfeldern) tauchen nie im Verlauf auf. Mehrere mit Komma trennen.</p>
+      </section>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">

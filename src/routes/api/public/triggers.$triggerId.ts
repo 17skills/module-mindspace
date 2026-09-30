@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/public/triggers/$triggerId")({
         const { data: row } = await supabaseAdmin
           .from("scope_triggers")
           .select(
-            "id,board_id,node_id,mode,enabled,interval_minutes,probe_url,match_mode,conditions,last_values,secret_hash,name",
+            "id,board_id,node_id,mode,enabled,interval_minutes,probe_url,match_mode,conditions,last_values,secret_hash,name,log_values,log_exclude",
           )
           .eq("id", id)
           .maybeSingle();

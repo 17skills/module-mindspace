@@ -273,3 +273,37 @@ export function parseConditions(raw: unknown): TriggerCondition[] {
   }
   return out;
 }
+
+/** Prüft, ob ein Pfad unter einen ausgeschlossenen Pfad fällt ("user" deckt "user.email" ab). */
+function isExcluded(path: string, exclude: string[]): boolean {
+  return exclude.some((p) => p && (path === p || path.startsWith(`${p}.`) || path.startsWith(`${p}[`)));
+}
+
+/** Säubert die Liste sensibler Pfade (max. 20, je 200 Zeichen). */
+export function parseExcludePaths(raw: unknown): string[] {
+  const list = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(/[\n,]/) : [];
+  return Array.from(new Set(list.map((p) => String(p).trim().slice(0, 200)).filter(Boolean))).slice(0, 20);
+}
+
+/**
+ * Grund für das Ausführungsprotokoll. Werte sind standardmäßig geschwärzt;
+ * ausgeschlossene Pfade erscheinen gar nicht, nur als Anzahl.
+ */
+export function formatLogReason(
+  evaluation: Pick<TriggerEvaluation, "results" | "summary">,
+  options: { showValues?: boolean; exclude?: string[] } = {},
+): string {
+  const exclude = options.exclude ?? [];
+  let hidden = 0;
+  const parts: string[] = [];
+  for (const r of evaluation.results) {
+    if (isExcluded(r.path, exclude)) {
+      hidden += 1;
+      continue;
+    }
+    const value = options.showValues ? r.actual : "•••";
+    parts.push(`${r.path} ${r.op} ${r.passed ? "✓" : "✗"} (${value})`);
+  }
+  if (hidden) parts.push(`${hidden} Regel(n) ausgeblendet`);
+  return parts.length ? `${evaluation.summary}: ${parts.join("; ")}` : evaluation.summary;
+}
