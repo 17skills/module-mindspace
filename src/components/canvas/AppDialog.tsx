@@ -40,6 +40,7 @@ import { executiveView } from "@/lib/app-executive";
 import { deploymentIssues, previewExecutiveView, type PreviewScenario } from "@/lib/app-preview";
 import { APP_LAYOUTS, buildFreeLayout, resolveLayout, type LayoutDevice } from "@/lib/app-layout";
 import { MAX_APP_MODULES, brandingFrom, moduleLabel } from "@/lib/apps";
+import { useTranslation } from "@/lib/i18n";
 import {
   CLASS_LABEL,
   ROLE_LABEL,
@@ -151,6 +152,7 @@ function TeamsCardPreview({
   onOpen: () => void;
   onDriverOpen: (id: string) => void;
 }) {
+  const { l } = useTranslation();
   const signal = PREVIEW_SIGNAL[view.signal];
   return (
     <div className="mx-auto w-full max-w-[430px] rounded-lg border border-border bg-card p-5 shadow-[var(--shadow-card)]">
@@ -186,12 +188,12 @@ function TeamsCardPreview({
         </div>
       ) : (
         <p className="mt-5 border-y border-border py-4 text-sm text-muted-foreground">
-          Wähle Module, damit Kennzahlen und Entscheidungstreiber erscheinen.
+            {l("Wähle Module, damit Kennzahlen und Entscheidungstreiber erscheinen.")}
         </p>
       )}
-      <p className="mt-3 text-[11px] text-muted-foreground">Stand: Vorschau · Änderungen noch nicht veröffentlicht</p>
+      <p className="mt-3 text-[11px] text-muted-foreground">{l("Stand: Vorschau · Änderungen noch nicht veröffentlicht")}</p>
       <Button className="mt-4 w-full" size="sm" onClick={onOpen}>
-        Entscheider-Cockpit öffnen
+        {l("Entscheider-Cockpit öffnen")}
       </Button>
     </div>
   );
@@ -344,6 +346,7 @@ export function AppDialog({
   candidates: Candidate[];
   preselected: string[];
 }) {
+  const { l } = useTranslation();
   const [apps, setApps] = useState<Row[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -670,7 +673,7 @@ export function AppDialog({
         <DialogHeader className="px-6 pt-6">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
             <div className="min-w-0">
-              <DialogTitle>App-Ansicht</DialogTitle>
+              <DialogTitle>{l("App-Ansicht")}</DialogTitle>
               <DialogDescription>
                 Bis zu {MAX_APP_MODULES} Module dieses Scopes werden zu einer eigenständigen App –
                 als Link für Menschen und als Datenzugang für KI-Assistenten.
@@ -692,12 +695,12 @@ export function AppDialog({
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="module">1 · Module</TabsTrigger>
-            <TabsTrigger value="design">2 · Gestaltung</TabsTrigger>
-            <TabsTrigger value="access">3 · Zugriff</TabsTrigger>
-            <TabsTrigger value="deliver">4 · Ausliefern</TabsTrigger>
+            <TabsTrigger value="module">1 · {l("Module")}</TabsTrigger>
+            <TabsTrigger value="design">2 · {l("Gestaltung")}</TabsTrigger>
+            <TabsTrigger value="access">3 · {l("Zugriff")}</TabsTrigger>
+            <TabsTrigger value="deliver">4 · {l("Ausliefern")}</TabsTrigger>
             <TabsTrigger value="docs">5 · KI</TabsTrigger>
-            <TabsTrigger value="preview" className="lg:hidden">6 · Vorschau</TabsTrigger>
+            <TabsTrigger value="preview" className="lg:hidden">6 · {l("Vorschau")}</TabsTrigger>
           </TabsList>
 
 
@@ -746,7 +749,7 @@ export function AppDialog({
                 </section>
               ))}
               {candidates.length === 0 && (
-                <p className="text-sm text-muted-foreground">Dieser Scope hat noch keine Module.</p>
+                <p className="text-sm text-muted-foreground">{l("Dieser Scope hat noch keine Module.")}</p>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -795,7 +798,7 @@ export function AppDialog({
             )}
 
             <div>
-              <span className="module-eyebrow text-muted-foreground">Aufbau</span>
+              <span className="module-eyebrow text-muted-foreground">{l("Aufbau")}</span>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {APP_LAYOUTS.map((option) => (
                   <button
@@ -814,7 +817,7 @@ export function AppDialog({
               </div>
               {branding.layout === "free" ? (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Module rechts am Griff verschieben und an der unteren Ecke vergrößern.
+                  {l("Module rechts am Griff verschieben und an der unteren Ecke vergrößern.")}
                 </p>
               ) : null}
             </div>
@@ -827,14 +830,14 @@ export function AppDialog({
               value={title}
               aria-invalid={showValidation && Boolean(validation.title)}
               className={showValidation && validation.title ? "border-destructive focus-visible:ring-destructive" : ""}
-              placeholder="Titel der App, z. B. Trafostationen-Inspektion"
+              placeholder={l("Titel der App, z. B. Trafostationen-Inspektion")}
               onChange={(event) => setTitle(event.target.value)}
             />
             {showValidation && validation.title && <p className="text-xs text-destructive">{validation.title}</p>}
             <Textarea
               value={description}
               rows={2}
-              placeholder="Kurze Beschreibung, z. B. Vor-Ort-Erfassung für Team West"
+              placeholder={l("Kurze Beschreibung, z. B. Vor-Ort-Erfassung für Team West")}
               onChange={(event) => setDescription(event.target.value)}
             />
             <div className="flex flex-wrap gap-2">
@@ -902,7 +905,7 @@ export function AppDialog({
 
           {/* 3 – Zugriff */}
           <TabsContent value="access" className="space-y-3">
-            <span className="module-eyebrow text-muted-foreground">Wo wird entschieden?</span>
+            <span className="module-eyebrow text-muted-foreground">{l("Wo wird entschieden?")}</span>
             <div className="grid gap-2 sm:grid-cols-3">
               {(
                 [
@@ -927,22 +930,22 @@ export function AppDialog({
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="space-y-1">
-                <span className="text-xs text-muted-foreground">Zielgruppe</span>
+                <span className="text-xs text-muted-foreground">{l("Zielgruppe")}</span>
                 <Input
                   value={audience}
                   onChange={(event) => setAudience(event.target.value)}
-                  placeholder="z. B. Betriebsleitung"
+                  placeholder={l("z. B. Betriebsleitung")}
                   aria-invalid={showValidation && Boolean(validation.audience)}
                   className={showValidation && validation.audience ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
                 {showValidation && validation.audience && <span className="text-xs text-destructive">{validation.audience}</span>}
               </label>
               <label className="space-y-1">
-                <span className="text-xs text-muted-foreground">Leitfrage der Entscheidung</span>
+                <span className="text-xs text-muted-foreground">{l("Leitfrage der Entscheidung")}</span>
                 <Input
                   value={leadQuestion}
                   onChange={(event) => setLeadQuestion(event.target.value)}
-                  placeholder="z. B. Freigeben oder nachbessern?"
+                  placeholder={l("z. B. Freigeben oder nachbessern?")}
                   aria-invalid={showValidation && Boolean(validation.leadQuestion)}
                   className={showValidation && validation.leadQuestion ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
@@ -950,14 +953,14 @@ export function AppDialog({
               </label>
             </div>
             <p className="text-sm text-muted-foreground">
-              Lege getrennt fest, wer ansehen, operative Daten aktualisieren oder die Konfiguration ändern darf.
+               {l("Lege getrennt fest, wer ansehen, operative Daten aktualisieren oder die Konfiguration ändern darf.")}
             </p>
             {editing ? (
               <AppAccessManager appId={editing} />
             ) : (
-              <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Personen- und Teamrollen kannst du nach dem ersten Ausliefern festlegen.</p>
+               <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">{l("Personen- und Teamrollen kannst du nach dem ersten Ausliefern festlegen.")}</p>
             )}
-            <span className="module-eyebrow text-muted-foreground">KI-Schlüssel</span>
+            <span className="module-eyebrow text-muted-foreground">{l("KI-Schlüssel")}</span>
             <div className="grid gap-2 sm:grid-cols-2">
               {(
                 [
@@ -980,8 +983,8 @@ export function AppDialog({
                     scope === option.id ? "border-ring bg-accent/40" : "border-border/70 hover:bg-accent/20"
                   }`}
                 >
-                  <p className="text-sm font-medium">{option.label}</p>
-                  <p className="text-xs text-muted-foreground">{option.hint}</p>
+                   <p className="text-sm font-medium">{l(option.label)}</p>
+                   <p className="text-xs text-muted-foreground">{l(option.hint)}</p>
                 </button>
               ))}
             </div>
@@ -992,14 +995,14 @@ export function AppDialog({
             <div className={`rounded-lg border p-3 ${validationMessages.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/40"}`}>
               <div className="flex items-center gap-2 text-sm font-medium">
                 {validationMessages.length ? <TriangleAlert className="size-4 text-destructive" /> : <CheckCircle2 className="size-4 text-brand-green-deep" />}
-                {validationMessages.length ? `${validationMessages.length} Punkte vor Veröffentlichung` : "Bereit zur Veröffentlichung"}
+                 {validationMessages.length ? `${validationMessages.length} ${l("Punkte vor Veröffentlichung")}` : l("Bereit zur Veröffentlichung")}
               </div>
               {validationMessages.length > 0 && <ul className="mt-2 space-y-1 text-xs text-destructive">{validationMessages.map((message) => <li key={message}>• {message}</li>)}</ul>}
             </div>
             <Button onClick={() => void submit()} disabled={saving || validationMessages.length > 0} className="w-full">
-              {editing ? "Änderungen speichern" : "App ausliefern"}
+               {l(editing ? "Änderungen speichern" : "App ausliefern")}
             </Button>
-            <span className="module-eyebrow text-muted-foreground">Aktive Apps</span>
+            <span className="module-eyebrow text-muted-foreground">{l("Aktive Apps")}</span>
             <ul className="space-y-2">
               {apps.map((app) => {
                 const count = Array.isArray(app.node_ids) ? app.node_ids.length : 0;
@@ -1022,17 +1025,17 @@ export function AppDialog({
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {app.is_public ? "Aktiv" : "Inaktiv"}
+                         {l(app.is_public ? "Aktiv" : "Inaktiv")}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {app.kind === "capture" ? "Erfassung" : "Cockpit"} · {count} Module ·{" "}
-                        {app.mcp_scope === "write" ? "KI darf schreiben" : "KI liest nur"}
+                         {l(app.mcp_scope === "write" ? "KI darf schreiben" : "KI liest nur")}
                       </span>
                       <div className="ml-auto flex gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
-                          title={app.is_public ? "App abschalten" : "App veröffentlichen"}
+                           title={l(app.is_public ? "App abschalten" : "App veröffentlichen")}
                           onClick={() => void togglePublic(app)}
                         >
                           {app.is_public ? (
@@ -1041,13 +1044,13 @@ export function AppDialog({
                             <EyeOff className="size-3.5" />
                           )}
                         </Button>
-                        <Button size="sm" variant="ghost" title="Bearbeiten" onClick={() => edit(app)}>
+                         <Button size="sm" variant="ghost" title={l("Bearbeiten")} onClick={() => edit(app)}>
                           <Pencil className="size-3.5" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          title="App-Link kopieren"
+                           title={l("App-Link kopieren")}
                           onClick={() => copy(urlFor(app.id), "App-Link kopiert")}
                         >
                           <Copy className="size-3.5" />
@@ -1055,7 +1058,7 @@ export function AppDialog({
                         <Button
                           size="sm"
                           variant="ghost"
-                          title="Teams-Entscheidungskarte kopieren"
+                           title={l("Teams-Entscheidungskarte kopieren")}
                           onClick={() => copy(teamsCardFor(app), "Adresse der Teams-Karte kopiert")}
                         >
                           <MessageSquare className="size-3.5" />
@@ -1063,7 +1066,7 @@ export function AppDialog({
                         <Button
                           size="sm"
                           variant="ghost"
-                          title="Teams-Manifest herunterladen"
+                           title={l("Teams-Manifest herunterladen")}
                           onClick={() => window.open(teamsManifestFor(app), "_blank")}
                         >
                           <Download className="size-3.5" />
@@ -1071,7 +1074,7 @@ export function AppDialog({
                         <Button
                           size="sm"
                           variant="ghost"
-                          title="KI-Anschluss mit Schlüssel kopieren"
+                           title={l("KI-Anschluss mit Schlüssel kopieren")}
                           onClick={() => copy(mcpFor(app), "KI-Anschluss kopiert")}
                         >
                           <Bot className="size-3.5" />
@@ -1079,7 +1082,7 @@ export function AppDialog({
                         <Button
                           size="sm"
                           variant="ghost"
-                          title="Anleitung anzeigen"
+                           title={l("Anleitung anzeigen")}
                           onClick={() => {
                             setDocsFor(app.id);
                             setTestResult(null);
@@ -1108,7 +1111,7 @@ export function AppDialog({
                       <div className="mt-2 flex items-center gap-3">
                         <img src={qr.src} alt="QR-Code" className="size-28 rounded bg-white p-1" />
                         <p className="text-xs text-muted-foreground">
-                          Mit dem Handy scannen, um die App vor Ort zu öffnen.
+                           {l("Mit dem Handy scannen, um die App vor Ort zu öffnen.")}
                         </p>
                       </div>
                     )}
@@ -1116,7 +1119,7 @@ export function AppDialog({
                 );
               })}
               {apps.length === 0 && (
-                <li className="text-sm text-muted-foreground">Noch keine App in diesem Scope.</li>
+                 <li className="text-sm text-muted-foreground">{l("Noch keine App in diesem Scope.")}</li>
               )}
             </ul>
           </TabsContent>
@@ -1128,7 +1131,7 @@ export function AppDialog({
               if (!app) {
                 return (
                   <p className="text-sm text-muted-foreground">
-                    Liefere zuerst eine App aus – danach steht hier die Anleitung.
+                     {l("Liefere zuerst eine App aus – danach steht hier die Anleitung.")}
                   </p>
                 );
               }
@@ -1156,7 +1159,7 @@ export function AppDialog({
                       onClick={() => void testConnection(app)}
                     >
                       <PlugZap className="size-3.5" />
-                      Verbindung testen
+                       {l("Verbindung testen")}
                     </Button>
                     {testResult && <span className="text-xs">{testResult}</span>}
                   </div>
@@ -1165,7 +1168,7 @@ export function AppDialog({
                     <div className="flex items-center gap-2">
                       <Key className="size-3.5 text-muted-foreground" />
                       <span className="module-eyebrow text-muted-foreground">
-                        Verbindungsadresse mit Schlüssel
+                         {l("Verbindungsadresse mit Schlüssel")}
                       </span>
                       <Button
                         size="sm"
@@ -1222,7 +1225,7 @@ export function AppDialog({
                   </div>
 
                   <div className="rounded-lg border border-border/70 p-3">
-                    <span className="module-eyebrow text-muted-foreground">Beispiel-Anfragen</span>
+                     <span className="module-eyebrow text-muted-foreground">{l("Beispiel-Anfragen")}</span>
                     <ul className="mt-2 space-y-1">
                       {PROMPTS.map((prompt) => (
                         <li key={prompt} className="flex items-start gap-2">
