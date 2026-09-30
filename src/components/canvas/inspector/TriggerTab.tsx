@@ -14,6 +14,9 @@ import {
   evaluateTrigger,
   formatLogReason,
   operatorLabel,
+  listPaths,
+  matchesExclude,
+  validateExcludePattern,
   parseConditions,
   parseExcludePaths,
   redactPayload,
@@ -30,6 +33,39 @@ import {
 } from "@/lib/triggers.functions";
 
 type Mode = "webhook" | "cron" | "hybrid";
+type PatternInfo = { pattern: string; error: string | null; hits: string[] };
+
+/** Erfundene Beispiele zum Testen der Muster – werden nie gespeichert. */
+const SAMPLES: { label: string; hint: string; data: unknown }[] = [
+  { label: "Einfach", hint: "Flache Werte", data: { wind: 82, status: "ok" } },
+  {
+    label: "Verschachtelt",
+    hint: "Tiefe Objekte, z. B. kunde.adresse oder **.token",
+    data: { kunde: { name: "Muster", adresse: { plz: "10115", ort: "Berlin" }, auth: { token: "abc" } }, wind: 82 },
+  },
+  {
+    label: "Kurze Liste",
+    hint: "1 Eintrag – users[1].email trifft hier nichts",
+    data: { users: [{ name: "A", email: "a@example.org" }] },
+  },
+  {
+    label: "Lange Liste",
+    hint: "4 Einträge – vergleiche users[*] mit users[0]",
+    data: {
+      users: [
+        { name: "A", email: "a@example.org" },
+        { name: "B", email: "b@example.org" },
+        { name: "C", email: "c@example.org", tags: ["x"] },
+        { name: "D", email: "d@example.org" },
+      ],
+    },
+  },
+  {
+    label: "Listen in Listen",
+    hint: "Unterschiedlich lange innere Listen, z. B. orders[*].items[*].price",
+    data: { orders: [{ id: 1, items: [{ price: 5 }] }, { id: 2, items: [{ price: 7 }, { price: 9 }, { price: 1 }] }] },
+  },
+];
 
 const MODE_LABEL: Record<Mode, string> = {
   webhook: "Ereignis",
@@ -85,9 +121,10 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
   const [logExclude, setLogExclude] = useState("");
   const [excludeDraft, setExcludeDraft] = useState("");
   const excludeList = useMemo(() => parseExcludePaths(logExclude), [logExclude]);
+  const draftError = excludeDraft.trim() ? validateExcludePattern(excludeDraft) : null;
   function addExclude() {
     const next = excludeDraft.trim();
-    if (!next) return;
+    if (!next || validateExcludePattern(next)) return;
     setLogExclude(parseExcludePaths([...excludeList, next]).join(", "));
     setExcludeDraft("");
   }
@@ -170,13 +207,19 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
     try {
       payload = JSON.parse(sample);
     } catch {
-      return { error: "Beispieldaten sind kein gültiges JSON.", check: null, reason: "", redacted: "", hidden: 0 };
+      return { error: "Beispieldaten sind kein gültiges JSON.", check: null, reason: "", redacted: "", hidden: 0, patterns: [] as PatternInfo[] };
     }
     const check = evaluateTrigger(parseConditions(conditions.filter((c) => c.path.trim())), payload, {}, matchMode);
     const redactedValue = redactPayload(payload, excludeList);
     const redacted = JSON.stringify(redactedValue, null, 2);
     const hidden = (redacted.match(/"\[ausgeschlossen\]"/g) ?? []).length;
-    return { error: null, check, reason: formatLogReason(check, { showValues: logValues, exclude: excludeList }), redacted, hidden };
+    const paths = listPaths(payload);
+    const patterns: PatternInfo[] = excludeList.map((pattern) => {
+      const error = validateExcludePattern(pattern);
+      const hits = error ? [] : paths.filter((p) => matchesExclude(p, pattern) && !paths.some((q) => q !== p && p.startsWith(q) && matchesExclude(q, pattern)));
+      return { pattern, error, hits };
+    });
+    return { error: null, check, reason: formatLogReason(check, { showValues: logValues, exclude: excludeList }), redacted, hidden, patterns };
   }, [sample, conditions, matchMode, excludeList, logValues]);
 
   const webhookUrl =
@@ -332,18 +375,29 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
           {logValues ? "Geprüfte Werte erscheinen im Verlauf." : "Geprüfte Werte erscheinen nur als •••."}
         </p>
         <div className="flex flex-wrap gap-1" aria-label="Ausgeschlossene Felder">
-          {excludeList.map((path) => (
-            <span key={path} className="flex items-center gap-1 rounded-full border bg-secondary px-2 py-0.5 font-mono text-[11px]">
-              {path}
-              <button
-                aria-label={`${path} nicht mehr ausschließen`}
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setLogExclude(excludeList.filter((p) => p !== path).join(", "))}
+          {excludeList.map((path) => {
+            const info = preview.patterns.find((p) => p.pattern === path);
+            const bad = Boolean(info?.error);
+            const none = !bad && !preview.error && info && info.hits.length === 0;
+            return (
+              <span
+                key={path}
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[11px] ${
+                  bad ? "border-destructive text-destructive" : none ? "border-dashed text-muted-foreground" : "bg-secondary"
+                }`}
               >
-                ×
-              </button>
-            </span>
-          ))}
+                {path}
+                {info && !bad && !preview.error && <span className="text-muted-foreground">· {info.hits.length}</span>}
+                <button
+                  aria-label={`${path} nicht mehr ausschließen`}
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setLogExclude(excludeList.filter((p) => p !== path).join(", "))}
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
         </div>
         <Input
           value={excludeDraft}
@@ -354,11 +408,33 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
               addExclude();
             }
           }}
-          onBlur={addExclude}
+          onBlur={() => !draftError && addExclude()}
           placeholder="Feld ausschließen, z. B. users[*].email"
           aria-label="Sensibles Feld vom Verlauf ausschließen"
-          className="h-8 font-mono text-xs"
+          aria-invalid={Boolean(draftError)}
+          aria-describedby="exclude-hint"
+          className={`h-8 font-mono text-xs ${draftError ? "border-destructive" : ""}`}
         />
+        <div id="exclude-hint" aria-live="polite" className="space-y-0.5 text-[11px]">
+          {draftError && <p className="text-destructive">{draftError}</p>}
+          {preview.patterns
+            .filter((p) => p.error || (!preview.error && p.hits.length === 0))
+            .map((p) => (
+              <p key={p.pattern} className={p.error ? "text-destructive" : "text-muted-foreground"}>
+                <code>{p.pattern}</code>:{" "}
+                {p.error ?? "trifft in den Beispieldaten kein Feld. Pfad oder Listenplatz prüfen."}
+              </p>
+            ))}
+          {!preview.error &&
+            preview.patterns
+              .filter((p) => p.hits.length)
+              .map((p) => (
+                <p key={p.pattern} className="text-muted-foreground">
+                  <code>{p.pattern}</code> trifft: <code>{p.hits.slice(0, 4).join(", ")}</code>
+                  {p.hits.length > 4 ? ` +${p.hits.length - 4}` : ""}
+                </p>
+              ))}
+        </div>
         <p className="text-[11px] text-muted-foreground">
           Enter fügt hinzu. <code>*</code> = eine Ebene oder ein Listenplatz, <code>**</code> = beliebig tief,{" "}
           <code>[0]</code> = genau ein Platz. Unterfelder werden mit ausgeschlossen.
@@ -367,6 +443,18 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
 
       <section className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground">Vorschau mit Beispieldaten</p>
+        <div className="flex flex-wrap gap-1.5" aria-label="Beispiel wählen">
+          {SAMPLES.map((s) => (
+            <button
+              key={s.label}
+              onClick={() => setSample(JSON.stringify(s.data, null, 2))}
+              className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-secondary"
+              title={s.hint}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
         <Textarea
           value={sample}
           onChange={(event) => setSample(event.target.value)}
@@ -374,7 +462,7 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
           aria-label="Beispielnachricht"
         />
         <p className="text-[11px] text-muted-foreground">
-          Läuft nur in deinem Browser. Nichts wird gesendet oder protokolliert.
+          Läuft nur in deinem Browser. Nichts wird gesendet, gespeichert oder protokolliert.
         </p>
         {preview.error ? (
           <p className="text-[11px] text-destructive">{preview.error}</p>
