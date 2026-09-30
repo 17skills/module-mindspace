@@ -7,9 +7,11 @@ import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
 import { readAgent, zoneMembers } from "@/lib/zones";
 import { EngineSection } from "@/components/canvas/inspector/EngineSection";
 import { checkEngineCompatibility, readEngineBinding } from "@/lib/module-engine";
+import { useTranslation } from "@/lib/i18n";
 
 
 export function AgentTab({ record }: { record: NodeRecord }) {
+  const { l, locale } = useTranslation();
   const { updateNode, runAgent, agentStale, allNodes, focusNode } = useBoard();
   const agent = readAgent(record);
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
@@ -34,7 +36,7 @@ export function AgentTab({ record }: { record: NodeRecord }) {
   return (
     <div className="h-full space-y-4 overflow-auto p-3 text-sm">
       <div>
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Auftrag an das Feld</p>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Auftrag an das Feld")}</p>
         <Textarea
           value={task}
           onChange={(event) => setTask(event.target.value)}
@@ -46,7 +48,7 @@ export function AgentTab({ record }: { record: NodeRecord }) {
 
       <div className="flex items-end gap-2">
         <div>
-          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Ergebnis</p>
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Ergebnis")}</p>
           <div className="flex gap-1.5">
             {(["number", "text"] as const).map((option) => (
               <button
@@ -56,14 +58,14 @@ export function AgentTab({ record }: { record: NodeRecord }) {
                   kind === option ? "border-primary bg-accent/50" : "text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {option === "number" ? "Zahl" : "Text"}
+                {l(option === "number" ? "Zahl" : "Text")}
               </button>
             ))}
           </div>
         </div>
         {kind === "number" && (
           <div className="min-w-0 flex-1">
-            <p className="mb-1.5 text-xs font-medium text-muted-foreground">Einheit</p>
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Einheit")}</p>
             <Input
               value={unit}
               onChange={(event) => setUnit(event.target.value)}
@@ -86,10 +88,10 @@ export function AgentTab({ record }: { record: NodeRecord }) {
           }}
         >
           <Sparkles className="mr-1.5 size-3.5" />
-          {running ? "Analysiert …" : "Analysieren"}
+          {l(running ? "Analysiert …" : "Analysieren")}
         </Button>
         {agent && agentStale(record.id) && !running && (
-          <span className="text-xs text-destructive">Inhalte haben sich geändert</span>
+          <span className="text-xs text-destructive">{l("Inhalte haben sich geändert")}</span>
         )}
       </div>
 
@@ -107,7 +109,7 @@ export function AgentTab({ record }: { record: NodeRecord }) {
           )}
           {agent.at && (
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Stand: {new Date(agent.at).toLocaleString("de-DE")}
+              {locale === "en-GB" ? "As of" : "Stand"}: {new Date(agent.at).toLocaleString(locale)}
             </p>
           )}
         </div>
@@ -119,7 +121,7 @@ export function AgentTab({ record }: { record: NodeRecord }) {
         </p>
         {members.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Lege Karten auf das Feld — sie werden automatisch zum Kontext des Agenten.
+            {l("Lege Karten auf das Feld — sie werden automatisch zum Kontext des Agenten.")}
           </p>
         ) : (
           <ul className="space-y-0.5">
@@ -129,7 +131,7 @@ export function AgentTab({ record }: { record: NodeRecord }) {
                   className="w-full truncate rounded-md px-1.5 py-1 text-left text-xs hover:bg-secondary"
                   onClick={() => focusNode(item.id)}
                 >
-                  {item.title ?? "Modul"}
+                  {item.title ?? l("Modul")}
                 </button>
               </li>
             ))}

@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { extractStructured } from "@/lib/ingest.functions";
 import { readStructure } from "@/lib/structure";
 import { useBoard, type NodeRecord, type StructureItem } from "@/components/canvas/board-context";
+import { useTranslation } from "@/lib/i18n";
 
 type Props = {
   record: NodeRecord;
@@ -17,6 +18,7 @@ type Props = {
 const DATA_TYPES = ["table", "list", "chart"];
 
 export function RefreshTab({ record, selectedText, selectedCount, sourceIds }: Props) {
+  const { l, locale } = useTranslation();
   const { applyStructure, createStructure } = useBoard();
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,7 +30,7 @@ export function RefreshTab({ record, selectedText, selectedCount, sourceIds }: P
   async function run() {
     const text = selectedText.trim();
     if (!text) {
-      toast.error("Bitte wähle im Reiter „Quelle“ mindestens eine Stelle aus.");
+      toast.error(l("Bitte wähle im Reiter „Quelle“ mindestens eine Stelle aus."));
       return;
     }
     setBusy(true);
@@ -44,12 +46,12 @@ export function RefreshTab({ record, selectedText, selectedCount, sourceIds }: P
       });
       const item = result.items?.[0];
       if (!item) {
-        toast.error("In der Auswahl wurden keine strukturierten Daten gefunden.");
+        toast.error(l("In der Auswahl wurden keine strukturierten Daten gefunden."));
         return;
       }
       setPreview(item as StructureItem);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Extraktion fehlgeschlagen");
+      toast.error(error instanceof Error ? error.message : l("Extraktion fehlgeschlagen"));
     } finally {
       setBusy(false);
     }
@@ -62,7 +64,7 @@ export function RefreshTab({ record, selectedText, selectedCount, sourceIds }: P
       <div className="shrink-0 space-y-2 border-b p-3">
         <p className="text-xs text-muted-foreground">
           {selectedCount > 0
-            ? `${selectedCount} Stelle(n) ausgewählt (${selectedText.length.toLocaleString("de-DE")} Zeichen).`
+            ? `${selectedCount} ${locale === "en-GB" ? "item(s) selected" : "Stelle(n) ausgewählt"} (${selectedText.length.toLocaleString(locale)} ${locale === "en-GB" ? "characters" : "Zeichen"}).`
             : "Wähle im Reiter „Quelle“ die Seiten oder Abschnitte aus, die verwendet werden sollen."}
         </p>
         <Textarea
@@ -72,14 +74,14 @@ export function RefreshTab({ record, selectedText, selectedCount, sourceIds }: P
           className="min-h-20 text-xs"
         />
         <Button size="sm" onClick={run} disabled={busy || selectedCount === 0}>
-          {busy ? "Wird ausgewertet …" : "Daten holen"}
+          {l(busy ? "Wird ausgewertet …" : "Daten holen")}
         </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
         {!preview && (
           <p className="text-xs text-muted-foreground">
-            Das Ergebnis erscheint hier zur Vorschau, bevor du es übernimmst.
+            {l("Das Ergebnis erscheint hier zur Vorschau, bevor du es übernimmst.")}
           </p>
         )}
         {preview && (
@@ -124,10 +126,10 @@ export function RefreshTab({ record, selectedText, selectedCount, sourceIds }: P
               onClick={() => {
                 applyStructure(record.id, preview);
                 setPreview(null);
-                toast.success("Daten ersetzt");
+                toast.success(l("Daten ersetzt"));
               }}
             >
-              Daten ersetzen
+              {l("Daten ersetzen")}
             </Button>
           )}
           <Button
@@ -136,13 +138,13 @@ export function RefreshTab({ record, selectedText, selectedCount, sourceIds }: P
             onClick={async () => {
               await createStructure(preview, sourceIds);
               setPreview(null);
-              toast.success("Neues Modul angelegt");
+              toast.success(l("Neues Modul angelegt"));
             }}
           >
-            Als neues Modul
+            {l("Als neues Modul")}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setPreview(null)}>
-            Verwerfen
+            {l("Verwerfen")}
           </Button>
         </div>
       )}
