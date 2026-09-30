@@ -281,6 +281,13 @@
       "when": 1790694140626,
       "tag": "0039_add_developer_role",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790774211815,
+      "tag": "0040_create_scope_triggers",
+      "breakpoints": true
     }
   ]
 }
