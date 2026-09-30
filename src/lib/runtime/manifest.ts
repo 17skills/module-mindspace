@@ -551,6 +551,15 @@ export function manifestNotices(manifest: ScopeManifest, catalogVersions: Map<st
   }
   const approvals = manifest.modules.filter((m) => m.settings["requiresApproval"] === true).length;
   if (approvals) notes.push(`${approvals} Modul(e) wirken nach außen und brauchen immer eine menschliche Freigabe.`);
+  const gov = manifest.governance;
+  if (gov?.riskTier === "high") {
+    notes.push(
+      `Dieser Scope ist als Hochrisiko eingestuft${gov.owner ? ` (verantwortlich: ${gov.owner})` : ""} – bitte vor produktivem Einsatz freigeben.`,
+    );
+  } else if (gov?.riskTier === "limited") {
+    notes.push("Dieser Scope ist als „begrenztes Risiko“ eingestuft – Apps zeigen einen KI-Transparenzhinweis.");
+  }
+
   if (manifest.provenance?.checksum) {
     const now = manifestChecksum(manifest);
     if (now !== manifest.provenance.checksum) notes.push("Die Datei wurde seit dem Export verändert (Prüfsumme weicht ab).");
