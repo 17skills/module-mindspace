@@ -23,6 +23,9 @@ export const TRIGGER_OPERATORS = [
 
 export type TriggerOperator = (typeof TRIGGER_OPERATORS)[number];
 
+/** Gemerkter Wert eines Feldes – bewusst nur einfache Werte. */
+export type TriggerValue = string | number | boolean | null;
+
 export type TriggerCondition = {
   /** Pfad in die Nachricht, z. B. "current.wind_speed". */
   path: string;
@@ -47,7 +50,7 @@ export type TriggerEvaluation = {
   match: "any" | "all";
   results: ConditionResult[];
   /** Neue Merkwerte für den nächsten Vergleich (Pfad → Wert). */
-  nextValues: Record<string, unknown>;
+  nextValues: Record<string, TriggerValue>;
   summary: string;
 };
 
@@ -218,11 +221,15 @@ export function evaluateTrigger(
 ): TriggerEvaluation {
   const usable = conditions.filter((c) => c.path.trim() !== "");
   const results = usable.map((condition) => evaluateOne(condition, payload, previous));
-  const nextValues: Record<string, unknown> = { ...previous };
+  const nextValues: Record<string, TriggerValue> = {};
+  for (const [key, value] of Object.entries(previous)) {
+    nextValues[key] = value === null || typeof value !== "object" ? (value as TriggerValue) : short(value);
+  }
   for (const condition of usable) {
     const value = readPath(payload, condition.path);
     if (value === undefined) continue;
-    nextValues[condition.path] = value === null || typeof value !== "object" ? value : short(value);
+    nextValues[condition.path] =
+      value === null || typeof value !== "object" ? (value as TriggerValue) : short(value);
   }
 
   const fired =
