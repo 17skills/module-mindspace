@@ -163,6 +163,8 @@ import {
   zoneMembers,
 } from "@/lib/zones";
 import { runZoneAgent } from "@/lib/agent.functions";
+import { readEngineBinding } from "@/lib/module-engine";
+
 import { readSource } from "@/lib/source-node";
 import { readDatasetRef } from "@/lib/datasets";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
