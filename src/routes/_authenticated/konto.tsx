@@ -35,6 +35,7 @@ const TABS = [
   { to: "/konto/apps", label: "App-Zugänge" },
   { to: "/konto/sitzungen", label: "Anmeldungen" },
   { to: "/konto/datenschutz", label: "Datenschutz" },
+  { to: "/konto/governance", label: "KI-Governance" },
 ] as const;
 
 function KontoLayout() {

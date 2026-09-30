@@ -508,6 +508,10 @@ function LibraryPage() {
                   <BarChart3 aria-hidden="true" className="mr-2 h-4 w-4" />
                   Ergebnisse anzeigen
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void navigate({ to: "/konto/governance" })}>
+                  <BarChart3 aria-hidden="true" className="mr-2 h-4 w-4" />
+                  KI-Governance
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

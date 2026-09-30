@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { getGovernance, setGovernance } from "@/lib/governance.functions";
+import { FileDown } from "lucide-react";
+import { getGovernance, getGovernanceEvidence, setGovernance } from "@/lib/governance.functions";
 import {
   DEFAULT_GOVERNANCE,
   LIFECYCLES,
@@ -22,6 +23,7 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
   const qc = useQueryClient();
   const get = useServerFn(getGovernance);
   const save = useServerFn(setGovernance);
+  const evidence = useServerFn(getGovernanceEvidence);
   const q = useQuery({ queryKey: ["governance", boardId], queryFn: () => get({ data: { boardId } }) });
   const [form, setForm] = useState<Governance>(DEFAULT_GOVERNANCE);
   const [open, setOpen] = useState(false);
@@ -171,6 +173,22 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
       {!isOwner ? (
         <p className="text-xs text-muted-foreground">Nur der Inhaber kann die Einstufung ändern.</p>
       ) : null}
+      <Button
+        size="sm"
+        variant="outline"
+        className="gap-1.5"
+        onClick={async () => {
+          try {
+            const data = await evidence({ data: { boardId } });
+            const { downloadGovernancePdf } = await import("@/lib/governance-pdf");
+            await downloadGovernancePdf(data);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "PDF konnte nicht erstellt werden");
+          }
+        }}
+      >
+        <FileDown className="size-4" /> Nachweis als PDF
+      </Button>
     </section>
   );
 }
