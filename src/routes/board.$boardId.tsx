@@ -427,15 +427,9 @@ const DASHBOARD_MODULES = [
   },
   {
     id: "risk",
-    label: "Risikomatrix (ISO 55001)",
+    label: "Risikomatrix",
     title: "Risikomatrix",
     metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 },
-  },
-  {
-    id: "inspect",
-    label: "Inspektion (Fotos)",
-    title: "Trafostations-Inspektion",
-    metadata: { findings: [], rates: {} },
   },
   { id: "camera", label: "Kamera (Foto + Ort)", title: "Kamera", metadata: {} },
 ] as const;
