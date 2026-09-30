@@ -16,6 +16,7 @@ import {
   type EngineCapability,
   type EngineProvider,
 } from "@/lib/module-engine";
+import { useTranslation } from "@/lib/i18n";
 
 /**
  * Rechenkern eines Moduls: Anbieterart, Modell und eigenes Token-Budget.
@@ -32,6 +33,7 @@ export function EngineSection({
   onChange: (patch: Record<string, unknown>) => void;
   required?: EngineCapability[];
 }) {
+  const { l } = useTranslation();
   const binding = readEngineBinding(metadata);
   const [model, setModel] = useState(binding.model ?? "");
   const [budget, setBudget] = useState(binding.maxTokens ? String(binding.maxTokens) : "");
@@ -82,7 +84,7 @@ export function EngineSection({
     <div className="space-y-2.5 rounded-lg border border-border/70 p-3">
       <div className="flex items-center gap-1.5">
         <Cpu className="size-3.5 text-muted-foreground" aria-hidden />
-        <p className="text-xs font-medium">Rechenkern &amp; Modell</p>
+        <p className="text-xs font-medium">{l("Rechenkern & Modell")}</p>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -109,7 +111,7 @@ export function EngineSection({
         <>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="engine-model">
-              Modell
+               {l("Modell")}
             </label>
             <Input
               id="engine-model"
@@ -140,7 +142,7 @@ export function EngineSection({
 
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="engine-budget">
-              Eigenes Token-Budget (optional)
+               {l("Eigenes Token-Budget (optional)")}
             </label>
             <Input
               id="engine-budget"
@@ -171,7 +173,7 @@ export function EngineSection({
                     : compatibilityMessage(binding, report)}
                 </p>
                 <p className="text-muted-foreground">
-                  {report.source === "provider" ? "Laut Anbieter geprüft." : "Geschätzt nach Modellname."}
+                   {l(report.source === "provider" ? "Laut Anbieter geprüft." : "Geschätzt nach Modellname.")}
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {report.alternatives.slice(0, 3).map((item) => (
@@ -192,7 +194,7 @@ export function EngineSection({
                     onClick={() => save({ provider: "default", model: null })}
                     className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-foreground hover:bg-secondary"
                   >
-                    Standard
+                     {l("Standard")}
                   </button>
                 </div>
               </div>
@@ -200,20 +202,18 @@ export function EngineSection({
           )}
           {!showReport && binding.model && report.source === "provider" && (
             <p role="status" className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <CheckCircle2 className="size-3.5" aria-hidden /> Laut Anbieter passend.
+               <CheckCircle2 className="size-3.5" aria-hidden /> {l("Laut Anbieter passend.")}
             </p>
           )}
 
           {meta.needsKey && (
             <p className="text-[11px] leading-snug text-muted-foreground">
-              Der Schlüssel liegt im Konto bzw. auf dem Server – nie im Bauplan. Fehlt er, läuft
-              das Modul über den Standard-Rechenkern.
+               {l("Der Schlüssel liegt im Konto bzw. auf dem Server – nie im Bauplan. Fehlt er, läuft das Modul über den Standard-Rechenkern.")}
             </p>
           )}
           {binding.provider === "local" && (
             <p className="text-[11px] leading-snug text-muted-foreground">
-              Adresse und Port des lokalen Servers stellt die Umgebung ein. Ist dort kein Server
-              hinterlegt, läuft das Modul über den Standard-Rechenkern.
+               {l("Adresse und Port des lokalen Servers stellt die Umgebung ein. Ist dort kein Server hinterlegt, läuft das Modul über den Standard-Rechenkern.")}
             </p>
           )}
         </>

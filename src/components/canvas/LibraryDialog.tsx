@@ -44,6 +44,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CatalogList } from "@/components/canvas/CatalogList";
 import { shareLink } from "@/lib/share-link";
+import { useTranslation } from "@/lib/i18n";
 
 export type CapturedSelection = {
   payload: LibraryPayload;
@@ -85,6 +86,7 @@ function EntryActions({
   onShare: () => void;
   onDelete: () => void;
 }) {
+  const { l } = useTranslation();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -94,16 +96,16 @@ function EntryActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={onEdit}>
-          <Pencil className="size-4" /> Bearbeiten
+          <Pencil className="size-4" /> {l("Bearbeiten")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onDuplicate}>
-          <Copy className="size-4" /> Duplizieren
+          <Copy className="size-4" /> {l("Duplizieren")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onShare}>
-          <Share2 className="size-4" /> Teilen
+          <Share2 className="size-4" /> {l("Teilen")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onDelete}>
-          <Trash2 className="size-4" /> Löschen
+          <Trash2 className="size-4" /> {l("Löschen")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -122,6 +124,7 @@ function Meta({ entry }: { entry: LibraryEntry }) {
 }
 
 export function LibraryDialog({ open, onOpenChange, userId, captureSelection, onInsert, onInsertModule }: Props) {
+  const { l } = useTranslation();
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [shared, setShared] = useState<LibraryEntry[]>([]);
   const [view, setView] = useState<"gallery" | "list">("gallery");
@@ -177,7 +180,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
     if (!userId) return;
     const captured = captureSelection();
     if (!captured) {
-      toast.error("Erst ein Modul oder mehrere Module auswählen");
+      toast.error(l("Erst ein Modul oder mehrere Module auswählen"));
       return;
     }
     setBusy(true);
@@ -193,7 +196,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
       toast.error(error.message);
       return;
     }
-    toast.success("In der Bibliothek gespeichert");
+    toast.success(l("In der Bibliothek gespeichert"));
     void load();
   };
 
@@ -221,7 +224,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
       toast.error(error.message);
       return;
     }
-    toast.success("Kopie angelegt");
+    toast.success(l("Kopie angelegt"));
     void load();
   };
 
@@ -277,7 +280,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
         </div>
         <div className="flex gap-2">
           <Button size="sm" className="flex-1 rounded-full" onClick={() => insert(entry, "full")}>
-            Mit Inhalten
+             {l("Mit Inhalten")}
           </Button>
           <Button
             size="sm"
@@ -285,7 +288,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
             className="rounded-full"
             onClick={() => insert(entry, "empty")}
           >
-            Leer
+             {l("Leer")}
           </Button>
         </div>
       </div>
@@ -303,10 +306,10 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
           <Meta entry={entry} />
         </div>
         <Button size="sm" className="rounded-full" onClick={() => insert(entry, "full")}>
-          Mit Inhalten
+           {l("Mit Inhalten")}
         </Button>
         <Button size="sm" variant="outline" className="rounded-full" onClick={() => insert(entry, "empty")}>
-          Leer
+           {l("Leer")}
         </Button>
         {own ? (
           <EntryActions
@@ -324,9 +327,9 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Bibliothek</DialogTitle>
+          <DialogTitle className="font-display text-2xl">{l("Bibliothek")}</DialogTitle>
           <DialogDescription>
-            Module und ganze Modulgruppen ablegen und jederzeit wieder einfügen – leer oder mit Inhalten.
+            {l("Module und ganze Modulgruppen ablegen und jederzeit wieder einfügen – leer oder mit Inhalten.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -334,11 +337,11 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Suchen nach Name, Beschreibung, Schlagwort"
+            placeholder={l("Suchen nach Name, Beschreibung, Schlagwort")}
             className="h-9 max-w-xs rounded-xl"
           />
           <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void save()}>
-            Auswahl speichern
+             {l("Auswahl speichern")}
           </Button>
           <div className="ml-auto flex items-center gap-1 rounded-full border border-border/70 p-0.5">
             <Button
@@ -374,7 +377,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
               const ok = await update(editing, patch);
               if (ok) {
                 setEditing(null);
-                toast.success("Eintrag aktualisiert");
+                toast.success(l("Eintrag aktualisiert"));
               }
             }}
           />
@@ -394,16 +397,15 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
 
         <Tabs defaultValue={onInsertModule ? "catalog" : "own"}>
           <TabsList>
-            {onInsertModule ? <TabsTrigger value="catalog">Bausteine</TabsTrigger> : null}
-            <TabsTrigger value="own">Eigene ({entries.length})</TabsTrigger>
-            <TabsTrigger value="shared">Mit mir geteilt ({shared.length})</TabsTrigger>
+            {onInsertModule ? <TabsTrigger value="catalog">{l("Bausteine")}</TabsTrigger> : null}
+            <TabsTrigger value="own">{l("Eigene")} ({entries.length})</TabsTrigger>
+            <TabsTrigger value="shared">{l("Mit mir geteilt")} ({shared.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="own" className="mt-4">
             {filtered.own.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Noch nichts abgelegt. Modul auswählen und „Auswahl speichern" klicken – oder auf dem
-                Board per Rechtsklick „In Bibliothek speichern".
+                 {l("Noch nichts abgelegt. Modul auswählen und „Auswahl speichern“ klicken – oder auf dem Board per Rechtsklick „In Bibliothek speichern“.")}
               </p>
             ) : (
               <div className={view === "gallery" ? "grid gap-3 sm:grid-cols-3" : "space-y-2"}>
@@ -414,7 +416,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
 
           <TabsContent value="shared" className="mt-4">
             {filtered.shared.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Bisher hat niemand etwas mit dir geteilt.</p>
+              <p className="text-sm text-muted-foreground">{l("Bisher hat niemand etwas mit dir geteilt.")}</p>
             ) : (
               <div className={view === "gallery" ? "grid gap-3 sm:grid-cols-3" : "space-y-2"}>
                 {filtered.shared.map((entry) => renderEntry(entry, false))}
