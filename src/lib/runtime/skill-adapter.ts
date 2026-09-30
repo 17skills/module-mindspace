@@ -169,16 +169,14 @@ export function skillToModule(skill: ParsedSkill): ScopeModuleSpec {
   });
 }
 
-/** Skill-Datei → platzierbares Modul für die Arbeitsfläche. */
-export function skillPayload(text: string, filename = ""): LibraryPayload {
-  const skill = parseSkill(text, filename);
-  const module = skillToModule(skill);
+/** Fertiger Baustein → platzierbares Modul (gleicher Weg wie ein Bauplan). */
+export function modulePayload(module: ScopeModuleSpec): LibraryPayload {
   const catalog = coreCatalog();
   catalog.set(module.metadata.name, module);
   const spec = ScopeSpecSchema.parse({
     apiVersion: SCOPE_API_VERSION,
     kind: SCOPE_KIND,
-    metadata: { name: "skill", version: "1.0.0", title: skill.title },
+    metadata: { name: "baustein", version: "1.0.0", title: module.metadata.title },
     spec: { modules: [{ id: "s", module }] },
   });
   const placed = scopeSpecToManifest(spec, catalog).modules[0]!;
