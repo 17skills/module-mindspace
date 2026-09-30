@@ -32,6 +32,7 @@ import { Route as AuthenticatedKontoAdminRouteImport } from './routes/_authentic
 import { Route as AuthenticatedKontoAppsRouteImport } from './routes/_authenticated/konto.apps'
 import { Route as AuthenticatedKontoDatenschutzRouteImport } from './routes/_authenticated/konto.datenschutz'
 import { Route as AuthenticatedKontoEinstellungenRouteImport } from './routes/_authenticated/konto.einstellungen'
+import { Route as AuthenticatedKontoGovernanceRouteImport } from './routes/_authenticated/konto.governance'
 import { Route as AuthenticatedKontoKiSchluesselRouteImport } from './routes/_authenticated/konto.ki-schluessel'
 import { Route as AuthenticatedKontoMcpRouteImport } from './routes/_authenticated/konto.mcp'
 import { Route as AuthenticatedKontoMitgliederRouteImport } from './routes/_authenticated/konto.mitglieder'
@@ -163,6 +164,12 @@ const AuthenticatedKontoEinstellungenRoute =
     path: '/einstellungen',
     getParentRoute: () => AuthenticatedKontoRoute,
   } as any)
+const AuthenticatedKontoGovernanceRoute =
+  AuthenticatedKontoGovernanceRouteImport.update({
+    id: '/governance',
+    path: '/governance',
+    getParentRoute: () => AuthenticatedKontoRoute,
+  } as any)
 const AuthenticatedKontoKiSchluesselRoute =
   AuthenticatedKontoKiSchluesselRouteImport.update({
     id: '/ki-schluessel',
@@ -259,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/konto/apps': typeof AuthenticatedKontoAppsRoute
   '/konto/datenschutz': typeof AuthenticatedKontoDatenschutzRoute
   '/konto/einstellungen': typeof AuthenticatedKontoEinstellungenRoute
+  '/konto/governance': typeof AuthenticatedKontoGovernanceRoute
   '/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
@@ -295,6 +303,7 @@ export interface FileRoutesByTo {
   '/konto/apps': typeof AuthenticatedKontoAppsRoute
   '/konto/datenschutz': typeof AuthenticatedKontoDatenschutzRoute
   '/konto/einstellungen': typeof AuthenticatedKontoEinstellungenRoute
+  '/konto/governance': typeof AuthenticatedKontoGovernanceRoute
   '/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
   '/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
@@ -334,6 +343,7 @@ export interface FileRoutesById {
   '/_authenticated/konto/apps': typeof AuthenticatedKontoAppsRoute
   '/_authenticated/konto/datenschutz': typeof AuthenticatedKontoDatenschutzRoute
   '/_authenticated/konto/einstellungen': typeof AuthenticatedKontoEinstellungenRoute
+  '/_authenticated/konto/governance': typeof AuthenticatedKontoGovernanceRoute
   '/_authenticated/konto/ki-schluessel': typeof AuthenticatedKontoKiSchluesselRoute
   '/_authenticated/konto/mcp': typeof AuthenticatedKontoMcpRoute
   '/_authenticated/konto/mitglieder': typeof AuthenticatedKontoMitgliederRoute
@@ -373,6 +383,7 @@ export interface FileRouteTypes {
     | '/konto/apps'
     | '/konto/datenschutz'
     | '/konto/einstellungen'
+    | '/konto/governance'
     | '/konto/ki-schluessel'
     | '/konto/mcp'
     | '/konto/mitglieder'
@@ -409,6 +420,7 @@ export interface FileRouteTypes {
     | '/konto/apps'
     | '/konto/datenschutz'
     | '/konto/einstellungen'
+    | '/konto/governance'
     | '/konto/ki-schluessel'
     | '/konto/mcp'
     | '/konto/mitglieder'
@@ -447,6 +459,7 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/apps'
     | '/_authenticated/konto/datenschutz'
     | '/_authenticated/konto/einstellungen'
+    | '/_authenticated/konto/governance'
     | '/_authenticated/konto/ki-schluessel'
     | '/_authenticated/konto/mcp'
     | '/_authenticated/konto/mitglieder'
@@ -651,6 +664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKontoEinstellungenRouteImport
       parentRoute: typeof AuthenticatedKontoRoute
     }
+    '/_authenticated/konto/governance': {
+      id: '/_authenticated/konto/governance'
+      path: '/governance'
+      fullPath: '/konto/governance'
+      preLoaderRoute: typeof AuthenticatedKontoGovernanceRouteImport
+      parentRoute: typeof AuthenticatedKontoRoute
+    }
     '/_authenticated/konto/ki-schluessel': {
       id: '/_authenticated/konto/ki-schluessel'
       path: '/ki-schluessel'
@@ -750,6 +770,7 @@ interface AuthenticatedKontoRouteChildren {
   AuthenticatedKontoAppsRoute: typeof AuthenticatedKontoAppsRoute
   AuthenticatedKontoDatenschutzRoute: typeof AuthenticatedKontoDatenschutzRoute
   AuthenticatedKontoEinstellungenRoute: typeof AuthenticatedKontoEinstellungenRoute
+  AuthenticatedKontoGovernanceRoute: typeof AuthenticatedKontoGovernanceRoute
   AuthenticatedKontoKiSchluesselRoute: typeof AuthenticatedKontoKiSchluesselRoute
   AuthenticatedKontoMcpRoute: typeof AuthenticatedKontoMcpRoute
   AuthenticatedKontoMitgliederRoute: typeof AuthenticatedKontoMitgliederRoute
@@ -765,6 +786,7 @@ const AuthenticatedKontoRouteChildren: AuthenticatedKontoRouteChildren = {
   AuthenticatedKontoAppsRoute: AuthenticatedKontoAppsRoute,
   AuthenticatedKontoDatenschutzRoute: AuthenticatedKontoDatenschutzRoute,
   AuthenticatedKontoEinstellungenRoute: AuthenticatedKontoEinstellungenRoute,
+  AuthenticatedKontoGovernanceRoute: AuthenticatedKontoGovernanceRoute,
   AuthenticatedKontoKiSchluesselRoute: AuthenticatedKontoKiSchluesselRoute,
   AuthenticatedKontoMcpRoute: AuthenticatedKontoMcpRoute,
   AuthenticatedKontoMitgliederRoute: AuthenticatedKontoMitgliederRoute,

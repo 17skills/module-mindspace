@@ -77,3 +77,15 @@ export function transparencyNote(value: Governance): string | null {
     ? "Enthält KI-unterstützte Auswertungen mit erhöhtem Risiko. Ergebnisse werden vor Wirkung menschlich geprüft (ISO 42001 / EU AI Act)."
     : "Enthält KI-unterstützte Auswertungen. Ergebnisse können fehlerhaft sein und sind zu prüfen (ISO 42001 / EU AI Act).";
 }
+
+/** Offene Prüfpunkte eines Scopes – leer heißt: nichts zu tun. */
+export function openReviews(value: Governance): string[] {
+  const out: string[] = [];
+  if (value.riskTier === "minimal") return out;
+  if (value.lifecycle === "draft") out.push("Fachliche Prüfung ausstehend");
+  if (!value.intendedUse.trim()) out.push("Zweck fehlt");
+  if (!value.owner.trim()) out.push("Verantwortung fehlt");
+  if (value.riskTier === "high" && value.lifecycle !== "production") out.push("Freigabe fehlt");
+  if (value.riskTier === "high" && !value.humanOversight) out.push("Menschliche Freigabe aus");
+  return out;
+}
