@@ -144,7 +144,9 @@ export const testTrigger = createServerFn({ method: "POST" })
         payload: z.string().max(20_000),
         matchMode: z.enum(["any", "all"]).default("any"),
         conditions: z.array(ConditionSchema).max(20).default([]),
-        previous: z.record(z.string(), z.unknown()).default({}),
+        previous: z
+          .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+          .default({}),
       })
       .parse(input),
   )
