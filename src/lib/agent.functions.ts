@@ -80,7 +80,9 @@ ${wrapUntrusted(data.field, data.context.slice(0, 200_000))}`;
       prompt,
       schemaName: "agent_result",
       schema: RESULT_SCHEMA,
+      engine: data.engine ?? null,
     });
+
 
     try {
       return AgentResult.parse(JSON.parse(text));
