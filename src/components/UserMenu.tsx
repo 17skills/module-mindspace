@@ -87,7 +87,7 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full" aria-label="Konto-Menü">
+        <Button variant="ghost" size="icon" className="rounded-full" aria-label={t("menu.account")}>
           <Avatar className="h-8 w-8">
             {account.data?.avatarUrl ? (
               <AvatarImage src={account.data.avatarUrl} alt="" />
@@ -118,27 +118,83 @@ export function UserMenu() {
         <DropdownMenuItem asChild>
           <Link to="/konto">
             <User className="mr-2 h-4 w-4" aria-hidden="true" />
-            Profil
+            {t("menu.profile")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/konto/organisation">
             <Building2 className="mr-2 h-4 w-4" aria-hidden="true" />
-            Organisation
+            {t("menu.organisation")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/konto/einstellungen">
             <Settings className="mr-2 h-4 w-4" aria-hidden="true" />
-            Einstellungen
+            {t("menu.settings")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/konto/datenschutz">
             <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />
-            Datenschutz
+            {t("menu.privacy")}
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          {t("theme.label")}
+        </DropdownMenuLabel>
+        <div className="flex gap-1 px-2 pb-1">
+          {(
+            [
+              { mode: "light" as const, icon: Sun, label: t("theme.light") },
+              { mode: "dark" as const, icon: Moon, label: t("theme.dark") },
+              { mode: "system" as const, icon: Monitor, label: t("theme.system") },
+            ]
+          ).map(({ mode, icon: Icon, label }) => (
+            <Button
+              key={mode}
+              type="button"
+              size="sm"
+              variant={theme === mode ? "secondary" : "ghost"}
+              className="h-8 flex-1"
+              aria-label={label}
+              aria-pressed={theme === mode}
+              title={label}
+              onClick={() => pickTheme(mode)}
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          ))}
+        </div>
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("language.label")}
+          </span>
+        </DropdownMenuLabel>
+        <div className="flex gap-1 px-2 pb-2">
+          {(
+            [
+              { value: "de" as const, label: "DE", full: t("lang.de") },
+              { value: "en" as const, label: "EN", full: t("lang.en") },
+              { value: "system" as const, label: "Auto", full: t("lang.system") },
+            ]
+          ).map(({ value, label, full }) => (
+            <Button
+              key={value}
+              type="button"
+              size="sm"
+              variant={language === value ? "secondary" : "ghost"}
+              className="h-8 flex-1 text-xs"
+              aria-pressed={language === value}
+              aria-label={full}
+              title={full}
+              onClick={() => pickLanguage(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void signOut()}>
           <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
