@@ -98,3 +98,21 @@ describe("formatLogReason", () => {
     expect(r).toContain("1 Regel(n) ausgeblendet");
   });
 });
+
+import { matchesExclude, redactPayload } from "./trigger-conditions";
+describe("matchesExclude", () => {
+  it("versteht Wildcards, Listenplätze und Unterfelder", () => {
+    expect(matchesExclude("users[3].email", "users[*].email")).toBe(true);
+    expect(matchesExclude("users.3.email", "users[*].email")).toBe(true);
+    expect(matchesExclude("users[3].name", "users[*].email")).toBe(false);
+    expect(matchesExclude("users[1].email", "users[0].email")).toBe(false);
+    expect(matchesExclude("a.b.c.token", "**.token")).toBe(true);
+    expect(matchesExclude("kunde.adresse.plz", "kunde.adresse")).toBe(true);
+    expect(matchesExclude("kundenummer", "kunde")).toBe(false);
+  });
+  it("schwärzt Beispiel-JSON", () => {
+    const out = redactPayload({ users: [{ email: "a@b.de", n: 1 }, { email: "c@d.de", n: 2 }] }, ["users[*].email"]);
+    expect(JSON.stringify(out)).not.toContain("@");
+    expect(JSON.stringify(out)).toContain('"n":2');
+  });
+});

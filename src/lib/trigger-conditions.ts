@@ -274,9 +274,49 @@ export function parseConditions(raw: unknown): TriggerCondition[] {
   return out;
 }
 
-/** Prüft, ob ein Pfad unter einen ausgeschlossenen Pfad fällt ("user" deckt "user.email" ab). */
+/** Zerlegt "users[0].email" bzw. "users.0.email" in ["users","0","email"]; "[*]" wird "*". */
+export function pathSegments(path: string): string[] {
+  return path
+    .replace(/\[(\*|\d+)\]/g, ".$1")
+    .split(".")
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Passt ein Pfad auf ein Ausschlussmuster? "*" steht für genau eine Ebene oder einen
+ * Listenplatz, "**" für beliebig viele Ebenen. Unterfelder eines Treffers zählen mit.
+ */
+export function matchesExclude(path: string, pattern: string): boolean {
+  const target = pathSegments(path);
+  const pat = pathSegments(pattern);
+  if (!pat.length) return false;
+  const walk = (ti: number, pi: number): boolean => {
+    if (pi === pat.length) return true; // Muster zu Ende: Treffer inkl. Unterfeldern
+    if (pat[pi] === "**") {
+      for (let k = ti; k <= target.length; k++) if (walk(k, pi + 1)) return true;
+      return false;
+    }
+    if (ti >= target.length) return false;
+    return (pat[pi] === "*" || pat[pi] === target[ti]) && walk(ti + 1, pi + 1);
+  };
+  return walk(0, 0);
+}
+
 function isExcluded(path: string, exclude: string[]): boolean {
-  return exclude.some((p) => p && (path === p || path.startsWith(`${p}.`) || path.startsWith(`${p}[`)));
+  return exclude.some((p) => matchesExclude(path, p));
+}
+
+/** Gibt eine Kopie der Nachricht zurück, in der ausgeschlossene Felder ersetzt sind. */
+export function redactPayload(payload: unknown, exclude: string[], path = ""): unknown {
+  if (path && isExcluded(path, exclude)) return "[ausgeschlossen]";
+  if (Array.isArray(payload)) return payload.map((v, i) => redactPayload(v, exclude, `${path}[${i}]`));
+  if (payload && typeof payload === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(payload)) out[k] = redactPayload(v, exclude, path ? `${path}.${k}` : k);
+    return out;
+  }
+  return payload;
 }
 
 /** Säubert die Liste sensibler Pfade (max. 20, je 200 Zeichen). */
