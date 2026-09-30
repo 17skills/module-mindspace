@@ -113,12 +113,13 @@ function gatewayKey(): string {
   return key;
 }
 
-function byokError(provider: AiProvider, status: number, detail: string): Error {
-  const label = AI_PROVIDER_META[provider].label;
+function byokError(provider: AiProvider | "local", status: number, detail: string): Error {
+  const label = provider === "local" ? "Lokaler Rechenkern" : AI_PROVIDER_META[provider].label;
   return new Error(
     `Dein eigener KI-Anbieter (${label}) hat die Anfrage abgelehnt [${status}]: ${detail.slice(0, 300)}`,
   );
 }
+
 
 /** Entfernt Markdown-Zäune und schneidet auf das JSON-Objekt zurück. */
 function cleanJsonText(text: string): string {
