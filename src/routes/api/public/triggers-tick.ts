@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/public/triggers-tick")({
         const { data: due, error } = await db
           .from("scope_triggers")
           .select(
-            "id,board_id,node_id,mode,enabled,interval_minutes,probe_url,match_mode,conditions,last_values",
+            "id,board_id,node_id,mode,enabled,interval_minutes,probe_url,match_mode,conditions,last_values,name",
           )
           .eq("enabled", true)
           .neq("mode", "webhook")
