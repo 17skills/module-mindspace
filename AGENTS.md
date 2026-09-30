@@ -33,3 +33,5 @@
 - Jede Karte trägt eine Rolle (`metadata.moduleRole`, src/lib/module-role.ts): nur `module` belegt eine Kachel in der App, `briefing` rendert als Einleitung, `reference`/`action` als Fußbereich, `prompt`/`draft` nie. Warum: Textzettel und Links sind Prompt, Quelle oder Notiz — die App bleibt trotzdem aufgeräumt.
 
 - Entwickler-Werkzeuge (Knopf „Code & Schnittstelle" im Canvas, `src/components/canvas/DeveloperDialog.tsx`) sind nur für die Rollen `admin` und `developer` sichtbar; geprüft serverseitig über `getMyRoles` (src/lib/account.functions.ts) und `has_role`. Warum: Aufrufbeispiele und Schlüsselverwaltung sind kein Stoff für Fachanwender.
+
+- KI-Governance eines Scopes (Risikostufe, Zweck, Verantwortung, Status, menschliche Freigabe) liegt in `boards.rules.governance` (src/lib/governance.ts) und reist als Top-Level-Abschnitt `governance` im Manifest mit; Standard ist `minimal`/`draft`, ab `limited` zeigt die App einen KI-Transparenzhinweis. Warum: ISO 42001 / EU AI Act verlangen eine maschinenlesbare Einstufung am System selbst, ohne Prototyping auszubremsen.

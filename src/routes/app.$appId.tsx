@@ -149,7 +149,13 @@ function AppStage() {
         </div>
       )}
 
+      {data.aiNotice ? (
+        <footer className="border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
+          {data.aiNotice}
+        </footer>
+      ) : null}
     </div>
+
   );
 }
 

@@ -7,7 +7,9 @@
  */
 import { parse as parseYamlText, stringify } from "yaml";
 import { z } from "zod";
+import { GovernanceSchema, hasGovernance, readGovernance } from "@/lib/governance";
 import { checksum } from "@/lib/runtime/source-protocol";
+
 
 export const MANIFEST_VERSION = "scopebuilder/v1";
 
@@ -91,6 +93,8 @@ export const ManifestSchema = z.object({
     description: z.string().nullable().default(null),
   }),
   provenance: ProvenanceSchema.optional(),
+  /** KI-Governance: Risikostufe, Zweck, Verantwortung (ISO 42001 / EU AI Act). */
+  governance: GovernanceSchema.optional(),
   /** Scope-wide rules / ontology (guard rails over all modules). */
   rules: z.record(z.string(), z.unknown()).default({}),
   mcpServers: z.array(McpServerSchema).max(50).default([]),
@@ -98,6 +102,7 @@ export const ManifestSchema = z.object({
   links: z.array(LinkSchema).max(4000).default([]),
   apps: z.array(AppSchema).max(50).default([]),
 });
+
 export type ScopeManifest = z.infer<typeof ManifestSchema>;
 
 /** Form der bestehenden Sicherung (backup.functions). */
@@ -247,7 +252,9 @@ export function backupToManifest(
     };
   });
 
-  const rules = (backup.board.rules ?? {}) as Record<string, unknown>;
+  const allRules = (backup.board.rules ?? {}) as Record<string, unknown>;
+  const governance = readGovernance(allRules);
+  const { governance: _drop, ...rules } = allRules;
   const previous = (backup.board.provenance ?? {}) as Record<string, unknown>;
   const manifest: ScopeManifest = {
     scopebuilder: MANIFEST_VERSION,
@@ -259,6 +266,7 @@ export function backupToManifest(
       origin: info.origin ?? str(previous["origin"]),
       checksum: "",
     },
+    ...(hasGovernance(governance) ? { governance } : {}),
     rules,
     mcpServers,
     modules,
@@ -276,6 +284,7 @@ export function manifestChecksum(part: {
   links: unknown;
   apps: unknown;
   rules: unknown;
+  governance?: unknown;
 }): string {
   // Long texts move into Markdown sections and come back trimmed.
   const modules = Array.isArray(part.modules)
@@ -283,8 +292,11 @@ export function manifestChecksum(part: {
         typeof m["content"] === "string" ? { ...m, content: (m["content"] as string).trim() } : m,
       )
     : part.modules;
-  return checksum(JSON.stringify([modules, part.links, part.apps, part.rules]));
+  const parts: unknown[] = [modules, part.links, part.apps, part.rules];
+  if (part.governance) parts.push(part.governance);
+  return checksum(JSON.stringify(parts));
 }
+
 
 function prune(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(prune);
@@ -470,9 +482,12 @@ export function manifestToBackup(manifest: ScopeManifest): BackupShape {
     board: {
       title: manifest.scope.title,
       description: manifest.scope.description,
-      rules: manifest.rules,
+      rules: manifest.governance
+        ? { ...manifest.rules, governance: manifest.governance }
+        : manifest.rules,
       provenance: manifest.provenance ? { ...manifest.provenance } : {},
     },
+
     nodes: manifest.modules.map((module) => ({
       id: module.id,
       parent_id: module.parent,
@@ -536,6 +551,15 @@ export function manifestNotices(manifest: ScopeManifest, catalogVersions: Map<st
   }
   const approvals = manifest.modules.filter((m) => m.settings["requiresApproval"] === true).length;
   if (approvals) notes.push(`${approvals} Modul(e) wirken nach außen und brauchen immer eine menschliche Freigabe.`);
+  const gov = manifest.governance;
+  if (gov?.riskTier === "high") {
+    notes.push(
+      `Dieser Scope ist als Hochrisiko eingestuft${gov.owner ? ` (verantwortlich: ${gov.owner})` : ""} – bitte vor produktivem Einsatz freigeben.`,
+    );
+  } else if (gov?.riskTier === "limited") {
+    notes.push("Dieser Scope ist als „begrenztes Risiko“ eingestuft – Apps zeigen einen KI-Transparenzhinweis.");
+  }
+
   if (manifest.provenance?.checksum) {
     const now = manifestChecksum(manifest);
     if (now !== manifest.provenance.checksum) notes.push("Die Datei wurde seit dem Export verändert (Prüfsumme weicht ab).");
