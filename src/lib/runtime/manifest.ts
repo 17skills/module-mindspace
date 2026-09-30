@@ -627,3 +627,21 @@ export function summarizeManifest(manifest: ScopeManifest): string {
   manifest.modules.forEach((m) => (roles[m.role ?? roleOf(m.type)] += 1));
   return `${manifest.modules.length} Module (${roles.source} Quellen, ${roles.step} Schritte, ${roles.output} Ergebnisse, ${roles.action} Aktionen), ${manifest.links.length} Verbindungen, ${manifest.apps.length} Apps${manifest.mcpServers.length ? `, ${manifest.mcpServers.length} MCP-Server` : ""}${Object.keys(manifest.rules).length ? ", Scope-Regeln" : ""}`;
 }
+
+/**
+ * Welche Rechenkerne verlangt dieser Bauplan? Der Import zeigt das vor dem
+ * Einspielen an, damit klar ist, was noch verbunden werden muss. Adressen,
+ * Ports und Schlüssel stehen nie im Bauplan – die stellt die Umgebung.
+ */
+export function engineRequirements(manifest: ScopeManifest): string[] {
+  const counts = new Map<string, number>();
+  for (const module of manifest.modules) {
+    const provider = module.engine?.provider;
+    if (!provider || provider === "default") continue;
+    const label = ENGINE_PROVIDER_META[provider].label;
+    const key = module.engine?.model ? `${label} · ${module.engine.model}` : label;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([key, n]) => (n > 1 ? `${key} (${n} Module)` : key));
+}
+
