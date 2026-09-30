@@ -16,14 +16,17 @@ export function estimateTokens(text: string): number {
 }
 
 export function estimateCost(
-  provider: AiRouteProvider,
+  provider: AiRouteProvider | string,
   inputTokens: number,
   outputTokens: number,
 ): number {
-  const price = PRICE_PER_MTOK[provider] ?? PRICE_PER_MTOK.lovable;
+  // Lokale Modelle laufen auf eigener Hardware – keine Abrechnung je Token.
+  if (provider === "local") return 0;
+  const price = PRICE_PER_MTOK[provider as AiRouteProvider] ?? PRICE_PER_MTOK.lovable;
   const value = (inputTokens / 1_000_000) * price.in + (outputTokens / 1_000_000) * price.out;
   return Math.round(value * 1_000_000) / 1_000_000;
 }
+
 
 export function formatCost(value: number): string {
   return `${value.toFixed(value < 1 ? 4 : 2)} $`;
