@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { useTheme, type ThemeMode } from "@/lib/theme";
 import { useTranslation } from "@/lib/i18n";
-import { getAccount } from "@/lib/account.functions";
+import { getAccount, saveSettings } from "@/lib/account.functions";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { listMyOrgs, setActiveOrg } from "@/lib/org.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,6 +36,35 @@ export function UserMenu() {
   const client = useQueryClient();
   const account = useQuery({ queryKey: ["account"], queryFn: () => getAccount() });
   const orgs = useQuery({ queryKey: ["my-orgs"], queryFn: () => listMyOrgs() });
+  const { theme, setTheme, syncTheme } = useTheme();
+  const { language, setLanguage, syncLanguage, t } = useTranslation();
+
+  const storedTheme = account.data?.settings.theme;
+  const storedLanguage = account.data?.settings.language;
+  useEffect(() => {
+    if (storedTheme) syncTheme(storedTheme);
+  }, [storedTheme, syncTheme]);
+  useEffect(() => {
+    if (storedLanguage) syncLanguage(storedLanguage);
+  }, [storedLanguage, syncLanguage]);
+
+  const saveAppearance = useMutation({
+    mutationFn: (patch: { theme?: ThemeMode; language?: "de" | "en" | "system" }) =>
+      saveSettings({
+        data: { settings: { ...(account.data?.settings ?? DEFAULT_SETTINGS), ...patch } },
+      }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["account"] }),
+  });
+
+  function pickTheme(mode: ThemeMode) {
+    setTheme(mode);
+    saveAppearance.mutate({ theme: mode });
+  }
+
+  function pickLanguage(value: "de" | "en" | "system") {
+    setLanguage(value);
+    saveAppearance.mutate({ language: value });
+  }
 
   const switchOrg = useMutation({
     mutationFn: (orgId: string) => setActiveOrg({ data: { orgId } }),
