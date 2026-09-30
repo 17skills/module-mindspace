@@ -496,8 +496,23 @@ export function stripData(meta: Record<string, unknown>): Record<string, unknown
 
 /** The engine entry wins over settings, so swapping it in the file swaps the motor. */
 function applyEngine(type: string, meta: Record<string, unknown>, engine: ManifestEngine | undefined) {
-  if (!engine?.ref) return meta;
+  if (!engine) return meta;
   const out = { ...meta };
+
+  // Logische Bindung übernehmen (Anbieterart, Modell, Token-Budget).
+  const binding = engineBindingToMetadata(
+    readEngineBinding({
+      engine: {
+        provider: engine.provider,
+        model: engine.model,
+        maxTokens: engine.maxTokens,
+      },
+    }),
+  );
+  if (binding) out["engine"] = binding;
+  else delete out["engine"];
+
+  if (!engine.ref) return out;
   if (engine.kind === "mcp") {
     const cut = engine.ref.lastIndexOf("/");
     if (cut > 0) {
@@ -513,6 +528,7 @@ function applyEngine(type: string, meta: Record<string, unknown>, engine: Manife
   }
   return out;
 }
+
 
 export function manifestToBackup(manifest: ScopeManifest): BackupShape {
   return {
