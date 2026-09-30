@@ -2112,8 +2112,10 @@ function BoardPage() {
           kind: agent.kind,
           unit: agent.unit || undefined,
           context: zoneContext(zone, members),
+          engine: readEngineBinding(zone.metadata),
         },
       })
+
         .then((result) => {
           const current = recordsRef.current[id];
           updateNode(id, {
