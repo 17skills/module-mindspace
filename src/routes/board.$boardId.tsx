@@ -174,6 +174,7 @@ import { ZONE_WHITE, templateBounds, type Template, type TemplateField } from "@
 import { LibraryDialog, type CapturedSelection } from "@/components/canvas/LibraryDialog";
 import { Library, AppWindow, Copy, CopyPlus, ClipboardPaste, Undo2, Redo2 } from "lucide-react";
 import { AppDialog } from "@/components/canvas/AppDialog";
+import { PluginImportDialog } from "@/components/canvas/PluginImportDialog";
 import {
   HISTORY_LIMIT,
   describe,
@@ -2776,6 +2777,11 @@ function BoardPage() {
     [createRecord, createEdge],
   );
 
+  const [pluginImport, setPluginImport] = useState<{
+    preview: import("@/lib/runtime/plugin-adapter").PluginPreview;
+    at: { x: number; y: number };
+  } | null>(null);
+
   /**
    * Abgelegte Dateien: Agent-Skills (`SKILL.md`) und Bausteine (`*.scopem.yaml`)
    * werden zu Modulen, alles andere bleibt eine normale Ablage.
@@ -2785,6 +2791,16 @@ function BoardPage() {
       const rest: File[] = [];
       let index = 0;
       for (const file of Array.from(files)) {
+        if (/\.zip$/i.test(file.name)) {
+          try {
+            const { parsePluginArchive } = await import("@/lib/runtime/plugin-adapter");
+            const preview = parsePluginArchive(new Uint8Array(await file.arrayBuffer()), file.name);
+            setPluginImport({ preview, at: at ?? centerPosition() });
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Plugin-Paket konnte nicht gelesen werden");
+          }
+          continue;
+        }
         const textLike = /\.(md|markdown|ya?ml|scopem)$/i.test(file.name) && file.size < 2_000_000;
         if (!textLike) {
           rest.push(file);
@@ -3703,11 +3719,24 @@ function BoardPage() {
         }}
       />
 
+      <PluginImportDialog
+        preview={pluginImport?.preview ?? null}
+        onClose={() => setPluginImport(null)}
+        onImport={async (selection) => {
+          if (!pluginImport) return;
+          const { pluginPayload } = await import("@/lib/runtime/plugin-adapter");
+          const payload = pluginPayload(pluginImport.preview, selection);
+          if (payload.nodes.length) await insertPayload(payload, pluginImport.at);
+          toast.success(`${payload.nodes.length} Bestandteile aus „${pluginImport.preview.name}" übernommen`);
+          setPluginImport(null);
+        }}
+      />
+
       <input
         ref={fileRef}
         type="file"
         multiple
-        accept=".pdf,.pptx,.docx,.txt,.md,.yaml,.yml,.scopem,audio/*"
+        accept=".pdf,.pptx,.docx,.txt,.md,.yaml,.yml,.scopem,.zip,audio/*"
         className="hidden"
         onChange={(e) => {
           if (e.target.files?.length) {
