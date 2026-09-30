@@ -20,7 +20,17 @@ export type TriggerRow = {
   match_mode: string;
   conditions: unknown;
   last_values: unknown;
+  name?: string | null;
 };
+
+async function logEvent(db: { from: (t: string) => any }, row: TriggerRow, source: string, status: string, reason: string, runs: number) {
+  try {
+    await db.from("trigger_events").insert({
+      trigger_id: row.id, board_id: row.board_id, trigger_name: (row.name ?? "").slice(0, 120),
+      source, status, reason: reason.slice(0, 300), runs,
+    });
+  } catch { /* Protokoll darf Ablauf nie blockieren */ }
+}
 
 export async function hashTriggerSecret(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(`scopebuilder-trigger:${value}`);
@@ -93,6 +103,7 @@ export async function fireTrigger(
   if (!evaluation.fired) {
     patch["last_status"] = "skipped";
     await db.from("scope_triggers").update(patch).eq("id", row.id);
+    await logEvent(db, row, actorLabel, "skipped", evaluation.summary, 0);
     return { fired: false, evaluation, runs: 0, error: null };
   }
 
@@ -125,6 +136,7 @@ export async function fireTrigger(
   patch["last_run_at"] = now.toISOString();
   if (error) patch["last_detail"] = error.slice(0, 300);
   await db.from("scope_triggers").update(patch).eq("id", row.id);
+  await logEvent(db, row, actorLabel, error ? "failed" : "fired", error ?? evaluation.summary, runs);
 
   return { fired: true, evaluation, runs, error };
 }
