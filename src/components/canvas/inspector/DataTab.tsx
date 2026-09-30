@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { readStructure, structureText } from "@/lib/structure";
 import { ChartDataSection } from "@/components/canvas/inspector/ChartDataSection";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
+import { useTranslation } from "@/lib/i18n";
 
 const KINDS = [
   { id: "table", label: "Tabelle" },
@@ -65,6 +66,7 @@ function TableIconButton({
 }
 
 export function DataTab({ record }: { record: NodeRecord }) {
+  const { l } = useTranslation();
   const { updateNode } = useBoard();
   const data = readStructure(record);
   const { columns, rows } = data;
@@ -111,11 +113,11 @@ export function DataTab({ record }: { record: NodeRecord }) {
         <Input
           value={record.title ?? ""}
           onChange={(e) => updateNode(record.id, { title: e.target.value })}
-          placeholder="Titel des Moduls"
+          placeholder={l("Titel des Moduls")}
           className="h-8 text-sm"
         />
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Darstellung</span>
+          <span className="text-xs text-muted-foreground">{l("Darstellung")}</span>
           <div className="flex gap-1">
             {KINDS.map((kind) => (
               <button
@@ -127,7 +129,7 @@ export function DataTab({ record }: { record: NodeRecord }) {
                     : "text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {kind.label}
+                {l(kind.label)}
               </button>
             ))}
           </div>
@@ -145,7 +147,7 @@ export function DataTab({ record }: { record: NodeRecord }) {
               <SelectContent>
                 {CHART_TYPES.map((option) => (
                   <SelectItem key={option.id} value={option.id} className="text-xs">
-                    {option.label}
+                    {l(option.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -162,10 +164,10 @@ export function DataTab({ record }: { record: NodeRecord }) {
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
         <table className="w-full border-collapse text-xs">
-          <caption className="sr-only">Daten der Tabelle bearbeiten, verschieben oder löschen</caption>
+          <caption className="sr-only">{l("Daten der Tabelle bearbeiten, verschieben oder löschen")}</caption>
           <thead>
             <tr>
-              <th className="w-6" scope="col"><span className="sr-only">Zeilen verschieben</span></th>
+              <th className="w-6" scope="col"><span className="sr-only">{l("Zeilen verschieben")}</span></th>
               {columns.map((column, index) => (
                 <th key={index} className="p-1 align-bottom">
                   <div className="flex items-center gap-1">
@@ -244,7 +246,7 @@ export function DataTab({ record }: { record: NodeRecord }) {
 
         {columns.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Noch keine Daten. Lege eine Spalte an oder hole die Daten im Reiter „Aktualisieren“.
+             {l("Noch keine Daten. Lege eine Spalte an oder hole die Daten im Reiter „Aktualisieren“.")}
           </p>
         )}
       </div>
@@ -256,7 +258,7 @@ export function DataTab({ record }: { record: NodeRecord }) {
           onClick={() => save(columns, [...rows, columns.map(() => "")])}
           disabled={columns.length === 0}
         >
-          Zeile hinzufügen
+          {l("Zeile hinzufügen")}
         </Button>
         <Button
           size="sm"
@@ -268,7 +270,7 @@ export function DataTab({ record }: { record: NodeRecord }) {
             )
           }
         >
-          Spalte hinzufügen
+          {l("Spalte hinzufügen")}
         </Button>
       </div>
     </div>

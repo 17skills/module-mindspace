@@ -27,6 +27,7 @@ import { shareLink } from "@/lib/share-link";
 import { ApiKeysSection } from "@/components/canvas/ApiKeysSection";
 import { PrivacySection } from "@/components/canvas/PrivacySection";
 import { GovernanceSection } from "@/components/canvas/GovernanceSection";
+import { useTranslation } from "@/lib/i18n";
 
 
 type Member = { id: string; userId: string; role: string; email: string };
@@ -56,6 +57,7 @@ export function ShareDialog({
   open: boolean;
   onOpenChange: (value: boolean) => void;
 }) {
+  const { l, locale } = useTranslation();
   const [share, setShare] = useState<ShareState | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [myRole, setMyRole] = useState<string>("viewer");
@@ -102,7 +104,7 @@ export function ShareDialog({
       await updateShareSettings({ data: input });
       await reload();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Änderung fehlgeschlagen");
+      toast.error(error instanceof Error ? error.message : l("Änderung fehlgeschlagen"));
     } finally {
       setBusy(false);
     }
@@ -114,9 +116,9 @@ export function ShareDialog({
       await addMember({ data: { boardId, email: email.trim(), role } });
       setEmail("");
       await reload();
-      toast.success("Mitglied hinzugefügt");
+      toast.success(l("Mitglied hinzugefügt"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Einladen fehlgeschlagen");
+      toast.error(error instanceof Error ? error.message : l("Einladen fehlgeschlagen"));
     } finally {
       setBusy(false);
     }
@@ -127,7 +129,7 @@ export function ShareDialog({
     try {
       await setMemberRole({ data: { boardId, memberId, role: next } });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Rechte konnten nicht geändert werden");
+      toast.error(error instanceof Error ? error.message : l("Rechte konnten nicht geändert werden"));
       await reload();
     }
   }
@@ -137,7 +139,7 @@ export function ShareDialog({
       await removeMember({ data: { boardId, memberId } });
       setMembers((current) => current.filter((m) => m.id !== memberId));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Entfernen fehlgeschlagen");
+      toast.error(error instanceof Error ? error.message : l("Entfernen fehlgeschlagen"));
     }
   }
 
@@ -145,10 +147,9 @@ export function ShareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Scope teilen</DialogTitle>
+          <DialogTitle>{l("Scope teilen")}</DialogTitle>
           <DialogDescription>
-            Gäste lesen den Scope nur über den Link. Eingeladene Personen lesen mit oder arbeiten
-            mit – je nach Recht, und immer nur in diesem Scope.
+            {l("Gäste lesen den Scope nur über den Link. Eingeladene Personen lesen mit oder arbeiten mit – je nach Recht, und immer nur in diesem Scope.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -157,8 +158,8 @@ export function ShareDialog({
             <div className="flex items-center gap-2">
               <Link2 className="size-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">Link für Gäste</p>
-                <p className="text-xs text-muted-foreground">Nur lesen, keine Anmeldung nötig</p>
+                <p className="text-sm font-medium">{l("Link für Gäste")}</p>
+                <p className="text-xs text-muted-foreground">{l("Nur lesen, keine Anmeldung nötig")}</p>
               </div>
             </div>
             <Switch
@@ -180,20 +181,20 @@ export function ShareDialog({
                       className="rounded-full"
                       onClick={() => {
                         void navigator.clipboard.writeText(link);
-                        toast.success("Link kopiert");
+                        toast.success(l("Link kopiert"));
                       }}
                     >
                       <Copy className="size-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Link kopieren</TooltipContent>
+                  <TooltipContent>{l("Link kopieren")}</TooltipContent>
                 </Tooltip>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="share-expiry" className="text-xs">
-                    Gültig
+                    {l("Gültig")}
                   </Label>
                   <select
                     id="share-expiry"
@@ -206,7 +207,7 @@ export function ShareDialog({
                   >
                     {share?.expiresAt ? (
                       <option value="custom">
-                        bis {new Date(share.expiresAt).toLocaleDateString("de-DE")}
+                        {locale === "en-GB" ? "until" : "bis"} {new Date(share.expiresAt).toLocaleDateString(locale)}
                       </option>
                     ) : null}
                     {EXPIRY_OPTIONS.map((option) => (
@@ -219,7 +220,7 @@ export function ShareDialog({
 
                 <div>
                   <Label htmlFor="share-password" className="text-xs">
-                    Passwortschutz {share?.hasPassword ? "(aktiv)" : "(optional)"}
+                    {l("Passwortschutz")} {share?.hasPassword ? (locale === "en-GB" ? "(active)" : "(aktiv)") : "(optional)"}
                   </Label>
                   <div className="mt-1 flex gap-2">
                     <Input
@@ -241,7 +242,7 @@ export function ShareDialog({
                         setPassword("");
                       }}
                     >
-                      {password.trim() ? "Setzen" : "Entfernen"}
+                      {l(password.trim() ? "Setzen" : "Entfernen")}
                     </Button>
                   </div>
                 </div>
@@ -271,12 +272,12 @@ export function ShareDialog({
                     void (async () => {
                       await revokeShare({ data: { boardId } });
                       await reload();
-                      toast.success("Link widerrufen");
+                      toast.success(l("Link widerrufen"));
                     })()
                   }
                 >
                   <ShieldOff className="mr-1.5 size-4" aria-hidden="true" />
-                  Widerrufen
+                   {l("Widerrufen")}
                 </Button>
                 {share?.lastUsedAt ? (
                   <span className="text-xs text-muted-foreground">
@@ -294,9 +295,9 @@ export function ShareDialog({
         </section>
 
         <section className="rounded-lg border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium">Mitglieder</p>
+          <p className="text-sm font-medium">{l("Mitglieder")}</p>
           <p className="text-xs text-muted-foreground">
-            Zugriff gilt ausschließlich für diesen Scope. Rollen ändern dürfen nur Inhaber.
+            {l("Zugriff gilt ausschließlich für diesen Scope. Rollen ändern dürfen nur Inhaber.")}
           </p>
 
           {isOwner ? (
@@ -304,7 +305,7 @@ export function ShareDialog({
               <Input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="E-Mail-Adresse"
+                placeholder={l("E-Mail-Adresse")}
                 className="rounded-xl"
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void invite();
@@ -314,11 +315,11 @@ export function ShareDialog({
                 value={role}
                 onChange={(event) => setRole(event.target.value as "viewer" | "commenter" | "editor")}
                 className="h-9 rounded-xl border border-border bg-background px-2 text-sm"
-                aria-label="Rolle"
+                aria-label={l("Rolle")}
               >
-                <option value="viewer">Lesen</option>
-                <option value="commenter">Kommentieren</option>
-                <option value="editor">Bearbeiten</option>
+                <option value="viewer">{l("Lesen")}</option>
+                <option value="commenter">{l("Kommentieren")}</option>
+                <option value="editor">{l("Bearbeiten")}</option>
               </select>
               <Button
                 className="rounded-full"
@@ -326,7 +327,7 @@ export function ShareDialog({
                 onClick={() => void invite()}
               >
                 <UserPlus className="size-4" />
-                Hinzufügen
+                {l("Hinzufügen")}
               </Button>
             </div>
           ) : null}
@@ -348,9 +349,9 @@ export function ShareDialog({
                       aria-label={`Rolle von ${member.email}`}
                       className="ml-auto mr-1 h-8 rounded-lg border border-border bg-background px-2 text-xs"
                     >
-                      <option value="viewer">Lesen</option>
-                      <option value="commenter">Kommentieren</option>
-                      <option value="editor">Bearbeiten</option>
+                      <option value="viewer">{l("Lesen")}</option>
+                      <option value="commenter">{l("Kommentieren")}</option>
+                      <option value="editor">{l("Bearbeiten")}</option>
                     </select>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -364,18 +365,18 @@ export function ShareDialog({
                           <Trash2 className="size-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Zugriff entziehen</TooltipContent>
+                      <TooltipContent>{l("Zugriff entziehen")}</TooltipContent>
                     </Tooltip>
                   </>
                 ) : (
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {member.role === "viewer" ? "Lesen" : "Bearbeiten"}
+                    {l(member.role === "viewer" ? "Lesen" : "Bearbeiten")}
                   </span>
                 )}
               </li>
             ))}
             {members.length === 0 ? (
-              <li className="px-2 py-1.5 text-sm text-muted-foreground">Noch keine Mitglieder</li>
+              <li className="px-2 py-1.5 text-sm text-muted-foreground">{l("Noch keine Mitglieder")}</li>
             ) : null}
           </ul>
         </section>

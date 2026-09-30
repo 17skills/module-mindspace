@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiKeysSection } from "@/components/canvas/ApiKeysSection";
 import { exportBoard } from "@/lib/backup.functions";
+import { useTranslation } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -21,17 +22,17 @@ type Props = {
   authorEmail: string;
 };
 
-function CodeBlock({ text, filename }: { text: string; filename?: string }) {
+function CodeBlock({ text, filename, copyLabel, downloadLabel, copied }: { text: string; filename?: string; copyLabel: string; downloadLabel: string; copied: string }) {
   return (
     <div className="relative">
       <div className="absolute right-2 top-2 flex gap-1">
         <Button
           size="icon"
           variant="ghost"
-          aria-label="Code kopieren"
+          aria-label={copyLabel}
           onClick={() => {
             void navigator.clipboard.writeText(text);
-            toast.success("Kopiert");
+            toast.success(copied);
           }}
         >
           <Copy className="size-4" />
@@ -40,7 +41,7 @@ function CodeBlock({ text, filename }: { text: string; filename?: string }) {
           <Button
             size="icon"
             variant="ghost"
-            aria-label="Datei herunterladen"
+            aria-label={downloadLabel}
             onClick={() => {
               const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
               const link = document.createElement("a");
@@ -63,7 +64,8 @@ function CodeBlock({ text, filename }: { text: string; filename?: string }) {
 
 /** Werkzeuge für Entwickler: Aufrufbeispiele, Schnittstellenvertrag, Bauplan und Schlüssel. */
 export function DeveloperDialog({ open, onOpenChange, boardId, isOwner, authorEmail }: Props) {
-  const [manifest, setManifest] = useState("Wird geladen …");
+  const { l } = useTranslation();
+  const [manifest, setManifest] = useState(l("Wird geladen …"));
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const endpoint = `${origin}/api/public/scopes/${boardId}/run`;
 
@@ -83,14 +85,16 @@ export function DeveloperDialog({ open, onOpenChange, boardId, isOwner, authorEm
         if (!cancelled) setManifest(text);
       } catch (error) {
         if (!cancelled) {
-          setManifest(error instanceof Error ? error.message : "Bauplan nicht verfügbar");
+          setManifest(error instanceof Error ? error.message : l("Bauplan nicht verfügbar"));
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, boardId, authorEmail]);
+  }, [open, boardId, authorEmail, l]);
+
+  const codeProps = { copyLabel: l("Code kopieren"), downloadLabel: l("Datei herunterladen"), copied: l("Kopiert") };
 
   const curl = `curl -X POST "${endpoint}" \\
   -H "Authorization: Bearer sbk_DEIN_SCHLUESSEL" \\
@@ -166,37 +170,36 @@ components:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Code &amp; Schnittstelle</DialogTitle>
+          <DialogTitle>{l("Code & Schnittstelle")}</DialogTitle>
           <DialogDescription>
-            Diesen Scope aus anderen Programmen starten. Nur für Administratoren und Entwickler
-            sichtbar.
+            {l("Diesen Scope aus anderen Programmen starten. Nur für Administratoren und Entwickler sichtbar.")}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="quickstart">
           <TabsList className="flex w-full flex-wrap">
-            <TabsTrigger value="quickstart">Schnellstart</TabsTrigger>
+            <TabsTrigger value="quickstart">{l("Schnellstart")}</TabsTrigger>
             <TabsTrigger value="ts">TypeScript</TabsTrigger>
             <TabsTrigger value="py">Python</TabsTrigger>
             <TabsTrigger value="openapi">OpenAPI</TabsTrigger>
-            <TabsTrigger value="manifest">Bauplan</TabsTrigger>
+            <TabsTrigger value="manifest">{l("Bauplan")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="quickstart" className="mt-4 space-y-3">
-            <CodeBlock text={curl} />
+            <CodeBlock text={curl} {...codeProps} />
             <ApiKeysSection boardId={boardId} isOwner={isOwner} />
           </TabsContent>
           <TabsContent value="ts" className="mt-4">
-            <CodeBlock text={ts} filename="scope-run.ts" />
+            <CodeBlock text={ts} filename="scope-run.ts" {...codeProps} />
           </TabsContent>
           <TabsContent value="py" className="mt-4">
-            <CodeBlock text={py} filename="scope_run.py" />
+            <CodeBlock text={py} filename="scope_run.py" {...codeProps} />
           </TabsContent>
           <TabsContent value="openapi" className="mt-4">
-            <CodeBlock text={openapi} filename="scope-openapi.yaml" />
+            <CodeBlock text={openapi} filename="scope-openapi.yaml" {...codeProps} />
           </TabsContent>
           <TabsContent value="manifest" className="mt-4">
-            <CodeBlock text={manifest} filename="scope.yaml" />
+            <CodeBlock text={manifest} filename="scope.yaml" {...codeProps} />
           </TabsContent>
         </Tabs>
       </DialogContent>

@@ -4,9 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
 import { readApi, type Pair } from "@/lib/api-module";
+import { useTranslation } from "@/lib/i18n";
 
 /** Set up the request of an API module: address, method, parameters, headers. */
 export function FetchTab({ record }: { record: NodeRecord }) {
+  const { l, locale } = useTranslation();
   const { updateNode, runApi } = useBoard();
   const config = readApi(record);
   const meta = (record.metadata ?? {}) as Record<string, unknown>;
@@ -68,7 +70,7 @@ export function FetchTab({ record }: { record: NodeRecord }) {
   return (
     <div className="h-full space-y-4 overflow-auto p-3 text-sm">
       <div>
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Adresse</p>
+         <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Adresse")}</p>
         <Input
           key={record.id + config.url}
           defaultValue={config.url}
@@ -79,7 +81,7 @@ export function FetchTab({ record }: { record: NodeRecord }) {
       </div>
 
       <div>
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Methode</p>
+         <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Methode")}</p>
         <div className="flex gap-1.5">
           {(["GET", "POST"] as const).map((option) => (
             <button
@@ -97,12 +99,12 @@ export function FetchTab({ record }: { record: NodeRecord }) {
         </div>
       </div>
 
-      {pairList("Parameter", "params", config.params)}
-      {pairList("Kopfzeilen", "headers", config.headers)}
+      {pairList(l("Parameter"), "params", config.params)}
+      {pairList(l("Kopfzeilen"), "headers", config.headers)}
 
       {config.method === "POST" && (
         <div>
-          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Inhalt der Anfrage</p>
+           <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Inhalt der Anfrage")}</p>
           <Textarea
             key={record.id + config.body}
             defaultValue={config.body}
@@ -115,7 +117,7 @@ export function FetchTab({ record }: { record: NodeRecord }) {
 
       <div>
         <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-          Feld für die Verbindung
+           {l("Feld für die Verbindung")}
         </p>
         <Input
           key={record.id + config.pick}
@@ -134,11 +136,11 @@ export function FetchTab({ record }: { record: NodeRecord }) {
           onClick={() => runApi(record.id)}
         >
           <RefreshCw className={`mr-1.5 size-3.5 ${running ? "animate-spin" : ""}`} />
-          {running ? "Ruft ab …" : "Abrufen"}
+           {l(running ? "Ruft ab …" : "Abrufen")}
         </Button>
         {config.lastAt && (
           <span className="text-xs text-muted-foreground">
-            {config.lastStatus} · {new Date(config.lastAt).toLocaleString("de-DE")}
+             {config.lastStatus} · {new Date(config.lastAt).toLocaleString(locale)}
           </span>
         )}
       </div>

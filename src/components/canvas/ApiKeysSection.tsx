@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/lib/api-keys.functions";
+import { useTranslation } from "@/lib/i18n";
 
 type KeyRow = {
   id: string;
@@ -17,6 +18,7 @@ type KeyRow = {
 
 /** Schlüssel, mit denen andere Systeme diesen Scope ohne Browser starten können. */
 export function ApiKeysSection({ boardId, isOwner }: { boardId: string; isOwner: boolean }) {
+  const { l } = useTranslation();
   const [keys, setKeys] = useState<KeyRow[]>([]);
   const [name, setName] = useState("");
   const [fresh, setFresh] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function ApiKeysSection({ boardId, isOwner }: { boardId: string; isOwner:
       setName("");
       await reload();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Anlegen fehlgeschlagen");
+      toast.error(error instanceof Error ? error.message : l("Anlegen fehlgeschlagen"));
     } finally {
       setBusy(false);
     }
@@ -54,11 +56,10 @@ export function ApiKeysSection({ boardId, isOwner }: { boardId: string; isOwner:
   return (
     <section className="mt-6 border-t border-border pt-4">
       <h3 className="flex items-center gap-2 text-sm font-medium">
-        <KeyRound className="size-4" /> Start durch andere Systeme
+         <KeyRound className="size-4" /> {l("Start durch andere Systeme")}
       </h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Mit einem Schlüssel kann ein anderes Programm diesen Scope starten, ohne dass jemand die
-        Oberfläche öffnet. Jeder Durchlauf wird wie gewohnt festgehalten.
+         {l("Mit einem Schlüssel kann ein anderes Programm diesen Scope starten, ohne dass jemand die Oberfläche öffnet. Jeder Durchlauf wird wie gewohnt festgehalten.")}
       </p>
       <code className="mt-2 block truncate rounded-md bg-muted px-2 py-1 text-xs">{endpoint}</code>
 
@@ -68,10 +69,10 @@ export function ApiKeysSection({ boardId, isOwner }: { boardId: string; isOwner:
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Name, z. B. Warenwirtschaft"
-            aria-label="Name des Schlüssels"
+             aria-label={l("Name des Schlüssels")}
           />
           <Button onClick={() => void create()} disabled={busy}>
-            Schlüssel erstellen
+             {l("Schlüssel erstellen")}
           </Button>
         </div>
       ) : null}
@@ -79,14 +80,14 @@ export function ApiKeysSection({ boardId, isOwner }: { boardId: string; isOwner:
       {fresh ? (
         <div className="mt-3 rounded-md border border-border bg-muted/50 p-2">
           <p className="text-xs text-muted-foreground">
-            Nur jetzt sichtbar – bitte sicher ablegen:
+             {l("Nur jetzt sichtbar – bitte sicher ablegen:")}
           </p>
           <div className="mt-1 flex items-center gap-2">
             <code className="flex-1 truncate text-xs">{fresh}</code>
             <Button
               size="icon"
               variant="ghost"
-              aria-label="Schlüssel kopieren"
+               aria-label={l("Schlüssel kopieren")}
               onClick={() => {
                 void navigator.clipboard.writeText(fresh);
                 toast.success("Kopiert");
@@ -126,13 +127,13 @@ export function ApiKeysSection({ boardId, isOwner }: { boardId: string; isOwner:
                     <ShieldOff className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Schlüssel sperren</TooltipContent>
+                 <TooltipContent>{l("Schlüssel sperren")}</TooltipContent>
               </Tooltip>
             ) : null}
           </li>
         ))}
         {keys.length === 0 ? (
-          <li className="px-2 py-1.5 text-sm text-muted-foreground">Noch kein Schlüssel</li>
+           <li className="px-2 py-1.5 text-sm text-muted-foreground">{l("Noch kein Schlüssel")}</li>
         ) : null}
       </ul>
     </section>

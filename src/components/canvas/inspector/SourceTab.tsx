@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { youtubeId } from "@/lib/extract";
 import { formatTime, type Segment } from "@/lib/segments";
 import type { NodeRecord } from "@/components/canvas/board-context";
+import { useTranslation } from "@/lib/i18n";
 
 type Props = {
   record: NodeRecord;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function SourceTab({ record, segments, loading, selected, onSelected }: Props) {
+  const { l } = useTranslation();
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const [range, setRange] = useState("");
   const [seek, setSeek] = useState(0);
@@ -94,10 +96,10 @@ export function SourceTab({ record, segments, loading, selected, onSelected }: P
 
       <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2">
         <Button size="sm" variant="secondary" onClick={() => onSelected(segments.map((s) => s.id))}>
-          Alle
+          {l("Alle")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => onSelected([])}>
-          Keine
+          {l("Keine")}
         </Button>
         <Input
           value={range}
@@ -107,15 +109,15 @@ export function SourceTab({ record, segments, loading, selected, onSelected }: P
           className="h-8 w-28 text-xs"
         />
         <Button size="sm" variant="outline" onClick={() => applyRange(range)}>
-          Wählen
+          {l("Wählen")}
         </Button>
       </div>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-auto p-3">
-        {loading && <p className="text-xs text-muted-foreground">Seiten werden geladen …</p>}
+        {loading && <p className="text-xs text-muted-foreground">{l("Seiten werden geladen …")}</p>}
         {!loading && segments.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Dieses Modul enthält noch keinen auswählbaren Inhalt.
+            {l("Dieses Modul enthält noch keinen auswählbaren Inhalt.")}
           </p>
         )}
         {segments.map((segment) => {

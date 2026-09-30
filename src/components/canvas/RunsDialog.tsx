@@ -7,6 +7,7 @@ import { OutputView } from "@/components/OutputView";
 import { getRunEvents, listRuns, setRetention } from "@/lib/runs.functions";
 import { NEVER, RETENTION_CHOICES, RUN_STATUS_LABEL, retentionLabel, type RunStatus } from "@/lib/runs";
 import { readOutput } from "@/lib/output";
+import { useTranslation } from "@/lib/i18n";
 
 type RunRow = Awaited<ReturnType<typeof listRuns>>["runs"][number];
 type EventRow = Awaited<ReturnType<typeof getRunEvents>>["events"][number];
@@ -34,6 +35,7 @@ export function RunsDialog({
   outputNodeId: string;
   retention: number;
 }) {
+  const { l, locale } = useTranslation();
   const list = useServerFn(listRuns);
   const events = useServerFn(getRunEvents);
   const saveRetention = useServerFn(setRetention);
@@ -57,11 +59,12 @@ export function RunsDialog({
       setRows(res.runs);
       setSeesAll(res.seesAll);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Durchläufe nicht ladbar");
+      toast.error(err instanceof Error ? err.message : l("Durchläufe nicht ladbar"));
     } finally {
       setLoading(false);
     }
-  }, [list, outputNodeId, page, status, days]);
+  }, [list, outputNodeId, page, status, days, l]);
+  const whenLocal = (value: string | null) => value ? new Date(value).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" }) : "–";
 
   useEffect(() => {
     if (open) void load();
@@ -82,10 +85,10 @@ export function RunsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Durchläufe</DialogTitle>
+          <DialogTitle>{l("Durchläufe")}</DialogTitle>
           <DialogDescription>
-            {seesAll ? "Alle Durchläufe an diesem Ausgang." : "Nur deine eigenen Durchläufe."} {days2 === 0
-              ? "Durchläufe werden aufbewahrt und nicht automatisch gelöscht."
+            {seesAll ? l("Alle Durchläufe an diesem Ausgang.") : l("Nur deine eigenen Durchläufe.")} {days2 === 0
+              ? l("Durchläufe werden aufbewahrt und nicht automatisch gelöscht.")
               : `Eingaben werden nach ${retentionLabel(days2)} gelöscht; der Nachweis bleibt ohne Personenbezug.`}
           </DialogDescription>
         </DialogHeader>
@@ -93,26 +96,26 @@ export function RunsDialog({
         {selected ? (
           <div className="flex max-h-[62vh] flex-col gap-3 overflow-auto">
             <button className="self-start text-xs text-muted-foreground hover:text-foreground" onClick={() => setSelected(null)}>
-              ← Zurück zur Liste
+              ← {l("Zurück zur Liste")}
             </button>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-xl border p-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">Ergebnis</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">{l("Ergebnis")}</p>
                 <OutputView artifact={readOutput({ output: selected.result })} fileUrl={null} compact />
               </div>
               <div className="rounded-xl border p-3 text-xs">
-                <p className="mb-2 font-medium text-muted-foreground">Nachweis</p>
+                 <p className="mb-2 font-medium text-muted-foreground">{l("Nachweis")}</p>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-                  <dt className="text-muted-foreground">Person</dt><dd>{selected.who}</dd>
-                  <dt className="text-muted-foreground">Zeit</dt><dd>{when(selected.created_at)}</dd>
-                  <dt className="text-muted-foreground">Status</dt><dd>{RUN_STATUS_LABEL[selected.status as RunStatus] ?? selected.status}</dd>
+                   <dt className="text-muted-foreground">{l("Person")}</dt><dd>{selected.who}</dd>
+                   <dt className="text-muted-foreground">{l("Zeit")}</dt><dd>{whenLocal(selected.created_at)}</dd>
+                   <dt className="text-muted-foreground">{l("Status")}</dt><dd>{l(RUN_STATUS_LABEL[selected.status as RunStatus] ?? selected.status)}</dd>
                   <dt className="text-muted-foreground">Motor</dt><dd>{[selected.engine, selected.provider, selected.model].filter(Boolean).join(" · ") || "–"}</dd>
-                  <dt className="text-muted-foreground">Eingabe</dt>
+                   <dt className="text-muted-foreground">{l("Eingabe")}</dt>
                   <dd>
-                    {selected.inputUrl ? <a className="underline" href={selected.inputUrl} target="_blank" rel="noreferrer">Datei öffnen</a> : selected.purged_at ? "gelöscht" : "keine Datei"}
+                     {selected.inputUrl ? <a className="underline" href={selected.inputUrl} target="_blank" rel="noreferrer">{l("Datei öffnen")}</a> : selected.purged_at ? l("gelöscht") : l("keine Datei")}
                   </dd>
-                  <dt className="text-muted-foreground">Prüfsumme</dt><dd className="truncate font-mono" title={selected.input_sha256 ?? ""}>{selected.input_sha256?.slice(0, 16) ?? "–"}</dd>
-                  <dt className="text-muted-foreground">Löschung</dt><dd>{selected.expires_at === NEVER || selected.expires_at?.startsWith("9999") ? "nie" : when(selected.expires_at)}</dd>
+                   <dt className="text-muted-foreground">{l("Prüfsumme")}</dt><dd className="truncate font-mono" title={selected.input_sha256 ?? ""}>{selected.input_sha256?.slice(0, 16) ?? "–"}</dd>
+                   <dt className="text-muted-foreground">{l("Löschung")}</dt><dd>{selected.expires_at === NEVER || selected.expires_at?.startsWith("9999") ? l("nie") : whenLocal(selected.expires_at)}</dd>
                 </dl>
                 {selected.error ? <p className="mt-2 text-destructive">{selected.error}</p> : null}
               </div>
@@ -122,7 +125,7 @@ export function RunsDialog({
               <ul className="space-y-1">
                 {log.map((e) => (
                   <li key={e.id} className="flex gap-3">
-                    <span className="w-28 shrink-0 text-muted-foreground">{when(e.created_at)}</span>
+                     <span className="w-28 shrink-0 text-muted-foreground">{whenLocal(e.created_at)}</span>
                     <span>{ACTION_LABEL[e.action] ?? e.action}{e.detail ? ` – ${e.detail}` : ""}</span>
                     <span className="ml-auto text-muted-foreground">{e.system ? "System" : e.byMe ? "du" : "Mitglied"}</span>
                   </li>
@@ -134,12 +137,12 @@ export function RunsDialog({
         ) : (
           <div className="flex max-h-[62vh] flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <button className={chip(view === "list")} onClick={() => setView("list")}>Liste</button>
-              <button className={chip(view === "gallery")} onClick={() => setView("gallery")}>Galerie</button>
+               <button className={chip(view === "list")} onClick={() => setView("list")}>{l("Liste")}</button>
+               <button className={chip(view === "gallery")} onClick={() => setView("gallery")}>{l("Galerie")}</button>
               <span className="mx-1 h-4 w-px bg-border" />
               {(["", "done", "running", "failed"] as const).map((s) => (
                 <button key={s || "all"} className={chip(status === s)} onClick={() => { setStatus(s); setPage(0); }}>
-                  {s ? RUN_STATUS_LABEL[s] : "alle"}
+                   {l(s ? RUN_STATUS_LABEL[s] : "alle")}
                 </button>
               ))}
               <select
@@ -148,24 +151,24 @@ export function RunsDialog({
                 aria-label="Zeitraum"
                 onChange={(e) => { setDays(Number(e.target.value)); setPage(0); }}
               >
-                <option value={0}>jederzeit</option>
-                <option value={1}>letzte 24 h</option>
-                <option value={7}>letzte 7 Tage</option>
-                <option value={30}>letzte 30 Tage</option>
+                 <option value={0}>{l("jederzeit")}</option>
+                 <option value={1}>{l("letzte 24 h")}</option>
+                 <option value={7}>{l("letzte 7 Tage")}</option>
+                 <option value={30}>{l("letzte 30 Tage")}</option>
               </select>
             </div>
 
             <div className="min-h-40 flex-1 overflow-auto">
               {loading ? <p className="py-8 text-center text-sm text-muted-foreground">…</p> : null}
               {!loading && !rows.length ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Noch keine Durchläufe.</p>
+                 <p className="py-8 text-center text-sm text-muted-foreground">{l("Noch keine Durchläufe.")}</p>
               ) : null}
               {!loading && view === "list" ? (
                 <ul className="divide-y">
                   {rows.map((r) => (
                     <li key={r.id}>
                       <button className="flex w-full items-center gap-3 px-1 py-2 text-left text-sm hover:bg-muted/50" onClick={() => setSelected(r)}>
-                        <span className="w-28 shrink-0 text-xs text-muted-foreground">{when(r.created_at)}</span>
+                         <span className="w-28 shrink-0 text-xs text-muted-foreground">{whenLocal(r.created_at)}</span>
                         <span className="line-clamp-1 flex-1">{readOutput({ output: r.result }).title || readOutput({ output: r.result }).text.slice(0, 80) || "Ergebnis"}</span>
                         <span className="text-xs text-muted-foreground">{r.who}</span>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] ${r.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-muted"}`}>
@@ -188,7 +191,7 @@ export function RunsDialog({
                         </div>
                       )}
                       <div className="mt-auto border-t px-2 py-1 text-[10px] text-muted-foreground">
-                        {when(r.created_at)} · {RUN_STATUS_LABEL[r.status as RunStatus] ?? r.status}
+                         {whenLocal(r.created_at)} · {l(RUN_STATUS_LABEL[r.status as RunStatus] ?? r.status)}
                       </div>
                     </button>
                   ))}
@@ -197,11 +200,11 @@ export function RunsDialog({
             </div>
 
             <div className="flex items-center gap-2 border-t pt-2 text-xs">
-              <Button size="sm" variant="ghost" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Zurück</Button>
-              <Button size="sm" variant="ghost" disabled={rows.length < 50} onClick={() => setPage((p) => p + 1)}>Weiter</Button>
+               <Button size="sm" variant="ghost" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>{l("Zurück")}</Button>
+               <Button size="sm" variant="ghost" disabled={rows.length < 50} onClick={() => setPage((p) => p + 1)}>{l("Weiter")}</Button>
               {seesAll ? (
                 <label className="ml-auto flex items-center gap-2 text-muted-foreground">
-                  Löschfrist
+                   {l("Löschfrist")}
                   <select
                     className="rounded-full border bg-background px-2 py-1"
                     value={days2}

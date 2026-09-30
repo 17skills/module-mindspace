@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { saveMcpServer, type McpServerInfoRow } from "@/lib/mcp-client.functions";
 import { MCP_TEMPLATES, type McpTemplate } from "@/lib/mcp-templates";
+import { useTranslation } from "@/lib/i18n";
 
 type AuthKind = "none" | "bearer" | "header";
 
@@ -34,6 +35,7 @@ type Props = {
 
 /** Dialog, um direkt vom Scope aus eine externe Werkzeugquelle (MCP) zu verbinden. */
 export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
+  const { l } = useTranslation();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<"catalog" | "form">("catalog");
   const [name, setName] = useState("");
@@ -81,7 +83,7 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
 
   async function connect() {
     if (!name.trim() || !url.trim()) {
-      toast.error("Bitte Name und Adresse angeben");
+      toast.error(l("Bitte Name und Adresse angeben"));
       return;
     }
     setBusy(true);
@@ -100,7 +102,7 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
       onConnected?.(server);
       close();
     } catch (problem) {
-      toast.error(problem instanceof Error ? problem.message : "Verbindung fehlgeschlagen");
+      toast.error(problem instanceof Error ? problem.message : l("Verbindung fehlgeschlagen"));
     } finally {
       setBusy(false);
     }
@@ -111,15 +113,15 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
       <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader className="space-y-2">
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Werkzeugquelle
+            {l("Werkzeugquelle")}
           </p>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            {step === "form" && template ? template.name : "Dienst verbinden"}
+            {step === "form" && template ? template.name : l("Dienst verbinden")}
           </DialogTitle>
           <DialogDescription>
             {step === "catalog"
-              ? "Wähle einen Dienst aus dem Katalog oder verbinde eine eigene Adresse."
-              : "Adresse prüfen, Zugangsschlüssel eintragen – danach stehen die Werkzeuge im Scope bereit."}
+              ? l("Wähle einen Dienst aus dem Katalog oder verbinde eine eigene Adresse.")
+              : l("Adresse prüfen, Zugangsschlüssel eintragen – danach stehen die Werkzeuge im Scope bereit.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -164,7 +166,7 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background">
                   <Plug className="h-4 w-4" aria-hidden />
                 </span>
-                <span className="flex-1 font-medium">Eigener Server</span>
+                <span className="flex-1 font-medium">{l("Eigener Server")}</span>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 Beliebiger MCP-Endpunkt deines Unternehmens oder eigener Werkzeuge.
@@ -192,7 +194,7 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="mcp-name">Name im Scope</Label>
+                <Label htmlFor="mcp-name">{l("Name im Scope")}</Label>
                 <Input
                   id="mcp-name"
                   value={name}
@@ -201,7 +203,7 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Anmeldung</Label>
+                <Label>{l("Anmeldung")}</Label>
                 <Select value={authKind} onValueChange={(next) => setAuthKind(next as AuthKind)}>
                   <SelectTrigger aria-label="Anmeldeart">
                     <SelectValue />
@@ -265,14 +267,14 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
           {step === "form" ? (
             <Button variant="ghost" disabled={busy} onClick={() => setStep("catalog")}>
               <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
-              Katalog
+              {l("Katalog")}
             </Button>
           ) : (
             <span className="hidden sm:block" />
           )}
           <div className="flex gap-2">
             <Button variant="ghost" disabled={busy} onClick={close}>
-              Abbrechen
+               {l("Abbrechen")}
             </Button>
             {step === "form" ? (
               <Button disabled={busy} onClick={() => void connect()}>
@@ -284,7 +286,7 @@ export function McpConnectDialog({ open, onOpenChange, onConnected }: Props) {
                 ) : (
                   <>
                     <Check className="mr-1.5 h-4 w-4" aria-hidden />
-                    Verbinden &amp; prüfen
+                     {l("Verbinden & prüfen")}
                   </>
                 )}
               </Button>
