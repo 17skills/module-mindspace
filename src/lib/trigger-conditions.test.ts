@@ -77,3 +77,24 @@ describe("parseConditions", () => {
     expect(parsed).toEqual([{ path: "a", op: "gt", value: 1 }]);
   });
 });
+
+import { formatLogReason, parseExcludePaths } from "./trigger-conditions";
+describe("formatLogReason", () => {
+  const ev = evaluateTrigger(
+    [{ path: "wind", op: "gt", value: 50 }, { path: "user.email", op: "exists" }],
+    { wind: 82, user: { email: "a@b.de" } },
+    {},
+  );
+  it("schwärzt Werte standardmäßig", () => {
+    const r = formatLogReason(ev);
+    expect(r).not.toContain("82");
+    expect(r).not.toContain("a@b.de");
+    expect(r).toContain("•••");
+  });
+  it("zeigt Werte nur bei Freigabe und blendet sensible Pfade aus", () => {
+    const r = formatLogReason(ev, { showValues: true, exclude: parseExcludePaths("user") });
+    expect(r).toContain("82");
+    expect(r).not.toContain("email");
+    expect(r).toContain("1 Regel(n) ausgeblendet");
+  });
+});

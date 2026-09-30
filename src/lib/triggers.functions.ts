@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertBoardRole } from "@/lib/guard.server";
 import {
   evaluateTrigger,
-  parseConditions,
+  parseConditions, parseExcludePaths,
   TRIGGER_OPERATORS,
 } from "@/lib/trigger-conditions";
 
@@ -14,7 +14,7 @@ async function admin() {
 }
 
 const SELECT =
-  "id,board_id,node_id,name,mode,enabled,prefix,interval_minutes,probe_url,match_mode,conditions,last_status,last_detail,last_event_at,last_run_at,next_run_at,created_at";
+  "id,board_id,node_id,name,mode,enabled,prefix,interval_minutes,probe_url,match_mode,conditions,log_values,log_exclude,last_status,last_detail,last_event_at,last_run_at,next_run_at,created_at";
 
 const ConditionSchema = z.object({
   path: z.string().max(200),
@@ -33,6 +33,8 @@ const SaveSchema = z.object({
   probeUrl: z.string().max(500).nullable().default(null),
   matchMode: z.enum(["any", "all"]).default("any"),
   conditions: z.array(ConditionSchema).max(20).default([]),
+  logValues: z.boolean().default(false),
+  logExclude: z.array(z.string().max(200)).max(20).default([]),
 });
 
 /** Alle Auslöser eines Scopes. */
@@ -69,6 +71,8 @@ export const saveTrigger = createServerFn({ method: "POST" })
       probe_url: data.probeUrl?.trim() ? data.probeUrl.trim() : null,
       match_mode: data.matchMode,
       conditions: parseConditions(data.conditions) as never,
+      log_values: data.logValues,
+      log_exclude: parseExcludePaths(data.logExclude),
       next_run_at: wantsSchedule
         ? new Date(Date.now() + (data.intervalMinutes ?? 60) * 60_000).toISOString()
         : null,

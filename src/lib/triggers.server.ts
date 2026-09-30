@@ -5,7 +5,7 @@
  * Greift keine Regel, wird das kostenneutral als „übersprungen" vermerkt:
  * kein Modellaufruf, kein Token, kein Durchlauf.
  */
-import { evaluateTrigger, parseConditions, type TriggerEvaluation } from "@/lib/trigger-conditions";
+import { evaluateTrigger, formatLogReason, parseConditions, parseExcludePaths, type TriggerEvaluation } from "@/lib/trigger-conditions";
 import { safeUrl } from "@/lib/api-fetch.server";
 import { withTimeout } from "@/lib/budget";
 
@@ -21,7 +21,13 @@ export type TriggerRow = {
   conditions: unknown;
   last_values: unknown;
   name?: string | null;
+  log_values?: boolean | null;
+  log_exclude?: string[] | null;
 };
+
+function logReason(row: TriggerRow, evaluation: TriggerEvaluation): string {
+  return formatLogReason(evaluation, { showValues: row.log_values === true, exclude: parseExcludePaths(row.log_exclude) });
+}
 
 async function logEvent(db: { from: (t: string) => any }, row: TriggerRow, source: string, status: string, reason: string, runs: number) {
   try {
@@ -103,7 +109,7 @@ export async function fireTrigger(
   if (!evaluation.fired) {
     patch["last_status"] = "skipped";
     await db.from("scope_triggers").update(patch).eq("id", row.id);
-    await logEvent(db, row, actorLabel, "skipped", evaluation.summary, 0);
+    await logEvent(db, row, actorLabel, "skipped", logReason(row, evaluation), 0);
     return { fired: false, evaluation, runs: 0, error: null };
   }
 
@@ -136,7 +142,7 @@ export async function fireTrigger(
   patch["last_run_at"] = now.toISOString();
   if (error) patch["last_detail"] = error.slice(0, 300);
   await db.from("scope_triggers").update(patch).eq("id", row.id);
-  await logEvent(db, row, actorLabel, error ? "failed" : "fired", error ?? evaluation.summary, runs);
+  await logEvent(db, row, actorLabel, error ? "failed" : "fired", error ?? logReason(row, evaluation), runs);
 
   return { fired: true, evaluation, runs, error };
 }
