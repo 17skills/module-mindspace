@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Cpu } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertTriangle, CheckCircle2, Cpu } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { checkModelCapabilities } from "@/lib/model-registry.functions";
 import {
   CAPABILITY_LABEL,
   ENGINE_PROVIDERS,
@@ -55,8 +58,25 @@ export function EngineSection({
 
   const meta = ENGINE_PROVIDER_META[binding.provider];
   const suggestions = MODEL_SUGGESTIONS[binding.provider];
-  const report = checkEngineCompatibility(binding, required);
-  const showReport = binding.provider !== "default" && binding.model && (!report.ok || report.uncertain.length > 0);
+  const lookup = useServerFn(checkModelCapabilities);
+  const live = useQuery({
+    queryKey: ["model-capabilities", binding.provider, binding.model, required.join(",")],
+    queryFn: () =>
+      lookup({ data: { provider: binding.provider, model: binding.model!, required } }),
+    enabled: binding.provider !== "default" && !!binding.model,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  const report = checkEngineCompatibility(
+    binding,
+    required,
+    live.data?.entry ?? null,
+    live.data?.candidates,
+  );
+  const showReport =
+    binding.provider !== "default" &&
+    binding.model &&
+    (!report.ok || report.uncertain.length > 0 || report.notFound);
 
   return (
     <div className="space-y-2.5 rounded-lg border border-border/70 p-3">
@@ -146,9 +166,12 @@ export function EngineSection({
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               <div className="space-y-1.5">
                 <p>
-                  {report.ok
+                  {report.ok && !report.notFound
                     ? `Nicht sicher bekannt, ob ${binding.model} Folgendes kann: ${report.uncertain.map((c) => CAPABILITY_LABEL[c]).join(", ")}.`
                     : compatibilityMessage(binding, report)}
+                </p>
+                <p className="text-muted-foreground">
+                  {report.source === "provider" ? "Laut Anbieter geprüft." : "Geschätzt nach Modellname."}
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {report.alternatives.slice(0, 3).map((item) => (
@@ -174,6 +197,11 @@ export function EngineSection({
                 </div>
               </div>
             </div>
+          )}
+          {!showReport && binding.model && report.source === "provider" && (
+            <p role="status" className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <CheckCircle2 className="size-3.5" aria-hidden /> Laut Anbieter passend.
+            </p>
           )}
 
           {meta.needsKey && (

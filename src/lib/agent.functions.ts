@@ -54,7 +54,12 @@ export const runZoneAgent = createServerFn({ method: "POST" })
 
   .handler(async ({ data, context }) => {
     if (data.engine) {
-      const report = checkEngineCompatibility(data.engine, ["structured"]);
+      let live = null;
+      if (data.engine.model && data.engine.provider !== "default") {
+        const { lookupCapabilities } = await import("@/lib/model-registry.server");
+        live = await lookupCapabilities(data.engine.provider, data.engine.model).catch(() => null);
+      }
+      const report = checkEngineCompatibility(data.engine, ["structured"], live);
       if (!report.ok) throw new Error(compatibilityMessage(data.engine, report));
     }
     const numberRule =
