@@ -40,8 +40,10 @@ import { Route as AuthenticatedKontoOrganisationRouteImport } from './routes/_au
 import { Route as AuthenticatedKontoSitzungenRouteImport } from './routes/_authenticated/konto.sitzungen'
 import { Route as AuthenticatedKontoTeamsRouteImport } from './routes/_authenticated/konto.teams'
 import { Route as ApiPublicRunsPurgeRouteImport } from './routes/api/public/runs-purge'
+import { Route as ApiPublicTriggersTickRouteImport } from './routes/api/public/triggers-tick'
 import { Route as EmbedZoneZoneIdRouteImport } from './routes/embed.zone.$zoneId'
 import { Route as AuthenticatedKontoNutzerUserIdRouteImport } from './routes/_authenticated/konto.nutzer.$userId'
+import { Route as ApiPublicTriggersTriggerIdRouteImport } from './routes/api/public/triggers.$triggerId'
 import { Route as ApiPublicAppAppIdMcpRouteImport } from './routes/api/public/app.$appId.mcp'
 import { Route as ApiPublicAppAppIdTeamsCardRouteImport } from './routes/api/public/app.$appId.teams-card'
 import { Route as ApiPublicAppAppIdTeamsManifestRouteImport } from './routes/api/public/app.$appId.teams-manifest'
@@ -209,6 +211,11 @@ const ApiPublicRunsPurgeRoute = ApiPublicRunsPurgeRouteImport.update({
   path: '/api/public/runs-purge',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTriggersTickRoute = ApiPublicTriggersTickRouteImport.update({
+  id: '/api/public/triggers-tick',
+  path: '/api/public/triggers-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmbedZoneZoneIdRoute = EmbedZoneZoneIdRouteImport.update({
   id: '/embed/zone/$zoneId',
   path: '/embed/zone/$zoneId',
@@ -219,6 +226,12 @@ const AuthenticatedKontoNutzerUserIdRoute =
     id: '/nutzer/$userId',
     path: '/nutzer/$userId',
     getParentRoute: () => AuthenticatedKontoRoute,
+  } as any)
+const ApiPublicTriggersTriggerIdRoute =
+  ApiPublicTriggersTriggerIdRouteImport.update({
+    id: '/api/public/triggers/$triggerId',
+    path: '/api/public/triggers/$triggerId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicAppAppIdMcpRoute = ApiPublicAppAppIdMcpRouteImport.update({
   id: '/api/public/app/$appId/mcp',
@@ -274,9 +287,11 @@ export interface FileRoutesByFullPath {
   '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/api/public/runs-purge': typeof ApiPublicRunsPurgeRoute
+  '/api/public/triggers-tick': typeof ApiPublicTriggersTickRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto/': typeof AuthenticatedKontoIndexRoute
   '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
+  '/api/public/triggers/$triggerId': typeof ApiPublicTriggersTriggerIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
   '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
@@ -311,9 +326,11 @@ export interface FileRoutesByTo {
   '/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/api/public/runs-purge': typeof ApiPublicRunsPurgeRoute
+  '/api/public/triggers-tick': typeof ApiPublicTriggersTickRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/konto': typeof AuthenticatedKontoIndexRoute
   '/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
+  '/api/public/triggers/$triggerId': typeof ApiPublicTriggersTriggerIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
   '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
@@ -351,9 +368,11 @@ export interface FileRoutesById {
   '/_authenticated/konto/sitzungen': typeof AuthenticatedKontoSitzungenRoute
   '/_authenticated/konto/teams': typeof AuthenticatedKontoTeamsRoute
   '/api/public/runs-purge': typeof ApiPublicRunsPurgeRoute
+  '/api/public/triggers-tick': typeof ApiPublicTriggersTickRoute
   '/embed/zone/$zoneId': typeof EmbedZoneZoneIdRoute
   '/_authenticated/konto/': typeof AuthenticatedKontoIndexRoute
   '/_authenticated/konto/nutzer/$userId': typeof AuthenticatedKontoNutzerUserIdRoute
+  '/api/public/triggers/$triggerId': typeof ApiPublicTriggersTriggerIdRoute
   '/api/public/app/$appId/mcp': typeof ApiPublicAppAppIdMcpRoute
   '/api/public/app/$appId/teams-card': typeof ApiPublicAppAppIdTeamsCardRoute
   '/api/public/app/$appId/teams-manifest': typeof ApiPublicAppAppIdTeamsManifestRoute
@@ -391,9 +410,11 @@ export interface FileRouteTypes {
     | '/konto/sitzungen'
     | '/konto/teams'
     | '/api/public/runs-purge'
+    | '/api/public/triggers-tick'
     | '/embed/zone/$zoneId'
     | '/konto/'
     | '/konto/nutzer/$userId'
+    | '/api/public/triggers/$triggerId'
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
     | '/api/public/app/$appId/teams-manifest'
@@ -428,9 +449,11 @@ export interface FileRouteTypes {
     | '/konto/sitzungen'
     | '/konto/teams'
     | '/api/public/runs-purge'
+    | '/api/public/triggers-tick'
     | '/embed/zone/$zoneId'
     | '/konto'
     | '/konto/nutzer/$userId'
+    | '/api/public/triggers/$triggerId'
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
     | '/api/public/app/$appId/teams-manifest'
@@ -467,9 +490,11 @@ export interface FileRouteTypes {
     | '/_authenticated/konto/sitzungen'
     | '/_authenticated/konto/teams'
     | '/api/public/runs-purge'
+    | '/api/public/triggers-tick'
     | '/embed/zone/$zoneId'
     | '/_authenticated/konto/'
     | '/_authenticated/konto/nutzer/$userId'
+    | '/api/public/triggers/$triggerId'
     | '/api/public/app/$appId/mcp'
     | '/api/public/app/$appId/teams-card'
     | '/api/public/app/$appId/teams-manifest'
@@ -494,7 +519,9 @@ export interface RootRouteChildren {
   ShareTokenRoute: typeof ShareTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicRunsPurgeRoute: typeof ApiPublicRunsPurgeRoute
+  ApiPublicTriggersTickRoute: typeof ApiPublicTriggersTickRoute
   EmbedZoneZoneIdRoute: typeof EmbedZoneZoneIdRoute
+  ApiPublicTriggersTriggerIdRoute: typeof ApiPublicTriggersTriggerIdRoute
   ApiPublicAppAppIdMcpRoute: typeof ApiPublicAppAppIdMcpRoute
   ApiPublicAppAppIdTeamsCardRoute: typeof ApiPublicAppAppIdTeamsCardRoute
   ApiPublicAppAppIdTeamsManifestRoute: typeof ApiPublicAppAppIdTeamsManifestRoute
@@ -720,6 +747,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRunsPurgeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/triggers-tick': {
+      id: '/api/public/triggers-tick'
+      path: '/api/public/triggers-tick'
+      fullPath: '/api/public/triggers-tick'
+      preLoaderRoute: typeof ApiPublicTriggersTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/embed/zone/$zoneId': {
       id: '/embed/zone/$zoneId'
       path: '/embed/zone/$zoneId'
@@ -733,6 +767,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/konto/nutzer/$userId'
       preLoaderRoute: typeof AuthenticatedKontoNutzerUserIdRouteImport
       parentRoute: typeof AuthenticatedKontoRoute
+    }
+    '/api/public/triggers/$triggerId': {
+      id: '/api/public/triggers/$triggerId'
+      path: '/api/public/triggers/$triggerId'
+      fullPath: '/api/public/triggers/$triggerId'
+      preLoaderRoute: typeof ApiPublicTriggersTriggerIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/app/$appId/mcp': {
       id: '/api/public/app/$appId/mcp'
@@ -832,7 +873,9 @@ const rootRouteChildren: RootRouteChildren = {
   ShareTokenRoute: ShareTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicRunsPurgeRoute: ApiPublicRunsPurgeRoute,
+  ApiPublicTriggersTickRoute: ApiPublicTriggersTickRoute,
   EmbedZoneZoneIdRoute: EmbedZoneZoneIdRoute,
+  ApiPublicTriggersTriggerIdRoute: ApiPublicTriggersTriggerIdRoute,
   ApiPublicAppAppIdMcpRoute: ApiPublicAppAppIdMcpRoute,
   ApiPublicAppAppIdTeamsCardRoute: ApiPublicAppAppIdTeamsCardRoute,
   ApiPublicAppAppIdTeamsManifestRoute: ApiPublicAppAppIdTeamsManifestRoute,

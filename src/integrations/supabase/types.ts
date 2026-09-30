@@ -1406,6 +1406,93 @@ export type Database = {
           },
         ]
       }
+      scope_triggers: {
+        Row: {
+          board_id: string
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          interval_minutes: number | null
+          last_detail: string | null
+          last_event_at: string | null
+          last_run_at: string | null
+          last_status: string | null
+          last_values: Json
+          match_mode: string
+          mode: string
+          name: string
+          next_run_at: string | null
+          node_id: string
+          prefix: string
+          probe_url: string | null
+          secret_hash: string
+          updated_at: string
+        }
+        Insert: {
+          board_id: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          interval_minutes?: number | null
+          last_detail?: string | null
+          last_event_at?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          last_values?: Json
+          match_mode?: string
+          mode?: string
+          name?: string
+          next_run_at?: string | null
+          node_id: string
+          prefix?: string
+          probe_url?: string | null
+          secret_hash: string
+          updated_at?: string
+        }
+        Update: {
+          board_id?: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          interval_minutes?: number | null
+          last_detail?: string | null
+          last_event_at?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          last_values?: Json
+          match_mode?: string
+          mode?: string
+          name?: string
+          next_run_at?: string | null
+          node_id?: string
+          prefix?: string
+          probe_url?: string | null
+          secret_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scope_triggers_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scope_triggers_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           created_at: string
