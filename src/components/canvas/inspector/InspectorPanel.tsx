@@ -13,6 +13,7 @@ import { GuideTab } from "./GuideTab";
 import { RefreshTab } from "./RefreshTab";
 import { RoleSection } from "./RoleSection";
 import { useSegments } from "./use-segments";
+import { useTranslation } from "@/lib/i18n";
 
 
 const DATA_TYPES = ["table", "list", "chart"];
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
+  const { l } = useTranslation();
   const { sourcesFor, updateNode } = useBoard();
   const sources = sourcesFor(nodeId);
   const record = sources.find((item) => item.id === nodeId) ?? sources[0];
@@ -82,13 +84,13 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
   const isZone = record.type === "zone";
   const isApi = record.type === "api";
   const tabs: { id: InspectorTab; label: string }[] = [
-    ...(isZone ? [{ id: "agent" as const, label: "Agent" }] : []),
-    ...(isApi ? [{ id: "fetch" as const, label: "Abruf" }] : []),
-    { id: "source", label: "Quelle" },
-    ...(isData ? [{ id: "data" as const, label: "Daten" }] : []),
-    { id: "refresh", label: "Aktualisieren" },
-    ...(isZone ? [] : [{ id: "assign" as const, label: "Zuordnung" }]),
-    { id: "guide", label: "Leitfaden" },
+    ...(isZone ? [{ id: "agent" as const, label: l("Agent") }] : []),
+    ...(isApi ? [{ id: "fetch" as const, label: l("Abruf") }] : []),
+    { id: "source", label: l("Quelle") },
+    ...(isData ? [{ id: "data" as const, label: l("Daten") }] : []),
+    { id: "refresh", label: l("Aktualisieren") },
+    ...(isZone ? [] : [{ id: "assign" as const, label: l("Zuordnung") }]),
+    { id: "guide", label: l("Leitfaden") },
   ];
   const activeTab = tabs.some((item) => item.id === tab) ? tab : "source";
 
@@ -111,15 +113,15 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
           <p className="text-[10px] uppercase text-muted-foreground">
             {NODE_LABEL[record.type] ?? record.type}
           </p>
-          <p className="truncate font-display text-sm font-semibold">{record.title ?? "Ohne Titel"}</p>
+          <p className="truncate font-display text-sm font-semibold">{record.title ?? (l("Ohne Titel"))}</p>
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" className="h-7 w-7 max-sm:h-9 max-sm:w-9" aria-label="Inspector schließen" onClick={onClose}>
+            <Button size="icon" variant="ghost" className="h-7 w-7 max-sm:h-9 max-sm:w-9" aria-label={l("Inspector schließen")} onClick={onClose}>
               <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">Schließen</TooltipContent>
+          <TooltipContent side="bottom" className="text-xs">{l("Schließen")}</TooltipContent>
         </Tooltip>
       </header>
 

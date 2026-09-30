@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
 import { ZONE_ROLES, readAssignment } from "@/lib/zones";
+import { useTranslation } from "@/lib/i18n";
 
 export function AssignTab({ record }: { record: NodeRecord }) {
+  const { l } = useTranslation();
   const { zones, updateNode } = useBoard();
   const fields = zones();
   const assignment = readAssignment(record);
@@ -21,10 +23,10 @@ export function AssignTab({ record }: { record: NodeRecord }) {
   return (
     <div className="h-full space-y-4 overflow-auto p-3 text-sm">
       <div>
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Hintergrundfeld</p>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Hintergrundfeld")}</p>
         {fields.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Auf dieser Fläche gibt es noch keine Hintergrundfelder. Lege sie per Rechtsklick an.
+            {l("Auf dieser Fläche gibt es noch keine Hintergrundfelder. Lege sie per Rechtsklick an.")}
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
@@ -34,7 +36,7 @@ export function AssignTab({ record }: { record: NodeRecord }) {
                 assignment ? "text-muted-foreground" : "border-primary bg-accent/50"
               }`}
             >
-              Keines
+              {l("Keines")}
             </button>
             {fields.map((zone) => (
               <button
@@ -52,7 +54,7 @@ export function AssignTab({ record }: { record: NodeRecord }) {
                     : "text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {zone.title ?? "Feld"}
+                {zone.title ?? l("Feld")}
               </button>
             ))}
           </div>
@@ -60,7 +62,7 @@ export function AssignTab({ record }: { record: NodeRecord }) {
       </div>
 
       <div>
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Rolle</p>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">{l("Rolle")}</p>
         <div className="flex flex-wrap gap-1.5">
           {ZONE_ROLES.map((role) => (
             <button
@@ -81,13 +83,13 @@ export function AssignTab({ record }: { record: NodeRecord }) {
 
       <div>
         <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-          Warum gehört das hierher?
+          {l("Warum gehört das hierher?")}
         </p>
         <Textarea
           value={note}
           onChange={(event) => setNote(event.target.value)}
           onBlur={() => patch({ zoneNote: note })}
-          placeholder="z. B. zeigt ein Nutzenversprechen statt Produktmerkmalen"
+          placeholder={l("z. B. zeigt ein Nutzenversprechen statt Produktmerkmalen")}
           className="min-h-20 text-xs"
         />
       </div>
@@ -98,7 +100,7 @@ export function AssignTab({ record }: { record: NodeRecord }) {
           checked={assignment ? assignment.auto : true}
           onChange={(event) => patch({ zoneAuto: event.target.checked })}
         />
-        Automatisch nach Lage zuordnen
+        {l("Automatisch nach Lage zuordnen")}
       </label>
 
       {assignment && (
@@ -107,7 +109,7 @@ export function AssignTab({ record }: { record: NodeRecord }) {
           variant="ghost"
           onClick={() => patch({ zoneId: null, zoneNote: "", zoneAuto: true })}
         >
-          Zuordnung entfernen
+          {l("Zuordnung entfernen")}
         </Button>
       )}
     </div>

@@ -4,7 +4,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { de, type TranslationKey } from "./de";
-import { en } from "./en";
+import { en, englishUi } from "./en";
 
 export type Language = "de" | "en" | "system";
 export type ResolvedLanguage = "de" | "en";
@@ -37,6 +37,8 @@ type I18nContextValue = {
   /** Übernimmt die Kontoeinstellung, ohne sie erneut zu speichern. */
   syncLanguage: (value: Language) => void;
   t: (key: TranslationKey) => string;
+  l: (german: string) => string;
+  locale: string;
 };
 
 const I18nContext = createContext<I18nContextValue>({
@@ -45,6 +47,8 @@ const I18nContext = createContext<I18nContextValue>({
   setLanguage: () => {},
   syncLanguage: () => {},
   t: (key) => de[key],
+  l: (german) => german,
+  locale: "de-DE",
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
@@ -73,9 +77,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback((key: TranslationKey) => DICTIONARIES[resolved][key] ?? de[key], [resolved]);
+  const l = useCallback((german: string) => resolved === "en" ? (englishUi[german] ?? german) : german, [resolved]);
+  const locale = resolved === "en" ? "en-GB" : "de-DE";
 
   return (
-    <I18nContext.Provider value={{ language, resolved, setLanguage, syncLanguage, t }}>
+    <I18nContext.Provider value={{ language, resolved, setLanguage, syncLanguage, t, l, locale }}>
       {children}
     </I18nContext.Provider>
   );
