@@ -16,7 +16,7 @@ import {
 import { useTheme, type ThemeMode } from "@/lib/theme";
 import { useTranslation } from "@/lib/i18n";
 import { getAccount, saveSettings } from "@/lib/account.functions";
-import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { DEFAULT_SETTINGS, withAppearance } from "@/lib/settings";
 import { listMyOrgs, setActiveOrg } from "@/lib/org.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -51,7 +51,7 @@ export function UserMenu() {
   const saveAppearance = useMutation({
     mutationFn: (patch: { theme?: ThemeMode; language?: "de" | "en" | "system" }) =>
       saveSettings({
-        data: { settings: { ...(account.data?.settings ?? DEFAULT_SETTINGS), ...patch } },
+        data: { settings: withAppearance(account.data?.settings ?? DEFAULT_SETTINGS, patch) },
       }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["account"] }),
   });
