@@ -183,6 +183,6 @@ export function compatibilityMessage(binding: ModuleEngineBinding, report: Compa
   const names = report.missing.map((cap) => CAPABILITY_LABEL[cap]).join(", ");
   const alt = report.alternatives.length
     ? ` Geeignet wären z. B.: ${report.alternatives.slice(0, 3).join(", ")} – oder „Standard".`
-    : " Wähle ein anderes Modell oder „Standard".";
+    : ` Wähle ein anderes Modell oder „Standard".`;
   return `Das Modell ${binding.model} unterstützt nicht: ${names}.${alt}`;
 }
