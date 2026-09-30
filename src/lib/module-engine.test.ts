@@ -4,11 +4,11 @@ import { engineBindingToMetadata, readEngineBinding } from "@/lib/module-engine"
 import { engineRequirements } from "@/lib/runtime/manifest";
 import type { ScopeManifest } from "@/lib/runtime/manifest";
 
-const cfg = (keys: AiKeyConfig["keys"]): AiKeyConfig => ({
-  useByok: true,
-  keys,
-  routing: {},
-});
+const cfg = (keys: Record<string, { key: string; baseUrl: string; modelHint: string }>) =>
+  ({ useByok: true, keys, routing: {} }) as unknown as AiKeyConfig;
+
+const entry = (key: string) => ({ key, baseUrl: "", modelHint: "" });
+
 
 describe("Rechenkern am Modul", () => {
   it("liest und schreibt die Bindung geheimnisfrei", () => {
