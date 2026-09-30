@@ -127,7 +127,18 @@ export const CAPABILITY_LABEL: Record<EngineCapability, string> = {
   longContext: "lange Inhalte (>100k Tokens)",
 };
 
-type Support = "yes" | "no" | "unknown";
+export type Support = "yes" | "no" | "unknown";
+
+/**
+ * Live-Angaben eines Anbieters zu einem Modell (z. B. OpenRouter-Modellliste,
+ * Ollama `/api/show`). Hat Vorrang vor den Namensmustern unten.
+ */
+export type ModelCapabilityEntry = {
+  source: "provider" | "rules";
+  found: boolean;
+  caps: Partial<Record<EngineCapability, Support>>;
+  contextLength?: number | null;
+};
 
 /** Bekannte Eigenschaften über Muster der Modellkennung (ohne Anbieter-Präfix). */
 const RULES: { match: RegExp; caps: Partial<Record<EngineCapability, Support>> }[] = [
@@ -140,21 +151,34 @@ const RULES: { match: RegExp; caps: Partial<Record<EngineCapability, Support>> }
   { match: /llama-?3\.3|llama3\.3|qwen2\.5|mistral/, caps: { structured: "yes", tools: "yes", vision: "no", longContext: "no" } },
 ];
 
-export function modelSupport(binding: ModuleEngineBinding, cap: EngineCapability): Support {
-  if (binding.provider === "default" || !binding.model) return "yes"; // Standard-Rechenkern kann alles Benötigte
-  const id = binding.model.toLowerCase();
+function ruleSupport(model: string, cap: EngineCapability): Support {
+  const id = model.toLowerCase();
   for (const rule of RULES) {
     if (rule.match.test(id) && rule.caps[cap]) return rule.caps[cap]!;
   }
   return "unknown";
 }
 
+/** Anbieter-Angabe zuerst, Namensmuster nur für Lücken. */
+export function modelSupport(
+  binding: ModuleEngineBinding,
+  cap: EngineCapability,
+  live?: ModelCapabilityEntry | null,
+): Support {
+  if (binding.provider === "default" || !binding.model) return "yes"; // Standard-Rechenkern kann alles Benötigte
+  const fromProvider = live?.source === "provider" ? live.caps[cap] : undefined;
+  if (fromProvider && fromProvider !== "unknown") return fromProvider;
+  return ruleSupport(binding.model, cap);
+}
+
 /** Passende Alternativen beim selben Anbieter, die alle Anforderungen sicher erfüllen. */
 export function suggestAlternatives(
   binding: ModuleEngineBinding,
   required: EngineCapability[],
+  candidates?: string[],
 ): string[] {
-  return MODEL_SUGGESTIONS[binding.provider].filter(
+  const pool = candidates?.length ? candidates : MODEL_SUGGESTIONS[binding.provider];
+  return pool.filter(
     (model) =>
       model !== binding.model &&
       required.every((cap) => modelSupport({ ...binding, model }, cap) === "yes"),
@@ -166,17 +190,33 @@ export type CompatibilityReport = {
   missing: EngineCapability[];
   uncertain: EngineCapability[];
   alternatives: string[];
+  /** Woher die Einschätzung stammt. */
+  source: "provider" | "rules";
+  /** Anbieter kennt das Modell nicht (Tippfehler oder nicht verfügbar). */
+  notFound: boolean;
 };
 
 export function checkEngineCompatibility(
   binding: ModuleEngineBinding,
   required: EngineCapability[],
+  live?: ModelCapabilityEntry | null,
+  candidates?: string[],
 ): CompatibilityReport {
-  const missing = required.filter((cap) => modelSupport(binding, cap) === "no");
-  const uncertain = required.filter((cap) => modelSupport(binding, cap) === "unknown");
+  const missing = required.filter((cap) => modelSupport(binding, cap, live) === "no");
+  const uncertain = required.filter((cap) => modelSupport(binding, cap, live) === "unknown");
+  const notFound = live?.source === "provider" && !live.found;
   const alternatives =
-    missing.length || uncertain.length ? suggestAlternatives(binding, required) : [];
-  return { ok: missing.length === 0, missing, uncertain, alternatives };
+    missing.length || uncertain.length || notFound
+      ? suggestAlternatives(binding, required, candidates)
+      : [];
+  return {
+    ok: missing.length === 0,
+    missing,
+    uncertain,
+    alternatives,
+    source: live?.source === "provider" && live.found ? "provider" : "rules",
+    notFound,
+  };
 }
 
 export function compatibilityMessage(binding: ModuleEngineBinding, report: CompatibilityReport): string {
