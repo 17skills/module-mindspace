@@ -7,7 +7,9 @@
  */
 import { parse as parseYamlText, stringify } from "yaml";
 import { z } from "zod";
+import { GovernanceSchema, hasGovernance, readGovernance } from "@/lib/governance";
 import { checksum } from "@/lib/runtime/source-protocol";
+
 
 export const MANIFEST_VERSION = "scopebuilder/v1";
 
@@ -91,6 +93,8 @@ export const ManifestSchema = z.object({
     description: z.string().nullable().default(null),
   }),
   provenance: ProvenanceSchema.optional(),
+  /** KI-Governance: Risikostufe, Zweck, Verantwortung (ISO 42001 / EU AI Act). */
+  governance: GovernanceSchema.optional(),
   /** Scope-wide rules / ontology (guard rails over all modules). */
   rules: z.record(z.string(), z.unknown()).default({}),
   mcpServers: z.array(McpServerSchema).max(50).default([]),
@@ -98,6 +102,7 @@ export const ManifestSchema = z.object({
   links: z.array(LinkSchema).max(4000).default([]),
   apps: z.array(AppSchema).max(50).default([]),
 });
+
 export type ScopeManifest = z.infer<typeof ManifestSchema>;
 
 /** Form der bestehenden Sicherung (backup.functions). */
