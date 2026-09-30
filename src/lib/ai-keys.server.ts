@@ -535,18 +535,17 @@ export async function runStructured(cfg: AiKeyConfig, input: StructuredRequest):
   const route = resolveRoute(cfg, req.fn, req.engine);
   const promptSize = req.prompt + (req.image ? "x".repeat(2000) : "");
   // Eigener Token-Deckel des Moduls, sonst der Standard des Anbieter-Adapters.
-  const maxTokens = req.engine?.maxTokens ?? undefined;
+  const cap = req.engine?.maxTokens;
+  const call = cap ? { ...req, maxTokens: cap } : req;
 
   const callProvider = async (): Promise<string> => {
     const entry = route.entry!;
-    if (route.provider === "anthropic") return anthropicStructured(entry, { ...req, maxTokens });
-    if (route.provider === "google") return googleStructured(entry, { ...req, maxTokens });
+    if (route.provider === "anthropic") return anthropicStructured(entry, call);
+    if (route.provider === "google") return googleStructured(entry, call);
     // openai, openrouter und lokale Server sprechen dasselbe OpenAI-Protokoll
-    return openAiCompatibleStructured(route.provider as AiProvider | "local", entry, {
-      ...req,
-      maxTokens,
-    });
+    return openAiCompatibleStructured(route.provider as AiProvider | "local", entry, call);
   };
+
 
 
   if (route.entry) {
