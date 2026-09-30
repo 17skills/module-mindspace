@@ -1,5 +1,5 @@
 /**
- * Building blocks from the core catalog, grouped. A click places the block
+ * Modules from the core catalog, grouped. A click places the module
  * with its presets, limits and approval duty on the canvas.
  */
 import { useMemo, useState } from "react";
@@ -32,7 +32,7 @@ export function CatalogList({ query, onPick }: { query: string; onPick: (name: s
     return [...map.entries()];
   }, [query]);
 
-  if (!groups.length) return <p className="text-sm text-muted-foreground">{l("Kein Baustein passt zur Suche.")}</p>;
+  if (!groups.length) return <p className="text-sm text-muted-foreground">{l("Kein Modul passt zur Suche.")}</p>;
 
   return (
     <div className="space-y-5">
@@ -73,7 +73,7 @@ export function CatalogList({ query, onPick }: { query: string; onPick: (name: s
                       Ableitung von {m.derivedFrom.replace(/^core\//, "")}
                     </span>
                   ) : (
-                    <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{l("Grundbaustein")}</span>
+                    <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{l("Basismodul")}</span>
                   )}
                   {m.requiresApproval ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-destructive">

@@ -397,7 +397,7 @@ export function LibraryDialog({ open, onOpenChange, userId, captureSelection, on
 
         <Tabs defaultValue={onInsertModule ? "catalog" : "own"}>
           <TabsList>
-            {onInsertModule ? <TabsTrigger value="catalog">{l("Bausteine")}</TabsTrigger> : null}
+            {onInsertModule ? <TabsTrigger value="catalog">{l("Module")}</TabsTrigger> : null}
             <TabsTrigger value="own">{l("Eigene")} ({entries.length})</TabsTrigger>
             <TabsTrigger value="shared">{l("Mit mir geteilt")} ({shared.length})</TabsTrigger>
           </TabsList>

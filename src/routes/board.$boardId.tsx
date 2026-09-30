@@ -427,15 +427,9 @@ const DASHBOARD_MODULES = [
   },
   {
     id: "risk",
-    label: "Risikomatrix (ISO 55001)",
+    label: "Risikomatrix",
     title: "Risikomatrix",
     metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 },
-  },
-  {
-    id: "inspect",
-    label: "Inspektion (Fotos)",
-    title: "Trafostations-Inspektion",
-    metadata: { findings: [], rates: {} },
   },
   { id: "camera", label: "Kamera (Foto + Ort)", title: "Kamera", metadata: {} },
 ] as const;
@@ -2783,7 +2777,7 @@ function BoardPage() {
   } | null>(null);
 
   /**
-   * Abgelegte Dateien: Agent-Skills (`SKILL.md`) und Bausteine (`*.scopem.yaml`)
+   * Abgelegte Dateien: Agent-Skills (`SKILL.md`) und Module (`*.scopem.yaml`)
    * werden zu Modulen, alles andere bleibt eine normale Ablage.
    */
   const addDroppedFiles = useCallback(
@@ -3688,12 +3682,12 @@ function BoardPage() {
                     y: window.innerHeight / 2 - payload.bounds.height / 2,
                   });
                   await insertPayload(payload, at);
-                  toast.success(`${payload.nodes[0]?.title ?? "Baustein"} platziert`);
+                  toast.success(`${payload.nodes[0]?.title ?? "Modul"} platziert`);
                 } catch (error) {
                   toast.error(
                     error instanceof Error
                       ? error.message
-                      : "Baustein konnte nicht platziert werden",
+                      : "Modul konnte nicht platziert werden",
                   );
                 }
               }

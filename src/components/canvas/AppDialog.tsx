@@ -760,7 +760,7 @@ export function AppDialog({
               {chosenTypes.includes("inspect") ? " · Inspektionsmodul enthalten" : ""}
             </p>
             <p className="text-xs text-muted-foreground">
-              Die Rolle eines Text- oder Linkbausteins änderst du im Scope über das Kontextfenster.
+              Die Rolle eines Text- oder Linkmoduls änderst du im Scope über das Kontextfenster.
             </p>
             {showValidation && validation.metrics && <p className="text-xs text-destructive">{validation.metrics}</p>}
             {pickedNodes.length > 0 && (
