@@ -2776,6 +2776,44 @@ function BoardPage() {
     [createRecord, createEdge],
   );
 
+  /**
+   * Abgelegte Dateien: Agent-Skills (`SKILL.md`) und Bausteine (`*.scopem.yaml`)
+   * werden zu Modulen, alles andere bleibt eine normale Ablage.
+   */
+  const addDroppedFiles = useCallback(
+    async (files: FileList | File[], at?: { x: number; y: number }) => {
+      const rest: File[] = [];
+      let index = 0;
+      for (const file of Array.from(files)) {
+        const textLike = /\.(md|markdown|ya?ml|scopem)$/i.test(file.name) && file.size < 2_000_000;
+        if (!textLike) {
+          rest.push(file);
+          continue;
+        }
+        let payload = null;
+        try {
+          const { payloadFromFileText } = await import("@/lib/runtime/skill-adapter");
+          payload = payloadFromFileText(await file.text(), file.name);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Skill konnte nicht gelesen werden");
+          continue;
+        }
+        if (!payload) {
+          rest.push(file);
+          continue;
+        }
+        const base = at ?? centerPosition();
+        await insertPayload(payload, { x: base.x + index * 40, y: base.y + index * 36 });
+        index += 1;
+        toast.success(`${payload.nodes[0]?.title ?? "Skill"} als Modul platziert`);
+      }
+      if (rest.length) await addFiles(rest, at);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [insertPayload, addFiles],
+  );
+
+
   /** Place a library entry on the canvas, optionally without any stored content. */
   const insertLibraryEntry = useCallback(
     async (entry: LibraryEntry, mode: "empty" | "full") => {
