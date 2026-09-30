@@ -104,7 +104,16 @@ const EngineSchema = z.object({
   type: z.enum(["none", "api", "llm", "agent", "mcp", "script"]),
   /** Model, tool or endpoint identifier. */
   ref: z.string().default(""),
+  /**
+   * Logical compute binding — never an address, port or key, so the same
+   * building block runs on a laptop, a VPS or a customer system.
+   */
+  provider: z
+    .enum(["default", "openrouter", "openai", "anthropic", "google", "local"])
+    .optional(),
+  model: z.string().optional(),
   config: z.record(z.string(), z.unknown()).default({}),
+
   /** Guard rails for agent engines — never unbounded. */
   governance: z
     .object({

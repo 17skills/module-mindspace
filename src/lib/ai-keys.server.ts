@@ -10,7 +10,9 @@ import {
   type AiRouting,
 } from "@/lib/ai-functions";
 import { estimateCost, estimateTokens } from "@/lib/ai-pricing";
+import type { ModuleEngineBinding } from "@/lib/module-engine";
 import type { Database } from "@/integrations/supabase/types";
+
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 
@@ -111,12 +113,13 @@ function gatewayKey(): string {
   return key;
 }
 
-function byokError(provider: AiProvider, status: number, detail: string): Error {
-  const label = AI_PROVIDER_META[provider].label;
+function byokError(provider: AiProvider | "local", status: number, detail: string): Error {
+  const label = provider === "local" ? "Lokaler Rechenkern" : AI_PROVIDER_META[provider].label;
   return new Error(
     `Dein eigener KI-Anbieter (${label}) hat die Anfrage abgelehnt [${status}]: ${detail.slice(0, 300)}`,
   );
 }
+
 
 /** Entfernt Markdown-Zäune und schneidet auf das JSON-Objekt zurück. */
 function cleanJsonText(text: string): string {
@@ -249,13 +252,14 @@ function anthropicImage(url: string): { type: "image"; source: Record<string, un
 }
 
 async function openAiCompatibleStructured(
-  provider: AiProvider,
+  provider: AiProvider | "local",
   entry: AiKeyEntry,
   req: { prompt: string; image?: string; schemaName?: string; schema?: Record<string, unknown>; maxTokens?: number },
 ): Promise<string> {
-  const meta = AI_PROVIDER_META[provider];
-  const baseUrl = (entry.baseUrl || meta.baseUrl).replace(/\/+$/, "");
-  const model = entry.modelHint?.trim() || meta.model;
+  const meta = provider === "local" ? null : AI_PROVIDER_META[provider];
+  const baseUrl = (entry.baseUrl || meta?.baseUrl || "").replace(/\/+$/, "");
+  const model = entry.modelHint?.trim() || meta?.model || "";
+
   const content: Record<string, unknown>[] = [{ type: "text", text: req.prompt }];
   if (req.image) content.push({ type: "image_url", image_url: { url: req.image } });
 
@@ -422,13 +426,59 @@ export type StructuredRequest = {
   image?: string;
   schemaName: string;
   schema: Record<string, unknown>;
+  /** Rechenkern-Bindung des aufrufenden Moduls; schlägt das Profil-Routing. */
+  engine?: ModuleEngineBinding | null;
 };
+
+/** Rechenkern-Kennung inklusive lokalem Server auf derselben Maschine. */
+export type ResolvedProvider = AiRouteProvider | "local";
+
+/**
+ * Lokaler, OpenAI-kompatibler Rechenkern (Ollama, vLLM, LiteLLM …).
+ * Adresse und optionaler Schlüssel kommen ausschließlich aus der
+ * Server-Umgebung – nie aus einem Bauplan oder einer Nutzereingabe.
+ * Damit ist eine Weiterleitung auf fremde Adressen (SSRF) ausgeschlossen.
+ */
+function localEndpoint(): { baseUrl: string; key: string; model: string } | null {
+  const baseUrl = process.env["AI_LOCAL_BASE_URL"]?.trim();
+  if (!baseUrl) return null;
+  return {
+    baseUrl: baseUrl.replace(/\/+$/, ""),
+    key: process.env["AI_LOCAL_API_KEY"]?.trim() || "local",
+    model: process.env["AI_LOCAL_MODEL"]?.trim() || "",
+  };
+}
 
 /** Löst die pro Funktion gewählte Anbieter-/Modellkombination auf. */
 export function resolveRoute(
   cfg: AiKeyConfig,
   fn: AiFunctionId,
-): { provider: AiRouteProvider; entry?: AiKeyEntry; model: string | null } {
+  engine?: ModuleEngineBinding | null,
+): { provider: ResolvedProvider; entry?: AiKeyEntry; model: string | null } {
+  // 1. Bindung am Modul gewinnt, wenn sie auflösbar ist.
+  if (engine && engine.provider !== "default") {
+    if (engine.provider === "local") {
+      const local = localEndpoint();
+      const model = engine.model ?? local?.model ?? "";
+      if (local && model) {
+        return {
+          provider: "local",
+          entry: { key: local.key, baseUrl: local.baseUrl, modelHint: model },
+          model,
+        };
+      }
+      // Kein lokaler Rechenkern eingerichtet → sauber auf das Profil zurückfallen.
+    } else {
+      const entry = cfg.keys[engine.provider];
+      if (entry) {
+        const model =
+          engine.model ?? entry.modelHint ?? AI_PROVIDER_META[engine.provider].model;
+        return { provider: engine.provider, entry: { ...entry, modelHint: model }, model };
+      }
+    }
+  }
+
+  // 2. Profil-Routing des Nutzers, 3. mitgelieferter Zugang.
   const route = cfg.routing?.[fn] ?? DEFAULT_ROUTE;
   if (!cfg.useByok || route.provider === "lovable") {
     return { provider: "lovable", model: null };
@@ -440,10 +490,12 @@ export function resolveRoute(
   return { provider: route.provider, entry: { ...entry, modelHint: model }, model };
 }
 
+
 /** Schreibt einen Nutzungs-Datensatz; Fehler dabei dürfen die Anfrage nie stoppen. */
 export async function recordUsage(entry: {
   userId: string;
-  provider: AiRouteProvider;
+  provider: ResolvedProvider;
+
   fn: string;
   model: string;
   inputText: string;
@@ -480,16 +532,21 @@ export async function runStructured(cfg: AiKeyConfig, input: StructuredRequest):
   const req: StructuredRequest = { ...input, prompt: redaction.text };
   const summary = redactionSummary(redaction.counts);
   if (summary) console.info("ai privacy", req.fn, summary);
-  const route = resolveRoute(cfg, req.fn);
+  const route = resolveRoute(cfg, req.fn, req.engine);
   const promptSize = req.prompt + (req.image ? "x".repeat(2000) : "");
+  // Eigener Token-Deckel des Moduls, sonst der Standard des Anbieter-Adapters.
+  const cap = req.engine?.maxTokens;
+  const call = cap ? { ...req, maxTokens: cap } : req;
 
   const callProvider = async (): Promise<string> => {
     const entry = route.entry!;
-    if (route.provider === "anthropic") return anthropicStructured(entry, req);
-    if (route.provider === "google") return googleStructured(entry, req);
-    // openai und openrouter sind OpenAI-kompatibel
-    return openAiCompatibleStructured(route.provider as AiProvider, entry, req);
+    if (route.provider === "anthropic") return anthropicStructured(entry, call);
+    if (route.provider === "google") return googleStructured(entry, call);
+    // openai, openrouter und lokale Server sprechen dasselbe OpenAI-Protokoll
+    return openAiCompatibleStructured(route.provider as AiProvider | "local", entry, call);
   };
+
+
 
   if (route.entry) {
     try {

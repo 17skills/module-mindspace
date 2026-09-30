@@ -163,6 +163,8 @@ import {
   zoneMembers,
 } from "@/lib/zones";
 import { runZoneAgent } from "@/lib/agent.functions";
+import { readEngineBinding } from "@/lib/module-engine";
+
 import { readSource } from "@/lib/source-node";
 import { readDatasetRef } from "@/lib/datasets";
 import { TemplateDialog } from "@/components/canvas/TemplateDialog";
@@ -2112,8 +2114,10 @@ function BoardPage() {
           kind: agent.kind,
           unit: agent.unit || undefined,
           context: zoneContext(zone, members),
+          engine: readEngineBinding(zone.metadata),
         },
       })
+
         .then((result) => {
           const current = recordsRef.current[id];
           updateNode(id, {

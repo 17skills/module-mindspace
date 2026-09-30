@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
 import { readAgent, zoneMembers } from "@/lib/zones";
+import { EngineSection } from "@/components/canvas/inspector/EngineSection";
+
 
 export function AgentTab({ record }: { record: NodeRecord }) {
   const { updateNode, runAgent, agentStale, allNodes, focusNode } = useBoard();
@@ -89,6 +91,9 @@ export function AgentTab({ record }: { record: NodeRecord }) {
           <span className="text-xs text-destructive">Inhalte haben sich geändert</span>
         )}
       </div>
+
+      <EngineSection metadata={record.metadata as Record<string, unknown> | null} onChange={patch} />
+
 
       {agent?.result && (
         <div className="rounded-lg border border-border/70 bg-secondary/40 p-3">

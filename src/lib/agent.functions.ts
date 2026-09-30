@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { loadAiKeyConfig, runStructured } from "@/lib/ai-keys.server";
+import { ENGINE_PROVIDERS } from "@/lib/module-engine";
 import { UNTRUSTED_NOTICE, wrapUntrusted } from "@/lib/untrusted";
+
 
 const AgentResult = z.object({
   value: z.string(),
@@ -38,9 +40,18 @@ export const runZoneAgent = createServerFn({ method: "POST" })
         kind: z.enum(["number", "text"]),
         unit: z.string().optional(),
         context: z.string().min(1),
+        /** Rechenkern-Bindung des Feldes (Anbieterart + Modell, nie Schlüssel). */
+        engine: z
+          .object({
+            provider: z.enum(ENGINE_PROVIDERS),
+            model: z.string().max(200).nullable().default(null),
+            maxTokens: z.number().int().min(1).max(200000).nullable().default(null),
+          })
+          .nullish(),
       })
       .parse(input),
   )
+
   .handler(async ({ data, context }) => {
     const numberRule =
       data.kind === "number"
@@ -69,7 +80,9 @@ ${wrapUntrusted(data.field, data.context.slice(0, 200_000))}`;
       prompt,
       schemaName: "agent_result",
       schema: RESULT_SCHEMA,
+      engine: data.engine ?? null,
     });
+
 
     try {
       return AgentResult.parse(JSON.parse(text));

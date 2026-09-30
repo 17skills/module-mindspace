@@ -148,9 +148,15 @@ function LibraryPage() {
           ? `\nVersion ${manifest.provenance.version}${manifest.provenance.author ? ` von ${manifest.provenance.author}` : ""}.`
           : "";
         const hint = notes.length ? `\n\nHinweise:\n• ${notes.slice(0, 6).join("\n• ")}` : "";
+        // Onboarding: Welche Rechenkerne der Scope erwartet – ohne Adressen und Schlüssel.
+        const engines = m.engineRequirements(manifest);
+        const engineHint = engines.length
+          ? `\n\nDieser Scope erwartet folgende Rechenkerne:\n• ${engines.join("\n• ")}\nFehlt einer davon, läuft das Modul über den Standard-Rechenkern. Verbindungen und Schlüssel stellen Sie danach in den Einstellungen ein.`
+          : "";
         const ok = window.confirm(
-          `Bauplan „${manifest.scope.title}“ einspielen?${origin}\n\nEs wird ein neuer Scope angelegt: ${m.summarizeManifest(manifest)}.\nSchlüssel, Passwörter und Freigaben aus der Datei werden nicht übernommen. Apps werden nicht öffentlich – veröffentlichen Sie sie danach bewusst.${hint}`,
+          `Bauplan „${manifest.scope.title}“ einspielen?${origin}\n\nEs wird ein neuer Scope angelegt: ${m.summarizeManifest(manifest)}.\nSchlüssel, Passwörter und Freigaben aus der Datei werden nicht übernommen. Apps werden nicht öffentlich – veröffentlichen Sie sie danach bewusst.${engineHint}${hint}`,
         );
+
         if (!ok) return null;
         return importBoard({ data: { backupJson: JSON.stringify(m.manifestToBackup(manifest)) } });
       }

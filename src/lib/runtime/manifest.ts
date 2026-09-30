@@ -8,7 +8,15 @@
 import { parse as parseYamlText, stringify } from "yaml";
 import { z } from "zod";
 import { GovernanceSchema, hasGovernance, readGovernance } from "@/lib/governance";
+import {
+  ENGINE_PROVIDERS,
+  ENGINE_PROVIDER_META,
+  engineBindingToMetadata,
+  readEngineBinding,
+} from "@/lib/module-engine";
+
 import { checksum } from "@/lib/runtime/source-protocol";
+
 
 
 export const MANIFEST_VERSION = "scopebuilder/v1";
@@ -30,9 +38,17 @@ export function roleOf(type: string): ModuleRole {
 const EngineSchema = z.object({
   kind: z.enum(["model", "api", "mcp", "agent"]),
   ref: z.string().default(""),
+  /**
+   * Logischer Rechenkern (ohne Adresse, Port oder Schlüssel), damit ein
+   * Bauplan zwischen Laptop, VPS und Kundensystem austauschbar bleibt.
+   */
+  provider: z.enum(ENGINE_PROVIDERS).optional(),
+  model: z.string().optional(),
+  maxTokens: z.number().int().min(1).max(200000).optional(),
   params: z.record(z.string(), z.unknown()).default({}),
 });
 export type ManifestEngine = z.infer<typeof EngineSchema>;
+
 
 const ModuleSchema = z.object({
   id: z.string().min(1),
@@ -143,16 +159,40 @@ function slug(text: string, used: Set<string>): string {
 
 /** Motor aus den Einstellungen eines Moduls ablesen (ohne Schlüssel). */
 function engineOf(type: string, meta: Record<string, unknown>): ManifestEngine | undefined {
+  // Logische Rechenkern-Bindung des Moduls (Anbieterart + Modell, nie Adresse/Schlüssel).
+  const binding = readEngineBinding(meta);
+  const bound =
+    binding.provider !== "default" || binding.model || binding.maxTokens
+      ? {
+          provider: binding.provider,
+          ...(binding.model ? { model: binding.model } : {}),
+          ...(binding.maxTokens ? { maxTokens: binding.maxTokens } : {}),
+        }
+      : {};
+
   if (type === "mcp" && typeof meta["mcpTool"] === "string") {
-    return { kind: "mcp", ref: `${str(meta["mcpServerName"]) ?? "server"}/${meta["mcpTool"]}`, params: {} };
+    return {
+      kind: "mcp",
+      ref: `${str(meta["mcpServerName"]) ?? "server"}/${meta["mcpTool"]}`,
+      ...bound,
+      params: {},
+    };
   }
   if (type === "api" && typeof meta["url"] === "string") {
-    return { kind: "api", ref: meta["url"], params: {} };
+    return { kind: "api", ref: meta["url"], ...bound, params: {} };
   }
-  const model = str(meta["model"]) ?? str(meta["agentModel"]);
-  if (model) return { kind: type === "zone" ? "agent" : "model", ref: model, params: {} };
+  const model = str(meta["model"]) ?? str(meta["agentModel"]) ?? binding.model;
+  if (model || Object.keys(bound).length) {
+    return {
+      kind: type === "zone" ? "agent" : "model",
+      ref: model ?? "",
+      ...bound,
+      params: {},
+    };
+  }
   return undefined;
 }
+
 
 function channelsOf(raw: unknown, kind: string): AppChannel[] {
   const out: AppChannel[] = [];
@@ -458,8 +498,23 @@ export function stripData(meta: Record<string, unknown>): Record<string, unknown
 
 /** The engine entry wins over settings, so swapping it in the file swaps the motor. */
 function applyEngine(type: string, meta: Record<string, unknown>, engine: ManifestEngine | undefined) {
-  if (!engine?.ref) return meta;
+  if (!engine) return meta;
   const out = { ...meta };
+
+  // Logische Bindung übernehmen (Anbieterart, Modell, Token-Budget).
+  const binding = engineBindingToMetadata(
+    readEngineBinding({
+      engine: {
+        provider: engine.provider,
+        model: engine.model,
+        maxTokens: engine.maxTokens,
+      },
+    }),
+  );
+  if (binding) out["engine"] = binding;
+  else delete out["engine"];
+
+  if (!engine.ref) return out;
   if (engine.kind === "mcp") {
     const cut = engine.ref.lastIndexOf("/");
     if (cut > 0) {
@@ -475,6 +530,7 @@ function applyEngine(type: string, meta: Record<string, unknown>, engine: Manife
   }
   return out;
 }
+
 
 export function manifestToBackup(manifest: ScopeManifest): BackupShape {
   return {
@@ -573,3 +629,21 @@ export function summarizeManifest(manifest: ScopeManifest): string {
   manifest.modules.forEach((m) => (roles[m.role ?? roleOf(m.type)] += 1));
   return `${manifest.modules.length} Module (${roles.source} Quellen, ${roles.step} Schritte, ${roles.output} Ergebnisse, ${roles.action} Aktionen), ${manifest.links.length} Verbindungen, ${manifest.apps.length} Apps${manifest.mcpServers.length ? `, ${manifest.mcpServers.length} MCP-Server` : ""}${Object.keys(manifest.rules).length ? ", Scope-Regeln" : ""}`;
 }
+
+/**
+ * Welche Rechenkerne verlangt dieser Bauplan? Der Import zeigt das vor dem
+ * Einspielen an, damit klar ist, was noch verbunden werden muss. Adressen,
+ * Ports und Schlüssel stehen nie im Bauplan – die stellt die Umgebung.
+ */
+export function engineRequirements(manifest: ScopeManifest): string[] {
+  const counts = new Map<string, number>();
+  for (const module of manifest.modules) {
+    const provider = module.engine?.provider;
+    if (!provider || provider === "default") continue;
+    const label = ENGINE_PROVIDER_META[provider].label;
+    const key = module.engine?.model ? `${label} · ${module.engine.model}` : label;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([key, n]) => (n > 1 ? `${key} (${n} Module)` : key));
+}
+
