@@ -494,7 +494,8 @@ export function resolveRoute(
 /** Schreibt einen Nutzungs-Datensatz; Fehler dabei dürfen die Anfrage nie stoppen. */
 export async function recordUsage(entry: {
   userId: string;
-  provider: AiRouteProvider;
+  provider: ResolvedProvider;
+
   fn: string;
   model: string;
   inputText: string;
@@ -531,16 +532,22 @@ export async function runStructured(cfg: AiKeyConfig, input: StructuredRequest):
   const req: StructuredRequest = { ...input, prompt: redaction.text };
   const summary = redactionSummary(redaction.counts);
   if (summary) console.info("ai privacy", req.fn, summary);
-  const route = resolveRoute(cfg, req.fn);
+  const route = resolveRoute(cfg, req.fn, req.engine);
   const promptSize = req.prompt + (req.image ? "x".repeat(2000) : "");
+  // Eigener Token-Deckel des Moduls, sonst der Standard des Anbieter-Adapters.
+  const maxTokens = req.engine?.maxTokens ?? undefined;
 
   const callProvider = async (): Promise<string> => {
     const entry = route.entry!;
-    if (route.provider === "anthropic") return anthropicStructured(entry, req);
-    if (route.provider === "google") return googleStructured(entry, req);
-    // openai und openrouter sind OpenAI-kompatibel
-    return openAiCompatibleStructured(route.provider as AiProvider, entry, req);
+    if (route.provider === "anthropic") return anthropicStructured(entry, { ...req, maxTokens });
+    if (route.provider === "google") return googleStructured(entry, { ...req, maxTokens });
+    // openai, openrouter und lokale Server sprechen dasselbe OpenAI-Protokoll
+    return openAiCompatibleStructured(route.provider as AiProvider | "local", entry, {
+      ...req,
+      maxTokens,
+    });
   };
+
 
   if (route.entry) {
     try {
