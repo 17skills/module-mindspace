@@ -28,7 +28,7 @@ export type TriggerCondition = {
   path: string;
   op: TriggerOperator;
   /** Vergleichswert; bei "changed" und "exists" ohne Bedeutung. */
-  value?: string | number;
+  value?: string | number | undefined;
 };
 
 export type ConditionResult = {
