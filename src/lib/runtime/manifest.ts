@@ -157,16 +157,40 @@ function slug(text: string, used: Set<string>): string {
 
 /** Motor aus den Einstellungen eines Moduls ablesen (ohne Schlüssel). */
 function engineOf(type: string, meta: Record<string, unknown>): ManifestEngine | undefined {
+  // Logische Rechenkern-Bindung des Moduls (Anbieterart + Modell, nie Adresse/Schlüssel).
+  const binding = readEngineBinding(meta);
+  const bound =
+    binding.provider !== "default" || binding.model || binding.maxTokens
+      ? {
+          provider: binding.provider,
+          ...(binding.model ? { model: binding.model } : {}),
+          ...(binding.maxTokens ? { maxTokens: binding.maxTokens } : {}),
+        }
+      : {};
+
   if (type === "mcp" && typeof meta["mcpTool"] === "string") {
-    return { kind: "mcp", ref: `${str(meta["mcpServerName"]) ?? "server"}/${meta["mcpTool"]}`, params: {} };
+    return {
+      kind: "mcp",
+      ref: `${str(meta["mcpServerName"]) ?? "server"}/${meta["mcpTool"]}`,
+      ...bound,
+      params: {},
+    };
   }
   if (type === "api" && typeof meta["url"] === "string") {
-    return { kind: "api", ref: meta["url"], params: {} };
+    return { kind: "api", ref: meta["url"], ...bound, params: {} };
   }
-  const model = str(meta["model"]) ?? str(meta["agentModel"]);
-  if (model) return { kind: type === "zone" ? "agent" : "model", ref: model, params: {} };
+  const model = str(meta["model"]) ?? str(meta["agentModel"]) ?? binding.model;
+  if (model || Object.keys(bound).length) {
+    return {
+      kind: type === "zone" ? "agent" : "model",
+      ref: model ?? "",
+      ...bound,
+      params: {},
+    };
+  }
   return undefined;
 }
+
 
 function channelsOf(raw: unknown, kind: string): AppChannel[] {
   const out: AppChannel[] = [];
