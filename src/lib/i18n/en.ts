@@ -326,7 +326,6 @@ export const englishUi: Record<string, string> = {
   "KI liest nur": "AI is read-only",
   "App abschalten": "Deactivate app",
   "App veröffentlichen": "Publish app",
-  "Bearbeiten": "Edit",
   "App-Link kopieren": "Copy app link",
   "Teams-Entscheidungskarte kopieren": "Copy Teams decision card",
   "Teams-Manifest herunterladen": "Download Teams manifest",
