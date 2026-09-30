@@ -319,6 +319,30 @@ export function redactPayload(payload: unknown, exclude: string[], path = ""): u
   return payload;
 }
 
+/** Prüft ein Ausschlussmuster auf Schreibfehler; liefert eine Erklärung oder null. */
+export function validateExcludePattern(pattern: string): string | null {
+  const p = pattern.trim();
+  if (!p) return "Leeres Muster.";
+  if (p.length > 200) return "Zu lang (max. 200 Zeichen).";
+  if (/\s/.test(p)) return "Leerzeichen sind im Pfad nicht erlaubt.";
+  if ((p.match(/\[/g) ?? []).length !== (p.match(/\]/g) ?? []).length) return "Eckige Klammer nicht geschlossen.";
+  const bad = p.match(/\[([^\]]*)\]/g)?.find((b) => !/^\[(\*|\d+)\]$/.test(b));
+  if (bad) return `${bad} ist ungültig – erlaubt sind [*] oder eine Zahl wie [0].`;
+  if (/^\.|\.$|\.\./.test(p)) return "Punkt am Anfang, Ende oder doppelt.";
+  const segs = pathSegments(p);
+  if (segs.some((s) => s.includes("*") && s !== "*" && s !== "**")) return "* nur als ganze Ebene (z. B. a.*.b oder **.token).";
+  return null;
+}
+
+/** Sammelt alle Pfade eines JSON-Werts in Klammerschreibweise. */
+export function listPaths(payload: unknown, path = "", out: string[] = []): string[] {
+  if (path) out.push(path);
+  if (Array.isArray(payload)) payload.forEach((v, i) => listPaths(v, `${path}[${i}]`, out));
+  else if (payload && typeof payload === "object")
+    for (const [k, v] of Object.entries(payload)) listPaths(v, path ? `${path}.${k}` : k, out);
+  return out;
+}
+
 /** Säubert die Liste sensibler Pfade (max. 20, je 200 Zeichen). */
 export function parseExcludePaths(raw: unknown): string[] {
   const list = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(/[\n,]/) : [];
