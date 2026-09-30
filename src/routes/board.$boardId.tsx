@@ -3707,11 +3707,11 @@ function BoardPage() {
         ref={fileRef}
         type="file"
         multiple
-        accept=".pdf,.pptx,.docx,.txt,.md,audio/*"
+        accept=".pdf,.pptx,.docx,.txt,.md,.yaml,.yml,.scopem,audio/*"
         className="hidden"
         onChange={(e) => {
           if (e.target.files?.length) {
-            void addFiles(e.target.files, filePosition.current ?? undefined);
+            void addDroppedFiles(e.target.files, filePosition.current ?? undefined);
           }
           filePosition.current = null;
           e.target.value = "";
@@ -3724,7 +3724,7 @@ function BoardPage() {
         onDrop={(e) => {
           e.preventDefault();
           const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-          if (e.dataTransfer.files.length) void addFiles(e.dataTransfer.files, at);
+          if (e.dataTransfer.files.length) void addDroppedFiles(e.dataTransfer.files, at);
           else {
             const text = e.dataTransfer.getData("text");
             if (text) void addUrl(text, at);
