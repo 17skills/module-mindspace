@@ -33,7 +33,7 @@ describe("Rechenkern am Modul", () => {
 
   it("bevorzugt die Modul-Bindung vor dem Profil-Routing", () => {
     const route = resolveRoute(
-      cfg({ openrouter: { key: "sk-or-test" } }),
+      cfg({ openrouter: entry("sk-or-test") }),
       "agent",
       { provider: "openrouter", model: "deepseek/deepseek-r1", maxTokens: null },
     );
