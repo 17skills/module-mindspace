@@ -11,7 +11,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { NodeRecord } from "@/components/canvas/board-context";
 import {
   TRIGGER_OPERATORS,
+  evaluateTrigger,
+  formatLogReason,
   operatorLabel,
+  parseConditions,
+  parseExcludePaths,
+  redactPayload,
   type TriggerCondition,
   type TriggerEvaluation,
   type TriggerOperator,
@@ -78,6 +83,14 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
   const [conditions, setConditions] = useState<TriggerCondition[]>([]);
   const [logValues, setLogValues] = useState(false);
   const [logExclude, setLogExclude] = useState("");
+  const [excludeDraft, setExcludeDraft] = useState("");
+  const excludeList = useMemo(() => parseExcludePaths(logExclude), [logExclude]);
+  function addExclude() {
+    const next = excludeDraft.trim();
+    if (!next) return;
+    setLogExclude(parseExcludePaths([...excludeList, next]).join(", "));
+    setExcludeDraft("");
+  }
   const [secret, setSecret] = useState<string | null>(null);
   const [sample, setSample] = useState('{\n  "wind": 82\n}');
   const [check, setCheck] = useState<TriggerEvaluation | null>(null);
@@ -109,7 +122,7 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
           matchMode,
           conditions: conditions.filter((c) => c.path.trim()),
           logValues,
-          logExclude: logExclude.split(",").map((p) => p.trim()).filter(Boolean),
+          logExclude: excludeList,
         },
       }),
     onSuccess: (result) => {
@@ -151,6 +164,20 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
     onSuccess: (result) => setCheck(result),
     onError: (error) => toast.error(error instanceof Error ? error.message : "Probe fehlgeschlagen"),
   });
+
+  const preview = useMemo(() => {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(sample);
+    } catch {
+      return { error: "Beispieldaten sind kein gültiges JSON.", check: null, reason: "", redacted: "", hidden: 0 };
+    }
+    const check = evaluateTrigger(parseConditions(conditions.filter((c) => c.path.trim())), payload, {}, matchMode);
+    const redactedValue = redactPayload(payload, excludeList);
+    const redacted = JSON.stringify(redactedValue, null, 2);
+    const hidden = (redacted.match(/"\[ausgeschlossen\]"/g) ?? []).length;
+    return { error: null, check, reason: formatLogReason(check, { showValues: logValues, exclude: excludeList }), redacted, hidden };
+  }, [sample, conditions, matchMode, excludeList, logValues]);
 
   const webhookUrl =
     existing && typeof window !== "undefined"
@@ -215,17 +242,6 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
           </p>
         </section>
       )}
-
-      <section className="space-y-2 rounded-lg border p-2.5">
-        <p className="text-xs font-medium text-muted-foreground">Protokoll & Datenschutz</p>
-        <label className="flex items-center justify-between gap-2 text-xs">
-          <span>Geprüfte Werte im Verlauf zeigen</span>
-          <input type="checkbox" checked={logValues} onChange={(e) => setLogValues(e.target.checked)} aria-label="Geprüfte Werte im Verlauf zeigen" />
-        </label>
-        <p className="text-[11px] text-muted-foreground">Standard: aus. Werte erscheinen dann nur als •••.</p>
-        <Input value={logExclude} onChange={(e) => setLogExclude(e.target.value)} placeholder="user, kunde.email" aria-label="Sensible Felder vom Protokoll ausschließen" className="h-8 text-xs" />
-        <p className="text-[11px] text-muted-foreground">Diese Felder (samt Unterfeldern) tauchen nie im Verlauf auf. Mehrere mit Komma trennen.</p>
-      </section>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
@@ -304,31 +320,81 @@ export function TriggerTab({ record }: { record: NodeRecord }) {
         </p>
       </section>
 
+      <section className="space-y-2 rounded-lg border p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-muted-foreground">Datenschutz im Verlauf</p>
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            Werte zeigen
+            <Switch checked={logValues} onCheckedChange={setLogValues} aria-label="Geprüfte Werte im Verlauf zeigen" />
+          </label>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {logValues ? "Geprüfte Werte erscheinen im Verlauf." : "Geprüfte Werte erscheinen nur als •••."}
+        </p>
+        <div className="flex flex-wrap gap-1" aria-label="Ausgeschlossene Felder">
+          {excludeList.map((path) => (
+            <span key={path} className="flex items-center gap-1 rounded-full border bg-secondary px-2 py-0.5 font-mono text-[11px]">
+              {path}
+              <button
+                aria-label={`${path} nicht mehr ausschließen`}
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setLogExclude(excludeList.filter((p) => p !== path).join(", "))}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <Input
+          value={excludeDraft}
+          onChange={(e) => setExcludeDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addExclude();
+            }
+          }}
+          onBlur={addExclude}
+          placeholder="Feld ausschließen, z. B. users[*].email"
+          aria-label="Sensibles Feld vom Verlauf ausschließen"
+          className="h-8 font-mono text-xs"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          Enter fügt hinzu. <code>*</code> = eine Ebene oder ein Listenplatz, <code>**</code> = beliebig tief,{" "}
+          <code>[0]</code> = genau ein Platz. Unterfelder werden mit ausgeschlossen.
+        </p>
+      </section>
+
       <section className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">Probe</p>
+        <p className="text-xs font-medium text-muted-foreground">Vorschau mit Beispieldaten</p>
         <Textarea
           value={sample}
           onChange={(event) => setSample(event.target.value)}
           className="min-h-24 font-mono text-[11px]"
           aria-label="Beispielnachricht"
         />
-        <Button size="sm" variant="secondary" onClick={() => simulate.mutate()} disabled={simulate.isPending}>
-          <Play className="mr-1 size-3.5" /> Regeln testen
-        </Button>
-        {check && (
-          <div className="rounded-md border p-2 text-xs">
-            <p className={check.fired ? "font-medium text-primary" : "font-medium text-muted-foreground"}>
-              {check.fired ? "Ablauf würde starten" : "Ablauf würde übersprungen"} – {check.summary}
+        <p className="text-[11px] text-muted-foreground">
+          Läuft nur in deinem Browser. Nichts wird gesendet oder protokolliert.
+        </p>
+        {preview.error ? (
+          <p className="text-[11px] text-destructive">{preview.error}</p>
+        ) : preview.check ? (
+          <div className="space-y-2 rounded-md border p-2 text-xs" aria-live="polite">
+            <p className={preview.check.fired ? "font-medium text-primary" : "font-medium text-muted-foreground"}>
+              {preview.check.fired ? "Ablauf würde starten" : "Ablauf würde übersprungen"}
             </p>
-            <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
-              {check.results.map((result, index) => (
-                <li key={index}>
-                  {result.passed ? "✓" : "✕"} {result.path}: {result.reason} (jetzt {result.actual})
-                </li>
-              ))}
-            </ul>
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">So steht es im Verlauf</p>
+              <p className="break-words font-mono text-[11px]">{preview.reason}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">
+                Nachricht nach Ausschluss ({preview.hidden} Feld(er) entfernt)
+              </p>
+              <pre className="max-h-40 overflow-auto rounded bg-secondary p-1.5 text-[10px]">{preview.redacted}</pre>
+            </div>
           </div>
-        )}
+        ) : null}
       </section>
 
       <section className="space-y-2 border-t pt-3">
