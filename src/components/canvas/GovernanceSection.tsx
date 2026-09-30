@@ -18,9 +18,11 @@ import {
   RISK_TIERS,
   type Governance,
 } from "@/lib/governance";
+import { useTranslation } from "@/lib/i18n";
 
 /** Risikostufe, Zweck und Verantwortung – optional, aber prüfbar (ISO 42001 / EU AI Act). */
 export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwner: boolean }) {
+  const { l } = useTranslation();
   const qc = useQueryClient();
   const get = useServerFn(getGovernance);
   const save = useServerFn(setGovernance);
@@ -40,9 +42,9 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
     mutationFn: (next: Governance) => save({ data: { boardId, governance: next } }),
     onSuccess: (r) => {
       qc.setQueryData(["governance", boardId], r);
-      toast.success("Einstufung gespeichert");
+      toast.success(l("Einstufung gespeichert"));
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Fehler"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : l("Fehler")),
   });
 
   function update(patch: Partial<Governance>) {
@@ -54,9 +56,9 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
   return (
     <section className="space-y-3 border-t pt-4">
       <div>
-        <h3 className="text-sm font-semibold">KI-Governance &amp; Risikostufe</h3>
+        <h3 className="text-sm font-semibold">{l("KI-Governance & Risikostufe")}</h3>
         <p className="text-xs text-muted-foreground">
-          Für Prototypen genügt „Minimal“. Die Angaben reisen im Bauplan mit und dienen als Nachweis.
+          {l("Für Prototypen genügt „Minimal“. Die Angaben reisen im Bauplan mit und dienen als Nachweis.")}
         </p>
       </div>
 
@@ -86,7 +88,7 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
         className="text-xs underline underline-offset-2 text-muted-foreground"
         onClick={() => setOpen((v) => !v)}
       >
-        {open ? "Details ausblenden" : "Zweck und Verantwortung angeben"}
+        {l(open ? "Details ausblenden" : "Zweck und Verantwortung angeben")}
       </button>
 
       {open ? (
@@ -108,13 +110,13 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="gov-owner" className="text-xs">
-                Fachlich verantwortlich
+                {l("Fachlich verantwortlich")}
               </Label>
               <Input
                 id="gov-owner"
                 value={form.owner}
                 disabled={!isOwner}
-                placeholder="Name oder Rolle"
+                placeholder={l("Name oder Rolle")}
                 onChange={(e) => setForm({ ...form, owner: e.target.value })}
                 onBlur={() => isOwner && m.mutate(form)}
                 className="mt-1 rounded-xl text-xs"
@@ -122,13 +124,13 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
             </div>
             <div>
               <Label htmlFor="gov-contact" className="text-xs">
-                Kontakt
+                {l("Kontakt")}
               </Label>
               <Input
                 id="gov-contact"
                 value={form.contact}
                 disabled={!isOwner}
-                placeholder="E-Mail oder Abteilung"
+                placeholder={l("E-Mail oder Abteilung")}
                 onChange={(e) => setForm({ ...form, contact: e.target.value })}
                 onBlur={() => isOwner && m.mutate(form)}
                 className="mt-1 rounded-xl text-xs"
@@ -155,9 +157,9 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
           </div>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium">Menschliche Freigabe</p>
+              <p className="text-sm font-medium">{l("Menschliche Freigabe")}</p>
               <p className="text-xs text-muted-foreground">
-                Ergebnisse wirken erst, wenn ein Mensch sie bestätigt.
+                {l("Ergebnisse wirken erst, wenn ein Mensch sie bestätigt.")}
               </p>
             </div>
             <Switch
@@ -168,14 +170,14 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
           </div>
           {isOwner ? (
             <Button size="sm" variant="outline" disabled={m.isPending} onClick={() => m.mutate(form)}>
-              Speichern
+              {l("Speichern")}
             </Button>
           ) : null}
         </div>
       ) : null}
 
       {!isOwner ? (
-        <p className="text-xs text-muted-foreground">Nur der Inhaber kann die Einstufung ändern.</p>
+        <p className="text-xs text-muted-foreground">{l("Nur der Inhaber kann die Einstufung ändern.")}</p>
       ) : null}
       {mayReport ? (
       <Button
@@ -188,11 +190,11 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
             const { downloadGovernancePdf } = await import("@/lib/governance-pdf");
             await downloadGovernancePdf(data);
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "PDF konnte nicht erstellt werden");
+            toast.error(e instanceof Error ? e.message : l("PDF konnte nicht erstellt werden"));
           }
         }}
       >
-        <FileDown className="size-4" /> Nachweis als PDF
+        <FileDown className="size-4" /> {l("Nachweis als PDF")}
       </Button>
       ) : null}
     </section>

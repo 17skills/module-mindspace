@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { ShieldCheck, Clock, KeyRound } from "lucide-react";
 import { catalogSummary } from "@/lib/runtime/catalog";
+import { useTranslation } from "@/lib/i18n";
 
 const GROUP_LABEL: Record<string, string> = {
   "data-source": "Datenquellen",
@@ -19,6 +20,7 @@ const GROUP_LABEL: Record<string, string> = {
 };
 
 export function CatalogList({ query, onPick }: { query: string; onPick: (name: string) => void | Promise<void> }) {
+  const { l } = useTranslation();
   const [busy, setBusy] = useState<string | null>(null);
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -30,14 +32,14 @@ export function CatalogList({ query, onPick }: { query: string; onPick: (name: s
     return [...map.entries()];
   }, [query]);
 
-  if (!groups.length) return <p className="text-sm text-muted-foreground">Kein Baustein passt zur Suche.</p>;
+  if (!groups.length) return <p className="text-sm text-muted-foreground">{l("Kein Baustein passt zur Suche.")}</p>;
 
   return (
     <div className="space-y-5">
       {groups.map(([category, modules]) => (
         <section key={category}>
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {GROUP_LABEL[category] ?? category}
+            {l(GROUP_LABEL[category] ?? category)}
           </h3>
           <div className="grid gap-2 sm:grid-cols-2">
             {modules.map((m) => (
@@ -71,21 +73,21 @@ export function CatalogList({ query, onPick }: { query: string; onPick: (name: s
                       Ableitung von {m.derivedFrom.replace(/^core\//, "")}
                     </span>
                   ) : (
-                    <span className="rounded-full border px-2 py-0.5 text-muted-foreground">Grundbaustein</span>
+                    <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{l("Grundbaustein")}</span>
                   )}
                   {m.requiresApproval ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-destructive">
-                      <ShieldCheck className="size-3" /> Freigabe nötig
+                       <ShieldCheck className="size-3" /> {l("Freigabe nötig")}
                     </span>
                   ) : null}
                   {m.executionMode === "scheduled" ? (
                     <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-muted-foreground">
-                      <Clock className="size-3" /> Zeitplan (startet nur per Knopf)
+                       <Clock className="size-3" /> {l("Zeitplan (startet nur per Knopf)")}
                     </span>
                   ) : null}
                   {m.secrets.length ? (
                     <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-muted-foreground">
-                      <KeyRound className="size-3" /> Schlüssel nötig
+                       <KeyRound className="size-3" /> {l("Schlüssel nötig")}
                     </span>
                   ) : null}
                 </div>

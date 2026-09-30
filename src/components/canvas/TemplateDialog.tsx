@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { SYSTEM_TEMPLATES, templateBounds, type Template, type TemplateField } from "@/lib/templates";
+import { useTranslation } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -53,6 +54,7 @@ function Card({
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
+  const { l } = useTranslation();
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-3 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-float)]">
       <Preview fields={template.fields} />
@@ -62,16 +64,16 @@ function Card({
       </div>
       <div className="flex gap-2">
         <Button size="sm" className="flex-1 rounded-full" onClick={onInsert}>
-          Einfügen
+          {l("Einfügen")}
         </Button>
         {onEdit ? (
           <Button size="sm" variant="outline" className="rounded-full" onClick={onEdit}>
-            Bearbeiten
+            {l("Bearbeiten")}
           </Button>
         ) : null}
         {onDelete ? (
           <Button size="sm" variant="ghost" className="rounded-full" onClick={onDelete}>
-            Löschen
+            {l("Löschen")}
           </Button>
         ) : null}
       </div>
@@ -91,6 +93,7 @@ function EditForm({
   onSave: (next: Template) => Promise<void>;
   onCancel: () => void;
 }) {
+  const { l } = useTranslation();
   const [title, setTitle] = useState(template.title);
   const [description, setDescription] = useState(template.description);
   const [fields, setFields] = useState<TemplateField[]>(template.fields);
@@ -104,11 +107,11 @@ function EditForm({
   return (
     <div className="space-y-4 rounded-lg border border-border/70 bg-muted/30 p-4">
       <div className="grid gap-2 sm:grid-cols-2">
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name" className="h-9 rounded-xl" />
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={l("Name")} className="h-9 rounded-xl" />
         <Input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Kurze Beschreibung"
+          placeholder={l("Kurze Beschreibung")}
           className="h-9 rounded-xl"
         />
       </div>
@@ -120,7 +123,7 @@ function EditForm({
               <Input
                 value={field.title}
                 onChange={(e) => patch(index, { title: e.target.value })}
-                placeholder="Feldname"
+                placeholder={l("Feldname")}
                 className="h-9 rounded-xl"
               />
               <Input
@@ -128,26 +131,26 @@ function EditForm({
                 value={field.w}
                 onChange={(e) => patch(index, { w: Math.max(80, Number(e.target.value) || 80) })}
                 className="h-9 w-20 rounded-xl"
-                aria-label="Breite"
+                aria-label={l("Breite")}
               />
               <Input
                 type="number"
                 value={field.h}
                 onChange={(e) => patch(index, { h: Math.max(60, Number(e.target.value) || 60) })}
                 className="h-9 w-20 rounded-xl"
-                aria-label="Höhe"
+                aria-label={l("Höhe")}
               />
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setFields((current) => current.filter((_, i) => i !== index))}
               >
-                Entfernen
+                {l("Entfernen")}
               </Button>
             </div>
           ))}
           {fields.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Keine Felder mehr in dieser Vorlage.</p>
+            <p className="text-sm text-muted-foreground">{l("Keine Felder mehr in dieser Vorlage.")}</p>
           ) : null}
         </div>
         <div className="space-y-2">
@@ -159,21 +162,21 @@ function EditForm({
             onClick={() => {
               const next = currentFields();
               if (!next.length) {
-                toast.error("Keine Felder auf der Fläche gefunden");
+                toast.error(l("Keine Felder auf der Fläche gefunden"));
                 return;
               }
               setFields(next);
               toast.success("Felder von der Fläche übernommen");
             }}
           >
-            Felder der Auswahl übernehmen
+            {l("Felder der Auswahl übernehmen")}
           </Button>
         </div>
       </div>
 
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="ghost" className="rounded-full" onClick={onCancel}>
-          Abbrechen
+          {l("Abbrechen")}
         </Button>
         <Button
           size="sm"
@@ -189,7 +192,7 @@ function EditForm({
             }).finally(() => setBusy(false));
           }}
         >
-          Speichern
+          {l("Speichern")}
         </Button>
       </div>
     </div>
@@ -197,6 +200,7 @@ function EditForm({
 }
 
 export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, userId }: Props) {
+  const { l } = useTranslation();
   const [own, setOwn] = useState<Template[]>([]);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -231,7 +235,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
     if (!userId) return;
     const fields = currentFields();
     if (!fields.length) {
-      toast.error("Keine Felder auf der Fläche gefunden");
+      toast.error(l("Keine Felder auf der Fläche gefunden"));
       return;
     }
     setSaving(true);
@@ -247,7 +251,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
       return;
     }
     setName("");
-    toast.success("Vorlage gespeichert");
+    toast.success(l("Vorlage gespeichert"));
     void load();
   };
 
@@ -266,7 +270,7 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
     }
     setOwn((current) => current.map((item) => (item.id === next.id ? next : item)));
     setEditingId(null);
-    toast.success("Vorlage aktualisiert");
+    toast.success(l("Vorlage aktualisiert"));
   };
 
   const remove = async (id: string) => {
@@ -290,16 +294,16 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Vorlagen</DialogTitle>
+          <DialogTitle className="font-display text-2xl">{l("Vorlagen")}</DialogTitle>
           <DialogDescription>
-            Fertige Feldraster einfügen oder eigene Raster speichern, bearbeiten und wiederverwenden.
+            {l("Fertige Feldraster einfügen oder eigene Raster speichern, bearbeiten und wiederverwenden.")}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="system">
           <TabsList>
-            <TabsTrigger value="system">Vorschläge</TabsTrigger>
-            <TabsTrigger value="own">Eigene ({own.length})</TabsTrigger>
+            <TabsTrigger value="system">{l("Vorschläge")}</TabsTrigger>
+            <TabsTrigger value="own">{l("Eigene")} ({own.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="system" className="mt-4">
@@ -315,11 +319,11 @@ export function TemplateDialog({ open, onOpenChange, onInsert, currentFields, us
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Name der neuen Vorlage"
+                placeholder={l("Name der neuen Vorlage")}
                 className="h-9 rounded-xl"
               />
               <Button size="sm" className="rounded-full" onClick={() => void save()} disabled={saving}>
-                Auswahl als Vorlage speichern
+                {l("Auswahl als Vorlage speichern")}
               </Button>
             </div>
 

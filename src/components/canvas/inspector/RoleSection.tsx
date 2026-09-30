@@ -12,8 +12,10 @@ import {
   rolesFor,
   type ModuleRole,
 } from "@/lib/module-role";
+import { useTranslation } from "@/lib/i18n";
 
 export function RoleSection({ record }: { record: NodeRecord }) {
+  const { l } = useTranslation();
   const { updateNode } = useBoard();
   if (!roleEditable(record.type)) return null;
 
@@ -26,7 +28,7 @@ export function RoleSection({ record }: { record: NodeRecord }) {
 
   return (
     <section className="border-b px-4 py-3">
-      <p className="module-eyebrow mb-2 text-muted-foreground">Rolle in Apps</p>
+      <p className="module-eyebrow mb-2 text-muted-foreground">{l("Rolle in Apps")}</p>
       <div className="flex flex-wrap gap-1.5">
         {options.map((role) => (
           <button
@@ -38,11 +40,11 @@ export function RoleSection({ record }: { record: NodeRecord }) {
               current === role ? "border-ring bg-accent/50 font-medium" : "border-border/70 hover:bg-accent/20"
             }`}
           >
-            {ROLE_LABEL[role]}
+            {l(ROLE_LABEL[role])}
           </button>
         ))}
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">{ROLE_HINT[current]}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{l(ROLE_HINT[current])}</p>
     </section>
   );
 }
