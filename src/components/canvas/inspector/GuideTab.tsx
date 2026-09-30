@@ -3,6 +3,7 @@ import { Crosshair } from "lucide-react";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
 import { evaluate, readIsoRisk } from "@/lib/iso-risk";
 import { readMapConfig } from "@/lib/geo";
+import { useTranslation } from "@/lib/i18n";
 
 type Step = {
   title: string;
@@ -15,6 +16,7 @@ type Step = {
 
 /** Step-by-step guide through the board: data, calculation, decision, measures. */
 export function GuideTab() {
+  const { l } = useTranslation();
   const { allNodes, focusNode, runDecide } = useBoard();
   const nodes = allNodes();
 
@@ -76,8 +78,7 @@ export function GuideTab() {
   return (
     <div className="h-full space-y-2 overflow-auto p-3">
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Der Ablauf von der Datenbasis bis zur Maßnahme. Jeder Schritt zeigt seinen aktuellen Stand –
-        über den Knopf springst du zur passenden Karte.
+        {l("Der Ablauf von der Datenbasis bis zur Maßnahme. Jeder Schritt zeigt seinen aktuellen Stand – über den Knopf springst du zur passenden Karte.")}
       </p>
       {steps.map((step) => (
         <section
@@ -93,8 +94,8 @@ export function GuideTab() {
             {step.target && (
               <button
                 onClick={() => focusNode(step.target!.id)}
-                aria-label="Karte zeigen"
-                title="Karte auf der Fläche zeigen"
+                aria-label={l("Karte zeigen")}
+                title={l("Karte auf der Fläche zeigen")}
                 className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
               >
                 <Crosshair className="h-3.5 w-3.5" />
