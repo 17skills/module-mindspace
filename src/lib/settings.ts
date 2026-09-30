@@ -52,8 +52,14 @@ function budgetsFrom(value: unknown): AiBudgets {
 export function settingsFrom(value: unknown): UserSettings {
   const raw = (value ?? {}) as Partial<UserSettings>;
   return {
-    theme: raw.theme === "light" || raw.theme === "dark" ? raw.theme : DEFAULT_SETTINGS.theme,
-    language: raw.language === "de" || raw.language === "en" ? raw.language : DEFAULT_SETTINGS.language,
+    theme:
+      raw.theme === "light" || raw.theme === "dark" || raw.theme === "system"
+        ? raw.theme
+        : DEFAULT_SETTINGS.theme,
+    language:
+      raw.language === "de" || raw.language === "en" || raw.language === "system"
+        ? raw.language
+        : DEFAULT_SETTINGS.language,
     gridDefault: raw.gridDefault ?? DEFAULT_SETTINGS.gridDefault,
     guidesDefault: raw.guidesDefault ?? DEFAULT_SETTINGS.guidesDefault,
     startBoardId: typeof raw.startBoardId === "string" ? raw.startBoardId : null,
