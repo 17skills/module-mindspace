@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getAccount, listMyScopes, saveSettings } from "@/lib/account.functions";
 import { DEFAULT_SETTINGS, type UserSettings } from "@/lib/settings";
+import { useTheme } from "@/lib/theme";
+import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +48,8 @@ function SettingsPage() {
   const account = useQuery({ queryKey: ["account"], queryFn: () => getAccount() });
   const scopes = useQuery({ queryKey: ["my-scopes"], queryFn: () => listMyScopes() });
   const [value, setValue] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const { setTheme } = useTheme();
+  const { setLanguage } = useTranslation();
 
   useEffect(() => {
     if (account.data) setValue(account.data.settings);
@@ -68,7 +72,14 @@ function SettingsPage() {
         <h2 className="font-display text-xl font-semibold text-brand-navy">Darstellung</h2>
         <div className="mt-4">
           <Label htmlFor="theme">Erscheinungsbild</Label>
-          <Select value={value.theme} onValueChange={(next) => patch({ theme: next as UserSettings["theme"] })}>
+          <Select
+            value={value.theme}
+            onValueChange={(next) => {
+              const mode = next as UserSettings["theme"];
+              patch({ theme: mode });
+              setTheme(mode);
+            }}
+          >
             <SelectTrigger id="theme" className="mt-1.5">
               <SelectValue />
             </SelectTrigger>
@@ -76,6 +87,26 @@ function SettingsPage() {
               <SelectItem value="system">Wie das Gerät</SelectItem>
               <SelectItem value="light">Hell</SelectItem>
               <SelectItem value="dark">Dunkel</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="mt-4">
+          <Label htmlFor="language">Sprache</Label>
+          <Select
+            value={value.language}
+            onValueChange={(next) => {
+              const lang = next as UserSettings["language"];
+              patch({ language: lang });
+              setLanguage(lang);
+            }}
+          >
+            <SelectTrigger id="language" className="mt-1.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="system">Wie der Browser</SelectItem>
+              <SelectItem value="de">Deutsch</SelectItem>
+              <SelectItem value="en">English</SelectItem>
             </SelectContent>
           </Select>
         </div>

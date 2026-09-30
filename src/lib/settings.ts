@@ -7,6 +7,7 @@ export type AiBudgets = Partial<Record<"lovable" | AiProvider, number>>;
 
 export type UserSettings = {
   theme: "light" | "dark" | "system";
+  language: "de" | "en" | "system";
   gridDefault: boolean;
   guidesDefault: boolean;
   startBoardId: string | null;
@@ -23,6 +24,7 @@ export type UserSettings = {
 
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: "system",
+  language: "system",
   gridDefault: true,
   guidesDefault: true,
   startBoardId: null,
@@ -51,6 +53,7 @@ export function settingsFrom(value: unknown): UserSettings {
   const raw = (value ?? {}) as Partial<UserSettings>;
   return {
     theme: raw.theme === "light" || raw.theme === "dark" ? raw.theme : DEFAULT_SETTINGS.theme,
+    language: raw.language === "de" || raw.language === "en" ? raw.language : DEFAULT_SETTINGS.language,
     gridDefault: raw.gridDefault ?? DEFAULT_SETTINGS.gridDefault,
     guidesDefault: raw.guidesDefault ?? DEFAULT_SETTINGS.guidesDefault,
     startBoardId: typeof raw.startBoardId === "string" ? raw.startBoardId : null,
