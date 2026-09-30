@@ -1581,6 +1581,50 @@ export type Database = {
         }
         Relationships: []
       }
+      trigger_events: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          reason: string
+          runs: number
+          source: string
+          status: string
+          trigger_id: string | null
+          trigger_name: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          reason?: string
+          runs?: number
+          source: string
+          status: string
+          trigger_id?: string | null
+          trigger_name?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          runs?: number
+          source?: string
+          status?: string
+          trigger_id?: string | null
+          trigger_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trigger_events_trigger_id_fkey"
+            columns: ["trigger_id"]
+            isOneToOne: false
+            referencedRelation: "scope_triggers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_ai_keys: {
         Row: {
           base_url: string | null

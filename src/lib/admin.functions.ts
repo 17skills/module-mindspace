@@ -211,3 +211,30 @@ export const adminPurgeAuditLog = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Ausführungsverlauf der Auslöser (nur Admins, 90 Tage, ohne Nachrichteninhalte). */
+export const adminListTriggerEvents = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { status?: string }) => ({ status: typeof d?.status === "string" ? d.status : "all" }))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context as never);
+    let q = context.supabase
+      .from("trigger_events")
+      .select("id,board_id,trigger_name,source,status,reason,runs,created_at")
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (["fired", "skipped", "failed"].includes(data.status)) q = q.eq("status", data.status);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    const ids = Array.from(new Set((rows ?? []).map((r) => r.board_id)));
+    const titles = new Map<string, string>();
+    if (ids.length) {
+      const db = await admin();
+      const { data: boards } = await db.from("boards").select("id,title").in("id", ids);
+      for (const b of boards ?? []) titles.set(b.id, b.title);
+    }
+    return (rows ?? []).map((r) => ({
+      id: r.id, scope: titles.get(r.board_id) ?? "Gelöschter Scope", name: r.trigger_name,
+      source: r.source, status: r.status, reason: r.reason, runs: r.runs, createdAt: r.created_at,
+    }));
+  });

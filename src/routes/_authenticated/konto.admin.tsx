@@ -13,6 +13,7 @@ import {
   adminSetDeveloper,
 } from "@/lib/admin.functions";
 import { adminCreateUser, adminUsageSummary } from "@/lib/admin-users.functions";
+import { TriggerHistory } from "@/components/admin/TriggerHistory";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -318,6 +319,8 @@ function AdminPage() {
           ) : null}
         </ul>
       </section>
+
+      <TriggerHistory />
 
       <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
