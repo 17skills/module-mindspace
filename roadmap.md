@@ -13,4 +13,4 @@
 - [x] Entwürfe der Vorlagen-Navigation als Ansicht /entwuerfe zeigen
 - [x] Importvorschau: vorhandene Vorlagen aktualisieren statt überspringen
 - [x] Textknöpfe reduzieren, Navigation der Abfragevorlagen aufräumen
-- [ ] Englische Übersetzungen für Canvas, Module, Dialoge und übrige Kernansichten vervollständigen
+- [x] Englische Übersetzungen für Canvas, Module, Dialoge und übrige Kernansichten vervollständigen

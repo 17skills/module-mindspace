@@ -46,6 +46,7 @@ import { ScopePreview } from "@/components/ScopePreview";
 import { UserMenu } from "@/components/UserMenu";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { importBoard } from "@/lib/backup.functions";
+import { useTranslation } from "@/lib/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,6 +94,7 @@ function blueprintTitle(text: string, fallback: string): string {
 }
 
 function LibraryPage() {
+  const { l, locale } = useTranslation();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -323,25 +325,25 @@ function LibraryPage() {
 
   function copyAppLink(id: string) {
     void navigator.clipboard.writeText(`${window.location.origin}/app/${id}`);
-    toast.success("Link kopiert");
+    toast.success(l("Link kopiert"));
   }
 
   function appMenu(app: { id: string; description: string | null; is_public: boolean }) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="App-Menü">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={l("App-Menü")}>
             <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuItem onSelect={() => window.open(`/app/${app.id}`, "_blank", "noreferrer")}>
             <ExternalLink aria-hidden="true" className="mr-2 h-4 w-4" />
-            Öffnen
+            {l("Öffnen")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => copyAppLink(app.id)}>
             <Link2 aria-hidden="true" className="mr-2 h-4 w-4" />
-            Link kopieren
+            {l("Link kopieren")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
@@ -350,7 +352,7 @@ function LibraryPage() {
             }}
           >
             <Pencil aria-hidden="true" className="mr-2 h-4 w-4" />
-            Beschreibung bearbeiten
+            {l("Beschreibung bearbeiten")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -358,7 +360,7 @@ function LibraryPage() {
             onSelect={() => togglePublic.mutate({ id: app.id, is_public: app.is_public })}
           >
             <Power aria-hidden="true" className="mr-2 h-4 w-4" />
-            {app.is_public ? "Abschalten" : "Aktivieren"}
+            {l(app.is_public ? "Abschalten" : "Aktivieren")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -369,7 +371,7 @@ function LibraryPage() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Scope-Menü">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={l("Scope-Menü")}>
             <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -381,7 +383,7 @@ function LibraryPage() {
             }}
           >
             <Pencil aria-hidden="true" className="mr-2 h-4 w-4" />
-            Beschreibung bearbeiten
+             {l("Beschreibung bearbeiten")}
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
@@ -400,10 +402,10 @@ function LibraryPage() {
               {projectNames.length > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem onSelect={() => setNewProject("")}>
                 <FolderPlus aria-hidden="true" className="mr-2 h-4 w-4" />
-                Neues Projekt …
+                 {l("Neues Projekt …")}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setProject.mutate({ id: board.id, project: null })}>
-                Kein Projekt
+                 {l("Kein Projekt")}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -415,7 +417,7 @@ function LibraryPage() {
                 onSelect={() => setConfirmDelete(board.id)}
               >
                 <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" />
-                Löschen
+                 {l("Löschen")}
               </DropdownMenuItem>
             </>
           )}
@@ -453,11 +455,10 @@ function LibraryPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold tracking-tight text-brand-navy">
-              Deine Scopes
+               {l("Deine Scopes")}
             </h1>
             <p className="mt-1 text-muted-foreground">
-              Ein Scope pro Thema: Daten, Karten, Kennzahlen, Befunde und Chat – das Studio für
-              deine Apps.
+               {l("Ein Scope pro Thema: Daten, Karten, Kennzahlen, Befunde und Chat – das Studio für deine Apps.")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -474,11 +475,11 @@ function LibraryPage() {
             />
             <Button onClick={() => createBoard.mutate()} disabled={createBoard.isPending}>
               <Plus aria-hidden="true" className="mr-1 h-4 w-4" />
-              Neuer Scope
+               {l("Neuer Scope")}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Weitere Aktionen">
+                 <Button variant="outline" size="icon" aria-label={l("Weitere Aktionen")}>
                   <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -509,7 +510,7 @@ function LibraryPage() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setNewProject("")}>
                   <FolderPlus aria-hidden="true" className="mr-2 h-4 w-4" />
-                  Neues Projekt anlegen …
+                   {l("Neues Projekt anlegen …")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => void navigate({ to: "/ergebnisse" })}>
@@ -536,8 +537,8 @@ function LibraryPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Scopes und Apps durchsuchen"
-              aria-label="Scopes und Apps durchsuchen"
+               placeholder={l("Scopes und Apps durchsuchen")}
+               aria-label={l("Scopes und Apps durchsuchen")}
               className="pl-9"
             />
           </div>
@@ -545,7 +546,7 @@ function LibraryPage() {
             <Button
               size="icon"
               variant={view === "gallery" ? "secondary" : "ghost"}
-              aria-label="Galerie-Ansicht"
+               aria-label={l("Galerie-Ansicht")}
               aria-pressed={view === "gallery"}
               className="h-8 w-8"
               onClick={() => changeView("gallery")}
@@ -555,7 +556,7 @@ function LibraryPage() {
             <Button
               size="icon"
               variant={view === "list" ? "secondary" : "ghost"}
-              aria-label="Listen-Ansicht"
+               aria-label={l("Listen-Ansicht")}
               aria-pressed={view === "list"}
               className="h-8 w-8"
               onClick={() => changeView("list")}
@@ -568,9 +569,9 @@ function LibraryPage() {
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {(
             [
-              { id: "all", label: "Alle" },
-              { id: "mine", label: "Meine" },
-              { id: "shared", label: "Geteilt" },
+               { id: "all", label: l("Alle") },
+               { id: "mine", label: l("Meine") },
+               { id: "shared", label: l("Geteilt") },
             ] as const
           ).map((option) => (
             <button
@@ -637,7 +638,7 @@ function LibraryPage() {
                       )}
                       {board.user_id !== user.id && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                          Geteilt
+                           {l("Geteilt")}
                         </span>
                       )}
                     </div>
@@ -661,21 +662,21 @@ function LibraryPage() {
                           saveDescription.mutate({ kind: "scope", id: board.id, text: draft })
                         }
                       >
-                        Speichern
+                         {l("Speichern")}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                        Abbrechen
+                         {l("Abbrechen")}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                    {board.description || "Ohne Beschreibung"}
+                     {board.description || l("Ohne Beschreibung")}
                   </p>
                 )}
 
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Zuletzt geändert {new Date(board.updated_at).toLocaleDateString("de-DE")}
+                   {l("Zuletzt geändert")} {new Date(board.updated_at).toLocaleDateString(locale)}
                 </p>
               </div>
             ))}
@@ -683,8 +684,8 @@ function LibraryPage() {
             {visibleBoards.length === 0 && (
               <div className="col-span-full rounded-2xl border border-dashed p-12 text-center text-muted-foreground">
                 {boards.data?.length
-                  ? "Kein Scope passt zu Suche und Filter."
-                  : "Noch kein Scope. Lege deinen ersten an und ziehe Inhalte hinein."}
+                   ? l("Kein Scope passt zu Suche und Filter.")
+                   : l("Noch kein Scope. Lege deinen ersten an und ziehe Inhalte hinein.")}
               </div>
             )}
           </div>
@@ -706,8 +707,8 @@ function LibraryPage() {
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {board.project ? `${board.project} · ` : ""}
                     {moduleTypes.data?.[board.id]?.length ?? 0} Module ·{" "}
-                    {new Date(board.updated_at).toLocaleDateString("de-DE")}
-                    {board.user_id !== user.id ? " · Geteilt" : ""}
+                     {new Date(board.updated_at).toLocaleDateString(locale)}
+                     {board.user_id !== user.id ? ` · ${l("Geteilt")}` : ""}
                   </p>
                 </div>
                 {boardMenu(board)}
@@ -716,8 +717,8 @@ function LibraryPage() {
             {visibleBoards.length === 0 && (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 {boards.data?.length
-                  ? "Kein Scope passt zu Suche und Filter."
-                  : "Noch kein Scope. Lege deinen ersten an."}
+                   ? l("Kein Scope passt zu Suche und Filter.")
+                   : l("Noch kein Scope. Lege deinen ersten an.")}
               </div>
             )}
           </div>
@@ -729,20 +730,20 @@ function LibraryPage() {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Scope löschen?</AlertDialogTitle>
+               <AlertDialogTitle>{l("Scope löschen?")}</AlertDialogTitle>
               <AlertDialogDescription>
-                Alle Module, Verbindungen und Chats dieses Scopes werden entfernt.
+                 {l("Alle Module, Verbindungen und Chats dieses Scopes werden entfernt.")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+               <AlertDialogCancel>{l("Abbrechen")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   if (confirmDelete) deleteBoard.mutate(confirmDelete);
                   setConfirmDelete(null);
                 }}
               >
-                Löschen
+                 {l("Löschen")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -751,9 +752,9 @@ function LibraryPage() {
         <Dialog open={newProject !== null} onOpenChange={(open) => !open && setNewProject(null)}>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
-              <DialogTitle>Neues Projekt</DialogTitle>
+               <DialogTitle>{l("Neues Projekt")}</DialogTitle>
               <DialogDescription>
-                Ein Projekt bündelt mehrere Scopes. Du ordnest Scopes danach über ihr Menü zu.
+                 {l("Ein Projekt bündelt mehrere Scopes. Du ordnest Scopes danach über ihr Menü zu.")}
               </DialogDescription>
             </DialogHeader>
             <Input
@@ -764,7 +765,7 @@ function LibraryPage() {
             />
             <DialogFooter>
               <Button variant="ghost" onClick={() => setNewProject(null)}>
-                Abbrechen
+                 {l("Abbrechen")}
               </Button>
               <Button
                 disabled={!newProject?.trim()}
@@ -778,7 +779,7 @@ function LibraryPage() {
                   toast.success(`Projekt „${name}“ angelegt – ordne Scopes über ihr Menü zu.`);
                 }}
               >
-                Anlegen
+                 {l("Anlegen")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -789,11 +790,10 @@ function LibraryPage() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="font-display text-xl font-semibold tracking-tight text-brand-navy">
-                Aktive Apps
+                 {l("Aktive Apps")}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Aus Modulen gebaute Apps – als Link für Menschen und als Datenzugang für
-                KI-Assistenten.
+                 {l("Aus Modulen gebaute Apps – als Link für Menschen und als Datenzugang für KI-Assistenten.")}
               </p>
             </div>
           </div>
@@ -801,9 +801,9 @@ function LibraryPage() {
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {(
               [
-                { id: "all", label: "Alle" },
-                { id: "active", label: "Aktiv" },
-                { id: "inactive", label: "Inaktiv" },
+                 { id: "all", label: l("Alle") },
+                 { id: "active", label: l("Aktiv") },
+                 { id: "inactive", label: l("Inaktiv") },
               ] as const
             ).map((option) => (
               <button
@@ -858,7 +858,7 @@ function LibraryPage() {
                               : "bg-muted text-muted-foreground"
                           }`}
                         >
-                          {app.is_public ? "Aktiv" : "Inaktiv"}
+                           {l(app.is_public ? "Aktiv" : "Inaktiv")}
                         </span>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
                           {app.mcp_scope === "write" ? "KI schreibt" : "KI liest"}
@@ -884,30 +884,30 @@ function LibraryPage() {
                             saveDescription.mutate({ kind: "app", id: app.id, text: draft })
                           }
                         >
-                          Speichern
+                           {l("Speichern")}
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                          Abbrechen
+                           {l("Abbrechen")}
                         </Button>
                       </div>
                     </div>
                   ) : (
                     <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                      {app.description || "Ohne Beschreibung"}
+                       {app.description || l("Ohne Beschreibung")}
                     </p>
                   )}
 
                   <p className="mt-3 text-xs text-muted-foreground">
                     {Array.isArray(app.node_ids) ? app.node_ids.length : 0} Module ·{" "}
-                    {new Date(app.updated_at).toLocaleDateString("de-DE")}
+                     {new Date(app.updated_at).toLocaleDateString(locale)}
                   </p>
                 </div>
               ))}
               {visibleApps.length === 0 && (
                 <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
                   {apps.data?.length
-                    ? "Keine App passt zu Suche und Filter."
-                    : "Noch keine App. Wähle in einem Scope Module aus und klicke unten auf „App-Ansicht“."}
+                     ? l("Keine App passt zu Suche und Filter.")
+                     : l("Noch keine App. Wähle in einem Scope Module aus und klicke unten auf „App-Ansicht“.")}
                 </div>
               )}
             </div>
@@ -928,10 +928,10 @@ function LibraryPage() {
                       {app.title}
                     </a>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {app.is_public ? "Aktiv" : "Inaktiv"} ·{" "}
+                       {l(app.is_public ? "Aktiv" : "Inaktiv")} ·{" "}
                       {app.kind === "capture" ? "Erfassung" : "Cockpit"} ·{" "}
                       {Array.isArray(app.node_ids) ? app.node_ids.length : 0} Module ·{" "}
-                      {new Date(app.updated_at).toLocaleDateString("de-DE")}
+                       {new Date(app.updated_at).toLocaleDateString(locale)}
                     </p>
                   </div>
                   {appMenu(app)}
@@ -940,8 +940,8 @@ function LibraryPage() {
               {visibleApps.length === 0 && (
                 <div className="p-8 text-center text-sm text-muted-foreground">
                   {apps.data?.length
-                    ? "Keine App passt zu Suche und Filter."
-                    : "Noch keine App. Wähle in einem Scope Module aus."}
+                     ? l("Keine App passt zu Suche und Filter.")
+                     : l("Noch keine App. Wähle in einem Scope Module aus.")}
                 </div>
               )}
             </div>
