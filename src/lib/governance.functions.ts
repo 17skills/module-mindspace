@@ -9,6 +9,18 @@ async function admin() {
   return supabaseAdmin;
 }
 
+/** Berichte und Nachweise sind nur für Administration und Entwicklung. */
+async function assertReportAccess(supabase: { rpc: (...a: never[]) => unknown }, userId: string) {
+  const sb = supabase as unknown as {
+    rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }>;
+  };
+  const [a, d] = await Promise.all([
+    sb.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    sb.rpc("has_role", { _user_id: userId, _role: "developer" }),
+  ]);
+  if (!a.data && !d.data) throw new Error("Governance-Berichte sind nur für Administratoren und Entwickler.");
+}
+
 /** Aktuelle Governance-Angaben eines Scopes. */
 export const getGovernance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -58,6 +70,7 @@ export const setGovernance = createServerFn({ method: "POST" })
 export const listGovernance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertReportAccess(context.supabase as never, context.userId);
     const { data, error } = await context.supabase
       .from("boards")
       .select("id, title, project, rules, updated_at")
@@ -78,6 +91,7 @@ export const getGovernanceEvidence = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ boardId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await assertReportAccess(context.supabase as never, context.userId);
     await assertBoardRole(context.userId, data.boardId, "viewer");
     const db = await admin();
     const { data: board } = await db

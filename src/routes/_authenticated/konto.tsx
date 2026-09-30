@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { getAccount } from "@/lib/account.functions";
+import { getAccount, getMyRoles } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/konto")({
@@ -35,11 +35,11 @@ const TABS = [
   { to: "/konto/apps", label: "App-Zugänge" },
   { to: "/konto/sitzungen", label: "Anmeldungen" },
   { to: "/konto/datenschutz", label: "Datenschutz" },
-  { to: "/konto/governance", label: "KI-Governance" },
 ] as const;
 
 function KontoLayout() {
   const account = useQuery({ queryKey: ["account"], queryFn: () => getAccount() });
+  const roles = useQuery({ queryKey: ["my-roles"], queryFn: () => getMyRoles() });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   return (
@@ -63,7 +63,7 @@ function KontoLayout() {
         </div>
         <nav aria-label="Konto-Bereiche" className="mx-auto max-w-5xl overflow-x-auto px-6">
           <ul className="flex gap-1 pb-2">
-            {[...TABS, ...(account.data?.isAdmin ? [{ to: "/konto/admin", label: "Administration" } as const] : [])].map(
+            {[...TABS, ...(roles.data?.isDeveloper ? [{ to: "/konto/governance", label: "KI-Governance" } as const] : []), ...(account.data?.isAdmin ? [{ to: "/konto/admin", label: "Administration" } as const] : [])].map(
               (tab) => {
                 const active = "exact" in tab && tab.exact ? pathname === tab.to : pathname.startsWith(tab.to);
                 return (
