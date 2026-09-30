@@ -96,6 +96,8 @@ function LibraryPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const myRoles = useQuery({ queryKey: ["my-roles"], queryFn: async () => (await import("@/lib/account.functions")).getMyRoles(), enabled: Boolean(user) });
+  const mayReport = Boolean(myRoles.data?.isDeveloper);
   const [editing, setEditing] = useState<{ kind: "scope" | "app"; id: string } | null>(null);
   const [draft, setDraft] = useState("");
   const restoreRef = useRef<HTMLInputElement>(null);
