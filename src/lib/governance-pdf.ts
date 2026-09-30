@@ -30,7 +30,10 @@ export async function downloadGovernancePdf(e: Evidence) {
       y = 20;
     }
   };
-  const text = (s: string, size = 10, bold = false, gap = 5) => {
+  // Standardschrift kennt nur Latin-1: Pfeile und Sonderzeichen ersetzen.
+  const clean = (s: string) => s.replace(/→/g, "->").replace(/[–—]/g, "-").replace(/[„“”]/g, '"').replace(/[^\x00-\xFF]/g, "?");
+  const text = (raw: string, size = 10, bold = false, gap = 5) => {
+    const s = clean(raw);
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setFontSize(size);
     for (const line of doc.splitTextToSize(s, W - 2 * M) as string[]) {
@@ -45,7 +48,7 @@ export async function downloadGovernancePdf(e: Evidence) {
     doc.setFontSize(10);
     doc.text(k, M, y);
     doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(v || "–", W - 2 * M - 50) as string[];
+    const lines = doc.splitTextToSize(clean(v || "-"), W - 2 * M - 50) as string[];
     doc.text(lines, M + 50, y);
     y += Math.max(1, lines.length) * 5 + 1;
   };
