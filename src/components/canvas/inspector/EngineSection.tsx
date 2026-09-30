@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import { Cpu } from "lucide-react";
+import { AlertTriangle, Cpu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
+  CAPABILITY_LABEL,
   ENGINE_PROVIDERS,
   ENGINE_PROVIDER_META,
   MODEL_SUGGESTIONS,
+  checkEngineCompatibility,
+  compatibilityMessage,
   engineBindingToMetadata,
   readEngineBinding,
+  type EngineCapability,
   type EngineProvider,
 } from "@/lib/module-engine";
 
@@ -14,13 +18,16 @@ import {
  * Rechenkern eines Moduls: Anbieterart, Modell und eigenes Token-Budget.
  * Adressen, Ports und Schlüssel bleiben serverseitig – hier steht nur,
  * WAS gebraucht wird, damit der Scope überall lauffähig bleibt.
+ * `required` nennt die Fähigkeiten, die das Modul vom Modell braucht.
  */
 export function EngineSection({
   metadata,
   onChange,
+  required = ["structured"],
 }: {
   metadata: Record<string, unknown> | null | undefined;
   onChange: (patch: Record<string, unknown>) => void;
+  required?: EngineCapability[];
 }) {
   const binding = readEngineBinding(metadata);
   const [model, setModel] = useState(binding.model ?? "");
@@ -48,6 +55,8 @@ export function EngineSection({
 
   const meta = ENGINE_PROVIDER_META[binding.provider];
   const suggestions = MODEL_SUGGESTIONS[binding.provider];
+  const report = checkEngineCompatibility(binding, required);
+  const showReport = binding.provider !== "default" && binding.model && (!report.ok || report.uncertain.length > 0);
 
   return (
     <div className="space-y-2.5 rounded-lg border border-border/70 p-3">
@@ -126,6 +135,46 @@ export function EngineSection({
               className="h-8 text-xs"
             />
           </div>
+
+          {showReport && (
+            <div
+              role={report.ok ? "status" : "alert"}
+              className={`flex gap-1.5 rounded-md border p-2 text-[11px] leading-snug ${
+                report.ok ? "border-border/70 text-muted-foreground" : "border-destructive/50 text-destructive"
+              }`}
+            >
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <div className="space-y-1.5">
+                <p>
+                  {report.ok
+                    ? `Nicht sicher bekannt, ob ${binding.model} Folgendes kann: ${report.uncertain.map((c) => CAPABILITY_LABEL[c]).join(", ")}.`
+                    : compatibilityMessage(binding, report)}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {report.alternatives.slice(0, 3).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => {
+                        setModel(item);
+                        save({ model: item });
+                      }}
+                      className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-foreground hover:bg-secondary"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => save({ provider: "default", model: null })}
+                    className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-foreground hover:bg-secondary"
+                  >
+                    Standard
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {meta.needsKey && (
             <p className="text-[11px] leading-snug text-muted-foreground">

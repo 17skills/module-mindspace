@@ -113,3 +113,76 @@ export function describeEngine(binding: ModuleEngineBinding): string {
   if (binding.provider === "default") return meta.label;
   return binding.model ? `${meta.label} · ${binding.model}` : meta.label;
 }
+
+/* ------------------------------------------------------------------ */
+/* Fähigkeitsprüfung vor der Ausführung                                */
+/* ------------------------------------------------------------------ */
+
+export type EngineCapability = "structured" | "vision" | "tools" | "longContext";
+
+export const CAPABILITY_LABEL: Record<EngineCapability, string> = {
+  structured: "strukturierte Antwort (JSON)",
+  vision: "Bilder verstehen",
+  tools: "Werkzeuge aufrufen",
+  longContext: "lange Inhalte (>100k Tokens)",
+};
+
+type Support = "yes" | "no" | "unknown";
+
+/** Bekannte Eigenschaften über Muster der Modellkennung (ohne Anbieter-Präfix). */
+const RULES: { match: RegExp; caps: Partial<Record<EngineCapability, Support>> }[] = [
+  { match: /deepseek-r1|r1-distill/, caps: { structured: "no", tools: "no", vision: "no", longContext: "no" } },
+  { match: /o[134]-mini|o3(?!-)/, caps: { structured: "yes", tools: "yes", vision: "no", longContext: "yes" } },
+  { match: /gpt-4o|gpt-4\.1|gpt-5|gpt-6/, caps: { structured: "yes", tools: "yes", vision: "yes", longContext: "yes" } },
+  { match: /claude/, caps: { structured: "yes", tools: "yes", vision: "yes", longContext: "yes" } },
+  { match: /gemini/, caps: { structured: "yes", tools: "yes", vision: "yes", longContext: "yes" } },
+  { match: /vision|llava|-vl|qwen2\.5vl|llama3\.2-vision/, caps: { vision: "yes", structured: "unknown", tools: "unknown" } },
+  { match: /llama-?3\.3|llama3\.3|qwen2\.5|mistral/, caps: { structured: "yes", tools: "yes", vision: "no", longContext: "no" } },
+];
+
+export function modelSupport(binding: ModuleEngineBinding, cap: EngineCapability): Support {
+  if (binding.provider === "default" || !binding.model) return "yes"; // Standard-Rechenkern kann alles Benötigte
+  const id = binding.model.toLowerCase();
+  for (const rule of RULES) {
+    if (rule.match.test(id) && rule.caps[cap]) return rule.caps[cap]!;
+  }
+  return "unknown";
+}
+
+/** Passende Alternativen beim selben Anbieter, die alle Anforderungen sicher erfüllen. */
+export function suggestAlternatives(
+  binding: ModuleEngineBinding,
+  required: EngineCapability[],
+): string[] {
+  return MODEL_SUGGESTIONS[binding.provider].filter(
+    (model) =>
+      model !== binding.model &&
+      required.every((cap) => modelSupport({ ...binding, model }, cap) === "yes"),
+  );
+}
+
+export type CompatibilityReport = {
+  ok: boolean;
+  missing: EngineCapability[];
+  uncertain: EngineCapability[];
+  alternatives: string[];
+};
+
+export function checkEngineCompatibility(
+  binding: ModuleEngineBinding,
+  required: EngineCapability[],
+): CompatibilityReport {
+  const missing = required.filter((cap) => modelSupport(binding, cap) === "no");
+  const uncertain = required.filter((cap) => modelSupport(binding, cap) === "unknown");
+  const alternatives =
+    missing.length || uncertain.length ? suggestAlternatives(binding, required) : [];
+  return { ok: missing.length === 0, missing, uncertain, alternatives };
+}
+
+export function compatibilityMessage(binding: ModuleEngineBinding, report: CompatibilityReport): string {
+  const names = report.missing.map((cap) => CAPABILITY_LABEL[cap]).join(", ");
+  const alt = report.alternatives.length
+    ? ` Geeignet wären z. B.: ${report.alternatives.slice(0, 3).join(", ")} – oder „Standard".`
+    : ` Wähle ein anderes Modell oder „Standard".`;
+  return `Das Modell ${binding.model} unterstützt nicht: ${names}.${alt}`;
+}

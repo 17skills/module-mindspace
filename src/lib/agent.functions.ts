@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { loadAiKeyConfig, runStructured } from "@/lib/ai-keys.server";
-import { ENGINE_PROVIDERS } from "@/lib/module-engine";
+import { ENGINE_PROVIDERS, checkEngineCompatibility, compatibilityMessage } from "@/lib/module-engine";
 import { UNTRUSTED_NOTICE, wrapUntrusted } from "@/lib/untrusted";
 
 
@@ -53,6 +53,10 @@ export const runZoneAgent = createServerFn({ method: "POST" })
   )
 
   .handler(async ({ data, context }) => {
+    if (data.engine) {
+      const report = checkEngineCompatibility(data.engine, ["structured"]);
+      if (!report.ok) throw new Error(compatibilityMessage(data.engine, report));
+    }
     const numberRule =
       data.kind === "number"
         ? `- "value" ist eine reine Zahl ohne Tausenderpunkte und ohne Einheit (Dezimaltrennzeichen: Punkt).
