@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, FileDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getMyRoles } from "@/lib/account.functions";
 import { getGovernanceEvidence, listGovernance } from "@/lib/governance.functions";
 import {
   LIFECYCLES,
@@ -49,7 +50,10 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function GovernancePage() {
   const list = useServerFn(listGovernance);
   const evidence = useServerFn(getGovernanceEvidence);
-  const q = useQuery({ queryKey: ["governance-list"], queryFn: () => list() });
+  const rolesFn = useServerFn(getMyRoles);
+  const roles = useQuery({ queryKey: ["my-roles"], queryFn: () => rolesFn() });
+  const allowed = Boolean(roles.data?.isDeveloper);
+  const q = useQuery({ queryKey: ["governance-list"], queryFn: () => list(), enabled: allowed });
   const [risk, setRisk] = useState<RiskTier | "all">("all");
   const [status, setStatus] = useState<Lifecycle | "all">("all");
   const [onlyOpen, setOnlyOpen] = useState(false);
@@ -79,6 +83,14 @@ function GovernancePage() {
       setBusy(null);
     }
   }
+
+  if (roles.isLoading) return <p className="text-sm text-muted-foreground">Wird geladen …</p>;
+  if (!allowed)
+    return (
+      <p className="text-sm text-muted-foreground">
+        Governance-Berichte sind nur für Administratoren und Entwickler sichtbar.
+      </p>
+    );
 
   return (
     <section className="space-y-4">

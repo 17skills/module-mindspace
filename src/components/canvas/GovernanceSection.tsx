@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { FileDown } from "lucide-react";
+import { getMyRoles } from "@/lib/account.functions";
 import { getGovernance, getGovernanceEvidence, setGovernance } from "@/lib/governance.functions";
 import {
   DEFAULT_GOVERNANCE,
@@ -27,6 +28,9 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
   const q = useQuery({ queryKey: ["governance", boardId], queryFn: () => get({ data: { boardId } }) });
   const [form, setForm] = useState<Governance>(DEFAULT_GOVERNANCE);
   const [open, setOpen] = useState(false);
+  const rolesFn = useServerFn(getMyRoles);
+  const roles = useQuery({ queryKey: ["my-roles"], queryFn: () => rolesFn() });
+  const mayReport = Boolean(roles.data?.isDeveloper);
 
   useEffect(() => {
     if (q.data) setForm(q.data);
@@ -173,6 +177,7 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
       {!isOwner ? (
         <p className="text-xs text-muted-foreground">Nur der Inhaber kann die Einstufung ändern.</p>
       ) : null}
+      {mayReport ? (
       <Button
         size="sm"
         variant="outline"
@@ -189,6 +194,7 @@ export function GovernanceSection({ boardId, isOwner }: { boardId: string; isOwn
       >
         <FileDown className="size-4" /> Nachweis als PDF
       </Button>
+      ) : null}
     </section>
   );
 }

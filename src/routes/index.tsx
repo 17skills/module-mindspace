@@ -96,6 +96,8 @@ function LibraryPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const myRoles = useQuery({ queryKey: ["my-roles"], queryFn: async () => (await import("@/lib/account.functions")).getMyRoles(), enabled: Boolean(user) });
+  const mayReport = Boolean(myRoles.data?.isDeveloper);
   const [editing, setEditing] = useState<{ kind: "scope" | "app"; id: string } | null>(null);
   const [draft, setDraft] = useState("");
   const restoreRef = useRef<HTMLInputElement>(null);
@@ -508,10 +510,12 @@ function LibraryPage() {
                   <BarChart3 aria-hidden="true" className="mr-2 h-4 w-4" />
                   Ergebnisse anzeigen
                 </DropdownMenuItem>
+                {mayReport ? (
                 <DropdownMenuItem onSelect={() => void navigate({ to: "/konto/governance" })}>
                   <BarChart3 aria-hidden="true" className="mr-2 h-4 w-4" />
                   KI-Governance
                 </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
