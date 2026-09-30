@@ -1420,6 +1420,8 @@ export type Database = {
           last_run_at: string | null
           last_status: string | null
           last_values: Json
+          log_exclude: string[]
+          log_values: boolean
           match_mode: string
           mode: string
           name: string
@@ -1443,6 +1445,8 @@ export type Database = {
           last_run_at?: string | null
           last_status?: string | null
           last_values?: Json
+          log_exclude?: string[]
+          log_values?: boolean
           match_mode?: string
           mode?: string
           name?: string
@@ -1466,6 +1470,8 @@ export type Database = {
           last_run_at?: string | null
           last_status?: string | null
           last_values?: Json
+          log_exclude?: string[]
+          log_values?: boolean
           match_mode?: string
           mode?: string
           name?: string
