@@ -220,6 +220,10 @@ export function checkEngineCompatibility(
 }
 
 export function compatibilityMessage(binding: ModuleEngineBinding, report: CompatibilityReport): string {
+  if (report.notFound && report.ok) {
+    const alt = report.alternatives.length ? ` Verfügbar wären z. B.: ${report.alternatives.slice(0, 3).join(", ")}.` : "";
+    return `Der Anbieter kennt das Modell ${binding.model} nicht – Schreibweise prüfen.${alt}`;
+  }
   const names = report.missing.map((cap) => CAPABILITY_LABEL[cap]).join(", ");
   const alt = report.alternatives.length
     ? ` Geeignet wären z. B.: ${report.alternatives.slice(0, 3).join(", ")} – oder „Standard".`
