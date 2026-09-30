@@ -252,7 +252,9 @@ export function backupToManifest(
     };
   });
 
-  const rules = (backup.board.rules ?? {}) as Record<string, unknown>;
+  const allRules = (backup.board.rules ?? {}) as Record<string, unknown>;
+  const governance = readGovernance(allRules);
+  const { governance: _drop, ...rules } = allRules;
   const previous = (backup.board.provenance ?? {}) as Record<string, unknown>;
   const manifest: ScopeManifest = {
     scopebuilder: MANIFEST_VERSION,
@@ -264,6 +266,7 @@ export function backupToManifest(
       origin: info.origin ?? str(previous["origin"]),
       checksum: "",
     },
+    ...(hasGovernance(governance) ? { governance } : {}),
     rules,
     mcpServers,
     modules,
@@ -281,6 +284,7 @@ export function manifestChecksum(part: {
   links: unknown;
   apps: unknown;
   rules: unknown;
+  governance?: unknown;
 }): string {
   // Long texts move into Markdown sections and come back trimmed.
   const modules = Array.isArray(part.modules)
@@ -288,8 +292,11 @@ export function manifestChecksum(part: {
         typeof m["content"] === "string" ? { ...m, content: (m["content"] as string).trim() } : m,
       )
     : part.modules;
-  return checksum(JSON.stringify([modules, part.links, part.apps, part.rules]));
+  const parts: unknown[] = [modules, part.links, part.apps, part.rules];
+  if (part.governance) parts.push(part.governance);
+  return checksum(JSON.stringify(parts));
 }
+
 
 function prune(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(prune);
