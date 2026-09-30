@@ -32,7 +32,8 @@ export const getPublicApp = createServerFn({ method: "POST" })
     const userId = await optionalRequestUserId();
     const role = await appRoleOf(userId, data.appId);
     if (!role) throw new Error("Diese App ist nur für freigegebene Personen verfügbar.");
-    const { app, nodes, boardTitle } = await loadAppNodes(data.appId);
+    const { app, nodes, boardTitle, boardRules } = await loadAppNodes(data.appId);
+    const { readGovernance, transparencyNote } = await import("@/lib/governance");
     return {
       app: {
         id: app.id,
@@ -42,9 +43,11 @@ export const getPublicApp = createServerFn({ method: "POST" })
         branding: brandingFrom(app.branding),
       },
       boardTitle,
+      aiNotice: transparencyNote(readGovernance(boardRules)),
       nodesJson: JSON.stringify(nodes),
       role,
     };
+
   });
 
 /** Bewertet ein vor Ort aufgenommenes Foto für eine freigegebene App. */
