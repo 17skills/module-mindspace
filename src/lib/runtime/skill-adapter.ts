@@ -180,8 +180,8 @@ export function modulePayload(module: ScopeModuleSpec): LibraryPayload {
     spec: { modules: [{ id: "s", module }] },
   });
   const placed = scopeSpecToManifest(spec, catalog).modules[0]!;
-  const w = placed.size?.[0] ?? 820;
-  const h = placed.size?.[1] ?? 560;
+  const w = placed.size?.[0] ?? 360;
+  const h = placed.size?.[1] ?? 240;
   return {
     version: 1,
     nodes: [
@@ -189,18 +189,33 @@ export function modulePayload(module: ScopeModuleSpec): LibraryPayload {
         localId: "s",
         parentLocalId: null,
         type: placed.type,
-        title: placed.title ?? skill.title,
+        title: placed.title ?? module.metadata.title,
         x: 0,
         y: 0,
         w,
         h,
         color: null,
         content: "",
-        sourceUrl: null,
+        sourceUrl: placed.url ?? null,
         metadata: sanitizeSettings(placed.settings),
       },
     ],
     edges: [],
     bounds: { width: w, height: h },
   };
+}
+
+/** Skill-Datei → platzierbares Modul für die Arbeitsfläche. */
+export function skillPayload(text: string, filename = ""): LibraryPayload {
+  return modulePayload(skillToModule(parseSkill(text, filename)));
+}
+
+/**
+ * Datei-Inhalt → Modul, wenn es ein Skill (`SKILL.md`) oder ein Baustein
+ * (`*.scopem.yaml`) ist. Sonst `null`, damit die Datei normal abgelegt wird.
+ */
+export function payloadFromFileText(text: string, filename = ""): LibraryPayload | null {
+  if (isModuleText(text)) return modulePayload(parseScopeModule(text));
+  if (isSkillText(text, filename)) return skillPayload(text, filename);
+  return null;
 }
