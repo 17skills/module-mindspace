@@ -13,7 +13,12 @@
  *  - es reisen nie Schlüssel, Adressen oder Ports mit
  */
 import { parse as parseYamlText } from "yaml";
-import { ScopeModuleSchema, type ScopeModuleSpec } from "@/lib/runtime/scopem";
+import {
+  ScopeModuleSchema,
+  isModuleText,
+  parseScopeModule,
+  type ScopeModuleSpec,
+} from "@/lib/runtime/scopem";
 import {
   SCOPE_API_VERSION,
   SCOPE_KIND,
