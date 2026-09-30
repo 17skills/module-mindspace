@@ -116,3 +116,18 @@ describe("matchesExclude", () => {
     expect(JSON.stringify(out)).toContain('"n":2');
   });
 });
+
+import { listPaths, validateExcludePattern } from "./trigger-conditions";
+describe("validateExcludePattern", () => {
+  it("erklärt Fehler", () => {
+    expect(validateExcludePattern("users[*].email")).toBeNull();
+    expect(validateExcludePattern("**.token")).toBeNull();
+    expect(validateExcludePattern("users[x].email")).toContain("[x]");
+    expect(validateExcludePattern("users[0.email")).toContain("Klammer");
+    expect(validateExcludePattern("a..b")).toContain("Punkt");
+    expect(validateExcludePattern("em*il")).toContain("*");
+  });
+  it("listet Pfade", () => {
+    expect(listPaths({ a: [{ b: 1 }] })).toEqual(["a", "a[0]", "a[0].b"]);
+  });
+});
