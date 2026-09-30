@@ -134,7 +134,7 @@ export async function loadAppNodes(appId: string) {
   const { db, app, ids } = await loadPublicApp(appId);
   const [nodeRes, boardRes] = await Promise.all([
     db.from("nodes").select("*").in("id", ids.length ? ids : [app.id]),
-    db.from("boards").select("id,title").eq("id", app.board_id).maybeSingle(),
+    db.from("boards").select("id,title,rules").eq("id", app.board_id).maybeSingle(),
   ]);
   if (nodeRes.error) throw new Error(nodeRes.error.message);
   const order = new Map(ids.map((id, index) => [id, index]));
@@ -147,8 +147,10 @@ export async function loadAppNodes(appId: string) {
     app,
     nodes,
     boardTitle: (boardRes.data?.title as string | undefined) ?? "",
+    boardRules: boardRes.data?.rules ?? {},
   };
 }
+
 
 /** Findet das Inspektionsmodul der App und legt die Befundliste offen. */
 export async function appFindingStore(appId: string, nodeId?: string) {
