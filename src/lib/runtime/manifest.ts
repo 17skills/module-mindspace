@@ -10,9 +10,11 @@ import { z } from "zod";
 import { GovernanceSchema, hasGovernance, readGovernance } from "@/lib/governance";
 import {
   ENGINE_PROVIDERS,
+  ENGINE_PROVIDER_META,
   engineBindingToMetadata,
   readEngineBinding,
 } from "@/lib/module-engine";
+
 import { checksum } from "@/lib/runtime/source-protocol";
 
 
