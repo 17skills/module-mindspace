@@ -8,7 +8,13 @@
 import { parse as parseYamlText, stringify } from "yaml";
 import { z } from "zod";
 import { GovernanceSchema, hasGovernance, readGovernance } from "@/lib/governance";
+import {
+  ENGINE_PROVIDERS,
+  engineBindingToMetadata,
+  readEngineBinding,
+} from "@/lib/module-engine";
 import { checksum } from "@/lib/runtime/source-protocol";
+
 
 
 export const MANIFEST_VERSION = "scopebuilder/v1";
@@ -30,9 +36,17 @@ export function roleOf(type: string): ModuleRole {
 const EngineSchema = z.object({
   kind: z.enum(["model", "api", "mcp", "agent"]),
   ref: z.string().default(""),
+  /**
+   * Logischer Rechenkern (ohne Adresse, Port oder Schlüssel), damit ein
+   * Bauplan zwischen Laptop, VPS und Kundensystem austauschbar bleibt.
+   */
+  provider: z.enum(ENGINE_PROVIDERS).optional(),
+  model: z.string().optional(),
+  maxTokens: z.number().int().min(1).max(200000).optional(),
   params: z.record(z.string(), z.unknown()).default({}),
 });
 export type ManifestEngine = z.infer<typeof EngineSchema>;
+
 
 const ModuleSchema = z.object({
   id: z.string().min(1),
