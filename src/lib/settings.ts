@@ -39,6 +39,14 @@ export const DEFAULT_SETTINGS: UserSettings = {
   activeOrgId: null,
 };
 
+/** Bewahrt alle Kontoeinstellungen, wenn nur Erscheinungsbild oder Sprache geändert werden. */
+export function withAppearance(
+  settings: UserSettings,
+  patch: Partial<Pick<UserSettings, "theme" | "language">>,
+): UserSettings {
+  return { ...settings, ...patch };
+}
+
 function budgetsFrom(value: unknown): AiBudgets {
   const raw = (value ?? {}) as Record<string, unknown>;
   const out: AiBudgets = {};

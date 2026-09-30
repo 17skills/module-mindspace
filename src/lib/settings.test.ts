@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, settingsFrom } from "./settings";
+import { DEFAULT_SETTINGS, settingsFrom, withAppearance } from "./settings";
 
 describe("settingsFrom", () => {
   it("bewahrt gespeicherte Theme- und Spracheinstellungen", () => {
@@ -21,6 +21,18 @@ describe("settingsFrom", () => {
     expect(settingsFrom({ theme: "contrast", language: "fr" })).toMatchObject({
       theme: DEFAULT_SETTINGS.theme,
       language: DEFAULT_SETTINGS.language,
+    });
+  });
+
+  it("ändert nur Theme oder Sprache und bewahrt alle übrigen Kontoeinstellungen", () => {
+    const stored = { ...DEFAULT_SETTINGS, autoSave: false, gridDefault: false };
+    const themed = withAppearance(stored, { theme: "dark" });
+    const translated = withAppearance(themed, { language: "en" });
+
+    expect(translated).toEqual({
+      ...stored,
+      theme: "dark",
+      language: "en",
     });
   });
 });

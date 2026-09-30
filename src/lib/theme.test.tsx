@@ -25,7 +25,7 @@ function ThemeHarness() {
   const { theme, setTheme } = useTheme();
   return (
     <>
-      <output>{theme}</output>
+      <output data-testid="theme-value">{theme}</output>
       <button onClick={() => setTheme("light")}>light</button>
       <button onClick={() => setTheme("dark")}>dark</button>
       <button onClick={() => setTheme("system")}>system</button>
@@ -63,7 +63,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement).not.toHaveClass("dark");
     expect(document.documentElement.style.colorScheme).toBe("light");
     expect(localStorage.getItem("scopebuilder.theme")).toBe("light");
-    await waitFor(() => expect(screen.getByText("light")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("theme-value")).toHaveTextContent("light"));
   });
 
   it("folgt im Systemmodus der Gerätevorgabe und reagiert auf Änderungen", async () => {
@@ -72,7 +72,7 @@ describe("ThemeProvider", () => {
     render(<ThemeProvider><ThemeHarness /></ThemeProvider>);
 
     await waitFor(() => expect(document.documentElement).toHaveClass("dark"));
-    expect(screen.getByText("system")).toBeInTheDocument();
+    expect(screen.getByTestId("theme-value")).toHaveTextContent("system");
 
     systemDark = false;
     act(() => listeners.forEach((listener) => listener()));
