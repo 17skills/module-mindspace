@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useBoard, type NodeRecord } from "@/components/canvas/board-context";
 import { readAgent, zoneMembers } from "@/lib/zones";
 import { EngineSection } from "@/components/canvas/inspector/EngineSection";
+import { checkEngineCompatibility, readEngineBinding } from "@/lib/module-engine";
 
 
 export function AgentTab({ record }: { record: NodeRecord }) {
@@ -78,7 +79,7 @@ export function AgentTab({ record }: { record: NodeRecord }) {
         <Button
           size="sm"
           className="rounded-full"
-          disabled={running || !task.trim()}
+          disabled={running || !task.trim() || !checkEngineCompatibility(readEngineBinding(record.metadata), ["structured"]).ok}
           onClick={() => {
             patch({ agentTask: task, agentUnit: unit });
             runAgent(record.id);

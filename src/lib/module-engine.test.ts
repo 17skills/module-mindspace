@@ -78,3 +78,17 @@ describe("Rechenkern am Modul", () => {
     expect(list.join(" ")).toContain("llama3.3");
   });
 });
+
+import { checkEngineCompatibility } from "@/lib/module-engine";
+describe("Fähigkeitsprüfung", () => {
+  it("erkennt fehlende JSON-Fähigkeit und schlägt Alternativen vor", () => {
+    const r = checkEngineCompatibility({ provider: "openrouter", model: "deepseek/deepseek-r1", maxTokens: null }, ["structured"]);
+    expect(r.ok).toBe(false);
+    expect(r.alternatives).toContain("anthropic/claude-3.7-sonnet");
+    expect(r.alternatives).not.toContain("deepseek/deepseek-r1");
+  });
+  it("Standard und passende Modelle bestehen", () => {
+    expect(checkEngineCompatibility({ provider: "default", model: null, maxTokens: null }, ["vision"]).ok).toBe(true);
+    expect(checkEngineCompatibility({ provider: "openai", model: "o3-mini", maxTokens: null }, ["vision"]).ok).toBe(false);
+  });
+});
