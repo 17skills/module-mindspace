@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
-import { Camera, CloudOff, Crosshair, Loader2, LockKeyhole, RefreshCw, UploadCloud } from "lucide-react";
+import {
+  Camera,
+  CloudOff,
+  Crosshair,
+  Loader2,
+  LockKeyhole,
+  Monitor,
+  Moon,
+  RefreshCw,
+  Sun,
+  UploadCloud,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { NodeRecord } from "@/components/canvas/board-context";
@@ -15,6 +26,7 @@ import { brandingFrom } from "@/lib/apps";
 import { AppEngine } from "@/components/app/AppEngine";
 import { CameraApp } from "@/components/app/CameraApp";
 import { resolveLayout } from "@/lib/app-layout";
+import { useTheme, type ThemeMode } from "@/lib/theme";
 import {
   downscale,
   euro,
@@ -52,6 +64,7 @@ type Loaded = Awaited<ReturnType<typeof getPublicApp>>;
 
 function AppStage() {
   const { appId } = Route.useParams();
+  const { theme, setTheme } = useTheme();
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,7 +104,7 @@ function AppStage() {
       className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-screen flex-col`}
       style={branding.accentColor ? ({ "--app-accent": branding.accentColor } as CSSProperties) : undefined}
     >
-      <header className="app-header sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b px-4 py-2.5">
+      <header className="app-header sticky top-0 z-20 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
           {branding.logo ? (
             <img
@@ -113,10 +126,34 @@ function AppStage() {
             <span className="block truncate font-display text-base font-semibold">{title}</span>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => void load()}>
-          <RefreshCw className="size-3.5" />
-          Aktualisieren
-        </Button>
+        <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex rounded-lg border border-border bg-background p-0.5" aria-label="Anzeige">
+            {(
+              [
+                { mode: "light" as const, label: "Hell", icon: Sun },
+                { mode: "dark" as const, label: "Dunkel", icon: Moon },
+                { mode: "system" as const, label: "System", icon: Monitor },
+              ] satisfies { mode: ThemeMode; label: string; icon: typeof Sun }[]
+            ).map(({ mode, label, icon: Icon }) => (
+              <Button
+                key={mode}
+                type="button"
+                size="icon"
+                variant={theme === mode ? "secondary" : "ghost"}
+                className="size-8"
+                aria-label={label}
+                aria-pressed={theme === mode}
+                title={label}
+                onClick={() => setTheme(mode)}
+              >
+                <Icon className="size-3.5" aria-hidden="true" />
+              </Button>
+            ))}
+          </div>
+          <Button variant="ghost" size="icon" className="size-8" aria-label="Aktualisieren" title="Aktualisieren" onClick={() => void load()}>
+            <RefreshCw className="size-3.5" />
+          </Button>
+        </div>
       </header>
 
       {nodes.some((node) => node.type === "camera") ? (
