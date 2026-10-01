@@ -3876,6 +3876,7 @@ function BoardPage() {
               zoomOnPinch
               panOnScroll
               proOptions={{ hideAttribution: true }}
+              ariaLabelConfig={canvasAriaLabels}
             >
               <Background
                 variant={BackgroundVariant.Dots}
