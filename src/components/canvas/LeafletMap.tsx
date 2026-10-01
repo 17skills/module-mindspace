@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
+import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { GeoPoint, WeatherValue } from "@/lib/geo";
 
@@ -36,6 +36,38 @@ function BoundsWatcher({
   return null;
 }
 
+/**
+ * Passt die Karte an die Modulgröße an: nach jeder Größenänderung neu
+ * vermessen, Mitte halten und den neuen Ausschnitt melden.
+ */
+function SizeWatcher({
+  onBounds,
+}: {
+  onBounds?: (box: [number, number, number, number]) => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const center = map.getCenter();
+        map.invalidateSize({ pan: false });
+        map.setView(center, map.getZoom(), { animate: false });
+        const b = map.getBounds();
+        onBounds?.([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
+      }, 120);
+    });
+    observer.observe(el);
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [map, onBounds]);
+  return null;
+}
+
 export default function LeafletMap({
   points,
   weather,
@@ -68,6 +100,7 @@ export default function LeafletMap({
         attribution="&copy; OpenStreetMap"
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <SizeWatcher {...(onBounds ? { onBounds } : {})} />
       {onBounds ? <BoundsWatcher onBounds={onBounds} /> : null}
 
       {points.map((point) => {
