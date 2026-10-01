@@ -150,9 +150,14 @@ function AppStage() {
         </div>
       )}
 
-      {data.aiNotice ? (
-        <footer className="border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
-          {data.aiNotice}
+      {data.aiNotice || branding.brandName || branding.version || branding.releaseDate ? (
+        <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
+          {data.aiNotice ? <span className="basis-full">{data.aiNotice}</span> : null}
+          {branding.brandName ? <span>{branding.brandName}</span> : null}
+          {branding.version ? <span>Version {branding.version}</span> : null}
+          {branding.releaseDate ? (
+            <span>Stand {new Date(branding.releaseDate).toLocaleDateString("de-DE")}</span>
+          ) : null}
         </footer>
       ) : null}
     </div>
