@@ -840,6 +840,65 @@ export function AppDialog({
               placeholder={l("Kurze Beschreibung, z. B. Vor-Ort-Erfassung für Team West")}
               onChange={(event) => setDescription(event.target.value)}
             />
+            <div className="rounded-lg border border-border p-3">
+              <label className="flex items-start gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={branding.inherit}
+                  onChange={(event) => setBranding((b) => ({ ...b, inherit: event.target.checked }))}
+                />
+                <span>
+                  <span className="font-medium">{l("Standard der Organisation übernehmen")}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {orgBrand
+                      ? `${l("Aktuell")}: ${orgBrand.brandName}`
+                      : l("Marke, Logo und Farbe kommen aus den Organisationseinstellungen.")}
+                  </span>
+                </span>
+              </label>
+              {!branding.inherit && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <Input
+                    value={branding.brandName}
+                    placeholder={l("Marke, z. B. Stadtwerke Nord")}
+                    onChange={(event) => setBranding((b) => ({ ...b, brandName: event.target.value.slice(0, 80) }))}
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      aria-label={l("Markenfarbe")}
+                      value={branding.accentColor || "#132b25"}
+                      onChange={(event) => setBranding((b) => ({ ...b, accentColor: event.target.value.toLowerCase() }))}
+                      className="h-9 w-12 cursor-pointer rounded border border-border bg-background"
+                    />
+                    <Input
+                      value={branding.accentColor}
+                      placeholder="#132b25"
+                      onChange={(event) => setBranding((b) => ({ ...b, accentColor: event.target.value.trim().toLowerCase() }))}
+                    />
+                    {branding.accentColor && (
+                      <Button variant="ghost" size="sm" onClick={() => setBranding((b) => ({ ...b, accentColor: "" }))}>
+                        {l("Zurücksetzen")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                value={branding.version}
+                placeholder={l("Version, z. B. 1.0")}
+                onChange={(event) => setBranding((b) => ({ ...b, version: event.target.value.slice(0, 24) }))}
+              />
+              <Input
+                type="date"
+                value={branding.releaseDate}
+                aria-label={l("Veröffentlichungsdatum")}
+                onChange={(event) => setBranding((b) => ({ ...b, releaseDate: event.target.value }))}
+              />
+            </div>
             <div className="flex flex-wrap gap-2">
               {APP_DESIGN_PRESETS.map((profile) => (
                 <button
