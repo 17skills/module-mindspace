@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useBoard, NODE_LABEL, type InspectorTab } from "@/components/canvas/board-context";
 import type { Segment } from "@/lib/segments";
 import { SourceTab } from "./SourceTab";
+import { RowsTab } from "./RowsTab";
 import { DataTab } from "./DataTab";
 import { AssignTab } from "./AssignTab";
 import { AgentTab } from "./AgentTab";
@@ -14,6 +15,8 @@ import { RefreshTab } from "./RefreshTab";
 import { TriggerTab } from "./TriggerTab";
 import { RoleSection } from "./RoleSection";
 import { useSegments } from "./use-segments";
+import { readDatasetRef } from "@/lib/datasets";
+import { readSource } from "@/lib/source-node";
 import { useTranslation } from "@/lib/i18n";
 
 
@@ -84,9 +87,11 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
   const isData = DATA_TYPES.includes(record.type);
   const isZone = record.type === "zone";
   const isApi = record.type === "api";
+  const hasDataset = Boolean(readDatasetRef(readSource(record)?.envelope));
   const tabs: { id: InspectorTab; label: string }[] = [
     ...(isZone ? [{ id: "agent" as const, label: l("Agent") }] : []),
     ...(isApi ? [{ id: "fetch" as const, label: l("Abruf") }] : []),
+    ...(hasDataset ? [{ id: "rows" as const, label: l("Tabelle") }] : []),
     { id: "source", label: l("Quelle") },
     ...(isData ? [{ id: "data" as const, label: l("Daten") }] : []),
     { id: "refresh", label: l("Aktualisieren") },
@@ -94,7 +99,11 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
     ...(isZone ? [] : [{ id: "assign" as const, label: l("Zuordnung") }]),
     { id: "guide", label: l("Leitfaden") },
   ];
-  const activeTab = tabs.some((item) => item.id === tab) ? tab : "source";
+  const activeTab = tabs.some((item) => item.id === tab)
+    ? tab
+    : hasDataset
+      ? "rows"
+      : "source";
 
   return (
     <aside
@@ -172,6 +181,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
             onSelected={(ids) => setSelection((prev) => ({ ...prev, [source.id]: ids }))}
           />
         )}
+        {activeTab === "rows" && <RowsTab record={record} />}
         {activeTab === "data" && <DataTab record={record} />}
         {activeTab === "assign" && <AssignTab record={record} />}
         {activeTab === "agent" && <AgentTab record={record} />}
