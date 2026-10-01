@@ -4864,6 +4864,7 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
           })()}
         </div>
       )}
+      </div>
     </div>
   );
 });
