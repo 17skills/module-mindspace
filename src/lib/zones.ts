@@ -157,6 +157,15 @@ export type AppBranding = {
   moduleLayout: AppGridItem[];
   /** Eigene Anordnungen für Tablet und Handy (Desktop = moduleLayout). */
   deviceLayouts?: { tablet?: AppGridItem[]; mobile?: AppGridItem[] };
+  /** Standard der Organisation übernehmen (Marke, Logo, Farbe). */
+  inherit: boolean;
+  /** Freie Markenfarbe als Hex – überschreibt das Farbprofil, wenn gesetzt. */
+  accentColor: string;
+  /** Herausgeber/Marke, erscheint im Fuß der App. */
+  brandName: string;
+  version: string;
+  /** Veröffentlichungsdatum als JJJJ-MM-TT. */
+  releaseDate: string;
 };
 export type AppDesignProfile = {
   id: string;
@@ -173,6 +182,11 @@ export const DEFAULT_APP_BRANDING: AppBranding = {
   background: "stone",
   layout: "auto",
   moduleLayout: [],
+  inherit: true,
+  accentColor: "",
+  brandName: "",
+  version: "",
+  releaseDate: "",
 };
 
 
