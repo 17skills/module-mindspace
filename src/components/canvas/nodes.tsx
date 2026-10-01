@@ -4728,7 +4728,14 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
 
   return (
     <div className="relative h-full w-full">
-      <NodeResizer isVisible={Boolean(selected)} minWidth={260} minHeight={200} />
+      <NodeResizer
+        isVisible={Boolean(selected)}
+        minWidth={260}
+        minHeight={200}
+        onResizeEnd={(_, size) =>
+          updateNode(record.id, { width: Math.round(size.width), height: Math.round(size.height) })
+        }
+      />
       <div
         className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
           selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
@@ -4779,7 +4786,7 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
         <span className="shrink-0 font-mono text-xs font-semibold">{points.length} Objekte</span>
       </div>
 
-      <div className="relative flex-1">
+      <div className="relative min-h-0 flex-1">
         <ClientOnly
           fallback={
             <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
