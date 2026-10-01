@@ -15,6 +15,8 @@ import { RefreshTab } from "./RefreshTab";
 import { TriggerTab } from "./TriggerTab";
 import { RoleSection } from "./RoleSection";
 import { useSegments } from "./use-segments";
+import { readDatasetRef } from "@/lib/datasets";
+import { readSource } from "@/lib/source-node";
 import { useTranslation } from "@/lib/i18n";
 
 
@@ -179,6 +181,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
             onSelected={(ids) => setSelection((prev) => ({ ...prev, [source.id]: ids }))}
           />
         )}
+        {activeTab === "rows" && <RowsTab record={record} />}
         {activeTab === "data" && <DataTab record={record} />}
         {activeTab === "assign" && <AssignTab record={record} />}
         {activeTab === "agent" && <AgentTab record={record} />}
