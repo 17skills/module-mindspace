@@ -87,8 +87,9 @@ export function RowsTab({ record }: { record: NodeRecord }) {
     })
       .then((answer) => {
         if (!active) return;
-        const result = (answer as { result: { rows?: Row[]; matched: number; total: number } })
-          .result;
+        const result = (answer as unknown as {
+          result: { rows?: Row[]; matched: number; total: number };
+        }).result;
         setRows(result.rows ?? []);
         setMatched(result.matched);
         setTotal(result.total);
