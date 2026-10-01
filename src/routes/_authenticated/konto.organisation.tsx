@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -398,8 +398,9 @@ function OrgBrandingCard() {
       <p className="mt-1 text-sm text-muted-foreground">
         Gilt für alle Apps, die „Standard der Organisation übernehmen“ aktiviert haben.
       </p>
-      <div className="mt-4 grid max-w-2xl gap-4 sm:grid-cols-2">
-        <div>
+      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
           <Label htmlFor="brand-name">Marke</Label>
           <Input
             id="brand-name"
@@ -409,7 +410,7 @@ function OrgBrandingCard() {
             onChange={(event) => setDraft({ ...value, brandName: event.target.value.slice(0, 80) })}
           />
         </div>
-        <div>
+          <div>
           <Label htmlFor="brand-color">Markenfarbe</Label>
           <div className="mt-1.5 flex items-center gap-2">
             <input
@@ -428,7 +429,7 @@ function OrgBrandingCard() {
             />
           </div>
         </div>
-        <div className="sm:col-span-2 flex items-center gap-3">
+          <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
           {value.logo ? (
             <img src={value.logo} alt="" className="size-10 rounded object-contain" />
           ) : (
@@ -449,6 +450,61 @@ function OrgBrandingCard() {
               Entfernen
             </Button>
           ) : null}
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="brand-logo-size">Logo-Größe</Label>
+            <div className="mt-1.5 flex items-center gap-3">
+              <input
+                id="brand-logo-size"
+                type="range"
+                min={24}
+                max={72}
+                value={value.logoSize}
+                disabled={!canManage}
+                onChange={(event) => setDraft({ ...value, logoSize: Number(event.target.value) })}
+                className="w-full max-w-xs accent-primary"
+              />
+              <span className="text-xs tabular-nums text-muted-foreground">{value.logoSize} px</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <p className="module-eyebrow text-muted-foreground">Live-Vorschau</p>
+          <div
+            className={`app-shell app-accent-${value.accent} app-background-stone mt-2 overflow-hidden rounded-lg border border-border/70 shadow-[var(--shadow-card)]`}
+            style={value.accentColor ? ({ "--app-accent": value.accentColor } as CSSProperties) : undefined}
+          >
+            <div className="app-header flex min-h-16 items-center gap-3 border-b px-4 py-3">
+              {value.logo ? (
+                <img
+                  src={value.logo}
+                  alt=""
+                  className="app-brand-logo shrink-0 rounded-md bg-card object-contain p-1"
+                  style={{ width: value.logoSize, height: value.logoSize }}
+                />
+              ) : (
+                <span className="app-logo-mark size-3 shrink-0 rounded-sm" aria-hidden />
+              )}
+              <div className="min-w-0">
+                <span className="module-eyebrow block text-muted-foreground">Scope-App</span>
+                <span className="block truncate font-display text-base font-semibold">Beispiel-App</span>
+              </div>
+            </div>
+            <div className="app-preview-canvas grid min-h-40 gap-3 p-4 sm:grid-cols-2">
+              <div className="rounded-lg border border-border/70 bg-card p-3">
+                <span className="module-eyebrow text-muted-foreground">Kennzahl</span>
+                <p className="mt-3 font-mono text-2xl font-semibold">98,7 %</p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-card p-3">
+                <span className="module-eyebrow text-muted-foreground">Status</span>
+                <div className="mt-4 h-2 rounded-full bg-[var(--app-accent)]" />
+              </div>
+            </div>
+            <div className="border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
+              {value.brandName || "scopebuilder · openinstitute"}
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Änderungen erscheinen hier sofort und gelten erst nach dem Speichern.</p>
         </div>
       </div>
       {canManage ? (
