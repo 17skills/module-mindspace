@@ -369,6 +369,20 @@ export function AppDialog({
   const [previewScenario, setPreviewScenario] = useState<PreviewScenario>("live");
   const [showValidation, setShowValidation] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
+  const [orgBrand, setOrgBrand] = useState<OrgBranding | null>(null);
+
+  // Standard der Organisation nur zur Anzeige laden – ohne Organisation bleibt es beim Grundbild.
+  useEffect(() => {
+    let active = true;
+    void getOrgBranding({ data: {} })
+      .then((result) => {
+        if (active) setOrgBrand(result.branding);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const pickedNodes = useMemo(
     () =>
