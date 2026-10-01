@@ -34,13 +34,32 @@ export const getPublicApp = createServerFn({ method: "POST" })
     if (!role) throw new Error("Diese App ist nur für freigegebene Personen verfügbar.");
     const { app, nodes, boardTitle, boardRules } = await loadAppNodes(data.appId);
     const { readGovernance, transparencyNote } = await import("@/lib/governance");
+    const { mergeBranding, readOrgBranding } = await import("@/lib/zones");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Standard der Organisation laden – Apps ohne eigenes Branding erben ihn.
+    const { data: appRow } = await supabaseAdmin
+      .from("apps")
+      .select("org_id")
+      .eq("id", data.appId)
+      .maybeSingle();
+    let orgBranding = null as ReturnType<typeof readOrgBranding> | null;
+    if (appRow?.org_id) {
+      const { data: org } = await supabaseAdmin
+        .from("organizations")
+        .select("branding")
+        .eq("id", appRow.org_id)
+        .maybeSingle();
+      orgBranding = readOrgBranding(org?.branding);
+    } else {
+      orgBranding = readOrgBranding(null);
+    }
     return {
       app: {
         id: app.id,
         boardId: app.board_id,
         title: app.title,
         kind: app.kind,
-        branding: brandingFrom(app.branding),
+        branding: mergeBranding(brandingFrom(app.branding), orgBranding),
       },
       boardTitle,
       aiNotice: transparencyNote(readGovernance(boardRules)),
