@@ -1,12 +1,12 @@
-# Dark-/Light-Modus für Canvas und Apps
+# Hell-/Dunkelmodus auf Canvas und in Apps
 
 ## Umsetzung
 - Die Plus-/Minus-Steuerung auf dem Canvas an die vorhandenen Farbwerte anbinden, damit Hintergrund, Symbole, Rahmen und Zustände in Hell und Dunkel lesbar sind.
-- Die bisherige App-Hintergrundauswahl „Stein / Papier / Raster“ durch genau „Hell / Dunkel / System“ ersetzen.
-- Den gewählten App-Modus in Branding, Vorschau, ausgelieferter App und eingebetteter App einheitlich anwenden; „System“ folgt der Geräteeinstellung.
-- Bereits gespeicherte Apps kompatibel einlesen und auf einen passenden neuen Modus abbilden.
+- In der ausgelieferten App eine Anzeigeauswahl mit genau „Hell“, „Dunkel“ und „System“ ergänzen.
+- „System“ folgt der Geräteeinstellung; die Auswahl wirkt sofort und wird wie im Hauptprogramm lokal gespeichert.
+- Die App-Hintergründe „Stein“, „Papier“ und „Raster“ unverändert beibehalten.
 
 ## Prüfung
 - Canvas-Zoomsteuerung in Hell und Dunkel visuell prüfen.
-- App-Vorschau und ausgelieferte App für Hell, Dunkel und System prüfen.
+- App in Hell, Dunkel und System prüfen, einschließlich schmaler Ansicht.
 - Relevante Tests und aktuellen Build-Status prüfen.
