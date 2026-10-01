@@ -137,6 +137,68 @@ export const renameOrg = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Standard-Branding der Organisation lesen (alle Mitglieder dürfen es sehen). */
+export const getOrgBranding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ orgId: z.string().uuid().optional() }).default({}).parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertOrgRole, activeOrgOf } = await import("@/lib/org-guard.server");
+    const orgId = data.orgId ?? (await activeOrgOf(context.userId))?.id;
+    const { DEFAULT_ORG_BRANDING, readOrgBranding } = await import("@/lib/zones");
+    if (!orgId) return { orgId: null, branding: DEFAULT_ORG_BRANDING, canManage: false };
+    const role = await assertOrgRole(context.userId, orgId, "guest");
+    const db = await admin();
+    const { data: row } = await db
+      .from("organizations")
+      .select("branding")
+      .eq("id", orgId)
+      .maybeSingle();
+    return {
+      orgId,
+      branding: readOrgBranding(row?.branding),
+      canManage: role === "owner" || role === "admin",
+    };
+  });
+
+/** Standard-Branding der Organisation setzen – gilt für alle Apps ohne eigenes Branding. */
+export const saveOrgBranding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        orgId: z.string().uuid(),
+        branding: z.object({
+          brandName: z.string().trim().max(80),
+          logo: z.string().max(400_000),
+          logoSize: z.number(),
+          accent: z.enum(["forest", "sage", "terracotta", "cobalt"]),
+          accentColor: z.string().max(16),
+        }),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertOrgRole } = await import("@/lib/org-guard.server");
+    await assertOrgRole(context.userId, data.orgId, "admin");
+    const { readOrgBranding } = await import("@/lib/zones");
+    const clean = readOrgBranding(data.branding);
+    const db = await admin();
+    const { error } = await db
+      .from("organizations")
+      .update({ branding: clean as unknown as never })
+      .eq("id", data.orgId);
+    if (error) throw new Error(error.message);
+    await audit({
+      actorId: context.userId,
+      action: "org.branding_updated",
+      objectType: "org",
+      objectId: data.orgId,
+    });
+    return { branding: clean };
+  });
+
 /** Rolle eines Mitglieds in der Organisation ändern. */
 export const setOrgRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

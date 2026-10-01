@@ -157,6 +157,15 @@ export type AppBranding = {
   moduleLayout: AppGridItem[];
   /** Eigene Anordnungen für Tablet und Handy (Desktop = moduleLayout). */
   deviceLayouts?: { tablet?: AppGridItem[]; mobile?: AppGridItem[] };
+  /** Standard der Organisation übernehmen (Marke, Logo, Farbe). */
+  inherit: boolean;
+  /** Freie Markenfarbe als Hex – überschreibt das Farbprofil, wenn gesetzt. */
+  accentColor: string;
+  /** Herausgeber/Marke, erscheint im Fuß der App. */
+  brandName: string;
+  version: string;
+  /** Veröffentlichungsdatum als JJJJ-MM-TT. */
+  releaseDate: string;
 };
 export type AppDesignProfile = {
   id: string;
@@ -173,6 +182,11 @@ export const DEFAULT_APP_BRANDING: AppBranding = {
   background: "stone",
   layout: "auto",
   moduleLayout: [],
+  inherit: true,
+  accentColor: "",
+  brandName: "",
+  version: "",
+  releaseDate: "",
 };
 
 
@@ -281,5 +295,78 @@ export function readAppBranding(record: NodeRecord | undefined | null): AppBrand
         : "auto",
     moduleLayout,
     ...(tablet.length || mobile.length ? { deviceLayouts } : {}),
+    inherit: value["inherit"] !== false,
+    accentColor: readHexColor(value["accentColor"]),
+    brandName: typeof value["brandName"] === "string" ? value["brandName"].slice(0, 80) : "",
+    version: typeof value["version"] === "string" ? value["version"].trim().slice(0, 24) : "",
+    releaseDate:
+      typeof value["releaseDate"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value["releaseDate"])
+        ? value["releaseDate"]
+        : "",
+  };
+}
+
+/** Markenfarbe nur als sauberes Hex übernehmen – alles andere wird verworfen. */
+export function readHexColor(input: unknown): string {
+  if (typeof input !== "string") return "";
+  const value = input.trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(value) ? value : "";
+}
+
+/** Standard-Branding der Organisation: nur Marke, Logo und Farbe werden vererbt. */
+export type OrgBranding = {
+  brandName: string;
+  logo: string;
+  logoSize: number;
+  accent: AppAccent;
+  accentColor: string;
+};
+
+export const DEFAULT_ORG_BRANDING: OrgBranding = {
+  brandName: "scopebuilder · openinstitute",
+  logo: "",
+  logoSize: 40,
+  accent: "forest",
+  accentColor: "",
+};
+
+export function readOrgBranding(raw: unknown): OrgBranding {
+  if (!raw || typeof raw !== "object") return DEFAULT_ORG_BRANDING;
+  const value = raw as Record<string, unknown>;
+  const accent = value["accent"];
+  return {
+    brandName:
+      typeof value["brandName"] === "string" && value["brandName"].trim()
+        ? value["brandName"].trim().slice(0, 80)
+        : DEFAULT_ORG_BRANDING.brandName,
+    logo:
+      typeof value["logo"] === "string" && value["logo"].startsWith("data:image/")
+        ? value["logo"]
+        : "",
+    logoSize:
+      typeof value["logoSize"] === "number"
+        ? Math.min(72, Math.max(24, Math.round(value["logoSize"])))
+        : 40,
+    accent:
+      accent === "sage" || accent === "terracotta" || accent === "cobalt" ? accent : "forest",
+    accentColor: readHexColor(value["accentColor"]),
+  };
+}
+
+/**
+ * Zwei Ebenen zusammenführen: Solange eine App auf „Standard übernehmen“ steht,
+ * gelten Marke, Logo und Farbe der Organisation; eigenes Branding sticht.
+ */
+export function mergeBranding(app: AppBranding, org: OrgBranding | null): AppBranding {
+  if (!org || !app.inherit) {
+    return { ...app, brandName: app.brandName || (org?.brandName ?? "") };
+  }
+  return {
+    ...app,
+    brandName: org.brandName,
+    logo: app.logo || org.logo,
+    logoSize: app.logo ? app.logoSize : org.logoSize,
+    accent: org.accent,
+    accentColor: org.accentColor,
   };
 }

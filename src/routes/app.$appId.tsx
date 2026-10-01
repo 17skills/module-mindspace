@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { Camera, CloudOff, Crosshair, Loader2, LockKeyhole, RefreshCw, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,7 @@ function AppStage() {
   return (
     <div
       className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-screen flex-col`}
+      style={branding.accentColor ? ({ "--app-accent": branding.accentColor } as CSSProperties) : undefined}
     >
       <header className="app-header sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
@@ -149,9 +150,14 @@ function AppStage() {
         </div>
       )}
 
-      {data.aiNotice ? (
-        <footer className="border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
-          {data.aiNotice}
+      {data.aiNotice || branding.brandName || branding.version || branding.releaseDate ? (
+        <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
+          {data.aiNotice ? <span className="basis-full">{data.aiNotice}</span> : null}
+          {branding.brandName ? <span>{branding.brandName}</span> : null}
+          {branding.version ? <span>Version {branding.version}</span> : null}
+          {branding.releaseDate ? (
+            <span>Stand {new Date(branding.releaseDate).toLocaleDateString("de-DE")}</span>
+          ) : null}
         </footer>
       ) : null}
     </div>
