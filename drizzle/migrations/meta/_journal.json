@@ -302,6 +302,13 @@
       "when": 1790775125581,
       "tag": "0042_trigger_log_privacy",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790845431839,
+      "tag": "0043_org_branding_defaults",
+      "breakpoints": true
     }
   ]
 }
