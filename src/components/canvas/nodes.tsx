@@ -4727,13 +4727,14 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
   const risky = points.filter((point) => (config.weather[point.id]?.rain ?? 0) >= 10).length;
 
   return (
-    <div
-      className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
-        selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
-      }`}
-      data-selected={Boolean(selected)}
-    >
-      <NodeResizer isVisible={Boolean(selected)} minWidth={320} minHeight={280} />
+    <div className="relative h-full w-full">
+      <NodeResizer isVisible={Boolean(selected)} minWidth={260} minHeight={200} />
+      <div
+        className={`module-card flex h-full w-full flex-col overflow-hidden border bg-card ${
+          selected ? "border-ring/60 shadow-[var(--shadow-float)]" : "border-border/70"
+        }`}
+        data-selected={Boolean(selected)}
+      >
       <SignalHandle type="target" position={Position.Left} />
       <SignalHandle type="target" position={Position.Top} />
       <SignalHandle type="source" position={Position.Right} />
@@ -4863,6 +4864,7 @@ export const MapNode = memo(function MapNode({ id, data, selected }: NodeProps) 
           })()}
         </div>
       )}
+      </div>
     </div>
   );
 });
