@@ -200,6 +200,8 @@ function OrgPage() {
         ) : null}
       </section>
 
+      <OrgBrandingCard />
+
       {manage ? (
         <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
           <h3 className="font-display text-lg font-semibold text-brand-navy">Personen einladen</h3>
