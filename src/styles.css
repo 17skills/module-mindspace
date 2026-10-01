@@ -278,14 +278,14 @@
 }
 
 .react-flow__controls-button {
-  background: var(--card);
-  color: var(--card-foreground);
-  border-color: var(--border);
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
 }
 
 .react-flow__controls-button:hover {
-  background: var(--accent);
-  color: var(--accent-foreground);
+  background: var(--accent) !important;
+  color: var(--accent-foreground) !important;
 }
 
 .react-flow__controls-button:focus-visible {
