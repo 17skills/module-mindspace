@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { Camera, CloudOff, Crosshair, Loader2, LockKeyhole, RefreshCw, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
