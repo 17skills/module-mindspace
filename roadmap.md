@@ -15,5 +15,5 @@
 - [x] Textknöpfe reduzieren, Navigation der Abfragevorlagen aufräumen
 - [x] Englische Übersetzungen für Canvas, Module, Dialoge und übrige Kernansichten vervollständigen
 - [x] Theme-, Systemvorgaben- und Sprachwechsel einschließlich Speicherung testen
-- [ ] Live-Vorschau für Organisations- und App-Branding ergänzen
-- [ ] Vererbungsstatus je Branding-Feld im App-Dialog anzeigen
+- [x] Live-Vorschau für Organisations- und App-Branding ergänzen
+- [x] Vererbungsstatus je Branding-Feld im App-Dialog anzeigen
