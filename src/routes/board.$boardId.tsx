@@ -33,6 +33,7 @@ import {
   Tag,
 } from "lucide-react";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { useTranslation } from "@/lib/i18n";
 import { setEdgeLabelsVisible, useEdgeLabelsVisible } from "@/lib/edge-labels";
 import { markSelfWrite, useBoardSync } from "@/lib/board-sync";
 import { exportBoard } from "@/lib/backup.functions";
@@ -549,6 +550,19 @@ function BoardPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { screenToFlowPosition, setCenter } = useReactFlow();
+  const { l } = useTranslation();
+
+  const canvasAriaLabels = useMemo(
+    () => ({
+      "controls.ariaLabel": l("Canvas-Zoomsteuerung"),
+      "controls.zoomIn.ariaLabel": l("Canvas vergrößern"),
+      "controls.zoomOut.ariaLabel": l("Canvas verkleinern"),
+      "controls.fitView.ariaLabel": l("Ganzen Canvas zeigen"),
+      "controls.interactive.ariaLabel": l("Interaktion umschalten"),
+      "minimap.ariaLabel": l("Kompakte Übersichtskarte"),
+    }),
+    [l],
+  );
 
   const [title, setTitle] = useState("");
   const [records, setRecords] = useState<Record<string, NodeRecord>>({});
