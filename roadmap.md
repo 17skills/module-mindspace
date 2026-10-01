@@ -17,3 +17,5 @@
 - [x] Theme-, Systemvorgaben- und Sprachwechsel einschließlich Speicherung testen
 - [x] Live-Vorschau für Organisations- und App-Branding ergänzen
 - [x] Vererbungsstatus je Branding-Feld im App-Dialog anzeigen
+- [ ] Canvas-Zoomsteuerung für Hell- und Dunkelmodus korrigieren
+- [ ] App-Anzeige auf Hell, Dunkel und System begrenzen; Hintergründe beibehalten
