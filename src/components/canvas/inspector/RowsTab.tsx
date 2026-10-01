@@ -223,9 +223,11 @@ export function RowsTab({ record }: { record: NodeRecord }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row, position) => (
                 <tr key={row.index} className="hover:bg-secondary/50">
-                  <td className="border-b px-2 py-1 text-muted-foreground">{row.index + 1}</td>
+                  <td className="border-b px-2 py-1 text-muted-foreground">
+                    {page * PAGE_SIZE + position + 1}
+                  </td>
                   {shown.map((key) => (
                     <td key={key} className="max-w-[14rem] truncate border-b px-2 py-1">
                       {cell(row.values[key])}
