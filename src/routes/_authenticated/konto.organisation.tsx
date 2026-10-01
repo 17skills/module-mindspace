@@ -5,13 +5,16 @@ import { toast } from "sonner";
 import { Copy, LogOut, Mail, RefreshCw, Trash2 } from "lucide-react";
 import {
   getOrg,
+  getOrgBranding,
   leaveOrg,
   listMyOrgs,
   removeOrgMember,
   renameOrg,
+  saveOrgBranding,
   setActiveOrg,
   setOrgRole,
 } from "@/lib/org.functions";
+import { DEFAULT_ORG_BRANDING, type OrgBranding } from "@/lib/zones";
 import { createInvite, resendInvite, revokeInvite } from "@/lib/invites.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
