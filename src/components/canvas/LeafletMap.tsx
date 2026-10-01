@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { GeoPoint, WeatherValue } from "@/lib/geo";
@@ -46,17 +46,24 @@ function SizeWatcher({
   onBounds?: (box: [number, number, number, number]) => void;
 }) {
   const map = useMap();
+  const report = useRef(onBounds);
+  report.current = onBounds;
   useEffect(() => {
+    let first = true;
     const el = map.getContainer();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const observer = new ResizeObserver(() => {
+      if (first) {
+        first = false;
+        return;
+      }
       clearTimeout(timer);
       timer = setTimeout(() => {
         const center = map.getCenter();
         map.invalidateSize({ pan: false });
         map.setView(center, map.getZoom(), { animate: false });
         const b = map.getBounds();
-        onBounds?.([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
+        report.current?.([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
       }, 120);
     });
     observer.observe(el);
@@ -64,7 +71,7 @@ function SizeWatcher({
       clearTimeout(timer);
       observer.disconnect();
     };
-  }, [map, onBounds]);
+  }, [map]);
   return null;
 }
 
