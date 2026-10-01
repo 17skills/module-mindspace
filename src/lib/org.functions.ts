@@ -187,7 +187,7 @@ export const saveOrgBranding = createServerFn({ method: "POST" })
     const db = await admin();
     const { error } = await db
       .from("organizations")
-      .update({ branding: clean as unknown as Record<string, unknown> })
+      .update({ branding: clean as unknown as never })
       .eq("id", data.orgId);
     if (error) throw new Error(error.message);
     await audit({
