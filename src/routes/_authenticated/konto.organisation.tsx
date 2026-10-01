@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -350,5 +350,111 @@ function OrgPage() {
         </ul>
       </section>
     </div>
+  );
+}
+
+/**
+ * Standard-Branding der Organisation: Marke, Logo und Farbe, die jede neue App
+ * automatisch erbt. Einzelne Apps können das im App-Dialog überschreiben.
+ */
+function OrgBrandingCard() {
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: ["org-branding"], queryFn: () => getOrgBranding({ data: {} }) });
+  const [draft, setDraft] = useState<OrgBranding | null>(null);
+  const logoInput = useRef<HTMLInputElement>(null);
+  const value = draft ?? query.data?.branding ?? DEFAULT_ORG_BRANDING;
+  const orgId = query.data?.orgId ?? null;
+  const canManage = query.data?.canManage ?? false;
+
+  const save = useMutation({
+    mutationFn: () => saveOrgBranding({ data: { orgId: orgId!, branding: value } }),
+    onSuccess: () => {
+      toast.success("Standard-Branding gespeichert");
+      setDraft(null);
+      void client.invalidateQueries({ queryKey: ["org-branding"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const pickLogo = (file?: File) => {
+    if (!file) return;
+    if (file.size > 300_000) {
+      toast.error("Logo ist zu groß – bitte unter 300 KB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setDraft({ ...value, logo: String(reader.result ?? "") });
+    reader.readAsDataURL(file);
+  };
+
+  if (!orgId) return null;
+
+  return (
+    <section className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-card)]">
+      <h3 className="font-display text-lg font-semibold text-brand-navy">Standard-Branding</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Gilt für alle Apps, die „Standard der Organisation übernehmen“ aktiviert haben.
+      </p>
+      <div className="mt-4 grid max-w-2xl gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="brand-name">Marke</Label>
+          <Input
+            id="brand-name"
+            className="mt-1.5"
+            disabled={!canManage}
+            value={value.brandName}
+            onChange={(event) => setDraft({ ...value, brandName: event.target.value.slice(0, 80) })}
+          />
+        </div>
+        <div>
+          <Label htmlFor="brand-color">Markenfarbe</Label>
+          <div className="mt-1.5 flex items-center gap-2">
+            <input
+              id="brand-color"
+              type="color"
+              disabled={!canManage}
+              value={value.accentColor || "#132b25"}
+              onChange={(event) => setDraft({ ...value, accentColor: event.target.value.toLowerCase() })}
+              className="h-9 w-12 cursor-pointer rounded border bg-background"
+            />
+            <Input
+              value={value.accentColor}
+              placeholder="#132b25"
+              disabled={!canManage}
+              onChange={(event) => setDraft({ ...value, accentColor: event.target.value.trim().toLowerCase() })}
+            />
+          </div>
+        </div>
+        <div className="sm:col-span-2 flex items-center gap-3">
+          {value.logo ? (
+            <img src={value.logo} alt="" className="size-10 rounded object-contain" />
+          ) : (
+            <span className="text-sm text-muted-foreground">Kein Logo hinterlegt</span>
+          )}
+          <input
+            ref={logoInput}
+            type="file"
+            accept="image/png,image/svg+xml,.png,.svg"
+            className="hidden"
+            onChange={(event) => pickLogo(event.target.files?.[0])}
+          />
+          <Button variant="outline" size="sm" disabled={!canManage} onClick={() => logoInput.current?.click()}>
+            Logo wählen
+          </Button>
+          {value.logo ? (
+            <Button variant="ghost" size="sm" disabled={!canManage} onClick={() => setDraft({ ...value, logo: "" })}>
+              Entfernen
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      {canManage ? (
+        <Button className="mt-4" disabled={!draft || save.isPending} onClick={() => save.mutate()}>
+          Speichern
+        </Button>
+      ) : (
+        <p className="mt-4 text-xs text-muted-foreground">Nur Inhaber und Administratoren können das ändern.</p>
+      )}
+    </section>
   );
 }
