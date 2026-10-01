@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import {
@@ -57,6 +57,7 @@ import { deleteDeliveredApp, saveDeliveredApp, setDeliveredAppPublished } from "
 import {
   APP_DESIGN_PRESETS,
   DEFAULT_APP_BRANDING,
+  mergeBranding,
   type AppAccent,
   type AppBackground,
   type AppBranding,
@@ -122,6 +123,34 @@ const DEVICE_FRAME: Record<PreviewDevice, string> = {
   tablet: "w-full max-w-[820px]",
   mobile: "w-full max-w-[390px]",
 };
+
+function BrandingField({
+  label,
+  source,
+  children,
+}: {
+  label: string;
+  source: "organisation" | "app";
+  children: ReactNode;
+}) {
+  return (
+    <label className="space-y-1.5">
+      <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>{label}</span>
+        <span
+          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+            source === "organisation"
+              ? "border-brand-green/40 bg-brand-green/10 text-brand-green-deep"
+              : "border-border bg-muted text-foreground"
+          }`}
+        >
+          {source === "organisation" ? "Organisationsstandard" : "Individuell"}
+        </span>
+      </span>
+      {children}
+    </label>
+  );
+}
 
 
 const PROMPTS = [
@@ -281,7 +310,10 @@ function DeploymentPreview({
           <TeamsCardPreview title={title} description={description} leadQuestion={leadQuestion} view={previewView} onOpen={() => onInteraction("Direktlink zum Cockpit")} onDriverOpen={(id) => onInteraction(previewView.drivers.find((driver) => driver.id === id)?.label ?? "Kennzahl")} />
         ) : (
           <div className={`mx-auto overflow-hidden rounded-xl border border-border/70 bg-background shadow-[var(--shadow-card)] ${DEVICE_FRAME[device]}`}>
-            <div className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}>
+            <div
+              className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-[520px] flex-col`}
+              style={branding.accentColor ? ({ "--app-accent": branding.accentColor } as CSSProperties) : undefined}
+            >
               <header className="app-header grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-2.5">
                 <div className="flex min-w-0 items-center gap-3">
                   {branding.logo ? (
@@ -326,6 +358,15 @@ function DeploymentPreview({
                 />
 
               )}
+              {branding.brandName || branding.version || branding.releaseDate ? (
+                <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/70 px-4 py-3 text-[11px] text-muted-foreground">
+                  {branding.brandName ? <span>{branding.brandName}</span> : null}
+                  {branding.version ? <span>Version {branding.version}</span> : null}
+                  {branding.releaseDate ? (
+                    <span>Stand {new Date(branding.releaseDate).toLocaleDateString("de-DE")}</span>
+                  ) : null}
+                </footer>
+              ) : null}
             </div>
           </div>
         )}
@@ -415,6 +456,7 @@ export function AppDialog({
     resolveLayout(branding.layout, chosenTypes) === "capture" ? "capture" : "cockpit";
   const validation = useMemo(() => deploymentIssues({ title, leadQuestion, audience, nodes: tileNodes }), [title, leadQuestion, audience, tileNodes]);
   const validationMessages = Object.values(validation).filter((message): message is string => Boolean(message));
+  const effectiveBranding = useMemo(() => mergeBranding(branding, orgBrand), [branding, orgBrand]);
 
 
   useEffect(() => {
@@ -842,13 +884,15 @@ export function AppDialog({
 
           {/* 2 – Gestaltung */}
           <TabsContent value="design" className="space-y-3">
-            <Input
-              value={title}
-              aria-invalid={showValidation && Boolean(validation.title)}
-              className={showValidation && validation.title ? "border-destructive focus-visible:ring-destructive" : ""}
-              placeholder={l("Titel der App, z. B. Trafostationen-Inspektion")}
-              onChange={(event) => setTitle(event.target.value)}
-            />
+            <BrandingField label={l("App-Titel")} source="app">
+              <Input
+                value={title}
+                aria-invalid={showValidation && Boolean(validation.title)}
+                className={showValidation && validation.title ? "border-destructive focus-visible:ring-destructive" : ""}
+                placeholder={l("Titel der App, z. B. Trafostationen-Inspektion")}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </BrandingField>
             {showValidation && validation.title && <p className="text-xs text-destructive">{validation.title}</p>}
             <Textarea
               value={description}
@@ -873,49 +917,59 @@ export function AppDialog({
                   </span>
                 </span>
               </label>
-              {!branding.inherit && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <BrandingField label={l("Marke")} source={branding.inherit ? "organisation" : "app"}>
                   <Input
                     value={branding.brandName}
-                    placeholder={l("Marke, z. B. Stadtwerke Nord")}
+                    disabled={branding.inherit}
+                    placeholder={branding.inherit ? orgBrand?.brandName ?? "" : l("Marke, z. B. Stadtwerke Nord")}
                     onChange={(event) => setBranding((b) => ({ ...b, brandName: event.target.value.slice(0, 80) }))}
                   />
+                </BrandingField>
+                <BrandingField label={l("Markenfarbe")} source={branding.inherit ? "organisation" : "app"}>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
                       aria-label={l("Markenfarbe")}
-                      value={branding.accentColor || "#132b25"}
+                      disabled={branding.inherit}
+                      value={(branding.inherit ? orgBrand?.accentColor : branding.accentColor) || "#132b25"}
                       onChange={(event) => setBranding((b) => ({ ...b, accentColor: event.target.value.toLowerCase() }))}
                       className="h-9 w-12 cursor-pointer rounded border border-border bg-background"
                     />
                     <Input
                       value={branding.accentColor}
-                      placeholder="#132b25"
+                      disabled={branding.inherit}
+                      placeholder={branding.inherit ? orgBrand?.accentColor || "Farbprofil" : "#132b25"}
                       onChange={(event) => setBranding((b) => ({ ...b, accentColor: event.target.value.trim().toLowerCase() }))}
                     />
-                    {branding.accentColor && (
+                    {!branding.inherit && branding.accentColor && (
                       <Button variant="ghost" size="sm" onClick={() => setBranding((b) => ({ ...b, accentColor: "" }))}>
                         {l("Zurücksetzen")}
                       </Button>
                     )}
                   </div>
-                </div>
-              )}
+                </BrandingField>
+              </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Input
-                value={branding.version}
-                placeholder={l("Version, z. B. 1.0")}
-                onChange={(event) => setBranding((b) => ({ ...b, version: event.target.value.slice(0, 24) }))}
-              />
-              <Input
-                type="date"
-                value={branding.releaseDate}
-                aria-label={l("Veröffentlichungsdatum")}
-                onChange={(event) => setBranding((b) => ({ ...b, releaseDate: event.target.value }))}
-              />
+              <BrandingField label={l("Version")} source="app">
+                <Input
+                  value={branding.version}
+                  placeholder={l("Version, z. B. 1.0")}
+                  onChange={(event) => setBranding((b) => ({ ...b, version: event.target.value.slice(0, 24) }))}
+                />
+              </BrandingField>
+              <BrandingField label={l("Veröffentlichungsdatum")} source="app">
+                <Input
+                  type="date"
+                  value={branding.releaseDate}
+                  aria-label={l("Veröffentlichungsdatum")}
+                  onChange={(event) => setBranding((b) => ({ ...b, releaseDate: event.target.value }))}
+                />
+              </BrandingField>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <BrandingField label={l("Designprofil")} source="app">
+              <div className="flex flex-wrap gap-2">
               {APP_DESIGN_PRESETS.map((profile) => (
                 <button
                   key={profile.id}
@@ -934,12 +988,15 @@ export function AppDialog({
                   {profile.name}
                 </button>
               ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+              </div>
+            </BrandingField>
+            <BrandingField label={l("Akzentprofil")} source={branding.inherit ? "organisation" : "app"}>
+              <div className="flex flex-wrap items-center gap-2">
               {ACCENTS.map((accent) => (
                 <button
                   key={accent.id}
                   aria-label={accent.label}
+                  disabled={branding.inherit}
                   onClick={() => setBranding((b) => ({ ...b, accent: accent.id }))}
                   className={`size-7 rounded-full border-2 ${
                     branding.accent === accent.id ? "border-foreground" : "border-transparent"
@@ -947,7 +1004,10 @@ export function AppDialog({
                   style={{ background: accent.color }}
                 />
               ))}
-              <div className="ml-2 flex gap-1">
+              </div>
+            </BrandingField>
+            <BrandingField label={l("Hintergrund")} source="app">
+              <div className="flex flex-wrap gap-1">
                 {BACKGROUNDS.map((background) => (
                   <button
                     key={background.id}
@@ -962,6 +1022,12 @@ export function AppDialog({
                   </button>
                 ))}
               </div>
+            </BrandingField>
+            <BrandingField
+              label={l("Logo und Größe")}
+              source={branding.inherit && !branding.logo ? "organisation" : "app"}
+            >
+              <div className="flex flex-wrap items-center gap-2">
               <input
                 ref={logoInput}
                 type="file"
@@ -970,12 +1036,29 @@ export function AppDialog({
                 onChange={(event) => void uploadLogo(event.target.files?.[0])}
               />
               <Button variant="outline" size="sm" onClick={() => logoInput.current?.click()}>
-                Logo
+                {branding.logo ? l("Logo ersetzen") : l("Eigenes Logo wählen")}
               </Button>
-              {branding.logo && (
-                <img src={branding.logo} alt="" className="size-7 rounded object-contain" />
-              )}
-            </div>
+              {(branding.logo || (branding.inherit && orgBrand?.logo)) ? (
+                <img src={branding.logo || orgBrand?.logo} alt="" className="size-9 rounded object-contain" />
+              ) : null}
+              {branding.logo ? (
+                <Button variant="ghost" size="sm" onClick={() => setBranding((b) => ({ ...b, logo: "" }))}>
+                  {l("Eigenes Logo entfernen")}
+                </Button>
+              ) : null}
+              <input
+                type="range"
+                min={24}
+                max={72}
+                value={effectiveBranding.logoSize}
+                disabled={branding.inherit && !branding.logo}
+                aria-label={l("Logo-Größe")}
+                onChange={(event) => setBranding((b) => ({ ...b, logoSize: Number(event.target.value) }))}
+                className="w-32 accent-primary"
+              />
+              <span className="text-xs tabular-nums text-muted-foreground">{effectiveBranding.logoSize} px</span>
+              </div>
+            </BrandingField>
           </TabsContent>
 
           {/* 3 – Zugriff */}
@@ -1326,7 +1409,7 @@ export function AppDialog({
               description={description}
               leadQuestion={leadQuestion}
               kind={kind}
-              branding={branding}
+              branding={effectiveBranding}
               device={device}
               channel={previewChannel}
               channels={channels}
@@ -1350,7 +1433,7 @@ export function AppDialog({
               description={description}
               leadQuestion={leadQuestion}
               kind={kind}
-              branding={branding}
+              branding={effectiveBranding}
               device={device}
               channel={previewChannel}
               channels={channels}
