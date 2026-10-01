@@ -89,6 +89,7 @@ function AppStage() {
   return (
     <div
       className={`app-shell app-accent-${branding.accent} app-background-${branding.background} flex min-h-screen flex-col`}
+      style={branding.accentColor ? ({ "--app-accent": branding.accentColor } as React.CSSProperties) : undefined}
     >
       <header className="app-header sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
