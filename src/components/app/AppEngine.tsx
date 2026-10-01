@@ -170,11 +170,22 @@ function RiskCard({ node }: { node: NodeRecord }) {
 function MapCard({ node, nodes }: { node: NodeRecord; nodes: NodeRecord[] }) {
   const config = readMapConfig(node);
   const sources = nodes.filter((item) => item.id !== node.id);
-  const points = useMemo(
-    () => pointsFromSources(sources.length ? sources : [node], config),
+  // Jede verbundene Quelle einzeln auswerten, damit sie in der App umschaltbar ist.
+  const layers = useMemo(
+    () =>
+      (sources.length ? sources : [node])
+        .map((item) => ({
+          id: item.id,
+          title: item.title || "Quelle",
+          points: pointsFromSources([item], config),
+        }))
+        .filter((layer) => layer.points.length > 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [nodes, node],
   );
+  const [active, setActive] = useState<string>("all");
+  const current = layers.find((layer) => layer.id === active);
+  const points = current ? current.points : layers.flatMap((layer) => layer.points);
   const center: [number, number] = points.length
     ? [points[0]!.lat, points[0]!.lon]
     : config.center;
@@ -184,19 +195,38 @@ function MapCard({ node, nodes }: { node: NodeRecord; nodes: NodeRecord[] }) {
     </div>
   );
   return (
-    <div className="h-full min-h-[320px] w-full overflow-hidden rounded-lg">
-      <ClientOnly fallback={fallback}>
-        <Suspense fallback={fallback}>
-          <LeafletMap
-            points={points}
-            weather={config.weather}
-            center={center}
-            zoom={points.length ? 11 : config.zoom}
-            selectedId={null}
-            onSelect={() => {}}
-          />
-        </Suspense>
-      </ClientOnly>
+    <div className="flex h-full min-h-[320px] w-full flex-col gap-2">
+      {layers.length > 1 ? (
+        <div className="flex flex-wrap gap-1">
+          {[{ id: "all", title: `Alle Quellen (${layers.length})` }, ...layers].map((layer) => (
+            <button
+              key={layer.id}
+              onClick={() => setActive(layer.id)}
+              className={`rounded-full border px-2.5 py-0.5 text-[11px] ${
+                active === layer.id
+                  ? "border-transparent bg-primary text-primary-foreground"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              {layer.title}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-lg">
+        <ClientOnly fallback={fallback}>
+          <Suspense fallback={fallback}>
+            <LeafletMap
+              points={points}
+              weather={config.weather}
+              center={center}
+              zoom={points.length ? 11 : config.zoom}
+              selectedId={null}
+              onSelect={() => {}}
+            />
+          </Suspense>
+        </ClientOnly>
+      </div>
     </div>
   );
 }
