@@ -35,6 +35,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import type { NodeRecord } from "@/components/canvas/board-context";
 import { AppEngine } from "@/components/app/AppEngine";
+import { getOrgBranding } from "@/lib/org.functions";
+import type { OrgBranding } from "@/lib/zones";
 import { AppAccessManager } from "@/components/app/AppAccessManager";
 import { executiveView } from "@/lib/app-executive";
 import { deploymentIssues, previewExecutiveView, type PreviewScenario } from "@/lib/app-preview";
