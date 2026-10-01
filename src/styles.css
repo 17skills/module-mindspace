@@ -395,3 +395,22 @@
   border-radius: 999px;
   background: color-mix(in oklab, var(--foreground) 12%, transparent);
 }
+
+/* Karten dürfen die Ziehpunkte zur Größenänderung nicht überdecken */
+.leaflet-container,
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control {
+  z-index: 1 !important;
+}
+
+.react-flow__resize-control {
+  z-index: 1000;
+}
+
+.react-flow__resize-control.handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
