@@ -23,6 +23,7 @@ export type NodeRecord = {
 
 export type InspectorTab =
   | "source"
+  | "rows"
   | "data"
   | "refresh"
   | "assign"
