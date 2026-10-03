@@ -1,3 +1,4 @@
+import { Camera as CameraIcon } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -432,7 +433,6 @@ const DASHBOARD_MODULES = [
     title: "Risikomatrix",
     metadata: { rainWarn: 5, rainDanger: 25, windWarn: 40, windDanger: 75 },
   },
-  { id: "camera", label: "Kamera (Foto + Ort)", title: "Kamera", metadata: {} },
 ] as const;
 
 /** Space a template group leaves around its fields. */
@@ -4299,6 +4299,30 @@ function BoardPage() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={toolBtn()}
+                      aria-label="Kamera-Modul anlegen (Foto + Ort)"
+                      onClick={() => {
+                        const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+                        void createRecord({
+                          type: "camera",
+                          title: "Kamera",
+                          position_x: at.x,
+                          position_y: at.y,
+                          metadata: {},
+                        });
+                      }}
+                    >
+                      <CameraIcon className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Kamera (Foto + Ort)</TooltipContent>
+                </Tooltip>
 
                 <Tooltip>
                   <TooltipTrigger asChild>
