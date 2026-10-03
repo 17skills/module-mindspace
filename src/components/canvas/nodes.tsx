@@ -5814,7 +5814,11 @@ export const RiskNode = memo(function RiskNode({ id, data, selected }: NodeProps
 export const InspectNode = memo(function InspectNode({ data, selected }: NodeProps) {
   const record = (data as unknown as Data).record;
   const { updateNode } = useBoard();
-  const config = readInspection(record);
+  const store = useInspectionFindings(record.id, String((record as { board_id?: string }).board_id ?? ""));
+  const legacy = Array.isArray(record.metadata?.["findings"]) ? (record.metadata?.["findings"] as unknown[]) : [];
+  const config = readInspection({
+    metadata: { ...(record.metadata ?? {}), findings: store.rows && store.rows.length ? store.rows : legacy },
+  });
   const [busy, setBusy] = useState(0);
   const [report, setReport] = useState("");
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -5835,9 +5839,11 @@ export const InspectNode = memo(function InspectNode({ data, selected }: NodePro
   }, [summary]);
 
   function save(next: Finding[]) {
-    updateNode(record.id, {
-      metadata: { ...(record.metadata ?? {}), findings: next, rates: config.rates },
-    });
+    void store.save(config.findings, next);
+    // Altbestand im Modul leeren: Befunde leben nur noch als eigene Einträge.
+    if (legacy.length) {
+      updateNode(record.id, { metadata: { ...(record.metadata ?? {}), findings: [], rates: config.rates } });
+    }
   }
 
   async function handleFiles(files: FileList | File[]) {
