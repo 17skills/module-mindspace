@@ -141,6 +141,7 @@ export async function loadAppNodes(appId: string) {
   const nodes = ((nodeRes.data ?? []) as NodeRow[])
     .filter((row) => order.has(String(row.id)))
     .sort((a, b) => (order.get(String(a.id)) ?? 0) - (order.get(String(b.id)) ?? 0));
+  await attachFindings(db, nodes);
   await signOutputFiles(db, String(app.board_id), nodes);
   return {
     db,
@@ -151,6 +152,28 @@ export async function loadAppNodes(appId: string) {
   };
 }
 
+
+/** Setzt die Befunde aus `inspection_findings` in die Inspektionsmodule ein. */
+export async function attachFindings(db: Db, nodes: NodeRow[]) {
+  const ids = nodes.filter((row) => row.type === "inspect").map((row) => String(row.id));
+  if (!ids.length) return;
+  const { data } = await db
+    .from("inspection_findings")
+    .select("node_id,data")
+    .in("node_id", ids)
+    .order("created_at", { ascending: true });
+  const byNode = new Map<string, unknown[]>();
+  for (const row of data ?? []) {
+    const list = byNode.get(String(row.node_id)) ?? [];
+    list.push(row.data);
+    byNode.set(String(row.node_id), list);
+  }
+  for (const row of nodes) {
+    const list = byNode.get(String(row.id));
+    if (!list) continue;
+    row.metadata = { ...((row.metadata ?? {}) as Record<string, unknown>), findings: list } as never;
+  }
+}
 
 /** Findet das Inspektionsmodul der App und legt die Befundliste offen. */
 export async function appFindingStore(appId: string, nodeId?: string) {
@@ -165,7 +188,13 @@ export async function appFindingStore(appId: string, nodeId?: string) {
   );
   if (!target) throw new Error("Diese App hat kein Inspektionsmodul");
   const meta = (target.metadata ?? {}) as Record<string, unknown>;
-  const findings = Array.isArray(meta["findings"]) ? [...(meta["findings"] as Record<string, unknown>[])] : [];
+  const { data: stored } = await db
+    .from("inspection_findings")
+    .select("data")
+    .eq("node_id", String(target.id))
+    .order("created_at", { ascending: true });
+  const legacy = Array.isArray(meta["findings"]) ? (meta["findings"] as Record<string, unknown>[]) : [];
+  const findings = stored && stored.length ? stored.map((row) => row.data as Record<string, unknown>) : [...legacy];
   return { db, app, target, meta, findings };
 }
 
@@ -215,7 +244,7 @@ async function storePhoto(
 
 /** Hängt einen Befund an das Inspektionsmodul der App an. */
 export async function insertFinding(appId: string, write: FindingWrite) {
-  const { db, app, target, meta, findings } = await appFindingStore(appId);
+  const { db, app, target, findings } = await appFindingStore(appId);
   const id = `finding-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const { photo, ...rest } = write;
   const photoPath = await storePhoto(db, app.board_id, id, photo ?? write.thumb);
@@ -230,13 +259,16 @@ export async function insertFinding(appId: string, write: FindingWrite) {
     owner: "",
     due: "",
   };
-  const next = [...findings, entry];
-  const { error } = await db
-    .from("nodes")
-    .update({ metadata: { ...meta, findings: next } as never })
-    .eq("id", target.id);
+  // Eigene Zeile je Befund: parallele Erfasser blockieren und überschreiben sich nicht.
+  const { error } = await db.from("inspection_findings").insert({
+    id,
+    board_id: String(app.board_id),
+    node_id: String(target.id),
+    data: entry as never,
+    created_at: entry.createdAt,
+  });
   if (error) throw new Error(error.message);
-  return { id, count: next.length };
+  return { id, count: findings.length + 1 };
 }
 
 const STATUSES = ["offen", "beauftragt", "in arbeit", "erledigt"] as const;
@@ -248,12 +280,13 @@ export async function changeFinding(
   patch: { status?: string | undefined; owner?: string | undefined; due?: string | undefined },
   nodeId?: string,
 ) {
-  const { db, target, meta, findings } = await appFindingStore(appId, nodeId);
+  const { db, app, target, findings } = await appFindingStore(appId, nodeId);
   let hit = false;
+  let changed: Record<string, unknown> | null = null;
   const next = findings.map((row) => {
     if (String(row["id"]) !== findingId) return row;
     hit = true;
-    return {
+    changed = {
       ...row,
       ...(patch.status && (STATUSES as readonly string[]).includes(patch.status)
         ? { status: patch.status }
@@ -261,12 +294,15 @@ export async function changeFinding(
       ...(patch.owner !== undefined ? { owner: patch.owner } : {}),
       ...(patch.due !== undefined ? { due: patch.due } : {}),
     };
+    return changed;
   });
-  if (!hit) throw new Error("Befund nicht gefunden");
-  const { error } = await db
-    .from("nodes")
-    .update({ metadata: { ...meta, findings: next } as never })
-    .eq("id", target.id);
+  if (!hit || !changed || !next.length) throw new Error("Befund nicht gefunden");
+  const { error } = await db.from("inspection_findings").upsert({
+    id: findingId,
+    board_id: String(app.board_id),
+    node_id: String(target.id),
+    data: changed as never,
+  });
   if (error) throw new Error(error.message);
   return { ok: true };
 }
