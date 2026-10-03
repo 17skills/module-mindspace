@@ -807,6 +807,48 @@ export type Database = {
           },
         ]
       }
+      inspection_findings: {
+        Row: {
+          board_id: string
+          created_at: string
+          data: Json
+          id: string
+          node_id: string
+          updated_at: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          data?: Json
+          id: string
+          node_id: string
+          updated_at?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          node_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_findings_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_findings_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           board_id: string | null
