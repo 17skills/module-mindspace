@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  describeChanges,
   describeValue,
   FIELD_LABEL,
   resolveConflict,
@@ -27,24 +28,42 @@ export function ConflictBar({
           key={conflict.id}
           className="rounded-xl border border-[#d97706]/50 bg-card p-3 shadow-[var(--shadow-card)]"
         >
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="size-4 text-[#d97706]" />
-            <p className="min-w-0 flex-1 truncate text-sm font-medium">
-              {conflict.nodeTitle} · {FIELD_LABEL[conflict.field] ?? conflict.field} gleichzeitig
-              geändert
-            </p>
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#d97706]" />
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-sm font-medium">
+                {conflict.nodeTitle}: {FIELD_LABEL[conflict.field] ?? conflict.field} wurde gleichzeitig
+                woanders geändert
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Zum Beispiel in einem zweiten Fenster oder von einer anderen Person. Welche Fassung soll gelten?
+              </p>
+            </div>
           </div>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <div className="rounded-md bg-secondary/60 p-2 text-xs">
-              <p className="mb-0.5 font-medium">Deine Fassung</p>
-              <p className="text-muted-foreground">{describeValue(conflict.mine)}</p>
-            </div>
-            <div className="rounded-md bg-secondary/60 p-2 text-xs">
-              <p className="mb-0.5 font-medium">Fassung der anderen</p>
-              <p className="text-muted-foreground">{describeValue(conflict.theirs)}</p>
-            </div>
+            {(
+              [
+                ["Deine Fassung", conflict.mine, conflict.theirs],
+                ["Andere Fassung", conflict.theirs, conflict.mine],
+              ] as const
+            ).map(([label, value, other]) => {
+              const lines =
+                conflict.field === "metadata"
+                  ? describeChanges(value, other)
+                  : [describeValue(value)];
+              return (
+                <div key={label} className="min-w-0 overflow-hidden rounded-md bg-secondary/60 p-2 text-xs">
+                  <p className="mb-1 font-medium">{label}</p>
+                  <ul className="max-h-24 space-y-0.5 overflow-y-auto text-muted-foreground">
+                    {(lines.length ? lines : ["keine Abweichung"]).map((line) => (
+                      <li key={line} className="break-words">{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -53,7 +72,7 @@ export function ConflictBar({
                 resolveConflict(conflict.id);
               }}
             >
-              Fremde übernehmen
+              Andere übernehmen
             </Button>
             <Button
               size="sm"

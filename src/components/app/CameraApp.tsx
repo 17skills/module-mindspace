@@ -27,11 +27,18 @@ export function CameraApp({ appId, nodes }: { appId: string; nodes: NodeRecord[]
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const run = async (next: { lat: number; lon: number; source: "exif" | "geraet" | "manuell" }) => {
+  const run = async (
+    next: { lat: number; lon: number; source: "exif" | "geraet" | "manuell" },
+    image: string | null = photo,
+  ) => {
     setPos(next);
     setBusy("run");
     try {
-      setResult(await runCameraFlow({ data: { appId, cameraId: camera.id, ...next } }));
+      const res = await runCameraFlow({
+        data: { appId, cameraId: camera.id, ...next, ...(image ? { photo: image } : {}) },
+      });
+      setResult(res);
+      if (res.captureId) toast.success("Foto und Standort übertragen");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ablauf fehlgeschlagen");
     } finally {
@@ -39,14 +46,18 @@ export function CameraApp({ appId, nodes }: { appId: string; nodes: NodeRecord[]
     }
   };
 
-  const locate = () => {
+  const locate = (image: string | null = photo) => {
     if (!navigator.geolocation) {
       toast.error("Dieses Gerät gibt den Standort nicht frei");
       return;
     }
     setBusy("locate");
     navigator.geolocation.getCurrentPosition(
-      (p) => void run({ lat: Number(p.coords.latitude.toFixed(6)), lon: Number(p.coords.longitude.toFixed(6)), source: "geraet" }),
+      (p) =>
+        void run(
+          { lat: Number(p.coords.latitude.toFixed(6)), lon: Number(p.coords.longitude.toFixed(6)), source: "geraet" },
+          image,
+        ),
       () => {
         setBusy("");
         toast.error("Standort konnte nicht ermittelt werden");
@@ -58,13 +69,14 @@ export function CameraApp({ appId, nodes }: { appId: string; nodes: NodeRecord[]
   const pick = async (file: File | undefined) => {
     if (!file) return;
     try {
-      setPhoto(await downscale(file, 720, 0.7));
+      const image = await downscale(file, 1280, 0.72);
+      setPhoto(image);
       setResult(null);
       const gps = await exifLocation(file);
-      if (gps) void run({ lat: Number(gps.lat.toFixed(6)), lon: Number(gps.lon.toFixed(6)), source: "exif" });
+      if (gps) void run({ lat: Number(gps.lat.toFixed(6)), lon: Number(gps.lon.toFixed(6)), source: "exif" }, image);
       else {
         toast.message("Im Foto ist kein Ort gespeichert – nehme den Standort des Geräts");
-        locate();
+        locate(image);
       }
     } catch {
       toast.error("Foto konnte nicht gelesen werden");
@@ -116,7 +128,7 @@ export function CameraApp({ appId, nodes }: { appId: string; nodes: NodeRecord[]
                   {busy === "run" ? <Loader2 className="size-5 animate-spin" /> : <Camera className="size-5" />}
                   {photo ? "Neues Foto" : "Foto aufnehmen"}
                 </Button>
-                <Button variant="outline" className="h-11 gap-2" onClick={locate} disabled={busy !== ""}>
+                <Button variant="outline" className="h-11 gap-2" onClick={() => locate(null)} disabled={busy !== ""}>
                   {busy === "locate" ? <Loader2 className="size-4 animate-spin" /> : <Crosshair className="size-4" />}
                   Nur Standort verwenden
                 </Button>

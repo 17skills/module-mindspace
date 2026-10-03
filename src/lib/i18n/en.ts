@@ -363,6 +363,6 @@ export const englishUi: Record<string, string> = {
   "Diesen Scope aus anderen Programmen starten. Nur für Administratoren und Entwickler sichtbar.": "Run this scope from other programs. Visible only to administrators and developers.",
   "Wähle einen Dienst aus dem Katalog oder verbinde eine eigene Adresse.": "Choose a service from the catalogue or connect your own endpoint.",
   "Adresse prüfen, Zugangsschlüssel eintragen – danach stehen die Werkzeuge im Scope bereit.": "Verify the endpoint and enter its access key; the tools will then be available in the scope.",
-  "Ergebnis als interaktive Kacheln": "Show results as interactive tiles",
-  "Kennzahlen, Tabelle und Entscheidungsknöpfe in der App statt Liste.": "Metrics, a table, and decision buttons in the app instead of a list.",
+  "Interaktives Lagebild": "Interactive situation overview",
+  "Zeigt Kennzahlen, Maßnahmen und Entscheidungsknöpfe in der App.": "Shows metrics, actions, and decision buttons in the app.",
 };

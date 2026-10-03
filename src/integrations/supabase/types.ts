@@ -490,6 +490,45 @@ export type Database = {
           },
         ]
       }
+      captures: {
+        Row: {
+          app_id: string | null
+          board_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lat: number | null
+          lon: number | null
+          node_id: string
+          photo_path: string | null
+          source: string
+        }
+        Insert: {
+          app_id?: string | null
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          node_id: string
+          photo_path?: string | null
+          source?: string
+        }
+        Update: {
+          app_id?: string | null
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          node_id?: string
+          photo_path?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
