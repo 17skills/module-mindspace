@@ -18,7 +18,16 @@ Erlaubt sind nur: Stack([..]), MetricRow([..]), Metric(label, value, trend, tone
 DataTable([Kopfzeilen], [[Zellen]]), Callout(titel, text, "info"|"alert"|"check"), ActionChoice([Optionen]).
 tone: "neutral"|"success"|"warning"|"destructive". Keine Links, kein HTML.`;
 
-export function GenUIView({ source, sourceId }: { source: string; sourceId?: string | null }) {
+export function GenUIView({
+  source,
+  sourceId,
+  onSignal,
+}: {
+  source: string;
+  sourceId?: string | null;
+  /** Optional: Signal weiterreichen (z. B. protokollieren); false = nicht bestätigt. */
+  onSignal?: (choice: string) => Promise<boolean> | boolean;
+}) {
   const [signal, setSignal] = useState<string | null>(null);
   return (
     <div className="genui nodrag space-y-2 text-left">
@@ -26,10 +35,11 @@ export function GenUIView({ source, sourceId }: { source: string; sourceId?: str
         response={source}
         library={genuiLibrary}
         isStreaming={false}
-        onAction={(e) => {
+        onAction={async (e) => {
           const choice = String(e.params?.["choice"] ?? e.humanFriendlyMessage ?? "");
-          setSignal(choice);
           window.dispatchEvent(new CustomEvent("scope-signal", { detail: { choice, sourceId: sourceId ?? null } }));
+          if (onSignal && !(await onSignal(choice))) return;
+          setSignal(choice);
         }}
       />
       {signal && (

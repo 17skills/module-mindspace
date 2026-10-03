@@ -19,9 +19,12 @@ import type { NodeRecord } from "@/components/canvas/board-context";
 import {
   appAddFinding,
   appAssessPhoto,
+  appRecordSignal,
   appSetFindingStatus,
   getPublicApp,
 } from "@/lib/apps.functions";
+import { GenUIView } from "@/components/genui/GenUIView";
+import { inspectionTiles, readOutputFormat, type TileAction } from "@/lib/genui-tiles";
 import { brandingFrom } from "@/lib/apps";
 import { AppEngine } from "@/components/app/AppEngine";
 import { CameraApp } from "@/components/app/CameraApp";
@@ -532,6 +535,32 @@ function CaptureApp({
           Die Bewertung schätzt Schadensklasse, Dringlichkeit (1–10) und Kosten.
         </p>
       </section> : <section className="rounded-xl border border-border/70 bg-card p-4 text-sm text-muted-foreground"><p className="font-medium text-foreground">Schreibgeschützte Ansicht</p><p className="mt-1">Zum Erfassen neuer Befunde brauchst du die Rolle „Daten aktualisieren“.</p></section>}
+
+      {readOutputFormat(inspect.metadata as Record<string, unknown>) === "tiles" && findings.length > 0 && (
+        <section className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
+          <span className="module-eyebrow text-muted-foreground">Lagebild</span>
+          <div className="mt-3">
+            <GenUIView
+              source={inspectionTiles(findings)}
+              sourceId={inspect.id}
+              onSignal={async (choice) => {
+                if (!canUpdateData) {
+                  toast.message("Zum Entscheiden bitte anmelden und freigeben lassen");
+                  return false;
+                }
+                try {
+                  await appRecordSignal({ data: { appId, nodeId: inspect.id, choice: choice as TileAction } });
+                  toast.success(`Entscheidung protokolliert: ${choice}`);
+                  return true;
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Entscheidung nicht gespeichert");
+                  return false;
+                }
+              }}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="rounded-xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
         <div className="flex items-center justify-between">
