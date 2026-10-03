@@ -166,15 +166,46 @@ export function useConflicts(): Conflict[] {
   );
 }
 
+/** Klarnamen für häufige Einstellungen, damit niemand Rohdaten lesen muss. */
+const META_LABEL: Record<string, string> = {
+  rates: "Kostensätze",
+  findings: "Befunde",
+  outputFormat: "Darstellung",
+  engine: "KI-Modell",
+  budget: "Budget",
+  moduleRole: "Auftritt in der App",
+  chartConfig: "Diagramm-Auswahl",
+  output: "Ergebnis",
+};
+
+function shortValue(value: unknown): string {
+  if (value == null || value === "") return "leer";
+  if (typeof value === "number") return String(Math.round(value * 100) / 100);
+  if (typeof value === "boolean") return value ? "an" : "aus";
+  if (typeof value === "string") return value.length > 60 ? `${value.slice(0, 60)}…` : value;
+  if (Array.isArray(value)) return `${value.length} Einträge`;
+  if (typeof value === "object") return `${Object.keys(value as object).length} Angaben`;
+  return String(value);
+}
+
 /** Kurze, lesbare Darstellung eines Feldwertes für die Gegenüberstellung. */
 export function describeValue(value: unknown): string {
   if (value == null || value === "") return "leer";
-  if (typeof value === "number") return String(Math.round(value));
-  if (typeof value === "string") return value.length > 160 ? `${value.slice(0, 160)}…` : value;
-  try {
-    const text = JSON.stringify(value);
-    return text.length > 160 ? `${text.slice(0, 160)}…` : text;
-  } catch {
-    return String(value);
-  }
+  if (typeof value !== "object" || Array.isArray(value)) return shortValue(value);
+  return describeChanges(value, undefined).join(" · ") || "leer";
+}
+
+/**
+ * Nur die Einstellungen, in denen sich beide Fassungen unterscheiden,
+ * als lesbare Zeilen ("Kostensätze: 6 Angaben").
+ */
+export function describeChanges(value: unknown, other: unknown): string[] {
+  const a = (value ?? {}) as Record<string, unknown>;
+  const b = (other ?? {}) as Record<string, unknown>;
+  if (typeof a !== "object" || Array.isArray(a)) return [shortValue(value)];
+  const keys = Object.keys(a).filter((k) => other === undefined || !same(a[k], b[k]));
+  const extra = other === undefined ? [] : Object.keys(b).filter((k) => !(k in a));
+  return [...keys, ...extra]
+    .slice(0, 5)
+    .map((k) => `${META_LABEL[k] ?? k}: ${k in a ? shortValue(a[k]) : "entfernt"}`);
 }
