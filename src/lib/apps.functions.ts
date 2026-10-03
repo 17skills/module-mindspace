@@ -25,6 +25,24 @@ async function auditDataChange(actorId: string, appId: string, action: string, d
   });
 }
 
+/** Entscheidungsknopf aus den Kacheln: nur protokollieren, keine Wirkung. */
+export const appRecordSignal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z
+      .object({
+        appId: z.string().uuid(),
+        nodeId: z.string().uuid(),
+        choice: z.enum(["Maßnahmen freigeben", "Zweitprüfung anfordern"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAppRole(context.userId, data.appId, "data_editor");
+    await auditDataChange(context.userId, data.appId, "app.signal", `${data.nodeId}:${data.choice}`);
+    return { ok: true };
+  });
+
 /** Öffentliche Bühne: App-Einstellungen plus die zugehörigen Module. */
 export const getPublicApp = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ appId: z.string().uuid() }).parse(input))

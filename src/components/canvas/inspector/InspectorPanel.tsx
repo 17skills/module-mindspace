@@ -14,6 +14,7 @@ import { GuideTab } from "./GuideTab";
 import { RefreshTab } from "./RefreshTab";
 import { TriggerTab } from "./TriggerTab";
 import { RoleSection } from "./RoleSection";
+import { TilesSection } from "./TilesSection";
 import { useSegments } from "./use-segments";
 import { readDatasetRef } from "@/lib/datasets";
 import { readSource } from "@/lib/source-node";
@@ -137,6 +138,7 @@ export function InspectorPanel({ nodeId, tab, onTab, onClose }: Props) {
       </header>
 
       <RoleSection record={record} />
+      {record.type === "inspect" && <TilesSection record={record} />}
 
       <nav className="flex shrink-0 gap-1 overflow-x-auto border-b px-3 py-2">
 
