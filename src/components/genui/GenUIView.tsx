@@ -21,7 +21,7 @@ tone: "neutral"|"success"|"warning"|"destructive". Keine Links, kein HTML.`;
 export function GenUIView({ source, sourceId }: { source: string; sourceId?: string | null }) {
   const [signal, setSignal] = useState<string | null>(null);
   return (
-    <div className="nodrag space-y-2 text-left">
+    <div className="genui nodrag space-y-2 text-left">
       <Renderer
         response={source}
         library={genuiLibrary}
