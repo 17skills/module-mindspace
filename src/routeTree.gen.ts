@@ -15,6 +15,7 @@ import { Route as AgbRouteImport } from './routes/agb'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as EntwuerfeRouteImport } from './routes/entwuerfe'
+import { Route as GenuiVorschauRouteImport } from './routes/genui-vorschau'
 import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -76,6 +77,11 @@ const DatenschutzRoute = DatenschutzRouteImport.update({
 const EntwuerfeRoute = EntwuerfeRouteImport.update({
   id: '/entwuerfe',
   path: '/entwuerfe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GenuiVorschauRoute = GenuiVorschauRouteImport.update({
+  id: '/genui-vorschau',
+  path: '/genui-vorschau',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImpressumRoute = ImpressumRouteImport.update({
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/datenschutz': typeof DatenschutzRoute
   '/entwuerfe': typeof EntwuerfeRoute
+  '/genui-vorschau': typeof GenuiVorschauRoute
   '/impressum': typeof ImpressumRoute
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -303,6 +310,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/datenschutz': typeof DatenschutzRoute
   '/entwuerfe': typeof EntwuerfeRoute
+  '/genui-vorschau': typeof GenuiVorschauRoute
   '/impressum': typeof ImpressumRoute
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/datenschutz': typeof DatenschutzRoute
   '/entwuerfe': typeof EntwuerfeRoute
+  '/genui-vorschau': typeof GenuiVorschauRoute
   '/impressum': typeof ImpressumRoute
   '/mcp': typeof McpRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -386,6 +395,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/datenschutz'
     | '/entwuerfe'
+    | '/genui-vorschau'
     | '/impressum'
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
@@ -426,6 +436,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/datenschutz'
     | '/entwuerfe'
+    | '/genui-vorschau'
     | '/impressum'
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
@@ -466,6 +477,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/datenschutz'
     | '/entwuerfe'
+    | '/genui-vorschau'
     | '/impressum'
     | '/mcp'
     | '/.well-known/oauth-protected-resource'
@@ -508,6 +520,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DatenschutzRoute: typeof DatenschutzRoute
   EntwuerfeRoute: typeof EntwuerfeRoute
+  GenuiVorschauRoute: typeof GenuiVorschauRoute
   ImpressumRoute: typeof ImpressumRoute
   McpRoute: typeof McpRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -570,6 +583,13 @@ declare module '@tanstack/react-router' {
       path: '/entwuerfe'
       fullPath: '/entwuerfe'
       preLoaderRoute: typeof EntwuerfeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/genui-vorschau': {
+      id: '/genui-vorschau'
+      path: '/genui-vorschau'
+      fullPath: '/genui-vorschau'
+      preLoaderRoute: typeof GenuiVorschauRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/impressum': {
@@ -861,6 +881,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DatenschutzRoute: DatenschutzRoute,
   EntwuerfeRoute: EntwuerfeRoute,
+  GenuiVorschauRoute: GenuiVorschauRoute,
   ImpressumRoute: ImpressumRoute,
   McpRoute: McpRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
