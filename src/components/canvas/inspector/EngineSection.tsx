@@ -84,7 +84,7 @@ export function EngineSection({
     <div className="space-y-2.5 rounded-lg border border-border/70 p-3">
       <div className="flex items-center gap-1.5">
         <Cpu className="size-3.5 text-muted-foreground" aria-hidden />
-        <p className="text-xs font-medium">{l("Rechenkern & Modell")}</p>
+        <p className="text-xs font-medium">{l("KI-Modell")}</p>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
