@@ -1,0 +1,1 @@
+- OpenUI-Ausgaben nur über die Whitelist in src/components/genui/library.tsx; Aktionen nur als Signal. Warum: Modelle erzeugen nur wirkungsfreie Bausteine.
