@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   describeChanges,
   describeValue,
+  FIELD_LABEL,
   resolveConflict,
   useConflicts,
   type Conflict,
