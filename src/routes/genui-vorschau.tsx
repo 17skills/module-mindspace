@@ -20,7 +20,7 @@ export const Route = createFileRoute("/genui-vorschau")({
 });
 
 function GenuiPreview() {
-  const { mode, setMode } = useTheme();
+  const { theme: mode, setTheme: setMode } = useTheme();
   const [shown, setShown] = useState(GENUI_SAMPLE.length);
   const [signal, setSignal] = useState<string | null>(null);
   const streaming = shown < GENUI_SAMPLE.length;
