@@ -146,6 +146,8 @@
   box-shadow: 0 1px 0 color-mix(in oklab, var(--app-accent) 10%, transparent);
 }
 .app-logo-mark { background: var(--app-accent); }
+/* Generative Ergebnisse übernehmen die Markenfarbe der jeweiligen App. */
+.app-shell .genui { --primary: var(--app-accent); --primary-foreground: var(--app-accent-foreground); }
 .app-preview-canvas {
   background-color: var(--app-surface);
   background-image: radial-gradient(var(--app-grid) 0.7px, transparent 0.7px);
