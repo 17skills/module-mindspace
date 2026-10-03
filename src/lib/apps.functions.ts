@@ -13,7 +13,7 @@ import { appRoleOf, assertAppRole, optionalRequestUserId } from "@/lib/app-permi
 
 type Json = Record<string, unknown>;
 
-async function auditDataChange(actorId: string, appId: string, action: string, detail?: string) {
+async function auditDataChange(actorId: string | null, appId: string, action: string, detail?: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await supabaseAdmin.from("audit_log").insert({
     actor_id: actorId,
@@ -21,8 +21,29 @@ async function auditDataChange(actorId: string, appId: string, action: string, d
     action,
     object_type: "app",
     object_id: appId,
-    detail: detail ?? null,
+    detail: detail ?? (actorId ? null : "Gast"),
   });
+}
+
+/**
+ * Erfassen in öffentlichen Erfassungs-Apps: Techniker brauchen kein Konto.
+ * Alle anderen Apps verlangen weiterhin „Daten aktualisieren“. Gäste sind gedrosselt.
+ */
+async function assertCaptureAccess(appId: string, bucket: string): Promise<string | null> {
+  const userId = await optionalRequestUserId();
+  const role = await appRoleOf(userId, appId);
+  if (role === "data_editor" || role === "config_admin") return userId;
+  if (!role) throw new Error("Kein Zugriff auf diese App.");
+  const { app } = await loadPublicApp(appId);
+  if (app.kind !== "capture") {
+    throw new Error("Für diese Änderung brauchst du das Recht ‚Daten aktualisieren‘.");
+  }
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const { assertRate, callerKey } = await import("@/lib/rate-limit.server");
+  const request = getRequest();
+  const caller = userId ?? (request ? await callerKey(request) : "unknown");
+  assertRate(`${bucket}:${caller}`, 12, 60_000);
+  return userId;
 }
 
 /** Entscheidungsknopf aus den Kacheln: nur protokollieren, keine Wirkung. */
@@ -89,20 +110,19 @@ export const getPublicApp = createServerFn({ method: "POST" })
 
 /** Bewertet ein vor Ort aufgenommenes Foto für eine freigegebene App. */
 export const appAssessPhoto = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
     z
       .object({
         appId: z.string().uuid(),
-        image: z.string().min(32),
-        label: z.string().default(""),
-        report: z.string().default(""),
-        rates: z.string().default(""),
+        image: z.string().min(32).max(3_000_000),
+        label: z.string().max(500).default(""),
+        report: z.string().max(4000).default(""),
+        rates: z.string().max(4000).default(""),
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
-    await assertAppRole(context.userId, data.appId, "data_editor");
+  .handler(async ({ data }) => {
+    await assertCaptureAccess(data.appId, "assess");
     const { app } = await loadPublicApp(data.appId);
     const { assessPhoto } = await import("@/lib/inspection-vision.server");
     const { loadAiKeyConfigForOwner } = await import("@/lib/ai-keys.server");
@@ -137,12 +157,11 @@ const FindingInput = z.object({
 
 /** Neuen Befund aus der mobilen Erfassung in das Inspektionsmodul schreiben. */
 export const appAddFinding = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .validator((input: unknown) =>
     z.object({ appId: z.string().uuid(), finding: FindingInput }).parse(input),
   )
-  .handler(async ({ data, context }) => {
-    await assertAppRole(context.userId, data.appId, "data_editor");
+  .handler(async ({ data }) => {
+    const userId = await assertCaptureAccess(data.appId, "finding");
     const write: FindingWrite = {
       ...data.finding,
       lat: data.finding.lat,
