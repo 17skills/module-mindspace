@@ -128,7 +128,7 @@ export function CameraApp({ appId, nodes }: { appId: string; nodes: NodeRecord[]
                   {busy === "run" ? <Loader2 className="size-5 animate-spin" /> : <Camera className="size-5" />}
                   {photo ? "Neues Foto" : "Foto aufnehmen"}
                 </Button>
-                <Button variant="outline" className="h-11 gap-2" onClick={locate} disabled={busy !== ""}>
+                <Button variant="outline" className="h-11 gap-2" onClick={() => locate(null)} disabled={busy !== ""}>
                   {busy === "locate" ? <Loader2 className="size-4 animate-spin" /> : <Crosshair className="size-4" />}
                   Nur Standort verwenden
                 </Button>
