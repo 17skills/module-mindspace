@@ -101,6 +101,7 @@ function AppStage() {
   const title = branding.title || data.app.title || "App";
   const nodes = JSON.parse(data.nodesJson) as NodeRecord[];
   const canUpdateData = data.role === "data_editor" || data.role === "config_admin";
+  const isCapture = resolveLayout(branding.layout, nodes.map((node) => node.type)) === "capture";
 
   return (
     <div
@@ -162,7 +163,7 @@ function AppStage() {
       {nodes.some((node) => node.type === "camera") ? (
         <CameraApp appId={appId} nodes={nodes} />
       ) : resolveLayout(branding.layout, nodes.map((node) => node.type)) === "capture" ? (
-        <CaptureApp appId={appId} nodes={nodes} canUpdateData={canUpdateData} onSaved={() => void load()} />
+        <CaptureApp appId={appId} nodes={nodes} canUpdateData={canUpdateData || data.app.kind === "capture"} onSaved={() => void load()} />
       ) : (
         <AppEngine
           nodes={nodes}
@@ -184,7 +185,7 @@ function AppStage() {
           } : undefined}
         />
       )}
-      {!canUpdateData && (
+      {!canUpdateData && !isCapture && (
         <div className="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-card px-4 py-2 text-xs shadow-lg">
           <LockKeyhole className="size-3.5" /> Nur Ansicht · Für Datenänderungen anmelden und freigeben lassen
         </div>
