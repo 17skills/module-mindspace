@@ -51,7 +51,7 @@ function GenuiPreview() {
           response={GENUI_SAMPLE.slice(0, shown)}
           library={genuiLibrary}
           isStreaming={streaming}
-          onAction={(e) => setSignal(String(e.params?.choice ?? e.humanFriendlyMessage))}
+          onAction={(e) => setSignal(String(e.params?.['choice'] ?? e.humanFriendlyMessage))}
         />
       </section>
       <p className="text-sm text-muted-foreground">
