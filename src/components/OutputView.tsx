@@ -5,6 +5,7 @@
 import { Download, ExternalLink } from "lucide-react";
 import { Markdown } from "@/lib/markdown";
 import { ARTIFACT_LABEL, type OutputArtifact } from "@/lib/output";
+import { GenUIView, isOpenUI } from "@/components/genui/GenUIView";
 
 export function OutputView({
   artifact,
@@ -57,6 +58,9 @@ export function OutputView({
         className={`w-full rounded-md border ${compact ? "h-60" : "h-[70vh]"}`}
       />
     );
+  }
+  if (artifact.kind === "text" && isOpenUI(artifact.text)) {
+    return <GenUIView source={artifact.text} sourceId={artifact.sourceId} />;
   }
   if (artifact.kind === "text") {
     return (
