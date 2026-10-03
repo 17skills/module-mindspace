@@ -170,7 +170,7 @@ export const appAddFinding = createServerFn({ method: "POST" })
       photo: data.finding.photo,
     };
     const result = await insertFinding(data.appId, write);
-    await auditDataChange(context.userId, data.appId, "app.data.finding_added", result.id);
+    await auditDataChange(userId, data.appId, "app.data.finding_added", result.id);
     return result;
   });
 
