@@ -109,7 +109,7 @@ export const englishUi: Record<string, string> = {
   "Person": "Person",
   "Prüfsumme": "Checksum",
   "Quelle": "Source",
-  "Rechenkern & Modell": "Compute engine & model",
+  "KI-Modell": "AI model",
   "Rolle": "Role",
   "Schnellstart": "Quickstart",
   "Spalte hinzufügen": "Add column",
